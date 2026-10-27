@@ -4251,5 +4251,371 @@ router.get('/api/reportes/detalle-operacion', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── SUBMÓDULO: PARÁMETROS DE INVENTARIO (Config_Parametros) ────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/parametros
+// Lista los parámetros del módulo de Inventario y roles de Config_Rol
+router.get('/api/parametros', async (req, res) => {
+  try {
+    const { usuario, seccion } = req.query;
+    const acceso = await computarAccesoInventario(usuario, 'Parametros');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para consultar parámetros de Inventario.' });
+    }
+
+    const tienePermiso = (acceso.secciones && acceso.secciones.map(s => s.toLowerCase()).includes('parametros')) ||
+      ['sistema', 'inventario'].includes((acceso.rol || '').trim().toLowerCase());
+    if (!tienePermiso) {
+      return res.status(403).json({ error: 'Solo los roles autorizados (Sistema, Inventario) pueden ver los parámetros.' });
+    }
+
+    let sql = `SELECT id, Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion 
+               FROM Config_Parametros 
+               WHERE Modulo = 'inventario'`;
+    const params = [];
+    if (seccion && seccion.trim() !== '') {
+      sql += ' AND LOWER(Seccion) = LOWER(?)';
+      params.push(seccion.trim());
+    }
+    sql += ' ORDER BY Seccion ASC, Concepto ASC';
+
+    const [rows] = await pool.execute(sql, params);
+    const [roles] = await pool.execute('SELECT DISTINCT Rol FROM Config_Rol ORDER BY Rol ASC');
+
+    res.json({
+      ok: true,
+      parametros: rows,
+      roles: roles.map(r => r.Rol).filter(Boolean)
+    });
+  } catch (err) {
+    console.error('[inventario] GET /api/parametros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/parametros/:id
+// Modifica un parámetro individual de Inventario (valor y descripción)
+router.put('/api/parametros/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, parametro, descripcion } = req.body;
+    const acceso = await computarAccesoInventario(usuario, 'Parametros');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para modificar parámetros de Inventario.' });
+    }
+
+    const tienePermiso = (acceso.secciones && acceso.secciones.map(s => s.toLowerCase()).includes('parametros')) ||
+      ['sistema', 'inventario'].includes((acceso.rol || '').trim().toLowerCase());
+    if (!tienePermiso) {
+      return res.status(403).json({ error: 'Solo los roles autorizados (Sistema, Inventario) pueden modificar los parámetros.' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT id, Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion FROM Config_Parametros WHERE id = ? AND Modulo = ?',
+      [id, 'inventario']
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Parámetro no encontrado en Inventario.' });
+    }
+
+    const row = rows[0];
+    let finalParam = String(parametro == null ? '' : parametro).trim();
+
+    // Validaciones según condición
+    const condicionNorm = (row.Condicion || '').trim().toLowerCase();
+    if (condicionNorm === 'porcentaje') {
+      if (!/^(100|[1-9]?\d)$/.test(finalParam)) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser un número entero entre 0 y 100.` });
+      }
+    } else if (condicionNorm === 'hora') {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(finalParam)) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser una hora válida en formato HH:mm (por ejemplo 12:00).` });
+      }
+    } else if (condicionNorm === 'filas') {
+      if (!(/^\d+$/.test(finalParam) && Number(finalParam) >= 1 && Number(finalParam) <= 1000000)) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser un número entero entre 1 y 1.000.000.` });
+      }
+    } else if (condicionNorm === 'número' || condicionNorm === 'numero') {
+      if (!/^\d+$/.test(finalParam) || Number(finalParam) < 0) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser un número entero positivo.` });
+      }
+    } else if (condicionNorm === 'booleano') {
+      if (!['0', '1', 'true', 'false'].includes(finalParam.toLowerCase())) {
+        finalParam = finalParam === '1' || finalParam.toLowerCase() === 'true' ? '1' : '0';
+      } else {
+        finalParam = ['1', 'true'].includes(finalParam.toLowerCase()) ? '1' : '0';
+      }
+    } else if (condicionNorm === 'rol') {
+      const dbRoles = (row.Parametro || '').split(',').map(s => s.trim());
+      const hasSistema = dbRoles.some(r => r.toLowerCase() === 'sistema');
+      if (hasSistema) {
+        const newRoles = finalParam.split(',').map(s => s.trim()).filter(Boolean);
+        if (!newRoles.some(r => r.toLowerCase() === 'sistema')) {
+          newRoles.unshift('Sistema');
+        }
+        finalParam = newRoles.join(', ');
+      }
+    }
+
+    const nuevaDesc = descripcion !== undefined ? String(descripcion).trim() : row.Descripcion;
+    if (nuevaDesc && nuevaDesc.length > 500) {
+      return res.status(400).json({ error: 'La descripción admite como máximo 500 caracteres.' });
+    }
+
+    await pool.execute(
+      'UPDATE Config_Parametros SET Parametro = ?, Descripcion = ? WHERE id = ? AND Modulo = ?',
+      [finalParam, nuevaDesc, id, 'inventario']
+    );
+
+    console.log(`[inventario-parametros] Parámetro id=${id} ("${row.Concepto}" - ${row.Seccion}) actualizado por ${acceso.usuarioId}: "${finalParam}"`);
+    res.json({ ok: true, mensaje: 'Parámetro actualizado exitosamente.' });
+  } catch (err) {
+    console.error('[inventario] PUT /api/parametros/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECCIÓN TICKETS DE INVENTARIO (Dynamic_Tickets, modulo = 'Inventario')
+// Roles autorizados para consultar y resolver: Inventario, Sistema
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ESTADOS_TICKET_INVENTARIO = ['En Proceso', 'Pendiente', 'Resuelto', 'Rechazado'];
+
+// GET /api/tickets
+router.get('/api/tickets', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoInventario(usuario, 'Tickets');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para consultar tickets de Inventario.' });
+
+    const tienePermiso = (acceso.secciones && acceso.secciones.map(s => s.toLowerCase()).includes('tickets')) ||
+      ['sistema', 'inventario'].includes((acceso.rol || '').trim().toLowerCase());
+    if (!tienePermiso) {
+      return res.status(403).json({ error: 'Solo los roles autorizados (Sistema, Inventario) pueden ver los tickets.' });
+    }
+
+    const {
+      estado,
+      regional,
+      operacion,
+      q,
+      sortCol,
+      sortDir,
+      limit = 500,
+      offset = 0
+    } = req.query;
+
+    const whereClauses = [`t.modulo = 'Inventario'`];
+    const params = [];
+
+    // Scope por rol
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) {
+        return res.json({ total: 0, rows: [] });
+      }
+      whereClauses.push(`t.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    // Estado (default: En Proceso)
+    const estadoFiltro = (typeof estado === 'undefined' || estado === null || estado === '') ? 'En Proceso' : estado;
+    if (estadoFiltro !== 'todos') {
+      whereClauses.push('t.Estado = ?');
+      params.push(estadoFiltro);
+    }
+
+    // Regional
+    if (regional && regional !== 'todas') {
+      whereClauses.push('mo.REGIONAL = ?');
+      params.push(regional);
+    }
+
+    // Operación
+    if (operacion && operacion !== 'todas') {
+      whereClauses.push('t.`Operación` = ?');
+      params.push(operacion);
+    }
+
+    // Búsqueda libre
+    if (q && q.trim()) {
+      const qLike = `%${q.trim()}%`;
+      whereClauses.push(`(
+        t.Ticket LIKE ?
+        OR t.solicitante LIKE ?
+        OR t.descripcion LIKE ?
+        OR t.motivo LIKE ?
+      )`);
+      params.push(qLike, qLike, qLike, qLike);
+    }
+
+    const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const sortMap = {
+      estado: 't.Estado',
+      ticket: 't.Ticket',
+      operacion: 't.`Operación`',
+      fecha_registro: 't.fecha_registro',
+      motivo: 't.motivo',
+      solicitante: 't.solicitante',
+      fecha_finalizacion: 't.fecha_finalizacion'
+    };
+
+    const orderCol = sortMap[sortCol] || 't.fecha_registro';
+    const orderDir = (String(sortDir || '').toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 1000);
+    const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+
+    const [rows] = await pool.query(`
+      SELECT
+        t.Ticket as ticket,
+        t.fecha_registro as fechaRegistro,
+        t.\`Operación\` as operacion,
+        t.solicitante as solicitante,
+        t.modulo as modulo,
+        t.motivo as motivo,
+        t.idrecibo as idrecibo,
+        t.descripcion as descripcion,
+        t.Evidencia as evidencia,
+        t.telefono as telefono,
+        t.Estado as estado,
+        t.Observaciones as observaciones,
+        t.fecha_finalizacion as fechaFinalizacion,
+        t.satisfaccion as satisfaccion,
+        t.sugerencia as sugerencia,
+        mo.REGIONAL as regional
+      FROM Dynamic_Tickets t
+      LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
+      ${whereSql}
+      ORDER BY ${orderCol} ${orderDir}, t.Ticket DESC
+      LIMIT ? OFFSET ?
+    `, [...params, limitNum, offsetNum]);
+
+    res.json({ total: rows.length, limit: limitNum, offset: offsetNum, rows });
+  } catch (err) {
+    console.error('[inventario] GET /api/tickets:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/tickets/metricas
+router.get('/api/tickets/metricas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoInventario(usuario, 'Tickets');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const { regional, operacion, q, estado } = req.query;
+
+    const commonWhere = [`t.modulo = 'Inventario'`];
+    const commonParams = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) {
+        return res.json({ estados: [], regionalesOps: [] });
+      }
+      commonWhere.push(`t.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      commonParams.push(...acceso.operacionesFiltro);
+    }
+
+    if (regional && regional !== 'todas') {
+      commonWhere.push('mo.REGIONAL = ?');
+      commonParams.push(regional);
+    }
+    if (operacion && operacion !== 'todas') {
+      commonWhere.push('t.`Operación` = ?');
+      commonParams.push(operacion);
+    }
+    if (q && q.trim()) {
+      const qLike = `%${q.trim()}%`;
+      commonWhere.push(`(t.Ticket LIKE ? OR t.solicitante LIKE ? OR t.descripcion LIKE ? OR t.motivo LIKE ?)`);
+      commonParams.push(qLike, qLike, qLike, qLike);
+    }
+
+    // 1. Conteo por Estado
+    const whereSqlEstado = commonWhere.length ? `WHERE ${commonWhere.join(' AND ')}` : '';
+    const [estadoRows] = await pool.query(`
+      SELECT t.Estado as estado, COUNT(*) as totalCount
+      FROM Dynamic_Tickets t
+      LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
+      ${whereSqlEstado}
+      GROUP BY t.Estado
+    `, commonParams);
+
+    // 2. Conteo por Regional / Operación (incluye el Estado seleccionado)
+    const dropdownWhere = [...commonWhere];
+    const dropdownParams = [...commonParams];
+    const estadoFiltro = (typeof estado === 'undefined' || estado === null || estado === '') ? 'En Proceso' : estado;
+    if (estadoFiltro !== 'todos') {
+      dropdownWhere.push('t.Estado = ?');
+      dropdownParams.push(estadoFiltro);
+    }
+    const whereSqlDropdowns = dropdownWhere.length ? `WHERE ${dropdownWhere.join(' AND ')}` : '';
+
+    const [opsRows] = await pool.query(`
+      SELECT COALESCE(mo.REGIONAL, 'SIN REGIONAL') as regional, t.\`Operación\` as operacion, COUNT(*) as totalCount
+      FROM Dynamic_Tickets t
+      LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
+      ${whereSqlDropdowns}
+      GROUP BY mo.REGIONAL, t.\`Operación\`
+    `, dropdownParams);
+
+    res.json({ estados: estadoRows, regionalesOps: opsRows });
+  } catch (err) {
+    console.error('[inventario] GET /api/tickets/metricas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tickets/:ticket/estado (Gestionar / Resolver Ticket de Inventario)
+router.post('/api/tickets/:ticket/estado', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const { ticket } = req.params;
+    const { estado, observaciones } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoInventario(usuario, 'Tickets');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const tienePermiso = (acceso.secciones && acceso.secciones.map(s => s.toLowerCase()).includes('tickets')) ||
+      ['sistema', 'inventario'].includes((acceso.rol || '').trim().toLowerCase());
+    if (!tienePermiso) {
+      return res.status(403).json({ error: 'Solo los roles Inventario y Sistema pueden resolver tickets.' });
+    }
+
+    if (!ticket) return res.status(400).json({ error: 'ticket requerido' });
+    if (!estado || !ESTADOS_TICKET_INVENTARIO.includes(estado)) {
+      return res.status(400).json({ error: 'estado inválido' });
+    }
+
+    const [existRows] = await pool.execute(
+      'SELECT `Operación` as operacion FROM Dynamic_Tickets WHERE Ticket = ? AND modulo = ? LIMIT 1',
+      [ticket, 'Inventario']
+    );
+    if (!existRows.length) return res.status(404).json({ error: 'Ticket no encontrado en Inventario.' });
+
+    const finaliza = (estado === 'Resuelto' || estado === 'Rechazado');
+    const obsVal = (observaciones || '').trim() || null;
+
+    await pool.execute(
+      `UPDATE Dynamic_Tickets SET Estado = ?, Observaciones = ?, fecha_finalizacion = ${finaliza ? 'NOW()' : 'NULL'} WHERE Ticket = ? AND modulo = ?`,
+      [estado, obsVal, ticket, 'Inventario']
+    );
+
+    console.log(`[inventario-tickets] Ticket ${ticket} actualizado a estado "${estado}" por ${acceso.usuarioId}`);
+    res.json({ ok: true, ticket, estado, observaciones: obsVal });
+  } catch (err) {
+    console.error('[inventario] POST /api/tickets/:ticket/estado:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
 

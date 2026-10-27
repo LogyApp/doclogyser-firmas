@@ -1,5 +1,23 @@
-const { generarPDF } = require('./renderer');
+const pool = require('./db');
+const { generarPDF, generarPDFDesdeHTML } = require('./renderer');
 const { LOGO_BASE64 } = require('./assets');
+
+const NOMBRE_PLANTILLA = 'capacitacion_sst';
+
+const FORMATO_DEFAULTS = {
+  codigo: 'F-SST-002',
+  version: '02',
+  fecha: '28/05/2026',
+};
+
+function esc(val) {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function formatFechaCO(fecha) {
   if (!fecha) return '';
@@ -9,10 +27,109 @@ function formatFechaCO(fecha) {
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function fechaHoraBogotaTexto(d = new Date()) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
 function limpiarNombre(n) {
   if (!n) return '';
   const p = String(n).split(' ** ');
   return (p.length > 1 ? p[1] : n).trim();
+}
+
+async function obtenerFormatoCapacitacion() {
+  const formato = { ...FORMATO_DEFAULTS };
+  try {
+    const [rows] = await pool.execute(
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'sst' AND Seccion = 'Capacitación SST'"
+    );
+    for (const r of rows) {
+      const c = String(r.Concepto || '').trim();
+      const v = String(r.Parametro || '').trim();
+      if (!v) continue;
+      if (c === 'Código del formato de capacitación SST') formato.codigo = v;
+      else if (c === 'Versión del formato de capacitación SST') formato.version = v;
+      else if (c === 'Fecha del formato de capacitación SST') formato.fecha = v;
+    }
+  } catch (err) {
+    console.warn('[capacitacionPdfGenerator] No se pudieron leer parámetros de formato, se usan valores por defecto:', err.message);
+  }
+  return formato;
+}
+
+function armarCuestionarioPlantillaHtml(preguntasList) {
+  const letras = ['a', 'b', 'c', 'd', 'e', 'f'];
+  return preguntasList.map((q) => {
+    const opcionesHtml = (q.opciones || []).map((opt, idx) => {
+      const letra = letras[idx] ? `${letras[idx]}. ` : '';
+      const sel = !!opt.seleccionada;
+      return `
+      <div class="q-option${sel ? ' selected' : ''}">
+        <span class="q-check">${sel ? '&#10003;' : ''}</span>
+        <span>${esc(letra + (opt.opcion || ''))}</span>
+      </div>`;
+    }).join('');
+    return `
+    <div class="q-card">
+      <div class="q-title">${esc(q.pregunta)}. ${esc(q.descripcion_pregunta)}</div>
+      <div class="q-options">${opcionesHtml}</div>
+    </div>`;
+  }).join('\n');
+}
+
+async function armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, preguntasList }) {
+  let plantilla = null;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
+      [NOMBRE_PLANTILLA]
+    );
+    plantilla = rows.length ? rows[0].contenido_html : null;
+  } catch (err) {
+    console.warn('[capacitacionPdfGenerator] No se pudo leer la plantilla capacitacion_sst:', err.message);
+  }
+  if (!plantilla) return null;
+
+  const formato = await obtenerFormatoCapacitacion();
+  const isAprobado = ev.resultado === 'APROBADO';
+  const puntaje = ev.puntaje !== null && ev.puntaje !== undefined ? ev.puntaje : 0;
+  const totalPreguntas = preguntasList.length;
+  const fechaFmt = formatFechaCO(ev.fecha);
+
+  const resultadoHtml = isAprobado
+    ? '<span class="badge-aprobado">APROBADO</span>'
+    : '<span class="badge-no-aprobado">NO APROBADO</span>';
+
+  const firmaTrabajadorHtml = ev.firma_trabajador
+    ? `<img src="${esc(ev.firma_trabajador)}" class="sig-img" alt="Firma">`
+    : '<span class="firma-nota">No firmó dentro del plazo de 48 horas</span>';
+
+  const datos = {
+    logo_src: LOGO_BASE64,
+    codigo_formato: esc(formato.codigo),
+    version_formato: esc(formato.version),
+    fecha_formato: esc(formato.fecha),
+    id_capacitacion: esc(ev.id_capacitacion || '—'),
+    fecha: esc(fechaFmt || '—'),
+    tema: esc(ev.tema || 'Capacitación SST'),
+    objetivo: esc(ev.objetivo || 'Verificar la comprensión y apropiación de los conceptos impartidos en la capacitación de Seguridad y Salud en el Trabajo.'),
+    puntaje: esc(puntaje),
+    total_preguntas: esc(totalPreguntas),
+    resultado_html: resultadoHtml,
+    nombre_trabajador: esc(limpiarNombre(vin && vin.Trabajador)) || '—',
+    identificacion: esc(ev.identificacion) || '—',
+    nombre_evaluador: esc(limpiarNombre(evaluadorNombre)) || '—',
+    cuestionario_html: armarCuestionarioPlantillaHtml(preguntasList),
+    firma_trabajador_html: firmaTrabajadorHtml,
+    fecha_generacion: fechaHoraBogotaTexto(),
+  };
+
+  return plantilla.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, clave) => (
+    Object.prototype.hasOwnProperty.call(datos, clave) ? String(datos[clave]) : ''
+  ));
 }
 
 async function renderPDF(ev, vin, evaluadorNombre, items) {
@@ -45,6 +162,13 @@ async function renderPDF(ev, vin, evaluadorNombre, items) {
 
   const preguntasList = Object.values(preguntasMap).sort((a, b) => a.pregunta - b.pregunta);
   const totalPreguntas = preguntasList.length;
+
+  const htmlPlantilla = await armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, preguntasList });
+  if (htmlPlantilla) {
+    return generarPDFDesdeHTML(htmlPlantilla, {
+      margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+    });
+  }
 
   let firmaHtml = '';
   if (ev.firma_trabajador) {

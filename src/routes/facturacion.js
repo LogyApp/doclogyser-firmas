@@ -15,6 +15,13 @@ const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileS
 // sección 'Clientes_credito' solo pueden consultar vía GET /api/clientes-credito).
 // Quién gestiona Clientes Crédito: Config_Parametros facturacion / Clientes_credito
 const { puedeGestionarClientesCredito } = require('../services/configBloqueo');
+const configServicios = require('../services/configServicios');
+// Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
+const CELDA_MASIVO_POR_CAMPO = {
+  area: 'area', actividad: 'actividad', vehiculo: 'vehiculo', unidad: 'unidad', remolque: 'remolque',
+  manifiesto: 'manifiesto', origen: 'origen', destino: 'destino', cantidad: 'cantidad',
+  valorUnitario: 'valorUnitario', observaciones: 'observaciones',
+};
 
 const router = express.Router();
 const FACTURACION_HTML = path.join(__dirname, '../views/facturacion/index.html');
@@ -116,6 +123,7 @@ router.get('/', async (req, res) => {
     const accesoPlacas = await computarAccesoFacturacion(usuario, 'Placas');
     const accesoPestanaClientes = accesoMaestroClientes || accesoClientes || accesoProveedor
       || accesoTransportadora || accesoPlacas;
+    const accesoAjustes = await computarAccesoFacturacion(usuario, 'Ajustes_Servicios');
 
     if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes) {
       return res.status(403).send(paginaError('Usuario no autorizado para el módulo de Facturación'));
@@ -163,7 +171,11 @@ router.get('/', async (req, res) => {
         proveedores: resumenAcceso(accesoProveedor),
         transportadoras: resumenAcceso(accesoTransportadora),
         placas: resumenAcceso(accesoPlacas),
-      }
+        ajustes: resumenAcceso(accesoAjustes),
+      },
+      // Pestaña Ajustes Servicios (Config_Servicios): permisos de Config_Parametros
+      ajustesServicios: accesoAjustes ? await configServicios.permisosAjustesServicios(base.rol) : null,
+      camposServicios: configServicios.CAMPOS,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(template.replace('__CONFIG__', config));
@@ -3252,6 +3264,7 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
 
     // Procesar y validar fila por fila
     const datosProcesados = [];
+    const ajustesPorOperacion = new Map(); // Config_Servicios resuelto por Operación + Modalidad
     for (let idx = 0; idx < filasActivas.length; idx++) {
       const f = filasActivas[idx];
       const numFila = idx + 1;
@@ -3332,6 +3345,20 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         }
         reciboNuevoGrupo = String(numGrupo);
       }
+
+      // Ajustes de la operación (Config_Servicios): las celdas vacías toman el valor por defecto
+      const modalidadFila = formaDePago === 3 ? 'CREDITO' : 'RECAUDO';
+      const claveAjustes = `${opInfo.operacion}|${modalidadFila}`;
+      if (!ajustesPorOperacion.has(claveAjustes)) {
+        ajustesPorOperacion.set(claveAjustes, await configServicios.resolverConfig({
+          seccion: 'Servicio', operacion: opInfo.operacion, modalidad: modalidadFila, rol: acceso.rol
+        }));
+      }
+      const ajustesFila = ajustesPorOperacion.get(claveAjustes);
+      Object.values(ajustesFila).forEach((c) => {
+        const celda = CELDA_MASIVO_POR_CAMPO[c.bodyKey];
+        if (celda && c.defecto && !limpiarValorPlano(f[celda])) f[celda] = c.defecto;
+      });
 
       // Fecha base
       const fechaParsed = parseFechaHoraPlano(f.fecha);
@@ -3535,6 +3562,21 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
           error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $3.000.000.`
         });
       }
+
+      // Ajustes de la operación: obligatorios y datos habilitados (solo las columnas de la carga)
+      const camposFila = {
+        area: String(areaMatch.id), actividad: String(actMatch.id), duracion,
+        transportadora: transportadoraTexto, proveedor: proveedorTexto, pl1: placaTexto,
+        vehiculo: limpiarValorPlano(f.vehiculo), unidad: limpiarValorPlano(f.unidad), remolque: limpiarValorPlano(f.remolque),
+        manifiesto: limpiarValorPlano(f.manifiesto), origen: origen || '', destino: destino || '',
+        cantidad: cantidad === null ? '' : String(cantidad), valorUnitario: valorUnitario === null ? '' : String(valorUnitario),
+        observaciones: observacionesManual || '',
+      };
+      const errorAjustes = await configServicios.aplicarConfig({
+        seccion: 'Servicio', operacion: opInfo.operacion, modalidad: modalidadFila, rol: acceso.rol,
+        body: camposFila, crear: false, config: ajustesFila, soloPresentes: true, prefijo: `Fila ${numFila}: `
+      });
+      if (errorAjustes) return res.status(400).json({ error: errorAjustes });
 
       datosProcesados.push({
         numFila,
@@ -4963,6 +5005,17 @@ router.post('/api/recibos', async (req, res) => {
       categoria = null;
     }
 
+    // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
+    // Cada modalidad revisa solo sus campos; Categoría depende del cliente y la maneja el formulario.
+    const camposRecibo = (modalidad === 'CREDITO') ? { clienteAFacturar, observaciones } : { telefono, email, observaciones };
+    const errorAjustes = await configServicios.aplicarConfig({
+      seccion: 'Recibo', operacion, modalidad, rol: acceso.rol, body: camposRecibo, crear: true, soloPresentes: true
+    });
+    if (errorAjustes) return res.status(400).json({ error: errorAjustes });
+    if (modalidad === 'CREDITO') clienteAFacturar = camposRecibo.clienteAFacturar;
+    else ({ telefono, email } = camposRecibo);
+    observaciones = camposRecibo.observaciones;
+
     const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS.includes(acceso.rol);
     const retenciones = await resolverRetenciones({
       rolPrivilegiado,
@@ -5066,6 +5119,19 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
     const emailFinal = (modalidadFinal !== 'RECAUDO') ? null
       : (typeof body.email !== 'undefined') ? ((body.email || '').trim() || null) : existente.Email;
     const observacionesFinal = (typeof body.observaciones !== 'undefined') ? ((body.observaciones || '').trim() || null) : existente.Observaciones;
+
+    // Ajustes de la operación (Config_Servicios): obligatorios y datos habilitados
+    const errorAjustes = await configServicios.aplicarConfig({
+      seccion: 'Recibo', operacion: operacionFinal, modalidad: modalidadFinal, rol: acceso.rol, crear: false, soloPresentes: true,
+      body: (modalidadFinal === 'CREDITO')
+        ? { clienteAFacturar: clienteAFacturarFinal, observaciones: observacionesFinal }
+        : { telefono: telefonoFinal, email: emailFinal, observaciones: observacionesFinal },
+      anteriores: {
+        clienteAFacturar: existente['Cliente a Facturar'], categoria: existente.Categoria, telefono: existente.Telefono,
+        email: existente.Email, observaciones: existente.Observaciones,
+      },
+    });
+    if (errorAjustes) return res.status(400).json({ error: errorAjustes });
 
     const subtotalActual = (modalidadFinal === 'RECAUDO') ? await obtenerSubtotalRecibo(idRecibo) : 0;
     const retenciones = await resolverRetenciones({
@@ -5502,6 +5568,14 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
     const files = req.files || {};
     const idServicio = generarPackedUUID();
 
+    // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
+    const configServ = await configServicios.resolverConfig({ seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol });
+    const errorAjustes = await configServicios.aplicarConfig({
+      seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol, body, crear: true, config: configServ,
+      archivos: { fotoDocumento: !!files.fotoDocumento?.[0], fotoEvidencia: !!files.fotoEvidencia?.[0] },
+    });
+    if (errorAjustes) return res.status(400).json({ error: errorAjustes });
+
     const cantidad = (body.cantidad !== undefined && body.cantidad !== '') ? Math.round(parseFloat(body.cantidad) * 1000) / 1000 : null;
     const valorUnitario = (body.valorUnitario !== undefined && body.valorUnitario !== '') ? Math.round(parseFloat(body.valorUnitario) * 1000) / 1000 : null;
     if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > 3000000) {
@@ -5537,8 +5611,9 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       horaFinalRaw: body.horaFinal
     });
 
-    const manifiesto = (contexto.modalidad === 'CREDITO') ? ((body.manifiesto || '').trim() || null) : null;
-    const telefonoServicio = (contexto.modalidad === 'CREDITO') ? ((body.telefono || '').trim() || null) : null;
+    // Manifiesto y Teléfono son de CREDITO, salvo que la operación los muestre también en RECAUDO
+    const manifiesto = (contexto.modalidad === 'CREDITO' || configServicios.visibleEnConfig(configServ, 'Manifiesto')) ? ((body.manifiesto || '').trim() || null) : null;
+    const telefonoServicio = (contexto.modalidad === 'CREDITO' || configServicios.visibleEnConfig(configServ, 'Telefono')) ? ((body.telefono || '').trim() || null) : null;
     const fechaTransferencia = (formaDePago === 2)
       ? (body.fechaTransferencia ? datetimeLocalToMySQL(body.fechaTransferencia) : formatearAhoraBogota())
       : null;
@@ -5641,6 +5716,18 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       contexto = nuevoContexto;
     }
 
+    // Ajustes de la operación (Config_Servicios): obligatorios y habilitados; se aceptan los
+    // valores que el servicio ya tenía guardados aunque hoy no estén habilitados.
+    const anterioresServ = {};
+    configServicios.CAMPOS.Servicio.forEach((c) => { anterioresServ[c.bodyKey] = existente[c.columna]; });
+    const configServ = await configServicios.resolverConfig({ seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol });
+    const errorAjustes = await configServicios.aplicarConfig({
+      seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol, body,
+      anteriores: anterioresServ, crear: false, config: configServ,
+      archivos: { fotoDocumento: !!files.fotoDocumento?.[0], fotoEvidencia: !!files.fotoEvidencia?.[0] },
+    });
+    if (errorAjustes) return res.status(400).json({ error: errorAjustes });
+
     const cantidad = (typeof body.cantidad !== 'undefined')
       ? ((body.cantidad !== '') ? Math.round(parseFloat(body.cantidad) * 1000) / 1000 : null)
       : existente.Cantidad;
@@ -5700,10 +5787,10 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       totalHora = calc.totalHora;
     }
 
-    const manifiesto = (contexto.modalidad === 'CREDITO')
+    const manifiesto = (contexto.modalidad === 'CREDITO' || configServicios.visibleEnConfig(configServ, 'Manifiesto'))
       ? ((typeof body.manifiesto !== 'undefined') ? ((body.manifiesto || '').trim() || null) : existente.Manifiesto)
       : null;
-    const telefonoServicio = (contexto.modalidad === 'CREDITO')
+    const telefonoServicio = (contexto.modalidad === 'CREDITO' || configServicios.visibleEnConfig(configServ, 'Telefono'))
       ? ((typeof body.telefono !== 'undefined') ? ((body.telefono || '').trim() || null) : existente.Telefono)
       : null;
     const fechaTransferencia = (formaDePago === 2)
@@ -6052,6 +6139,248 @@ router.post('/api/tickets/:ticket/estado', async (req, res) => {
   } catch (err) {
     console.error('[facturacion] POST /api/tickets/:ticket/estado:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// AJUSTES DE SERVICIOS POR OPERACIÓN (Config_Servicios)
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── GET /api/config-servicios (reglas del formulario de Recibo o Servicio) ─────
+// Las usa el formulario al escoger Operación y Modalidad; ya considera el rol del usuario.
+router.get('/api/config-servicios', async (req, res) => {
+  try {
+    const { usuario, seccion, operacion, modalidad } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!configServicios.SECCIONES.includes(seccion)) return res.status(400).json({ error: 'Sección inválida' });
+    res.json(await configServicios.resolverConfig({ seccion, operacion, modalidad, rol: acceso.rol }));
+  } catch (err) {
+    console.error('[facturacion] GET /api/config-servicios:', err);
+    res.status(500).json({});
+  }
+});
+
+// ── GET /api/clientes-a-facturar (lista del formulario de Recibo CREDITO) ──
+router.get('/api/clientes-a-facturar', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Recibos') || await computarAccesoFacturacion(usuario, 'Servicios');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    res.json((await configServicios.opcionesCatalogo('clienteCredito')).map((o) => o.valor));
+  } catch (err) {
+    console.error('[facturacion] GET /api/clientes-a-facturar:', err);
+    res.status(500).json([]);
+  }
+});
+
+// Acceso a la pestaña Ajustes Servicios (Maestro_Menu) + permisos (Config_Parametros)
+async function accesoAjustesServicios(req, res, accion) {
+  const { usuario } = req.query;
+  if (!usuario) { res.status(400).json({ error: 'usuario requerido' }); return null; }
+  const acceso = await computarAccesoFacturacion(usuario, 'Ajustes_Servicios');
+  if (!acceso) { res.status(403).json({ error: 'No autorizado para Ajustes Servicios' }); return null; }
+  const permisos = await configServicios.permisosAjustesServicios(acceso.rol);
+  if (accion && !permisos[accion]) {
+    res.status(403).json({ error: accion === 'eliminar' ? 'Su rol no puede eliminar ajustes de servicios.' : 'Su rol no puede crear ni editar ajustes de servicios.' });
+    return null;
+  }
+  return { ...acceso, permisos };
+}
+
+// Valida y normaliza una fila de Config_Servicios que llega del formulario de la pestaña.
+function leerAjusteServicio(body) {
+  const seccion = String(body.seccion || '').trim();
+  if (!configServicios.SECCIONES.includes(seccion)) return { error: 'La Sección debe ser Recibo o Servicio.' };
+  const campo = configServicios.campoDe(seccion, body.columna_origen);
+  if (!campo) return { error: 'El campo escogido no se puede ajustar.' };
+  const modalidad = String(body.modalidad || '').trim().toUpperCase();
+  if (modalidad && !configServicios.MODALIDADES.includes(modalidad)) return { error: 'La Modalidad debe ser RECAUDO, CREDITO o vacía.' };
+  const operacion = String(body.operacion || '').trim();
+  const limpiarLista = (v) => configServicios.lista(Array.isArray(v) ? v.join(',') : v).join(', ');
+  const habilitados = campo.tipo === 'lista' ? limpiarLista(body.datos_habilitados) : '';
+  if (habilitados && !operacion && ['area', 'actividad'].includes(campo.catalogo)) {
+    return { error: 'Área y Actividad dependen de la Operación: para limitar sus datos escoja una Operación.' };
+  }
+  const defecto = (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(body.valor_defecto || '').trim() : '';
+  if (defecto && habilitados && !configServicios.lista(habilitados).some((h) => configServicios.normalizar(h) === configServicios.normalizar(defecto))) {
+    return { error: 'El valor por defecto debe estar entre los datos habilitados.' };
+  }
+  const orden = String(body.orden ?? '').trim();
+  if (orden && !/^-?\d+$/.test(orden)) return { error: 'El Orden debe ser un número entero.' };
+  return {
+    fila: {
+      seccion,
+      operacion,
+      modalidad,
+      columna_origen: campo.columna,
+      etiqueta_columna: String(body.etiqueta_columna || '').trim().slice(0, 100) || null,
+      datos_habilitados: habilitados || null,
+      valor_defecto: defecto.slice(0, 255) || null,
+      visible: Number(body.visible) === 0 ? 0 : 1,
+      obligatorio: Number(body.obligatorio) === 1 ? 1 : 0,
+      rol: limpiarLista(body.rol) || null,
+      orden: orden ? parseInt(orden, 10) : null,
+    },
+  };
+}
+
+function textoAjuste(f) {
+  return `${f.seccion} / ${f.operacion || 'Todas'} / ${f.modalidad || 'Ambas'} / ${f.columna_origen}`;
+}
+
+// ── GET /api/ajustes-servicios (listado de Config_Servicios) ────────────────
+router.get('/api/ajustes-servicios', async (req, res) => {
+  try {
+    if (!(await accesoAjustesServicios(req, res))) return;
+    const [rows] = await pool.query(
+      `SELECT id, seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados, valor_defecto,
+              visible, obligatorio, rol, orden, usuario, DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
+       FROM Config_Servicios ORDER BY operacion, seccion, modalidad, COALESCE(orden, 999), columna_origen`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/ajustes-servicios:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/ajustes-servicios/opciones (operaciones, roles y catálogo de un campo) ──
+router.get('/api/ajustes-servicios/opciones', async (req, res) => {
+  try {
+    if (!(await accesoAjustesServicios(req, res))) return;
+    const { seccion, columna, operacion } = req.query;
+    if (seccion && columna) {
+      const campo = configServicios.campoDe(seccion, columna);
+      const opciones = campo && campo.tipo === 'lista' ? await configServicios.opcionesCatalogo(campo.catalogo, operacion) : [];
+      return res.json({ opciones });
+    }
+    const [ops] = await pool.query("SELECT `OPERACIÓN` AS operacion FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
+    const [roles] = await pool.query(
+      "SELECT Rol AS rol FROM Config_Rol WHERE Rol IS NOT NULL AND Rol <> '' UNION SELECT DISTINCT Rol FROM Maestro_Usuarios WHERE Rol IS NOT NULL AND Rol <> '' ORDER BY rol"
+    );
+    res.json({ operaciones: ops.map((o) => o.operacion), roles: [...new Set(roles.map((r) => String(r.rol).trim()))] });
+  } catch (err) {
+    console.error('[facturacion] GET /api/ajustes-servicios/opciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/ajustes-servicios (crear) y PUT /api/ajustes-servicios/:id (editar) ──
+async function guardarAjusteServicio(req, res, id) {
+  try {
+    const acceso = await accesoAjustesServicios(req, res, 'editar');
+    if (!acceso) return;
+    const { fila, error } = leerAjusteServicio(req.body || {});
+    if (error) return res.status(400).json({ error });
+    const usuarioVal = acceso.usuarioId || req.query.usuario;
+    const valores = [fila.seccion, fila.operacion, fila.modalidad, fila.columna_origen, fila.etiqueta_columna, fila.datos_habilitados,
+      fila.valor_defecto, fila.visible, fila.obligatorio, fila.rol, fila.orden, usuarioVal, formatearAhoraBogota()];
+    if (id) {
+      const [r] = await pool.execute(
+        `UPDATE Config_Servicios SET seccion = ?, operacion = ?, modalidad = ?, columna_origen = ?, etiqueta_columna = ?,
+           datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?, rol = ?, orden = ?, usuario = ?, fecha_registro = ?
+         WHERE id = ?`,
+        [...valores, id]
+      );
+      if (!r.affectedRows) return res.status(404).json({ error: 'Ajuste no encontrado.' });
+    } else {
+      const [r] = await pool.execute(
+        `INSERT INTO Config_Servicios (seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados,
+           valor_defecto, visible, obligatorio, rol, orden, usuario, fecha_registro)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        valores
+      );
+      id = r.insertId;
+    }
+    console.log(`[facturacion] ${usuarioVal} ${req.params.id ? 'editó' : 'creó'} ajuste de servicios #${id}: ${textoAjuste(fila)}`);
+    res.json({ ok: true, id });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Ya existe un ajuste para ese campo con la misma Sección, Operación y Modalidad. Edítelo en lugar de crear otro.' });
+    }
+    console.error('[facturacion] guardar ajuste de servicios:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.post('/api/ajustes-servicios', (req, res) => guardarAjusteServicio(req, res, null));
+router.put('/api/ajustes-servicios/:id', (req, res) => guardarAjusteServicio(req, res, parseInt(req.params.id, 10) || -1));
+
+// ── DELETE /api/ajustes-servicios/:id ──────────────────────────────────────
+router.delete('/api/ajustes-servicios/:id', async (req, res) => {
+  try {
+    const acceso = await accesoAjustesServicios(req, res, 'eliminar');
+    if (!acceso) return;
+    const id = parseInt(req.params.id, 10);
+    const [filas] = await pool.execute('SELECT * FROM Config_Servicios WHERE id = ?', [id]);
+    if (!filas.length) return res.status(404).json({ error: 'Ajuste no encontrado.' });
+    await pool.execute('DELETE FROM Config_Servicios WHERE id = ?', [id]);
+    console.log(`[facturacion] ${acceso.usuarioId || req.query.usuario} eliminó ajuste de servicios #${id}: ${textoAjuste(filas[0])}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[facturacion] DELETE /api/ajustes-servicios/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/ajustes-servicios/copiar (copiar los ajustes de una operación a otra) ──
+// Área y Actividad guardan IDs que son propios de cada operación: se copian sus reglas
+// (visible, obligatorio, etiqueta, rol) pero sin datos habilitados ni valor por defecto.
+router.post('/api/ajustes-servicios/copiar', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const acceso = await accesoAjustesServicios(req, res, 'editar');
+    if (!acceso) return;
+    const desde = String(req.body?.desde || '').trim();
+    const hacia = String(req.body?.hacia || '').trim();
+    const sobrescribir = !!req.body?.sobrescribir;
+    if (!desde || !hacia) return res.status(400).json({ error: 'Escoja la operación de origen y la de destino.' });
+    if (desde === hacia) return res.status(400).json({ error: 'La operación de origen y la de destino deben ser distintas.' });
+
+    const [origen] = await conn.execute('SELECT * FROM Config_Servicios WHERE operacion = ?', [desde]);
+    if (!origen.length) return res.status(400).json({ error: `La operación ${desde} no tiene ajustes para copiar.` });
+
+    const usuarioVal = acceso.usuarioId || req.query.usuario;
+    const ahora = formatearAhoraBogota();
+    let copiados = 0, omitidos = 0;
+    await conn.beginTransaction();
+    for (const f of origen) {
+      const campo = configServicios.campoDe(f.seccion, f.columna_origen);
+      const propioDeOperacion = campo && ['area', 'actividad'].includes(campo.catalogo);
+      const datos = [f.etiqueta_columna, propioDeOperacion ? null : f.datos_habilitados, propioDeOperacion ? null : f.valor_defecto,
+        f.visible, f.obligatorio, f.rol, f.orden, usuarioVal, ahora];
+      const [existe] = await conn.execute(
+        'SELECT id FROM Config_Servicios WHERE seccion = ? AND operacion = ? AND modalidad = ? AND columna_origen = ?',
+        [f.seccion, hacia, f.modalidad, f.columna_origen]
+      );
+      if (existe.length && !sobrescribir) { omitidos++; continue; }
+      if (existe.length) {
+        await conn.execute(
+          `UPDATE Config_Servicios SET etiqueta_columna = ?, datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?,
+             rol = ?, orden = ?, usuario = ?, fecha_registro = ? WHERE id = ?`,
+          [...datos, existe[0].id]
+        );
+      } else {
+        await conn.execute(
+          `INSERT INTO Config_Servicios (seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados,
+             valor_defecto, visible, obligatorio, rol, orden, usuario, fecha_registro)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [f.seccion, hacia, f.modalidad, f.columna_origen, ...datos]
+        );
+      }
+      copiados++;
+    }
+    await conn.commit();
+    console.log(`[facturacion] ${usuarioVal} copió ajustes de servicios de ${desde} a ${hacia}: ${copiados} copiados, ${omitidos} omitidos`);
+    res.json({ ok: true, copiados, omitidos });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error('[facturacion] POST /api/ajustes-servicios/copiar:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

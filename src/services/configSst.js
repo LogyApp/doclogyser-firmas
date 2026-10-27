@@ -22,6 +22,8 @@ const PERMISOS_SST = {
     crear: 'Roles que pueden crear capacitaciones en SST',
     eliminar: 'Roles que pueden eliminar capacitaciones en SST',
     plantillas: 'Roles que pueden gestionar plantillas de capacitación',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de capacitaciones firmadas en SST',
+    eliminarFirmado: 'Roles que pueden eliminar capacitaciones firmadas en SST',
   },
   'Prueba de Consumo': {
     clave: 'pc',

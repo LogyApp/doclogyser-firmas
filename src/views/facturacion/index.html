@@ -1359,6 +1359,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         <span>Bloqueo de Datos</span>
       </li>
+      <li class="nav-item" id="navAjustes" onclick="switchMainTab('ajustes')" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+        <span>Ajustes Servicios</span>
+      </li>
     </ul>
 
     <div class="sidebar-user" id="sidebarUser">
@@ -1987,6 +1991,73 @@
           </thead>
           <tbody id="tabla-bloqueos-body">
             <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando bloqueos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA: AJUSTES SERVICIOS (Config_Servicios — formularios de Recibo y Servicio por Operación)
+    ────────────────────────────────────────────────────────── -->
+    <div id="tab-content-ajustes" style="display: none;">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Facturación · Ajustes Servicios</div>
+          <div class="page-sub">Campos, nombres, datos habilitados y valores por defecto de los formularios de Recibo y Servicio según la Operación</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary aj-editar" onclick="abrirModalCopiarAjustes()" style="padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text);">⧉ Copiar de otra operación</button>
+          <button type="button" class="btn-primary aj-editar" onclick="abrirModalAjuste()">➕ Nuevo Ajuste</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 12px 14px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+        Si una operación no tiene ajustes, el formulario funciona como siempre. Para cada campo gana la fila más específica:
+        <strong>Operación + Modalidad</strong>, luego <strong>Operación</strong>, luego <strong>Modalidad</strong> y por último la fila de <strong>Todas las operaciones</strong>.
+      </div>
+
+      <div class="card">
+        <div class="filtros-grid">
+          <div class="filtro-field">
+            <label>Operación</label>
+            <select id="aj-f-operacion" onchange="renderAjustesTable()"><option value="__todas">Todas</option></select>
+          </div>
+          <div class="filtro-field">
+            <label>Sección</label>
+            <select id="aj-f-seccion" onchange="renderAjustesTable()">
+              <option value="">Recibo y Servicio</option>
+              <option value="Recibo">Recibo</option>
+              <option value="Servicio">Servicio</option>
+            </select>
+          </div>
+          <div class="filtro-field">
+            <label>Buscar</label>
+            <input type="text" id="aj-f-texto" placeholder="Campo, etiqueta, rol..." oninput="renderAjustesTable()">
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="tabla-ajustes">
+          <thead>
+            <tr>
+              <th style="width:150px">Operación</th>
+              <th style="width:90px">Sección</th>
+              <th style="width:100px">Modalidad</th>
+              <th style="width:140px">Campo</th>
+              <th style="width:150px">Etiqueta</th>
+              <th style="width:80px; text-align:center">Visible</th>
+              <th style="width:95px; text-align:center">Obligatorio</th>
+              <th style="width:240px">Datos habilitados</th>
+              <th style="width:140px">Valor por defecto</th>
+              <th style="width:150px">Rol</th>
+              <th style="width:70px">Orden</th>
+              <th style="width:140px">Usuario</th>
+              <th style="width:130px">Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-ajustes-body">
+            <tr><td colspan="13" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando ajustes...</td></tr>
           </tbody>
         </table>
       </div>
@@ -3703,6 +3774,120 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
+       MODAL: AJUSTE DE SERVICIOS (Config_Servicios)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-ajuste-overlay">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <span id="aj-titulo">➕ Nuevo Ajuste</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalAjuste()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Operación</label>
+            <select id="aj-operacion" onchange="onAjusteCampoChange()"></select>
+          </div>
+          <div class="form-group">
+            <label>Modalidad</label>
+            <select id="aj-modalidad">
+              <option value="">Ambas (RECAUDO y CREDITO)</option>
+              <option value="RECAUDO">RECAUDO</option>
+              <option value="CREDITO">CREDITO</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Sección *</label>
+            <select id="aj-seccion" onchange="pintarCamposAjuste(); onAjusteCampoChange()">
+              <option value="Servicio">Servicio (Dynamic_Servicios)</option>
+              <option value="Recibo">Recibo (Dynamic_Recibos)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Campo (columna de origen) *</label>
+            <select id="aj-columna" onchange="onAjusteCampoChange()"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Etiqueta en el formulario</label>
+          <input type="text" id="aj-etiqueta" maxlength="100" placeholder="Vacío = el nombre de siempre">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Visible</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="aj-visible-1" onclick="setAjusteBool('visible', 1)">Aparece</button>
+              <button type="button" class="btn-grupo-opt" id="aj-visible-0" onclick="setAjusteBool('visible', 0)">No aparece</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Obligatorio</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="aj-obligatorio-1" onclick="setAjusteBool('obligatorio', 1)">Sí</button>
+              <button type="button" class="btn-grupo-opt" id="aj-obligatorio-0" onclick="setAjusteBool('obligatorio', 0)">No</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" id="aj-habilitados-wrap">
+          <label>Datos habilitados <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(ninguno marcado = todos)</small></label>
+          <div id="aj-habilitados" style="display:flex; flex-wrap:wrap; gap:6px; max-height:200px; overflow-y:auto;"></div>
+          <small id="aj-habilitados-nota" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+        </div>
+        <div class="form-group" id="aj-defecto-wrap">
+          <label>Valor por defecto</label>
+          <select id="aj-defecto-select" style="display:none;"></select>
+          <input type="text" id="aj-defecto-texto" maxlength="255" placeholder="Valor que llega escrito al crear">
+        </div>
+        <div class="form-group">
+          <label>Rol <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(ninguno marcado = todos los que entran a Recibos o Servicios)</small></label>
+          <div id="aj-roles" style="display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto;"></div>
+        </div>
+        <div class="form-group" style="max-width: 160px;">
+          <label>Orden</label>
+          <input type="number" id="aj-orden" step="1" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" id="aj-btn-eliminar" style="margin-top:0; margin-right:auto; color: var(--danger-dark); display:none;" onclick="eliminarAjuste()">🗑️ Eliminar</button>
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalAjuste()">Cancelar</button>
+        <button type="button" class="btn-primary" id="aj-btn-guardar" onclick="guardarAjuste()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COPIAR AJUSTES DE OTRA OPERACIÓN -->
+  <div class="modal-overlay" id="modal-copiar-ajustes-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span>⧉ Copiar ajustes de otra operación</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalCopiarAjustes()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Copiar desde *</label>
+          <select id="aj-copiar-desde"></select>
+        </div>
+        <div class="form-group">
+          <label>Hacia la operación *</label>
+          <select id="aj-copiar-hacia"></select>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer; margin-bottom: 10px;">
+          <input type="checkbox" id="aj-copiar-sobrescribir" style="width:16px;height:16px;"> Reemplazar los ajustes que la operación destino ya tenga en los mismos campos
+        </label>
+        <small style="color: var(--text-muted); font-size: 0.78rem; display:block; line-height:1.5;">
+          Área y Actividad usan IDs propios de cada operación: se copian sus reglas (visible, obligatorio, etiqueta, rol) pero no sus datos habilitados ni su valor por defecto; esos se ajustan después.
+        </small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalCopiarAjustes()">Cancelar</button>
+        <button type="button" class="btn-primary" id="aj-btn-copiar" onclick="copiarAjustes()">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
        MODAL 6: AGREGAR / EDITAR SERVICIO
   ══════════════════════════════════════════════════════════ -->
   <div class="modal-overlay" id="modal-servicio-overlay">
@@ -4333,6 +4518,7 @@
         const navTicketsEl = document.getElementById('navTickets');
         if (navTicketsEl) navTicketsEl.style.display = 'none';
       }
+      if (CONFIG.tabs?.ajustes) document.getElementById('navAjustes').style.display = '';
       if (!CONFIG.tabs?.bloqueo) {
         const navBloqueoEl = document.getElementById('navBloqueo');
         if (navBloqueoEl) navBloqueoEl.style.display = 'none';
@@ -4356,7 +4542,7 @@
           servicios: 'servicios', servicio: 'servicios', recibos: 'recibos', recibo: 'recibos',
           clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
           clientes_credito: 'clientescredito', credito: 'clientescredito',
-          bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets',
+          bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets', ajustes: 'ajustes',
         };
         if (!p.get('idservicio') && !p.get('idrecibo')) {
           // Conservar la subpestaña pedida (?subtab=...), que esta vista inicial escribe en la dirección
@@ -4623,6 +4809,8 @@
         switchMainTab('bloqueo');
       } else if (tabParam === 'tickets' || tabParam === 'ticket') {
         switchMainTab('tickets');
+      } else if (tabParam === 'ajustes') {
+        switchMainTab('ajustes');
       } else {
         switchMainTab('recibos');
       }
@@ -4744,6 +4932,7 @@
     function switchMainTab(tab, { soloVista = false } = {}) {
       if (tab === 'tickets' && !CONFIG.tabs?.tickets) tab = 'servicios';
       if (tab === 'bloqueo' && !CONFIG.tabs?.bloqueo) tab = 'servicios';
+      if (tab === 'ajustes' && !CONFIG.tabs?.ajustes) tab = 'servicios';
       if ((tab === 'clientescredito' || tab === 'clientes') && !subTabsClientesPermitidas().length) tab = 'servicios';
 
       if (tab === 'clientescredito') {
@@ -4756,19 +4945,22 @@
       document.getElementById('navClientes')?.classList.toggle('active', tab === 'clientes');
       document.getElementById('navBloqueo')?.classList.toggle('active', tab === 'bloqueo');
       document.getElementById('navTickets')?.classList.toggle('active', tab === 'tickets');
+      document.getElementById('navAjustes')?.classList.toggle('active', tab === 'ajustes');
 
       document.getElementById('tab-content-servicios').style.display = tab === 'servicios' ? 'block' : 'none';
       document.getElementById('tab-content-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
       document.getElementById('tab-content-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
       document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
       document.getElementById('tab-content-tickets').style.display = tab === 'tickets' ? 'block' : 'none';
+      document.getElementById('tab-content-ajustes').style.display = tab === 'ajustes' ? 'block' : 'none';
 
       const tabTitles = {
         servicios: 'Servicios',
         recibos: 'Recibos',
         clientes: 'Clientes',
         bloqueo: 'Bloqueo de Datos',
-        tickets: 'Tickets'
+        tickets: 'Tickets',
+        ajustes: 'Ajustes Servicios'
       };
       const mobileHeaderTitle = document.getElementById('mobileHeaderTitle');
       if (mobileHeaderTitle) {
@@ -4812,6 +5004,8 @@
         if (!allBloqueos || !allBloqueos.length) {
           cargarBloqueos();
         }
+      } else if (tab === 'ajustes') {
+        cargarAjustes();
       } else if (tab === 'tickets') {
         makeTableResizable(document.getElementById('tabla-tickets'));
         if (!allTickets || !allTickets.length) {
@@ -9527,8 +9721,10 @@
       return ROLES_EDICION_LIBRE_RECIBOS_FRONT.includes(CONFIG.rol);
     }
 
-    function abrirModalRecibo(modo) {
+    async function abrirModalRecibo(modo) {
       if (modo === 'editar' && !reciboDetalleActual) return;
+      await cargarClientesAFacturarRecibo();
+      mrAjustes = {};
 
       modalRecibo.modo = modo;
       mrNitFlagsActual = {};
@@ -9546,10 +9742,11 @@
       const opSel = document.getElementById('mr-operacion');
       opSel.innerHTML = '<option value="">— Seleccione Operación —</option>';
 
-      // Cliente a Facturar (reutiliza allClientes ya cargado para la pestaña Clientes Crédito)
+      // Cliente a Facturar (Maestro_Clientes_Credito; los ajustes de la operación pueden limitarlo)
       const cfSel = document.getElementById('mr-cliente-facturar');
+      const cfActual = (modo === 'editar') ? (reciboDetalleActual.recibo['Cliente a Facturar'] || '') : '';
       cfSel.innerHTML = '<option value="">— Seleccione Cliente a Facturar —</option>' +
-        (allClientes || []).map(c => `<option value="${esc(c.clienteAFacturar)}">${esc(c.clienteAFacturar)}</option>`).join('');
+        [...new Set([...mrClientesAFacturar, ...(cfActual ? [cfActual] : [])])].map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
 
       document.getElementById('mr-categoria').innerHTML = '<option value="">— Sin categoría —</option>';
       document.getElementById('mr-categoria-wrap').style.display = 'none';
@@ -9607,6 +9804,7 @@
       mrServiciosPendientes = [];
       document.getElementById('mr-servicios-wrap').style.display = (modo === 'crear') ? 'block' : 'none';
       renderServiciosPendientesRecibo();
+      aplicarAjustesRecibo();
 
       const overlayRecibo = document.getElementById('modal-recibo-overlay');
       overlayRecibo.classList.add('open');
@@ -9694,6 +9892,7 @@
         cargarCategoriasModalRecibo();
       }
       recalcularSugerenciaRetenciones();
+      aplicarAjustesRecibo();
     }
 
     // Muestra el bloque de Retenciones (solo RECAUDO) y, dentro del bloque RECAUDO,
@@ -9708,6 +9907,7 @@
 
       if (!silencioso && modalidad === 'CREDITO') cargarCategoriasModalRecibo();
       if (!silencioso) recalcularSugerenciaRetenciones();
+      if (!silencioso) aplicarAjustesRecibo();
     }
 
     // RECAUDO: Retenciones, Teléfono y Email solo se muestran cuando el recibo tiene servicios
@@ -9717,7 +9917,8 @@
       const hayGuardados = mrServiciosCount > 0;
       const hayServicios = hayGuardados || mrServiciosPendientes.length > 0;
       document.getElementById('mr-retenciones-wrap').style.display = (recaudo && hayServicios) ? 'block' : 'none';
-      document.getElementById('mr-contacto-wrap').style.display = hayServicios ? 'grid' : 'none';
+      const contactoObligatorio = ['Telefono', 'Email'].some(c => mrAjustes[c] && mrAjustes[c].visible && mrAjustes[c].obligatorio);
+      document.getElementById('mr-contacto-wrap').style.display = (hayServicios || contactoObligatorio) ? 'grid' : 'none';
       document.getElementById('mr-cliente-sin-servicios').style.display = hayGuardados ? 'none' : 'block';
       document.getElementById('mr-cliente-con-servicios').style.display = hayGuardados ? 'block' : 'none';
     }
@@ -9750,7 +9951,7 @@
         catSel.innerHTML = '<option value="">— Sin categoría —</option>' +
           data.map(c => `<option value="${esc(c.id)}">${esc(c.categoria)}</option>`).join('');
         if (categoriaPreseleccionada) catSel.value = categoriaPreseleccionada;
-        wrap.style.display = 'block';
+        wrap.style.display = (mrAjustes.Categoria && !mrAjustes.Categoria.visible) ? 'none' : 'block';
       } catch (e) {
         catSel.innerHTML = '<option value="">— Sin categoría —</option>';
         wrap.style.display = 'none';
@@ -9875,6 +10076,14 @@
 
       if (!operacion) return alert('Debe seleccionar la Operación.');
       if (!modalidad) return alert('Debe seleccionar la Modalidad (RECAUDO o CREDITO).');
+      const faltantesRecibo = Object.entries(mrAjustes)
+        .filter(([col, c]) => c.visible && c.obligatorio && CAMPOS_FORM_AJUSTES.Recibo[col])
+        .filter(([col]) => !String(document.getElementById(CAMPOS_FORM_AJUSTES.Recibo[col]).value || '').trim())
+        .filter(([col]) => !(col === 'Categoria' && document.getElementById('mr-categoria-wrap').style.display === 'none'))
+        .filter(([col]) => !(['Cliente a Facturar', 'Categoria'].includes(col) && modalidad !== 'CREDITO'))
+        .filter(([col]) => !(['Telefono', 'Email'].includes(col) && modalidad !== 'RECAUDO'))
+        .map(([, c]) => c.etiqueta);
+      if (faltantesRecibo.length) return alert('Complete los campos obligatorios de esta operación:\n\n• ' + faltantesRecibo.join('\n• '));
 
       const payload = {
         operacion,
@@ -9978,6 +10187,481 @@
       } catch (e) {
         alert('Error de conexión al eliminar el recibo.');
       }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PESTAÑA AJUSTES SERVICIOS (Config_Servicios)
+    // ══════════════════════════════════════════════════════════
+    let allAjustes = [];
+    let ajOpciones = null; // { operaciones, roles }
+    let ajEditando = null; // fila en edición o null al crear
+    let ajBool = { visible: 1, obligatorio: 0 };
+    let ajHabSel = new Set();
+    let ajRolesSel = new Set();
+    let ajCatalogo = []; // [{ valor, texto }] del campo escogido
+
+    const ajPuede = (accion) => !!(CONFIG.ajustesServicios && CONFIG.ajustesServicios[accion]);
+    const ajUrl = (ruta, params = {}) => `/facturacion/api/ajustes-servicios${ruta}?${new URLSearchParams({ usuario: CONFIG.usuario, ...params })}`;
+    const ajCampo = (seccion, columna) => ((CONFIG.camposServicios || {})[seccion] || []).find(c => c.columna === columna) || null;
+
+    async function cargarAjustes() {
+      document.querySelectorAll('.aj-editar').forEach(b => { b.style.display = ajPuede('editar') ? '' : 'none'; });
+      try {
+        if (!ajOpciones) {
+          const r = await fetch(ajUrl('/opciones'));
+          ajOpciones = r.ok ? await r.json() : { operaciones: [], roles: [] };
+        }
+        const resp = await fetch(ajUrl(''));
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'No se pudieron cargar los ajustes.');
+        allAjustes = data;
+      } catch (e) {
+        document.getElementById('tabla-ajustes-body').innerHTML = `<tr><td colspan="13" style="text-align:center; color:var(--danger-dark); padding:24px;">${esc(e.message)}</td></tr>`;
+        return;
+      }
+      const fOp = document.getElementById('aj-f-operacion');
+      const actual = fOp.value;
+      const conAjustes = [...new Set(allAjustes.map(a => a.operacion))].sort();
+      fOp.innerHTML = '<option value="__todas">Todas</option>' +
+        conAjustes.map(op => `<option value="${esc(op)}">${op ? esc(op) : 'Todas las operaciones (por defecto)'}</option>`).join('');
+      if ([...fOp.options].some(o => o.value === actual)) fOp.value = actual;
+      renderAjustesTable();
+    }
+
+    function renderAjustesTable() {
+      const op = document.getElementById('aj-f-operacion').value;
+      const sec = document.getElementById('aj-f-seccion').value;
+      const texto = (document.getElementById('aj-f-texto').value || '').trim().toLowerCase();
+      const filas = allAjustes.filter(a =>
+        (op === '__todas' || a.operacion === op) && (!sec || a.seccion === sec) &&
+        (!texto || [a.columna_origen, a.etiqueta_columna, a.rol, a.datos_habilitados, a.valor_defecto, a.operacion].join(' ').toLowerCase().includes(texto)));
+      const body = document.getElementById('tabla-ajustes-body');
+      if (!filas.length) {
+        body.innerHTML = `<tr><td colspan="13" style="text-align:center; color:var(--text-muted); padding:24px;">${allAjustes.length ? 'Ningún ajuste coincide con los filtros.' : 'Aún no hay ajustes: todos los formularios funcionan como siempre.'}</td></tr>`;
+        return;
+      }
+      const si = (v, txt) => Number(v) === 1 ? `<span style="color:var(--success-dark); font-weight:700;">✓ ${txt}</span>` : '<span style="color:var(--text-muted);">✕ No</span>';
+      body.innerHTML = filas.map(a => `
+        <tr onclick="abrirModalAjuste(${a.id})" style="cursor:pointer;" title="${ajPuede('editar') ? 'Clic para editar' : 'Clic para ver'}">
+          <td>${a.operacion ? esc(a.operacion) : '<em style="color:var(--text-muted);">Todas</em>'}</td>
+          <td>${esc(a.seccion)}</td>
+          <td>${a.modalidad ? esc(a.modalidad) : '<span style="color:var(--text-muted);">Ambas</span>'}</td>
+          <td><strong>${esc(a.columna_origen)}</strong></td>
+          <td>${esc(a.etiqueta_columna || '')}</td>
+          <td style="text-align:center">${si(a.visible, 'Sí')}</td>
+          <td style="text-align:center">${si(a.obligatorio, 'Sí')}</td>
+          <td>${a.datos_habilitados ? esc(a.datos_habilitados) : '<span style="color:var(--text-muted);">Todos</span>'}</td>
+          <td>${esc(a.valor_defecto || '')}</td>
+          <td>${a.rol ? esc(a.rol) : '<span style="color:var(--text-muted);">Todos</span>'}</td>
+          <td>${a.orden ?? ''}</td>
+          <td>${esc(a.usuario || '')}</td>
+          <td>${esc(a.fecha_registro || '')}</td>
+        </tr>`).join('');
+    }
+
+    function pintarCamposAjuste() {
+      const seccion = document.getElementById('aj-seccion').value;
+      document.getElementById('aj-columna').innerHTML = ((CONFIG.camposServicios || {})[seccion] || [])
+        .map(c => `<option value="${esc(c.columna)}">${esc(c.etiqueta)}${c.etiqueta !== c.columna ? ` (${esc(c.columna)})` : ''}</option>`).join('');
+    }
+
+    function setAjusteBool(nombre, valor) {
+      ajBool[nombre] = valor;
+      document.getElementById(`aj-${nombre}-1`).classList.toggle('sel', valor === 1);
+      document.getElementById(`aj-${nombre}-0`).classList.toggle('sel', valor === 0);
+    }
+
+    function chipAjuste(valor, texto, seleccionado, onclick) {
+      return `<button type="button" class="btn-grupo-opt ${seleccionado ? 'sel' : ''}" style="flex:none; padding:5px 10px; font-size:0.78rem;" onclick="${onclick}" data-valor="${esc(valor)}">${esc(texto)}</button>`;
+    }
+
+    function abrirModalAjuste(id) {
+      ajEditando = id ? allAjustes.find(a => a.id === id) || null : null;
+      const a = ajEditando || {};
+      const opSel = document.getElementById('aj-operacion');
+      const ops = (ajOpciones?.operaciones || []).slice();
+      if (a.operacion && !ops.includes(a.operacion)) ops.unshift(a.operacion);
+      opSel.innerHTML = '<option value="">Todas las operaciones (por defecto)</option>' + ops.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+      const filtroOp = document.getElementById('aj-f-operacion').value;
+      opSel.value = ajEditando ? (a.operacion || '') : (filtroOp !== '__todas' ? filtroOp : '');
+      document.getElementById('aj-modalidad').value = a.modalidad || '';
+      document.getElementById('aj-seccion').value = a.seccion || 'Servicio';
+      pintarCamposAjuste();
+      if (a.columna_origen) document.getElementById('aj-columna').value = a.columna_origen;
+      document.getElementById('aj-etiqueta').value = a.etiqueta_columna || '';
+      document.getElementById('aj-orden').value = a.orden ?? '';
+      setAjusteBool('visible', ajEditando ? Number(a.visible) : 1);
+      setAjusteBool('obligatorio', ajEditando ? Number(a.obligatorio) : 0);
+      ajHabSel = new Set(String(a.datos_habilitados || '').split(',').map(s => s.trim()).filter(Boolean));
+      ajRolesSel = new Set(String(a.rol || '').split(',').map(s => s.trim()).filter(Boolean));
+      document.getElementById('aj-defecto-texto').value = a.valor_defecto || '';
+      pintarRolesAjuste();
+      onAjusteCampoChange(a.valor_defecto || '');
+
+      const puedeEditar = ajPuede('editar');
+      document.getElementById('aj-titulo').textContent = ajEditando
+        ? `${puedeEditar ? '✏️ Editar' : '👁 Ver'} Ajuste — ${a.columna_origen}` : '➕ Nuevo Ajuste';
+      document.getElementById('aj-btn-guardar').style.display = puedeEditar ? '' : 'none';
+      document.getElementById('aj-btn-eliminar').style.display = (ajEditando && ajPuede('eliminar')) ? '' : 'none';
+      document.querySelectorAll('#modal-ajuste-overlay .modal-body input, #modal-ajuste-overlay .modal-body select, #modal-ajuste-overlay .modal-body button')
+        .forEach(el => { el.disabled = !puedeEditar; });
+
+      const overlay = document.getElementById('modal-ajuste-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalAjuste());
+    }
+
+    function cerrarModalAjuste() {
+      const overlay = document.getElementById('modal-ajuste-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
+
+    function pintarRolesAjuste() {
+      const roles = [...new Set([...(ajOpciones?.roles || []), ...ajRolesSel])];
+      document.getElementById('aj-roles').innerHTML = roles.map(r =>
+        chipAjuste(r, r, ajRolesSel.has(r), `toggleRolAjuste(this.dataset.valor)`)).join('');
+      if (!ajPuede('editar')) document.querySelectorAll('#aj-roles button').forEach(b => { b.disabled = true; });
+    }
+    function toggleRolAjuste(rol) {
+      if (ajRolesSel.has(rol)) ajRolesSel.delete(rol); else ajRolesSel.add(rol);
+      pintarRolesAjuste();
+    }
+
+    // Al cambiar Sección, Campo u Operación: se cargan los datos que se pueden habilitar
+    async function onAjusteCampoChange(defectoInicial) {
+      const seccion = document.getElementById('aj-seccion').value;
+      const columna = document.getElementById('aj-columna').value;
+      const operacion = document.getElementById('aj-operacion').value;
+      const campo = ajCampo(seccion, columna) || {};
+      const habWrap = document.getElementById('aj-habilitados-wrap');
+      const defWrap = document.getElementById('aj-defecto-wrap');
+      const nota = document.getElementById('aj-habilitados-nota');
+      const defSel = document.getElementById('aj-defecto-select');
+      const defTxt = document.getElementById('aj-defecto-texto');
+      const defectoActual = typeof defectoInicial === 'string' ? defectoInicial : (defSel.style.display !== 'none' ? defSel.value : defTxt.value);
+
+      // Si cambió el campo (o la operación en Área y Actividad, cuyos IDs son propios de cada
+      // operación), los datos marcados ya no aplican
+      const porOp = ['area', 'actividad'].includes(campo.catalogo);
+      const clave = `${seccion}|${columna}|${porOp ? operacion : ''}`;
+      if (typeof defectoInicial !== 'string' && onAjusteCampoChange.clave !== clave) ajHabSel.clear();
+      onAjusteCampoChange.clave = clave;
+
+      habWrap.style.display = campo.tipo === 'lista' ? '' : 'none';
+      defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto') ? '' : 'none';
+      defSel.style.display = campo.tipo === 'lista' ? '' : 'none';
+      defTxt.style.display = campo.tipo === 'texto' ? '' : 'none';
+      if (campo.tipo !== 'lista') { ajCatalogo = []; return; }
+
+      const porOperacion = ['area', 'actividad'].includes(campo.catalogo);
+      if (porOperacion && !operacion) {
+        ajCatalogo = [];
+        document.getElementById('aj-habilitados').innerHTML = '';
+        nota.textContent = 'Área y Actividad dependen de la Operación: escoja una Operación para limitar sus datos o poner un valor por defecto.';
+        defSel.innerHTML = '<option value="">— Sin valor por defecto —</option>';
+        return;
+      }
+      nota.textContent = porOperacion ? `Datos de la operación ${operacion}.` : 'Estos datos son los mismos para todas las operaciones.';
+      document.getElementById('aj-habilitados').innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Cargando...</span>';
+      try {
+        const r = await fetch(ajUrl('/opciones', { seccion, columna, operacion }));
+        ajCatalogo = r.ok ? (await r.json()).opciones || [] : [];
+      } catch (e) { ajCatalogo = []; }
+      // Valores habilitados que ya no existen en el catálogo se siguen mostrando para poder quitarlos
+      ajHabSel.forEach(v => { if (!ajCatalogo.some(o => o.valor === v)) ajCatalogo.push({ valor: v, texto: `${v} (no existe)` }); });
+      pintarHabilitadosAjuste(defectoActual);
+    }
+
+    function pintarHabilitadosAjuste(defectoActual) {
+      document.getElementById('aj-habilitados').innerHTML = ajCatalogo.length
+        ? ajCatalogo.map(o => chipAjuste(o.valor, o.texto, ajHabSel.has(o.valor), `toggleHabilitadoAjuste(this.dataset.valor)`)).join('')
+        : '<span style="color:var(--text-muted); font-size:0.82rem;">Sin datos para este campo.</span>';
+      const defSel = document.getElementById('aj-defecto-select');
+      const actual = typeof defectoActual === 'string' ? defectoActual : defSel.value;
+      const opciones = ajHabSel.size ? ajCatalogo.filter(o => ajHabSel.has(o.valor)) : ajCatalogo;
+      defSel.innerHTML = '<option value="">— Sin valor por defecto —</option>' +
+        opciones.map(o => `<option value="${esc(o.valor)}">${esc(o.texto)}</option>`).join('');
+      defSel.value = opciones.some(o => o.valor === actual) ? actual : '';
+      if (!ajPuede('editar')) document.querySelectorAll('#aj-habilitados button').forEach(b => { b.disabled = true; });
+    }
+    function toggleHabilitadoAjuste(valor) {
+      if (ajHabSel.has(valor)) ajHabSel.delete(valor); else ajHabSel.add(valor);
+      pintarHabilitadosAjuste();
+    }
+
+    async function guardarAjuste() {
+      const seccion = document.getElementById('aj-seccion').value;
+      const columna = document.getElementById('aj-columna').value;
+      const campo = ajCampo(seccion, columna) || {};
+      // Los habilitados se guardan en el orden del catálogo
+      const habilitados = ajCatalogo.filter(o => ajHabSel.has(o.valor)).map(o => o.valor);
+      const payload = {
+        seccion,
+        columna_origen: columna,
+        operacion: document.getElementById('aj-operacion').value,
+        modalidad: document.getElementById('aj-modalidad').value,
+        etiqueta_columna: document.getElementById('aj-etiqueta').value,
+        visible: ajBool.visible,
+        obligatorio: ajBool.obligatorio,
+        datos_habilitados: campo.tipo === 'lista' ? habilitados.join(', ') : '',
+        valor_defecto: campo.tipo === 'lista' ? document.getElementById('aj-defecto-select').value
+          : campo.tipo === 'texto' ? document.getElementById('aj-defecto-texto').value : '',
+        rol: [...ajRolesSel].join(', '),
+        orden: document.getElementById('aj-orden').value,
+      };
+      if (ajBool.obligatorio === 1 && ajBool.visible === 0) {
+        if (!confirm('El campo es obligatorio pero no aparece: solo se exigirá a quien lo vea. ¿Guardar de todas formas?')) return;
+      }
+      const btn = document.getElementById('aj-btn-guardar');
+      btn.disabled = true;
+      try {
+        const resp = await fetch(ajEditando ? ajUrl(`/${ajEditando.id}`) : ajUrl(''), {
+          method: ajEditando ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) return alert('Error: ' + (data.error || 'No se pudo guardar el ajuste.'));
+        cerrarModalAjuste();
+        await cargarAjustes();
+      } catch (e) {
+        alert('Error de conexión al guardar el ajuste.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function eliminarAjuste() {
+      if (!ajEditando) return;
+      const a = ajEditando;
+      if (!confirm(`¿Eliminar el ajuste de "${a.columna_origen}" (${a.seccion}) para ${a.operacion || 'todas las operaciones'}${a.modalidad ? ' · ' + a.modalidad : ''}?\n\nEl campo volverá a funcionar con la regla siguiente o como siempre. Esta acción no se puede deshacer.`)) return;
+      try {
+        const resp = await fetch(ajUrl(`/${a.id}`), { method: 'DELETE' });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) return alert('Error: ' + (data.error || 'No se pudo eliminar el ajuste.'));
+        cerrarModalAjuste();
+        await cargarAjustes();
+      } catch (e) {
+        alert('Error de conexión al eliminar el ajuste.');
+      }
+    }
+
+    function abrirModalCopiarAjustes() {
+      const conAjustes = [...new Set(allAjustes.map(a => a.operacion).filter(Boolean))].sort();
+      document.getElementById('aj-copiar-desde').innerHTML = conAjustes.length
+        ? conAjustes.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')
+        : '<option value="">— Ninguna operación tiene ajustes —</option>';
+      document.getElementById('aj-copiar-hacia').innerHTML = '<option value="">— Seleccione —</option>' +
+        (ajOpciones?.operaciones || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+      document.getElementById('aj-copiar-sobrescribir').checked = false;
+      const overlay = document.getElementById('modal-copiar-ajustes-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalCopiarAjustes());
+    }
+
+    function cerrarModalCopiarAjustes() {
+      const overlay = document.getElementById('modal-copiar-ajustes-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
+
+    async function copiarAjustes() {
+      const desde = document.getElementById('aj-copiar-desde').value;
+      const hacia = document.getElementById('aj-copiar-hacia').value;
+      const sobrescribir = document.getElementById('aj-copiar-sobrescribir').checked;
+      if (!desde || !hacia) return alert('Escoja la operación de origen y la de destino.');
+      const btn = document.getElementById('aj-btn-copiar');
+      btn.disabled = true;
+      try {
+        const resp = await fetch(ajUrl('/copiar'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ desde, hacia, sobrescribir })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) return alert('Error: ' + (data.error || 'No se pudieron copiar los ajustes.'));
+        alert(`Se copiaron ${data.copiados} ajustes a ${hacia}.` + (data.omitidos ? `\n${data.omitidos} se omitieron porque ${hacia} ya los tenía.` : ''));
+        cerrarModalCopiarAjustes();
+        document.getElementById('aj-f-operacion').value = hacia;
+        await cargarAjustes();
+      } catch (e) {
+        alert('Error de conexión al copiar los ajustes.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // AJUSTES EN LOS FORMULARIOS DE RECIBO Y SERVICIO (Config_Servicios)
+    // ══════════════════════════════════════════════════════════
+    // Elemento del formulario de cada campo ajustable
+    const CAMPOS_FORM_AJUSTES = {
+      Servicio: {
+        'Area': 'ms-area-buttons', 'Actividad': 'ms-actividad-buttons', 'Transportadora': 'ms-transportadora-input',
+        'Vehiculo': 'ms-vehiculo', 'Proveedor': 'ms-proveedor-input', 'PL1': 'ms-pl1-input', 'Remolque': 'ms-remolque',
+        'Unidad': 'ms-unidad', 'Cantidad': 'ms-cantidad', 'Valor Unitario': 'ms-valor-unitario', 'Origen': 'ms-origen',
+        'Destino': 'ms-destino', 'Manifiesto': 'ms-manifiesto', 'Etapa': 'ms-etapa', 'Muelle': 'ms-muelle',
+        'Hora Inicio': 'ms-hora-inicio', 'Duración': 'ms-duracion', 'Grupo Dtjo': 'btn-ms-grupo-grupal',
+        'Auxiliares': 'ms-auxiliares-input', 'Notas': 'ms-notas', 'Foto Documento': 'ms-foto-documento',
+        'Foto Evidencia': 'ms-foto-evidencia', 'Telefono': 'ms-telefono', 'Observaciones': 'ms-observaciones',
+      },
+      Recibo: {
+        'Cliente a Facturar': 'mr-cliente-facturar', 'Categoria': 'mr-categoria', 'Telefono': 'mr-telefono',
+        'Email': 'mr-email', 'Observaciones': 'mr-observaciones',
+      },
+    };
+    let msAjustes = {}; // reglas vigentes del formulario de servicio
+    let mrAjustes = {}; // reglas vigentes del formulario de recibo
+
+    async function obtenerAjustesFormulario(seccion, operacion, modalidad) {
+      if (!operacion) return {};
+      try {
+        const params = new URLSearchParams({ usuario: CONFIG.usuario, seccion, operacion, modalidad: modalidad || '' });
+        const r = await fetch(`/facturacion/api/config-servicios?${params}`);
+        return r.ok ? await r.json() : {};
+      } catch (e) { return {}; }
+    }
+
+    function grupoCampoFormulario(el) {
+      return el ? (el.closest('.form-group') || el.parentElement) : null;
+    }
+
+    // Etiqueta y visibilidad de los campos; guarda el texto original de cada etiqueta para
+    // poder volver a él al cambiar de operación.
+    // Estos campos tienen su propia regla para mostrarse (modalidad o categorías): aquí solo se
+    // cambia su etiqueta y la visibilidad la decide esa regla junto con el ajuste.
+    const CAMPOS_VISIBILIDAD_PROPIA = ['ms-manifiesto', 'ms-telefono', 'mr-categoria'];
+
+    function aplicarEtiquetasYVisibilidad(seccion, ajustes) {
+      Object.entries(CAMPOS_FORM_AJUSTES[seccion]).forEach(([columna, id]) => {
+        const grupo = grupoCampoFormulario(document.getElementById(id));
+        if (!grupo) return;
+        const label = grupo.querySelector('label');
+        if (label && label.dataset.original === undefined) label.dataset.original = label.textContent;
+        const c = ajustes[columna];
+        if (label) label.textContent = (c ? c.etiqueta : label.dataset.original) + (c && c.obligatorio && c.visible ? ' *' : '');
+        if (CAMPOS_VISIBILIDAD_PROPIA.includes(id)) return;
+        if (grupo.dataset.ocultoAjuste === '1') { grupo.style.display = ''; delete grupo.dataset.ocultoAjuste; }
+        if (c && !c.visible) { grupo.style.display = 'none'; grupo.dataset.ocultoAjuste = '1'; }
+      });
+    }
+
+    // Deja en un <select> solo los datos habilitados (y el valor que ya tenía, en edición)
+    function filtrarSelectAjuste(sel, c, valorActual) {
+      if (!sel || !c || !c.habilitados.length) return;
+      const permitidos = c.habilitados.map(v => String(v).toLowerCase());
+      [...sel.options].forEach(o => {
+        if (o.value && !permitidos.includes(o.value.toLowerCase()) && o.value !== valorActual) o.remove();
+      });
+    }
+
+    // Se aplica al abrir el formulario de servicio, cuando ya cargaron áreas, actividades y listas
+    async function aplicarAjustesServicio(crear) {
+      msAjustes = await obtenerAjustesFormulario('Servicio', msContexto.operacion, msContexto.modalidad);
+      const a = msAjustes;
+      aplicarEtiquetasYVisibilidad('Servicio', a);
+      // Manifiesto y Teléfono son de CREDITO, salvo que la operación diga otra cosa
+      ['Manifiesto', 'Telefono'].forEach(col => {
+        const wrap = document.getElementById(col === 'Manifiesto' ? 'ms-manifiesto-wrap' : 'ms-telefono-wrap');
+        wrap.style.display = (a[col] ? a[col].visible : msContexto.modalidad === 'CREDITO') ? 'block' : 'none';
+      });
+
+      // Área y Actividad: solo los botones habilitados (y el valor que ya tenía)
+      [['Area', '.ms-area-btn', () => msAreaSeleccionada, seleccionarAreaServicio],
+       ['Actividad', '.ms-actividad-btn', () => msActividadSeleccionada, seleccionarActividadServicio]].forEach(([col, selector, actual, seleccionar]) => {
+        const c = a[col];
+        if (!c) return;
+        if (c.habilitados.length) {
+          document.querySelectorAll(selector).forEach(b => {
+            if (!c.habilitados.includes(String(b.dataset.id)) && String(b.dataset.id) !== String(actual() ?? '')) b.remove();
+          });
+        }
+        if (crear && c.defecto && !actual()) seleccionar(Number(c.defecto));
+      });
+
+      // Listas desplegables
+      [['Vehiculo', 'ms-vehiculo'], ['Unidad', 'ms-unidad'], ['Duración', 'ms-duracion']].forEach(([col, id]) => {
+        const sel = document.getElementById(id);
+        const c = a[col];
+        if (!c) return;
+        filtrarSelectAjuste(sel, c, crear ? '' : sel.value);
+        if (crear && c.defecto && !sel.value) {
+          sel.value = c.defecto;
+          if (col === 'Duración') onDuracionServicioChange();
+        }
+      });
+      if (a['Grupo Dtjo']) {
+        const c = a['Grupo Dtjo'];
+        [['GRUPAL', 'btn-ms-grupo-grupal'], ['INDIVIDUAL', 'btn-ms-grupo-individual']].forEach(([valor, id]) => {
+          document.getElementById(id).style.display = (!c.habilitados.length || c.habilitados.includes(valor) || msGrupoDtjoActual === valor) ? '' : 'none';
+        });
+        if (crear && c.defecto) setGrupoDtjoServicio(c.defecto);
+      }
+
+      // Campos de texto con valor por defecto
+      if (crear) {
+        ['Remolque', 'Cantidad', 'Valor Unitario', 'Origen', 'Destino', 'Manifiesto', 'Etapa', 'Muelle', 'Notas', 'Telefono', 'Observaciones'].forEach(col => {
+          const el = document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]);
+          if (a[col] && a[col].defecto && el && !el.value) el.value = a[col].defecto;
+        });
+      }
+    }
+
+    // Campos obligatorios vacíos del formulario de servicio (antes de guardar)
+    function faltantesAjustesServicio() {
+      const vacioEl = (id) => !String(document.getElementById(id)?.value || '').trim();
+      const valores = {
+        'Area': () => !msAreaSeleccionada, 'Actividad': () => !msActividadSeleccionada,
+        'Transportadora': () => !msTransportadoraId, 'Proveedor': () => !msProveedorSeleccionados.length,
+        'PL1': () => !msPl1Id, 'Auxiliares': () => !msAuxiliaresSeleccionados.length, 'Grupo Dtjo': () => !msGrupoDtjoActual,
+        'Foto Documento': () => vacioEl('ms-foto-documento') && !(msServicioExistente && msServicioExistente['Foto Documento']),
+        'Foto Evidencia': () => vacioEl('ms-foto-evidencia') && !(msServicioExistente && msServicioExistente['Foto Evidencia']),
+      };
+      return Object.entries(msAjustes)
+        .filter(([col, c]) => c.visible && c.obligatorio)
+        .filter(([col]) => valores[col] ? valores[col]() : vacioEl(CAMPOS_FORM_AJUSTES.Servicio[col]))
+        .map(([, c]) => c.etiqueta);
+    }
+
+    // Formulario de recibo: se aplica al escoger Operación o Modalidad
+    async function aplicarAjustesRecibo() {
+      const operacion = document.getElementById('mr-operacion').value;
+      const modalidad = modalRecibo.modoActual;
+      const clave = `${operacion}|${modalidad || ''}`;
+      aplicarAjustesRecibo.clave = clave;
+      const ajustes = (operacion && modalidad) ? await obtenerAjustesFormulario('Recibo', operacion, modalidad) : {};
+      if (aplicarAjustesRecibo.clave !== clave) return; // llegó tarde: ya se escogió otra operación
+      mrAjustes = ajustes;
+      aplicarEtiquetasYVisibilidad('Recibo', mrAjustes);
+
+      const cf = mrAjustes['Cliente a Facturar'];
+      const cfSel = document.getElementById('mr-cliente-facturar');
+      const actual = modalRecibo.modo === 'editar' ? (reciboDetalleActual?.recibo?.['Cliente a Facturar'] || '') : '';
+      const seleccionado = cfSel.value;
+      cfSel.innerHTML = '<option value="">— Seleccione Cliente a Facturar —</option>' +
+        [...new Set([...mrClientesAFacturar, ...(actual ? [actual] : [])])].map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      cfSel.value = seleccionado;
+      filtrarSelectAjuste(cfSel, cf, actual);
+      if (modalRecibo.modo === 'crear' && cf && cf.defecto && !cfSel.value) {
+        cfSel.value = cf.defecto;
+        if (cfSel.value) cargarCategoriasModalRecibo();
+      }
+      if (modalRecibo.modo === 'crear') {
+        [['Telefono', 'mr-telefono'], ['Email', 'mr-email'], ['Observaciones', 'mr-observaciones']].forEach(([col, id]) => {
+          const el = document.getElementById(id);
+          if (mrAjustes[col] && mrAjustes[col].defecto && !el.value) el.value = mrAjustes[col].defecto;
+        });
+      }
+      mostrarCamposReciboSegunServicios();
+    }
+
+    // Lista de Cliente a Facturar del formulario de recibo (Maestro_Clientes_Credito)
+    let mrClientesAFacturar = [];
+    async function cargarClientesAFacturarRecibo() {
+      if (mrClientesAFacturar.length) return;
+      try {
+        const r = await fetch(`/facturacion/api/clientes-a-facturar?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        mrClientesAFacturar = r.ok ? await r.json() : [];
+      } catch (e) { mrClientesAFacturar = []; }
     }
 
     // ══════════════════════════════════════════════════════════
@@ -10133,6 +10817,9 @@
       document.getElementById('ms-hora-final').value = existente?.['Hora Final'] ? toDatetimeLocalBogota(existente['Hora Final']) : '';
       onDuracionServicioChange();
       if (existente?.['Total Hora']) document.getElementById('ms-total-hora').value = existente['Total Hora'];
+
+      // Ajustes de la operación (Config_Servicios): etiquetas, campos, datos habilitados y valores por defecto
+      await aplicarAjustesServicio(modo !== 'editar');
 
       const overlayServicio = document.getElementById('modal-servicio-overlay');
       overlayServicio.classList.add('open');
@@ -10502,6 +11189,9 @@
 
     async function guardarServicio() {
       if (!modalServicio.idRecibo && modalServicio.modo !== 'pendiente') return;
+
+      const faltantes = faltantesAjustesServicio();
+      if (faltantes.length) return alert('Complete los campos obligatorios de esta operación:\n\n• ' + faltantes.join('\n• '));
 
       const formaDePago = (msContexto.modalidad === 'CREDITO') ? 3 : msFormaPagoActual;
 

@@ -627,16 +627,17 @@ router.get('/api/conteos-filtros', async (req, res) => {
         return res.json({ regionales: {}, operaciones: {} });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      baseConds.push(`(u.\`Operación\` IN (${ph}) OR a.usuario = ?)`);
+      baseConds.push(`(COALESCE(u.\`Operación\`, item_reg.operacion) IN (${ph}) OR a.usuario = ?)`);
       baseParams.push(...acceso.operacionesFiltro, usuario);
     }
 
     const sharedConds = [];
     const sharedParams = [];
 
-    if (tema) {
-      sharedConds.push('a.tema LIKE ?');
-      sharedParams.push(`%${tema}%`);
+    const search = tema || req.query.q || req.query.search;
+    if (search) {
+      sharedConds.push('(a.tema LIKE ? OR u.Nombre LIKE ? OR a.lugar LIKE ?)');
+      sharedParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (fechaDesde) {
       sharedConds.push('a.fecha >= ?');
@@ -653,11 +654,18 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const combWhere = combConds.length ? 'WHERE ' + combConds.join(' AND ') : '';
 
     const [combRows] = await pool.execute(
-      `SELECT u.Regional, u.\`Operación\` AS operacion, COUNT(*) AS total
+      `SELECT COALESCE(u.Regional, item_reg.regional) AS Regional,
+              COALESCE(u.\`Operación\`, item_reg.operacion) AS operacion,
+              COUNT(*) AS total
        FROM Dynamic_formato_asistencia a
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
+       LEFT JOIN (
+         SELECT id_asistencia, MAX(regional) as regional, MAX(operacion) as operacion
+         FROM Dynamic_formato_itemsAsistencia
+         GROUP BY id_asistencia
+       ) item_reg ON item_reg.id_asistencia = a.id_asistencia
        ${combWhere}
-       GROUP BY u.Regional, u.\`Operación\``,
+       GROUP BY COALESCE(u.Regional, item_reg.regional), COALESCE(u.\`Operación\`, item_reg.operacion)`,
       combParams
     );
 
@@ -701,26 +709,48 @@ router.get('/api/asistencias', async (req, res) => {
         params.push(usuario);
       } else {
         const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        conds.push(`(u.\`Operación\` IN (${ph}) OR a.usuario = ?)`);
+        conds.push(`(COALESCE(u.\`Operación\`, item_reg.operacion) IN (${ph}) OR a.usuario = ?)`);
         params.push(...acceso.operacionesFiltro, usuario);
       }
     }
-    if (tema) { conds.push('a.tema LIKE ?'); params.push(`%${tema}%`); }
-    if (regional) { conds.push('u.Regional = ?'); params.push(regional); }
-    if (operacion) { conds.push('u.`Operación` = ?'); params.push(operacion); }
-    if (fechaDesde) { conds.push('a.fecha >= ?'); params.push(fechaDesde); }
-    if (fechaHasta) { conds.push('a.fecha <= ?'); params.push(fechaHasta); }
+    const search = tema || req.query.q || req.query.search;
+    if (search) {
+      conds.push('(a.tema LIKE ? OR u.Nombre LIKE ? OR a.lugar LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    if (regional) {
+      conds.push('COALESCE(u.Regional, item_reg.regional) = ?');
+      params.push(regional);
+    }
+    if (operacion) {
+      conds.push('COALESCE(u.`Operación`, item_reg.operacion) = ?');
+      params.push(operacion);
+    }
+    if (fechaDesde) {
+      conds.push('a.fecha >= ?');
+      params.push(fechaDesde);
+    }
+    if (fechaHasta) {
+      conds.push('a.fecha <= ?');
+      params.push(fechaHasta);
+    }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const [rows] = await pool.execute(
       `SELECT a.id_asistencia, a.tema, a.fecha, a.hora_inicial, a.hora_final, a.duracion, a.lugar, a.objetivo,
               a.url_doc, a.usuario, a.fecha_creacion,
-              u.Nombre AS nombre_responsable, u.Regional AS regional_responsable, u.\`Operación\` AS operacion_responsable
+              u.Nombre AS nombre_responsable,
+              COALESCE(u.Regional, item_reg.regional) AS regional_responsable,
+              COALESCE(u.\`Operación\`, item_reg.operacion) AS operacion_responsable
        FROM Dynamic_formato_asistencia a
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
+       LEFT JOIN (
+         SELECT id_asistencia, MAX(regional) as regional, MAX(operacion) as operacion
+         FROM Dynamic_formato_itemsAsistencia
+         GROUP BY id_asistencia
+       ) item_reg ON item_reg.id_asistencia = a.id_asistencia
        ${where}
-       ORDER BY a.fecha DESC, a.fecha_creacion DESC
-       LIMIT 500`,
+       ORDER BY a.fecha DESC, a.fecha_creacion DESC`,
       params
     );
     res.json(rows);

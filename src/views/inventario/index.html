@@ -328,6 +328,32 @@
       to { transform: rotate(360deg); }
     }
 
+    /* ── Componentes y Tabla de Parámetros de Inventario ── */
+    .tabla-parametros tbody tr { cursor: pointer; transition: background .12s ease; }
+    .tabla-parametros tbody tr:hover { background: var(--accent-soft, rgba(0, 11, 89, 0.05)); }
+    .tabla-parametros tbody td { padding: 10px 14px; font-size: .85rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .tabla-parametros th { user-select: none; }
+    .chip { display: inline-block; padding: 2px 8px; margin: 1px 3px 1px 0; border-radius: 999px; font-size: .72rem; font-weight: 600; background: var(--accent-soft, rgba(0, 11, 89, 0.1)); color: var(--accent-dark, var(--text)); white-space: nowrap; }
+    .chip-sistema { background: var(--primary-soft, rgba(0,11,89,0.12)); color: var(--primary); font-weight: 700; }
+    .tag-cond { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .72rem; font-weight: 700; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; }
+    .bool-si { color: var(--success); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+    .bool-no { color: var(--danger); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+
+    /* Selector de roles en modal de parámetros */
+    .roles-sel { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; max-height: 220px; overflow-y: auto; padding: 4px 2px; }
+    .rol-opt {
+      padding: 4px 11px; font: inherit; font-size: .78rem; border-radius: 16px; border: 1px solid var(--border);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer; transition: all .15s ease;
+    }
+    .rol-opt.sel { background: var(--primary); color: var(--text-inverse, #fff); border-color: var(--primary); font-weight: 700; }
+    .rol-opt:disabled { cursor: not-allowed; opacity: .85; }
+    .roles-acciones { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: .76rem; }
+    .roles-acciones button { background: none; border: none; color: var(--accent, #000b59); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+    .btn-grupo { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-grupo-opt { padding: 8px 16px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--card-bg); color: var(--text-muted); font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s ease; }
+    .btn-grupo-opt.sel { border-color: var(--accent, var(--primary)); background: var(--accent-soft, rgba(0,11,89,0.08)); color: var(--accent-dark, var(--primary)); }
+
+
     .nav-item.disabled:hover .nav-icon {
       color: rgba(255, 255, 255, 0.5);
     }
@@ -3075,6 +3101,16 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>
         <span>Dotación de Ley</span>
       </li>
+
+      <li class="nav-item" id="tab-btn-tickets">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+        <span>Tickets</span>
+      </li>
+
+      <li class="nav-item" id="tab-btn-parametros">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Parámetros</span>
+      </li>
     </ul>
 
     <button type="button" id="btn-actualizar-global" title="Actualiza los datos de la vista actual sin recargar la página ni perder los filtros aplicados" style="margin: 8px 16px 20px 16px; margin-top: auto; padding: 11px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
@@ -5732,6 +5768,199 @@
     </div>
   </div>
 
+  <!-- Pestaña: Tickets del Módulo Inventario -->
+  <div class="wrapper" id="content-tab-tickets" style="display: none;">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <div class="header-titles">
+          <h1>Inventario — Tickets</h1>
+          <p>Gestión de solicitudes y novedades reportadas sobre el módulo de Inventario</p>
+        </div>
+      </div>
+      <div class="user-profile">
+        <div class="user-avatar" id="tk-user-avatar">US</div>
+        <div class="user-info">
+          <span class="user-name" id="tk-profile-name">Usuario</span>
+          <span class="user-role" id="tk-profile-role">Consultor</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Chips de Estado -->
+    <div class="card" style="padding: 16px; margin-bottom: 16px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
+      <div style="font-weight: 700; font-size: 0.82rem; color: var(--accent, var(--primary)); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+        <span>🎫</span> Estado del Ticket
+      </div>
+      <div id="tickets-estado-buttons-inv" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <!-- Botones dinámicos de estado -->
+      </div>
+    </div>
+
+    <!-- Filtros de Búsqueda -->
+    <div class="card" style="margin-bottom: 16px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
+      <div class="filtros-toggle" id="tkFiltrosToggleInv" onclick="toggleFiltrosTicketsInv()" style="padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <span style="font-weight: 700; font-size: 0.85rem; color: var(--text); display: flex; align-items: center; gap: 8px;">
+          🔍 Filtros de Búsqueda
+          <span id="tkFiltrosBadgeInv" style="background: var(--accent-soft, rgba(0,11,89,0.1)); color: var(--accent, var(--primary)); font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; font-weight: 700;">0</span>
+        </span>
+        <span id="tkFiltrosChevronInv" style="font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s;">▼</span>
+      </div>
+      <div id="tkFiltrosBodyInv" style="display: none; padding: 0 16px 16px 16px; border-top: 1px solid var(--border);">
+        <div style="margin-top: 14px; margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Buscar por Ticket, Solicitante, Descripción o Motivo</label>
+          <div style="position: relative;">
+            <input type="text" id="tk-filtro-q-inv" placeholder="Ej: afe21ddf, Cedi Yumbo, Lady Ocampo..." oninput="onTicketSearchInputInv(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; background: var(--bg-elevated); color: var(--text);">
+            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+          <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Regional</label>
+            <select id="tk-filtro-regional-inv" onchange="onTicketRegionalChangeInv()" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--bg-elevated); color: var(--text);">
+              <option value="">Todas las regionales</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Operación</label>
+            <select id="tk-filtro-operacion-inv" onchange="onTicketFilterChangeInv()" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--bg-elevated); color: var(--text);">
+              <option value="">Todas las operaciones</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+          <button type="button" class="btn btn-outline" onclick="resetFiltrosTicketsInv()" style="padding: 6px 14px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); background: var(--card-bg); color: var(--text);">
+            ↺ Limpiar filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Tickets -->
+    <div class="card" style="padding: 0; overflow: hidden; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
+      <div style="padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <span style="font-weight: 700; font-size: 0.92rem; color: var(--text);" id="lblContadorTicketsInv">
+          Cargando tickets...
+        </span>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="tabla-parametros" id="tabla-tickets-inv" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+          <thead>
+            <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border);">
+              <th style="padding: 10px 14px; font-weight: 700; width: 110px; cursor: pointer;" onclick="ordenarTicketsInv('estado')">Estado <span id="tkSortInv_estado"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 110px; cursor: pointer;" onclick="ordenarTicketsInv('ticket')">Ticket <span id="tkSortInv_ticket"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('operacion')">Operación <span id="tkSortInv_operacion"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('fecha_registro')">Fecha Registro <span id="tkSortInv_fecha_registro">▼</span></th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('motivo')">Motivo <span id="tkSortInv_motivo"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; min-width: 220px;">Descripción</th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('solicitante')">Solicitante <span id="tkSortInv_solicitante"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; min-width: 220px;">Respuesta (Observaciones)</th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('fecha_finalizacion')">Fecha Finalización <span id="tkSortInv_fecha_finalizacion"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tbodyTicketsInventario">
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                Cargando tickets de Inventario...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pestaña: Parámetros del Módulo Inventario -->
+  <div class="wrapper" id="content-tab-parametros" style="display: none;">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <div class="header-titles">
+          <h1>Parámetros de Inventario</h1>
+          <p>Reglas de negocio y configuración del módulo (tabla Config_Parametros)</p>
+        </div>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="param-user-avatar">US</div>
+        <div class="user-details">
+          <span class="user-name" id="param-profile-name">Usuario</span>
+          <span class="user-role" id="param-profile-role">Consultor</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toolbar de Filtros y Contadores -->
+    <div style="padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%;">
+      <div class="card" style="margin-bottom: 16px; padding: 18px 22px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px;">
+              <span>⚙️</span> Parámetros del Módulo Inventario
+            </div>
+            <div style="font-size: 0.83rem; color: var(--text-muted); margin-top: 2px;">
+              Edición controlada de roles autorizados, interruptores, alertas y límites operativos
+            </div>
+          </div>
+          <div id="lblContadorParametrosInv" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">
+            Cargando parámetros...
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+          <div style="flex: 1; min-width: 180px;">
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Sección</label>
+            <select id="filtroParamInvSeccion" class="input-field" style="width: 100%; font-size: 0.85rem; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated);" onchange="filtrarParametrosInvTabla()">
+              <option value="">Todas las secciones</option>
+            </select>
+          </div>
+          <div style="flex: 1; min-width: 160px;">
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Condición</label>
+            <select id="filtroParamInvCondicion" class="input-field" style="width: 100%; font-size: 0.85rem; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated);" onchange="filtrarParametrosInvTabla()">
+              <option value="">Todas las condiciones</option>
+            </select>
+          </div>
+          <div style="flex: 2; min-width: 240px;">
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Buscar concepto, parámetro o descripción</label>
+            <input type="text" id="filtroParamInvTexto" class="input-field" placeholder="Buscar..." style="width: 100%; font-size: 0.85rem; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated);" oninput="filtrarParametrosInvTabla()">
+          </div>
+          <div>
+            <button type="button" class="btn btn-outline" style="padding: 7px 14px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated); cursor: pointer;" onclick="limpiarFiltrosParametrosInvTabla()">
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Parámetros -->
+      <div class="card" style="padding: 0; overflow: hidden; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);">
+        <div style="overflow-x: auto;">
+          <table class="tabla-parametros" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+            <thead>
+              <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border);">
+                <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarParametrosInvTabla('Seccion')">Sección <span id="sort_parinv_Seccion"></span></th>
+                <th style="padding: 10px 14px; font-weight: 700; cursor: pointer;" onclick="ordenarParametrosInvTabla('Concepto')">Concepto <span id="sort_parinv_Concepto">▲</span></th>
+                <th style="padding: 10px 14px; font-weight: 700; width: 110px; cursor: pointer;" onclick="ordenarParametrosInvTabla('Condicion')">Condición <span id="sort_parinv_Condicion"></span></th>
+                <th style="padding: 10px 14px; font-weight: 700; cursor: pointer;" onclick="ordenarParametrosInvTabla('Parametro')">Parámetro / Roles <span id="sort_parinv_Parametro"></span></th>
+                <th style="padding: 10px 14px; font-weight: 700;">Descripción</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyParametrosInventario">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                  Cargando parámetros...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Pestaña: Dashboard / Reportes de Inventario por Operación -->
   <div class="wrapper" id="content-tab-reportes">
     <!-- Header -->
@@ -6572,6 +6801,8 @@
       const tabBtnSolicitudes = document.getElementById('tab-btn-solicitudes');
       const tabBtnActas = document.getElementById('tab-btn-actas');
       const tabBtnDotacionLey = document.getElementById('tab-btn-dotacionley');
+      const tabBtnTickets = document.getElementById('tab-btn-tickets');
+      const tabBtnParametros = document.getElementById('tab-btn-parametros');
 
       const contentTabInventario = document.getElementById('content-tab-inventario');
       const contentTabReportes = document.getElementById('content-tab-reportes');
@@ -6581,6 +6812,8 @@
       const contentTabSolicitudes = document.getElementById('content-tab-solicitudes');
       const contentTabActas = document.getElementById('content-tab-actas');
       const contentTabDotacionLey = document.getElementById('content-tab-dotacionley');
+      const contentTabTickets = document.getElementById('content-tab-tickets');
+      const contentTabParametros = document.getElementById('content-tab-parametros');
 
       function toggleMobileSidebar(force) {
         const sb = document.getElementById('sidebar');
@@ -6617,6 +6850,8 @@
         if (tabBtnSolicitudes) tabBtnSolicitudes.classList.remove('active');
         if (tabBtnActas) tabBtnActas.classList.remove('active');
         if (tabBtnDotacionLey) tabBtnDotacionLey.classList.remove('active');
+        if (tabBtnTickets) tabBtnTickets.classList.remove('active');
+        if (tabBtnParametros) tabBtnParametros.classList.remove('active');
 
         if (contentTabInventario) contentTabInventario.style.display = 'none';
         if (contentTabReportes) contentTabReportes.style.display = 'none';
@@ -6626,6 +6861,8 @@
         if (contentTabSolicitudes) contentTabSolicitudes.style.display = 'none';
         if (contentTabActas) contentTabActas.style.display = 'none';
         if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'none';
+        if (contentTabTickets) contentTabTickets.style.display = 'none';
+        if (contentTabParametros) contentTabParametros.style.display = 'none';
       };
       window.desactivarTodasLasPestañas = desactivarTodasLasPestanas;
 
@@ -6639,6 +6876,8 @@
         [tabBtnSolicitudes, 'solicitudes'],
         [tabBtnActas, 'actas'],
         [tabBtnDotacionLey, 'dotacionley'],
+        [tabBtnTickets, 'tickets'],
+        [tabBtnParametros, 'parametros'],
         [document.getElementById('tab-btn-historial'), 'historial']
       ].forEach(([btn, nombre]) => {
         if (!btn) return;
@@ -6752,6 +6991,29 @@
         });
       }
 
+      if (tabBtnTickets) {
+        tabBtnTickets.addEventListener('click', () => {
+          desactivarTodasLasPestanas();
+          tabBtnTickets.classList.add('active');
+          if (contentTabTickets) contentTabTickets.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Tickets');
+          toggleMobileSidebar(false);
+          cargarTicketsInventario();
+          cargarMetricasTicketsInventario();
+        });
+      }
+
+      if (tabBtnParametros) {
+        tabBtnParametros.addEventListener('click', () => {
+          desactivarTodasLasPestanas();
+          tabBtnParametros.classList.add('active');
+          if (contentTabParametros) contentTabParametros.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Parámetros');
+          toggleMobileSidebar(false);
+          cargarParametrosInventarioTabla();
+        });
+      }
+
       // Tab permissions visibility control
       const allowedSecciones = CONFIG.secciones || [];
       if (tabBtnInventario && !allowedSecciones.includes('Inventario')) {
@@ -6775,6 +7037,12 @@
       }
       if (tabBtnDotacionLey && !allowedSecciones.includes('DotacionLey')) {
         tabBtnDotacionLey.style.display = 'none';
+      }
+      if (tabBtnTickets && !allowedSecciones.some(s => s.toLowerCase() === 'tickets')) {
+        tabBtnTickets.style.display = 'none';
+      }
+      if (tabBtnParametros && !allowedSecciones.some(s => s.toLowerCase() === 'parametros')) {
+        tabBtnParametros.style.display = 'none';
       }
 
       const puedeVerLogica = Boolean(CONFIG.actas && CONFIG.actas.puedeGestionarLogica); // "Roles que pueden gestionar la lógica de abastecimiento"
@@ -6875,6 +7143,18 @@
         } else {
           fetchData();
         }
+      } else if (tabLower === 'tickets') {
+        if (tabBtnTickets && allowedSecciones.some(s => s.toLowerCase() === 'tickets')) {
+          tabBtnTickets.click();
+        } else {
+          fetchData();
+        }
+      } else if (tabLower === 'parametros') {
+        if (tabBtnParametros && allowedSecciones.some(s => s.toLowerCase() === 'parametros')) {
+          tabBtnParametros.click();
+        } else {
+          fetchData();
+        }
       } else if (tabLower === 'confirmaciones' || tabLower === 'historial') {
         const tabBtnHistorial = document.getElementById('tab-btn-historial');
         if (tabBtnHistorial) {
@@ -6910,7 +7190,11 @@
           usuarioId: CONFIG.usuarioId,
           opsPorRegional: CONFIG.opsPorRegional,
           regionalesFiltro: CONFIG.regionalesFiltro,
-          obtenerSeccion: () => SECCION_TICKET_INVENTARIO[new URLSearchParams(window.location.search).get('tab')] || null
+          obtenerSeccion: () => SECCION_TICKET_INVENTARIO[new URLSearchParams(window.location.search).get('tab')] || null,
+          alCrear: () => {
+            if (typeof cargarTicketsInventario === 'function') cargarTicketsInventario().catch(() => {});
+            if (typeof cargarMetricasTicketsInventario === 'function') cargarMetricasTicketsInventario().catch(() => {});
+          }
         });
       }
     }
@@ -6952,7 +7236,12 @@
         'content-tab-solicitudes': () => fetchSolicitudesList(),
         'content-tab-kardex': () => fetchKardexData(),
         'content-tab-articulos': () => fetchArticlesData(),
-        'content-tab-dotacionley': () => loadDotleyTrabajadores()
+        'content-tab-dotacionley': () => loadDotleyTrabajadores(),
+        'content-tab-tickets': () => {
+          cargarTicketsInventario();
+          cargarMetricasTicketsInventario();
+        },
+        'content-tab-parametros': () => cargarParametrosInventarioTabla()
       };
 
       const activeId = Object.keys(refrescos).find(id => {
@@ -19914,6 +20203,880 @@
       document.body.removeChild(link);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════════
+    // ── SUBMÓDULO: TICKETS DE INVENTARIO (Dynamic_Tickets, modulo = 'Inventario') ──
+    // ══════════════════════════════════════════════════════════════════════════════
+    let allTicketsInv = [];
+    let metricasTicketsInv = null;
+    let activeEstadoTicketInv = 'En Proceso';
+    let sortTicketsStateInv = { col: 'fecha_registro', order: 'desc' };
+    let ticketModalDataInv = null;
+    let ticketAccionSeleccionadaInv = null;
+    let searchTimeoutTicketsInv = null;
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function estadoTicketColors(estado) {
+      const e = (estado || '').toLowerCase().trim();
+      if (e === 'en proceso') return { bg: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' };
+      if (e === 'pendiente') return { bg: 'rgba(234, 179, 8, 0.18)', color: '#b45309' };
+      if (e === 'resuelto') return { bg: 'rgba(34, 197, 94, 0.15)', color: '#15803d' };
+      if (e === 'rechazado') return { bg: 'rgba(239, 68, 68, 0.15)', color: '#b91c1c' };
+      return { bg: 'rgba(100, 116, 139, 0.12)', color: '#475569' };
+    }
+
+    function formatFechaBogota(d) {
+      if (!d) return '-';
+      try {
+        const date = new Date(d);
+        if (isNaN(date.getTime())) return String(d);
+        return date.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'short', day: '2-digit' })
+          + ' ' + date.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+      } catch (e) {
+        return String(d);
+      }
+    }
+
+    function formatMiles(n) {
+      return Number(n || 0).toLocaleString('es-CO');
+    }
+
+    async function cargarTicketsInventario() {
+      const tbody = document.getElementById('tbodyTicketsInventario');
+      const lblContador = document.getElementById('lblContadorTicketsInv');
+      const pName = document.getElementById('tk-profile-name');
+      const pRole = document.getElementById('tk-profile-role');
+      const pAvatar = document.getElementById('tk-user-avatar');
+
+      if (pName) pName.textContent = CONFIG.usuarioNombre || CONFIG.usuarioId || 'Usuario';
+      if (pRole) pRole.textContent = CONFIG.rol || 'Consultor';
+      if (pAvatar) {
+        const n = (CONFIG.usuarioNombre || CONFIG.usuarioId || 'US').trim();
+        const parts = n.split(/\s+/);
+        pAvatar.textContent = parts.length > 1
+          ? (parts[0][0] + parts[1][0]).toUpperCase()
+          : n.slice(0, 2).toUpperCase();
+      }
+
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 32px;"><span class="rep-live-dot" style="margin-right:8px;"></span>Consultando tickets de Inventario...</td></tr>';
+      }
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          estado: activeEstadoTicketInv,
+          regional: document.getElementById('tk-filtro-regional-inv')?.value || '',
+          operacion: document.getElementById('tk-filtro-operacion-inv')?.value || '',
+          q: document.getElementById('tk-filtro-q-inv')?.value || '',
+          sortCol: sortTicketsStateInv.col,
+          sortDir: sortTicketsStateInv.order,
+          limit: 500
+        });
+
+        const resp = await fetch(`/inventario/api/tickets?${params.toString()}`);
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `Error ${resp.status}`);
+        }
+        const data = await resp.json();
+        allTicketsInv = data.rows || [];
+        renderTicketsInventarioTable();
+      } catch (err) {
+        console.error('[cargarTicketsInventario]', err);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar tickets: ${esc(err.message)}</td></tr>`;
+        if (lblContador) lblContador.textContent = '';
+      }
+    }
+
+    function renderTicketsInventarioTable() {
+      const tbody = document.getElementById('tbodyTicketsInventario');
+      const lblContador = document.getElementById('lblContadorTicketsInv');
+      if (!tbody) return;
+
+      if (lblContador) {
+        lblContador.textContent = `Mostrando ${allTicketsInv.length} ticket(s) con estado "${activeEstadoTicketInv}"`;
+      }
+
+      if (!allTicketsInv.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 32px;">No se encontraron tickets con los filtros aplicados.</td></tr>';
+        return;
+      }
+
+      ['estado', 'ticket', 'operacion', 'fecha_registro', 'motivo', 'solicitante', 'fecha_finalizacion'].forEach(c => {
+        const span = document.getElementById('tkSortInv_' + c);
+        if (span) {
+          span.textContent = (sortTicketsStateInv.col === c) ? (sortTicketsStateInv.order === 'asc' ? '▲' : '▼') : '';
+        }
+      });
+
+      tbody.innerHTML = allTicketsInv.map(t => {
+        const colors = estadoTicketColors(t.estado);
+        const obsRespuesta = (t.observaciones || '').trim();
+
+        return `
+          <tr onclick="abrirModalTicketInv('${esc(t.ticket)}')" style="cursor: pointer;" title="Clic para gestionar este ticket">
+            <td>
+              <span class="badge" style="background:${colors.bg}; color:${colors.color}; padding: 3px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; display: inline-block;">
+                ${esc(t.estado || '-')}
+              </span>
+            </td>
+            <td style="font-weight: 700; color: var(--accent, var(--primary)); font-family: monospace;">
+              ${esc(t.ticket)}
+            </td>
+            <td style="font-weight: 600;">
+              ${esc(t.operacion || '-')}
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
+              ${formatFechaBogota(t.fechaRegistro)}
+            </td>
+            <td>
+              <span class="tag-cond" style="font-size: 0.74rem;">${esc(t.motivo || 'General')}</span>
+            </td>
+            <td style="max-width: 280px; font-size: 0.82rem; line-height: 1.35;" title="${esc(t.descripcion || '')}">
+              <div style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                ${esc(t.descripcion || '-')}
+              </div>
+            </td>
+            <td style="font-size: 0.82rem; white-space: nowrap;">
+              ${esc(t.solicitante || '-')}
+            </td>
+            <td style="max-width: 260px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.35;" title="${esc(obsRespuesta)}">
+              ${obsRespuesta ? `<span style="color:var(--text); font-weight:500;">${esc(obsRespuesta)}</span>` : '<span style="color:#aaa; font-style:italic;">(sin respuesta)</span>'}
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
+              ${t.fechaFinalizacion ? formatFechaBogota(t.fechaFinalizacion) : '-'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function cargarMetricasTicketsInventario() {
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          estado: activeEstadoTicketInv,
+          regional: document.getElementById('tk-filtro-regional-inv')?.value || '',
+          operacion: document.getElementById('tk-filtro-operacion-inv')?.value || '',
+          q: document.getElementById('tk-filtro-q-inv')?.value || ''
+        });
+
+        const resp = await fetch(`/inventario/api/tickets/metricas?${params.toString()}`);
+        if (!resp.ok) return;
+        metricasTicketsInv = await resp.json();
+
+        renderEstadoTicketButtonsInv();
+        popularFiltrosDropdownsTicketsInv();
+      } catch (err) {
+        console.error('[cargarMetricasTicketsInventario]', err);
+      }
+    }
+
+    function renderEstadoTicketButtonsInv() {
+      const container = document.getElementById('tickets-estado-buttons-inv');
+      if (!container || !metricasTicketsInv) return;
+
+      const estados = metricasTicketsInv.estados || [];
+      const countFor = (nombre) => {
+        const item = estados.find(e => (e.estado || '').toLowerCase() === nombre.toLowerCase());
+        return item ? Number(item.totalCount || 0) : 0;
+      };
+
+      const defs = [
+        { key: 'En Proceso', label: '🔵 En Proceso', showCount: true },
+        { key: 'Pendiente', label: '🟡 Pendiente', showCount: true },
+        { key: 'Resuelto', label: '🟢 Resuelto', showCount: false },
+        { key: 'Rechazado', label: '🔴 Rechazado', showCount: false }
+      ];
+
+      container.innerHTML = defs.map(d => {
+        const activeClass = activeEstadoTicketInv === d.key ? 'active' : '';
+        const count = countFor(d.key);
+        const sub = d.showCount ? `${formatMiles(count)} ticket(s)` : `${formatMiles(count)}`;
+        return `
+          <button type="button" class="category-chip ${activeClass}" onclick="seleccionarEstadoTicketInv('${d.key}')" style="cursor: pointer;">
+            <span style="font-weight: 700;">${d.label}</span>
+            <span style="font-size: 0.72rem; margin-left: 6px; opacity: 0.85;">(${sub})</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function popularFiltrosDropdownsTicketsInv() {
+      if (!metricasTicketsInv) return;
+
+      const regSel = document.getElementById('tk-filtro-regional-inv');
+      if (regSel) {
+        const curReg = regSel.value;
+        const regMap = {};
+        (metricasTicketsInv.regionalesOps || []).forEach(r => {
+          if (!r.regional) return;
+          regMap[r.regional] = (regMap[r.regional] || 0) + Number(r.totalCount || 0);
+        });
+        let regOpts = '<option value="">Todas las regionales</option>';
+        Object.keys(regMap).sort((a,b) => a.localeCompare(b, 'es')).forEach(reg => {
+          regOpts += `<option value="${esc(reg)}" ${curReg === reg ? 'selected' : ''}>${esc(reg)} (${formatMiles(regMap[reg])})</option>`;
+        });
+        regSel.innerHTML = regOpts;
+      }
+
+      const opSel = document.getElementById('tk-filtro-operacion-inv');
+      if (opSel) {
+        const curOp = opSel.value;
+        let opOpts = '<option value="">Todas las operaciones</option>';
+        (metricasTicketsInv.regionalesOps || []).forEach(o => {
+          if (!o.operacion) return;
+          opOpts += `<option value="${esc(o.operacion)}" ${curOp === o.operacion ? 'selected' : ''}>${esc(o.operacion)} (${formatMiles(o.totalCount)})</option>`;
+        });
+        opSel.innerHTML = opOpts;
+      }
+    }
+
+    function seleccionarEstadoTicketInv(estado) {
+      activeEstadoTicketInv = estado;
+      renderEstadoTicketButtonsInv();
+      cargarTicketsInventario();
+    }
+
+    function toggleFiltrosTicketsInv() {
+      const body = document.getElementById('tkFiltrosBodyInv');
+      const chev = document.getElementById('tkFiltrosChevronInv');
+      if (!body) return;
+      const isOpen = body.style.display !== 'none';
+      body.style.display = isOpen ? 'none' : 'block';
+      if (chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+
+    function actualizarBadgeFiltrosTicketsInv() {
+      const reg = document.getElementById('tk-filtro-regional-inv')?.value || '';
+      const op = document.getElementById('tk-filtro-operacion-inv')?.value || '';
+      const q = document.getElementById('tk-filtro-q-inv')?.value || '';
+      let count = 0;
+      if (reg) count++;
+      if (op) count++;
+      if (q.trim()) count++;
+      const badge = document.getElementById('tkFiltrosBadgeInv');
+      if (badge) badge.textContent = count;
+    }
+
+    function onTicketSearchInputInv(val) {
+      actualizarBadgeFiltrosTicketsInv();
+      clearTimeout(searchTimeoutTicketsInv);
+      searchTimeoutTicketsInv = setTimeout(() => {
+        cargarTicketsInventario();
+        cargarMetricasTicketsInventario();
+      }, 300);
+    }
+
+    function onTicketRegionalChangeInv() {
+      actualizarBadgeFiltrosTicketsInv();
+      cargarTicketsInventario();
+      cargarMetricasTicketsInventario();
+    }
+
+    function onTicketFilterChangeInv() {
+      actualizarBadgeFiltrosTicketsInv();
+      cargarTicketsInventario();
+      cargarMetricasTicketsInventario();
+    }
+
+    function resetFiltrosTicketsInv() {
+      const qInp = document.getElementById('tk-filtro-q-inv');
+      const regSel = document.getElementById('tk-filtro-regional-inv');
+      const opSel = document.getElementById('tk-filtro-operacion-inv');
+      if (qInp) qInp.value = '';
+      if (regSel) regSel.value = '';
+      if (opSel) opSel.value = '';
+      actualizarBadgeFiltrosTicketsInv();
+      cargarTicketsInventario();
+      cargarMetricasTicketsInventario();
+    }
+
+    function ordenarTicketsInv(col) {
+      if (sortTicketsStateInv.col === col) {
+        sortTicketsStateInv.order = sortTicketsStateInv.order === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortTicketsStateInv.col = col;
+        sortTicketsStateInv.order = 'asc';
+      }
+      cargarTicketsInventario();
+    }
+
+    function abrirModalTicketInv(ticketId) {
+      const t = allTicketsInv.find(x => String(x.ticket) === String(ticketId));
+      if (!t) return;
+      ticketModalDataInv = t;
+      ticketAccionSeleccionadaInv = null;
+
+      document.getElementById('tk-modal-ticket-inv').textContent = t.ticket || '-';
+
+      const estColors = estadoTicketColors(t.estado);
+      const estBadge = document.getElementById('tk-modal-estado-actual-inv');
+      estBadge.textContent = t.estado || '-';
+      estBadge.style.background = estColors.bg;
+      estBadge.style.color = estColors.color;
+
+      document.getElementById('tk-modal-operacion-inv').textContent = t.operacion || '-';
+      document.getElementById('tk-modal-solicitante-inv').textContent = t.solicitante || '-';
+
+      const telRow = document.getElementById('tk-modal-tel-row-inv');
+      if (t.telefono) {
+        telRow.style.display = 'block';
+        document.getElementById('tk-modal-telefono-inv').textContent = t.telefono;
+      } else {
+        telRow.style.display = 'none';
+      }
+
+      const motRow = document.getElementById('tk-modal-motivo-row-inv');
+      if (t.motivo) {
+        motRow.style.display = 'block';
+        document.getElementById('tk-modal-motivo-inv').textContent = t.motivo;
+      } else {
+        motRow.style.display = 'none';
+      }
+
+      document.getElementById('tk-modal-descripcion-inv').textContent = t.descripcion || '-';
+      document.getElementById('tk-modal-fecha-inv').textContent = formatFechaBogota(t.fechaRegistro);
+
+      const evidRow = document.getElementById('tk-modal-evidencia-row-inv');
+      if (t.evidencia) {
+        evidRow.style.display = 'block';
+        document.getElementById('tk-modal-evidencia-link-inv').href = t.evidencia;
+      } else {
+        evidRow.style.display = 'none';
+      }
+
+      ['pendiente', 'rechazado', 'resuelto'].forEach(a => {
+        const btn = document.getElementById('btn-tk-accion-' + a + '-inv');
+        if (btn) btn.classList.remove('sel');
+      });
+
+      document.getElementById('tk-observaciones-inv').value = t.observaciones || 'Sincronizar y validar';
+      const errEl = document.getElementById('tk-modal-error-inv');
+      if (errEl) errEl.style.display = 'none';
+
+      const overlay = document.getElementById('modalTicketInvOverlay');
+      if (overlay) overlay.style.display = 'flex';
+    }
+
+    function cerrarModalTicketInv() {
+      const overlay = document.getElementById('modalTicketInvOverlay');
+      if (overlay) overlay.style.display = 'none';
+      ticketModalDataInv = null;
+    }
+
+    function setAccionTicketInv(accion) {
+      ticketAccionSeleccionadaInv = accion;
+      ['pendiente', 'rechazado', 'resuelto'].forEach(a => {
+        const btn = document.getElementById('btn-tk-accion-' + a + '-inv');
+        if (btn) btn.classList.toggle('sel', a === accion);
+      });
+      const obsEl = document.getElementById('tk-observaciones-inv');
+      if (accion === 'resuelto' && (!obsEl.value || obsEl.value === 'Sincronizar y validar')) {
+        obsEl.value = 'Sincronizar y validar';
+      }
+    }
+
+    async function guardarAccionTicketInv() {
+      if (!ticketModalDataInv) return;
+      const errEl = document.getElementById('tk-modal-error-inv');
+      if (errEl) errEl.style.display = 'none';
+
+      if (!ticketAccionSeleccionadaInv) {
+        if (errEl) {
+          errEl.textContent = 'Debes seleccionar una acción: Pendiente, Rechazado o Resuelto.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+      const obs = (document.getElementById('tk-observaciones-inv')?.value || '').trim();
+      if (!obs) {
+        if (errEl) {
+          errEl.textContent = 'Debes ingresar las observaciones / respuesta.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      const mapEstado = {
+        pendiente: 'Pendiente',
+        rechazado: 'Rechazado',
+        resuelto: 'Resuelto'
+      };
+
+      const btn = document.getElementById('btn-guardar-ticket-inv');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+      }
+
+      try {
+        const resp = await fetch(`/inventario/api/tickets/${encodeURIComponent(ticketModalDataInv.ticket)}/estado?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            estado: mapEstado[ticketAccionSeleccionadaInv],
+            observaciones: obs
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalTicketInv();
+          await Promise.all([cargarTicketsInventario(), cargarMetricasTicketsInventario()]);
+          alert(`Ticket ${ticketModalDataInv.ticket} actualizado a "${mapEstado[ticketAccionSeleccionadaInv]}".`);
+        } else {
+          if (errEl) {
+            errEl.textContent = 'Error: ' + (data.error || 'No se pudo actualizar el ticket.');
+            errEl.style.display = 'block';
+          }
+        }
+      } catch (e) {
+        console.error('[guardarAccionTicketInv]', e);
+        if (errEl) {
+          errEl.textContent = 'Error de conexión al guardar el ticket.';
+          errEl.style.display = 'block';
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Guardar Resolución';
+        }
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════════
+    // ── SUBMÓDULO: PARÁMETROS DE INVENTARIO (Config_Parametros) ────────────────────
+    // ══════════════════════════════════════════════════════════════════════════════
+    let _parametrosInvData = [];
+    let _rolesDisponiblesInv = [];
+    let _parametroInvEditando = null;
+    let _modalRolesSelInv = [];
+    let _modalBooleanoValInv = '0';
+    let _modalTempValorInv = '';
+    let _parInvSortCol = 'Concepto';
+    let _parInvSortDir = 1;
+
+    async function cargarParametrosInventarioTabla() {
+      const tbody = document.getElementById('tbodyParametrosInventario');
+      const lblContador = document.getElementById('lblContadorParametrosInv');
+      const pName = document.getElementById('param-profile-name');
+      const pRole = document.getElementById('param-profile-role');
+      const pAvatar = document.getElementById('param-user-avatar');
+
+      if (pName) pName.textContent = CONFIG.usuarioNombre || CONFIG.usuarioId || 'Usuario';
+      if (pRole) pRole.textContent = CONFIG.rol || 'Consultor';
+      if (pAvatar) {
+        const n = (CONFIG.usuarioNombre || CONFIG.usuarioId || 'US').trim();
+        const parts = n.split(/\s+/);
+        pAvatar.textContent = parts.length > 1
+          ? (parts[0][0] + parts[1][0]).toUpperCase()
+          : n.slice(0, 2).toUpperCase();
+      }
+
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--text-muted);"><span class="rep-live-dot" style="margin-right:8px;"></span>Consultando parámetros de Inventario...</td></tr>';
+      }
+
+      try {
+        const res = await fetch(`/inventario/api/parametros?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Error ${res.status}: No se pudieron consultar los parámetros.`);
+        }
+        const data = await res.json();
+        _parametrosInvData = data.parametros || [];
+        _rolesDisponiblesInv = data.roles || [];
+
+        // Poblar selector de secciones
+        const selSec = document.getElementById('filtroParamInvSeccion');
+        if (selSec) {
+          const secActual = selSec.value;
+          const secciones = [...new Set(_parametrosInvData.map(p => p.Seccion).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'es'));
+          selSec.innerHTML = '<option value="">Todas las secciones</option>' +
+            secciones.map(s => `<option value="${esc(s)}" ${s === secActual ? 'selected' : ''}>${esc(s)}</option>`).join('');
+        }
+
+        // Poblar selector de condiciones
+        const selCond = document.getElementById('filtroParamInvCondicion');
+        if (selCond) {
+          const condActual = selCond.value;
+          const condiciones = [...new Set(_parametrosInvData.map(p => p.Condicion).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'es'));
+          selCond.innerHTML = '<option value="">Todas las condiciones</option>' +
+            condiciones.map(c => `<option value="${esc(c)}" ${c === condActual ? 'selected' : ''}>${esc(c)}</option>`).join('');
+        }
+
+        filtrarParametrosInvTabla();
+      } catch (err) {
+        console.error('[Inventario] Error al cargar parámetros:', err);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger); padding:24px; text-align:center;">Error: ${esc(err.message)}</td></tr>`;
+        if (lblContador) lblContador.textContent = '';
+      }
+    }
+
+    function valorParametroInvFormateado(p) {
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+      const val = String(p.Parametro == null ? '' : p.Parametro).trim();
+      if (cond === 'rol') {
+        const roles = val.split(',').map(s => s.trim()).filter(Boolean);
+        if (!roles.length) return '<span style="color:var(--text-muted); font-size:0.8rem;">(sin roles asignados)</span>';
+        return roles.map(r => {
+          const isSistema = r.toLowerCase() === 'sistema';
+          return `<span class="chip ${isSistema ? 'chip-sistema' : ''}">${esc(r)}</span>`;
+        }).join('');
+      }
+      if (cond === 'booleano') {
+        const isSi = ['1', 'true', 'habilitado', 'si', 'sí'].includes(val.toLowerCase());
+        return isSi
+          ? '<span class="bool-si">✓ Habilitado</span>'
+          : '<span class="bool-no">✕ Deshabilitado</span>';
+      }
+      if (cond === 'porcentaje') {
+        return `<strong>${esc(val)} %</strong>`;
+      }
+      if (cond === 'hora') {
+        return `<span>⏰ <strong>${esc(val)}</strong> hrs</span>`;
+      }
+      if (val === '') return '<span style="color:var(--text-muted); font-style:italic;">(vacío)</span>';
+      return `<span>${esc(val)}</span>`;
+    }
+
+    function filtrarParametrosInvTabla() {
+      const secFiltro = (document.getElementById('filtroParamInvSeccion')?.value || '').trim().toLowerCase();
+      const condFiltro = (document.getElementById('filtroParamInvCondicion')?.value || '').trim().toLowerCase();
+      const txtFiltro = (document.getElementById('filtroParamInvTexto')?.value || '').trim().toLowerCase();
+      const tbody = document.getElementById('tbodyParametrosInventario');
+      const lblContador = document.getElementById('lblContadorParametrosInv');
+      if (!tbody) return;
+
+      let filas = [..._parametrosInvData];
+
+      if (secFiltro) {
+        filas = filas.filter(p => String(p.Seccion || '').toLowerCase() === secFiltro);
+      }
+      if (condFiltro) {
+        filas = filas.filter(p => String(p.Condicion || '').toLowerCase() === condFiltro);
+      }
+      if (txtFiltro) {
+        filas = filas.filter(p => {
+          const s = String(p.Seccion || '').toLowerCase();
+          const c = String(p.Concepto || '').toLowerCase();
+          const v = String(p.Parametro || '').toLowerCase();
+          const d = String(p.Descripcion || '').toLowerCase();
+          return s.includes(txtFiltro) || c.includes(txtFiltro) || v.includes(txtFiltro) || d.includes(txtFiltro);
+        });
+      }
+
+      // Ordenamiento
+      filas.sort((a, b) => {
+        let va = String(a[_parInvSortCol] || '').toLowerCase();
+        let vb = String(b[_parInvSortCol] || '').toLowerCase();
+        return _parInvSortDir * va.localeCompare(vb, 'es', { numeric: true });
+      });
+
+      if (lblContador) {
+        lblContador.textContent = `Mostrando ${filas.length} de ${_parametrosInvData.length} parámetros configurados`;
+      }
+
+      if (!filas.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--text-muted);">No se encontraron parámetros con los filtros aplicados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filas.map(p => `
+        <tr onclick="abrirModalEditarParametroInv(${p.id})">
+          <td>
+            <span class="tag-cond" style="background:var(--accent-soft); color:var(--accent-dark); border-color:transparent;">${esc(p.Seccion)}</span>
+          </td>
+          <td>
+            <div style="font-weight:700; color:var(--text); font-size:0.88rem;">${esc(p.Concepto)}</div>
+          </td>
+          <td>
+            <span class="tag-cond">${esc(p.Condicion)}</span>
+          </td>
+          <td style="max-width:320px; line-height:1.6;">
+            ${valorParametroInvFormateado(p)}
+          </td>
+          <td style="color:var(--text-muted); font-size:0.8rem; max-width:340px; line-height:1.35;">
+            <div title="${esc(p.Descripcion || '')}">${esc(p.Descripcion || '—')}</div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function ordenarParametrosInvTabla(col) {
+      if (_parInvSortCol === col) {
+        _parInvSortDir = -_parInvSortDir;
+      } else {
+        _parInvSortCol = col;
+        _parInvSortDir = 1;
+      }
+      ['Seccion', 'Concepto', 'Condicion', 'Parametro'].forEach(c => {
+        const span = document.getElementById('sort_parinv_' + c);
+        if (span) span.textContent = (c === col) ? (_parInvSortDir > 0 ? '▲' : '▼') : '';
+      });
+      filtrarParametrosInvTabla();
+    }
+
+    function limpiarFiltrosParametrosInvTabla() {
+      const selSec = document.getElementById('filtroParamInvSeccion');
+      const selCond = document.getElementById('filtroParamInvCondicion');
+      const txt = document.getElementById('filtroParamInvTexto');
+      if (selSec) selSec.value = '';
+      if (selCond) selCond.value = '';
+      if (txt) txt.value = '';
+      filtrarParametrosInvTabla();
+    }
+
+    function abrirModalEditarParametroInv(id) {
+      const p = _parametrosInvData.find(x => x.id === id);
+      if (!p) return;
+      _parametroInvEditando = p;
+
+      document.getElementById('modalParamInvEditTitulo').textContent = 'Editar Parámetro';
+      document.getElementById('modalParamInvEditConcepto').textContent = `${p.Seccion} · ${p.Concepto}`;
+      document.getElementById('modalParamInvEditCondicion').textContent = p.Condicion || '—';
+
+      const txtDesc = document.getElementById('modalParamInvEditDescripcion');
+      if (txtDesc) {
+        txtDesc.value = p.Descripcion || '';
+        document.getElementById('lblModalParamInvDescCount').textContent = (p.Descripcion || '').length + ' / 500';
+      }
+
+      const errEl = document.getElementById('modalParamInvEditError');
+      if (errEl) errEl.style.display = 'none';
+
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+      const valActual = String(p.Parametro == null ? '' : p.Parametro).trim();
+      _modalTempValorInv = valActual;
+
+      if (cond === 'rol') {
+        _modalRolesSelInv = valActual ? valActual.split(',').map(s => s.trim()).filter(Boolean) : [];
+      } else if (cond === 'booleano') {
+        _modalBooleanoValInv = ['1', 'true', 'si', 'sí', 'habilitado'].includes(valActual.toLowerCase()) ? '1' : '0';
+      }
+
+      renderModalParamInvEditor(p);
+
+      const elModal = document.getElementById('modalEditarParametroInv');
+      if (elModal) {
+        elModal.style.display = 'flex';
+      }
+    }
+
+    function renderModalParamInvEditor(p) {
+      const container = document.getElementById('modalParamInvEditorContainer');
+      if (!container) return;
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+
+      if (cond === 'rol') {
+        const tieneSistema = (p.Parametro || '').toLowerCase().includes('sistema');
+        const roles = [..._rolesDisponiblesInv];
+        _modalRolesSelInv.forEach(r => {
+          if (!roles.some(x => x.toLowerCase() === r.toLowerCase())) roles.push(r);
+        });
+
+        const chips = roles.map(rol => {
+          const esSel = _modalRolesSelInv.some(s => s.toLowerCase() === rol.toLowerCase());
+          const esSistemaFijo = tieneSistema && rol.toLowerCase() === 'sistema';
+          return `
+            <button type="button" class="rol-opt ${esSel ? 'sel' : ''}" ${esSistemaFijo ? 'disabled title="El rol Sistema es requerido por seguridad y no se puede desmarcar"' : ''} onclick="toggleRolModalInv('${esc(rol)}')">
+              ${esSel ? '✓ ' : '+ '}${esc(rol)}
+            </button>
+          `;
+        }).join('');
+
+        container.innerHTML = `
+          <div class="roles-sel">${chips}</div>
+          <div class="roles-acciones">
+            <span style="color:var(--text-muted); font-weight:600;">${_modalRolesSelInv.length} rol(es) seleccionado(s)</span>
+            <button type="button" onclick="limpiarRolesModalInv(${tieneSistema})">Quitar todos</button>
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'booleano') {
+        const isSi = _modalBooleanoValInv === '1';
+        container.innerHTML = `
+          <div class="btn-grupo">
+            <button type="button" class="btn-grupo-opt ${isSi ? 'sel' : ''}" onclick="elegirBooleanoModalInv('1')">
+              ✓ Habilitado (1)
+            </button>
+            <button type="button" class="btn-grupo-opt ${!isSi ? 'sel' : ''}" onclick="elegirBooleanoModalInv('0')">
+              ✕ Deshabilitado (0)
+            </button>
+          </div>
+          <small style="display:block; color:var(--text-muted); font-size:0.75rem; margin-top:6px;">
+            Habilitado activa el comportamiento configurado; deshabilitado lo suspende temporalmente.
+          </small>
+        `;
+        return;
+      }
+
+      if (cond === 'porcentaje') {
+        container.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; max-width:200px;">
+            <input type="number" id="inputModalParamInvValor" class="input-field" min="0" max="100" step="1" value="${esc(_modalTempValorInv)}" style="font-size:0.95rem; font-weight:700; width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border);">
+            <span style="font-size:1.1rem; font-weight:800; color:var(--text-muted);">%</span>
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'hora') {
+        container.innerHTML = `
+          <div style="max-width:200px;">
+            <input type="time" id="inputModalParamInvValor" class="input-field" value="${esc(_modalTempValorInv)}" style="font-size:0.95rem; font-weight:700; width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border);">
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'filas' || cond === 'número' || cond === 'numero') {
+        container.innerHTML = `
+          <div style="max-width:220px;">
+            <input type="number" id="inputModalParamInvValor" class="input-field" min="0" step="1" value="${esc(_modalTempValorInv)}" style="font-size:0.95rem; font-weight:700; width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border);">
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <textarea id="inputModalParamInvValor" class="input-field" rows="3" style="width:100%; font-size:0.88rem; padding:8px 10px; border-radius:6px; border:1px solid var(--border);">${esc(_modalTempValorInv)}</textarea>
+      `;
+    }
+
+    function toggleRolModalInv(rol) {
+      const idx = _modalRolesSelInv.findIndex(r => r.toLowerCase() === rol.toLowerCase());
+      if (idx >= 0) {
+        if (_parametroInvEditando && (_parametroInvEditando.Parametro || '').toLowerCase().includes('sistema') && rol.toLowerCase() === 'sistema') {
+          return;
+        }
+        _modalRolesSelInv.splice(idx, 1);
+      } else {
+        _modalRolesSelInv.push(rol);
+      }
+      renderModalParamInvEditor(_parametroInvEditando);
+    }
+
+    function limpiarRolesModalInv(mantenerSistema) {
+      if (mantenerSistema) {
+        _modalRolesSelInv = _modalRolesSelInv.filter(r => r.toLowerCase() === 'sistema');
+        if (!_modalRolesSelInv.length) _modalRolesSelInv = ['Sistema'];
+      } else {
+        _modalRolesSelInv = [];
+      }
+      renderModalParamInvEditor(_parametroInvEditando);
+    }
+
+    function elegirBooleanoModalInv(val) {
+      _modalBooleanoValInv = String(val);
+      renderModalParamInvEditor(_parametroInvEditando);
+    }
+
+    function cerrarModalEditarParametroInv() {
+      const el = document.getElementById('modalEditarParametroInv');
+      if (el) el.style.display = 'none';
+      _parametroInvEditando = null;
+    }
+
+    async function guardarParametroInvDesdeModal() {
+      if (!_parametroInvEditando) return;
+      const p = _parametroInvEditando;
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+      let valorFinal = '';
+
+      if (cond === 'rol') {
+        valorFinal = _modalRolesSelInv.join(', ');
+      } else if (cond === 'booleano') {
+        valorFinal = _modalBooleanoValInv;
+      } else {
+        const inp = document.getElementById('inputModalParamInvValor');
+        valorFinal = inp ? inp.value.trim() : '';
+      }
+
+      const descFinal = (document.getElementById('modalParamInvEditDescripcion')?.value || '').trim();
+      const errEl = document.getElementById('modalParamInvEditError');
+      const btn = document.getElementById('btnGuardarParametroInvModal');
+
+      if (errEl) errEl.style.display = 'none';
+
+      // Validación de Porcentaje
+      if (cond === 'porcentaje') {
+        const n = parseInt(valorFinal, 10);
+        if (isNaN(n) || n < 0 || n > 100) {
+          if (errEl) {
+            errEl.textContent = 'El porcentaje debe ser un número entero entre 0 y 100.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+      }
+
+      // Validación de Hora
+      if (cond === 'hora') {
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(valorFinal)) {
+          if (errEl) {
+            errEl.textContent = 'Ingresa una hora válida en formato HH:mm (ej: 12:00).';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+      }
+
+      try {
+        const res = await fetch(`/inventario/api/parametros/${p.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            parametro: valorFinal,
+            descripcion: descFinal
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (errEl) {
+            errEl.textContent = data.error || 'Error al guardar el parámetro.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        cerrarModalEditarParametroInv();
+        p.Parametro = valorFinal;
+        p.Descripcion = descFinal;
+        filtrarParametrosInvTabla();
+        alert('Parámetro actualizado exitosamente.');
+      } catch (err) {
+        console.error('[Inventario] Error al guardar parámetro:', err);
+        if (errEl) {
+          errEl.textContent = 'Error de conexión con el servidor.';
+          errEl.style.display = 'block';
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '💾 Guardar';
+        }
+      }
+    }
+
+
     // Run on startup
     window.addEventListener('DOMContentLoaded', init);
   </script>
@@ -19921,5 +21084,101 @@
   <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
+  <!-- Modal Gestión / Resolución de Ticket Inventario -->
+  <div class="modal" id="modalTicketInvOverlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2200; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+    <div class="modal-content" style="background: var(--card-bg); border-radius: 12px; width: 94%; max-width: 580px; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid var(--border);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+        <div>
+          <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 4px;">
+            🎫 Ticket <span id="tk-modal-ticket-inv">—</span>
+          </h2>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Resolución y gestión de novedad</div>
+        </div>
+        <button type="button" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);" onclick="cerrarModalTicketInv()">✕</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Estado Actual:</span>
+        <span id="tk-modal-estado-actual-inv" style="padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;">-</span>
+      </div>
+
+      <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.5;">
+        <div style="margin-bottom: 6px;"><strong style="color:var(--text-muted);">Operación:</strong> <span id="tk-modal-operacion-inv" style="font-weight:600; color:var(--text);">-</span></div>
+        <div style="margin-bottom: 6px;"><strong style="color:var(--text-muted);">Solicitante:</strong> <span id="tk-modal-solicitante-inv" style="font-weight:600; color:var(--text);">-</span></div>
+        <div style="margin-bottom: 6px;" id="tk-modal-tel-row-inv"><strong style="color:var(--text-muted);">Teléfono:</strong> <span id="tk-modal-telefono-inv" style="color:var(--text);">-</span></div>
+        <div style="margin-bottom: 6px;" id="tk-modal-motivo-row-inv"><strong style="color:var(--text-muted);">Motivo:</strong> <span id="tk-modal-motivo-inv" style="color:var(--text);">-</span></div>
+        <div style="margin-bottom: 6px;"><strong style="color:var(--text-muted);">Descripción:</strong> <div id="tk-modal-descripcion-inv" style="color:var(--text); margin-top:2px; white-space:pre-wrap; background:var(--card-bg); padding:8px; border-radius:6px; border:1px solid var(--border);">-</div></div>
+        <div style="margin-bottom: 6px;"><strong style="color:var(--text-muted);">Fecha Registro:</strong> <span id="tk-modal-fecha-inv" style="color:var(--text);">-</span></div>
+        <div id="tk-modal-evidencia-row-inv" style="display:none; margin-top:6px;">
+          <strong style="color:var(--text-muted);">Evidencia:</strong>
+          <a id="tk-modal-evidencia-link-inv" href="#" target="_blank" style="color: var(--accent, var(--primary)); font-weight:700; text-decoration:underline; margin-left:6px;">📎 Ver evidencia adjunta</a>
+        </div>
+      </div>
+
+      <form onsubmit="event.preventDefault(); guardarAccionTicketInv();">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
+            Acción a Ejecutar *
+          </label>
+          <div class="btn-grupo" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-grupo-opt" id="btn-tk-accion-pendiente-inv" onclick="setAccionTicketInv('pendiente')">🟡 Pendiente</button>
+            <button type="button" class="btn-grupo-opt" id="btn-tk-accion-rechazado-inv" onclick="setAccionTicketInv('rechazado')">🔴 Rechazado</button>
+            <button type="button" class="btn-grupo-opt" id="btn-tk-accion-resuelto-inv" onclick="setAccionTicketInv('resuelto')">🟢 Resuelto</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">
+            Observaciones (Respuesta para el solicitante) *
+          </label>
+          <textarea id="tk-observaciones-inv" rows="3" style="width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem; font-family: inherit; color: var(--text); background: var(--bg-elevated); resize: vertical;">Sincronizar y validar</textarea>
+        </div>
+
+        <div id="tk-modal-error-inv" style="display: none; color: var(--danger); font-size: 0.82rem; margin-bottom: 12px; font-weight: 600;"></div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px;">
+          <button type="button" class="btn btn-outline" style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated); cursor: pointer;" onclick="cerrarModalTicketInv()">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-ticket-inv" style="padding: 8px 20px; border-radius: 6px; background: var(--primary); color: var(--text-inverse); border: none; cursor: pointer; font-weight: 700;" onclick="guardarAccionTicketInv()">Guardar Resolución</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal para Editar Parámetro de Inventario -->
+  <div class="modal" id="modalEditarParametroInv" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2200; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+    <div class="modal-content" style="background: var(--card-bg); border-radius: 12px; width: 94%; max-width: 580px; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid var(--border);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+        <div>
+          <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 4px;" id="modalParamInvEditTitulo">Editar Parámetro</h2>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;" id="modalParamInvEditConcepto">—</div>
+        </div>
+        <button type="button" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);" onclick="cerrarModalEditarParametroInv()">✕</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">
+          Condición: <span id="modalParamInvEditCondicion" style="color: var(--accent, var(--primary)); font-weight: 800;">—</span>
+        </label>
+        <div id="modalParamInvEditorContainer" style="margin-top: 8px;">
+          <!-- Editor dinámico según condición -->
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Descripción explicativa</label>
+          <span style="font-size: 0.7rem; color: var(--text-muted);" id="lblModalParamInvDescCount">0 / 500</span>
+        </div>
+        <textarea id="modalParamInvEditDescripcion" class="input-field" rows="3" maxlength="500" placeholder="Para qué sirve, qué controla y qué pasa si se deja vacío..." style="width: 100%; font-size: 0.85rem; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated);" oninput="document.getElementById('lblModalParamInvDescCount').textContent = this.value.length + ' / 500'"></textarea>
+      </div>
+
+      <div id="modalParamInvEditError" style="display: none; color: var(--danger); font-size: 0.82rem; margin-bottom: 12px; font-weight: 600;"></div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px;">
+        <button type="button" class="btn btn-outline" style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-elevated); cursor: pointer;" onclick="cerrarModalEditarParametroInv()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarParametroInvModal" style="padding: 8px 20px; border-radius: 6px; background: var(--primary); color: var(--text-inverse); border: none; cursor: pointer; font-weight: 700;" onclick="guardarParametroInvDesdeModal()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

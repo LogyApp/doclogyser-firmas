@@ -3207,6 +3207,18 @@
               <input type="text" class="form-control" id="filtro-part-search" placeholder="Tema o nombre..." oninput="filtrarDebounce('part')">
             </div>
             <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select class="form-control" id="filtro-part-regional" onchange="onRegionalChange('part')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operación</label>
+              <select class="form-control" id="filtro-part-operacion" onchange="filtrarAutomatico('part')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label">Fecha Desde</label>
               <input type="date" class="form-control" id="filtro-part-desde" onchange="filtrarAutomatico('part')">
             </div>
@@ -6080,6 +6092,18 @@
           const input = document.getElementById(`filtro-ins-${campo}`);
           if (input && input.value.trim()) count++;
         });
+      } else if (modKey === 'part') {
+        const search = document.getElementById('filtro-part-search');
+        const reg = document.getElementById('filtro-part-regional');
+        const op = document.getElementById('filtro-part-operacion');
+        const fd = document.getElementById('filtro-part-desde');
+        const fh = document.getElementById('filtro-part-hasta');
+
+        if (search && search.value.trim()) count++;
+        if (reg && reg.value) count++;
+        if (op && op.value) count++;
+        if (fd && fd.value) count++;
+        if (fh && fh.value) count++;
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -6159,6 +6183,10 @@
     function limpiarFiltros(modKey) {
       if (modKey === 'part') {
         document.getElementById('filtro-part-search').value = '';
+        const reg = document.getElementById('filtro-part-regional');
+        if (reg) reg.value = '';
+        const op = document.getElementById('filtro-part-operacion');
+        if (op) op.value = '';
         document.getElementById('filtro-part-desde').value = '';
         document.getElementById('filtro-part-hasta').value = '';
       } else if (modKey === 'cm') {
@@ -6992,26 +7020,46 @@
     let currentEvidenciasCount = 0;
 
     async function cargarParticipaciones() {
-      const res = await fetch(`/participacion/api/asistencias?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-      const participaciones = await res.json();
-      dataStore.part = participaciones;
+      const q = (document.getElementById('filtro-part-search')?.value || '').trim();
+      const reg = document.getElementById('filtro-part-regional')?.value || '';
+      const op = document.getElementById('filtro-part-operacion')?.value || '';
+      const fd = document.getElementById('filtro-part-desde')?.value || '';
+      const fh = document.getElementById('filtro-part-hasta')?.value || '';
 
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        tema: q,
+        regional: reg,
+        operacion: op,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+
+      const [rData, rCounts] = await Promise.all([
+        fetch(`/participacion/api/asistencias?${params.toString()}`),
+        fetch(`/participacion/api/conteos-filtros?${params.toString()}`)
+      ]);
+
+      const [participaciones, counts] = await Promise.all([rData.json(), rCounts.json()]);
+
+      if (!rData.ok || !Array.isArray(participaciones)) {
+        dataStore.part = [];
+        countsStore.part = {};
+        showToast((participaciones && participaciones.error) || 'No tienes permiso para ver Participación', 'error');
+        actualizarSelectConteos('part', {});
+        aplicarFiltroYOrdenPart();
+        return;
+      }
+
+      dataStore.part = participaciones;
+      countsStore.part = counts || { regionales: {}, operaciones: {} };
+
+      actualizarSelectConteos('part', countsStore.part);
       aplicarFiltroYOrdenPart();
     }
 
     function aplicarFiltroYOrdenPart() {
-      const q = (document.getElementById('filtro-part-search').value || '').toLowerCase().trim();
-      const desde = document.getElementById('filtro-part-desde').value;
-      const hasta = document.getElementById('filtro-part-hasta').value;
-
-      let filtrados = (dataStore.part || []).filter(item => {
-        const matchQ = !q || (item.tema || '').toLowerCase().includes(q) || (item.nombre_responsable || '').toLowerCase().includes(q) || (item.lugar || '').toLowerCase().includes(q);
-        let matchFecha = true;
-        if (desde && item.fecha && item.fecha < desde) matchFecha = false;
-        if (hasta && item.fecha && item.fecha > hasta) matchFecha = false;
-        return matchQ && matchFecha;
-      });
-
+      let filtrados = (dataStore.part || []).slice();
       filtrados = ordenarDatosSst('part', filtrados);
       renderTablaParticipaciones(filtrados);
     }
