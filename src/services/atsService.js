@@ -394,13 +394,14 @@ async function listarRegistrosAts(acceso, query = {}) {
       a.estado,
       a.url_pdf,
       a.fecha_creacion,
+      DATE_FORMAT(a.fecha_creacion, '%Y-%m-%d %H:%i') AS fecha_registro,
       (SELECT COUNT(*) FROM Dynamic_ats_trabajadores t WHERE t.id_ats = a.id_ats) AS total_trabajadores,
       (SELECT COUNT(*) FROM Dynamic_ats_trabajadores t WHERE t.id_ats = a.id_ats AND t.estado_firma = 'ACEPTADA') AS trabajadores_firmados,
       (CASE WHEN a.fecha_firma_coordinador IS NOT NULL THEN 1 ELSE 0 END) AS coord_firmado,
       (CASE WHEN a.fecha_firma_sst IS NOT NULL THEN 1 ELSE 0 END) AS sst_firmado
     FROM Dynamic_ats a
     ${whereSql}
-    ORDER BY a.id_ats DESC
+    ORDER BY a.fecha_creacion DESC, a.id_ats DESC
     LIMIT ${limit} OFFSET ${offset}
   `, params);
 

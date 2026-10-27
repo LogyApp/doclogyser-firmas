@@ -153,7 +153,7 @@
         return `
           <tr onclick="abrirDetalleAts(${it.id_ats})" id="row-ats-${it.id_ats}" class="${isSelected ? 'selected' : ''}" style="cursor: pointer;">
             <td style="text-align:center;">${docBtn}</td>
-            <td><strong>#${it.id_ats}</strong></td>
+            <td title="ATS #${it.id_ats}"><strong>${it.fecha_registro ? it.fecha_registro.slice(0, 10).split('-').reverse().join('/') + ' ' + it.fecha_registro.slice(11, 16) : '—'}</strong></td>
             <td>${it.regional}</td>
             <td><strong>${it.operacion}</strong></td>
             <td><small>${fDesde} al ${fHasta}</small></td>
@@ -3871,7 +3871,7 @@
               <thead>
                 <tr>
                   <th style="width: 140px; min-width: 120px;">Documento</th>
-                  <th style="width: 70px; min-width: 60px;">ID</th>
+                  <th style="width: 140px; min-width: 120px;">Fecha Registro ▼</th>
                   <th style="width: 130px; min-width: 110px;">Regional</th>
                   <th style="width: 160px; min-width: 130px;">Operación</th>
                   <th style="width: 150px; min-width: 130px;">Vigencia</th>
