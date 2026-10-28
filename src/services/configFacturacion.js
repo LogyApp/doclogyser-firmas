@@ -10,11 +10,13 @@ const SECCION_SERVICIOS = 'Servicios';
 const P = {
   ROLES_CARGA_MASIVA:    'Roles que pueden usar carga masiva de servicios',
   LIMITE_SERVICIOS:      'Límite máximo de servicios por carga',
+  TOPE_VALOR_BASE:       'Tope del Valor Base por servicio',
 };
 
 const DEFAULTS = {
   [P.ROLES_CARGA_MASIVA]: 'Sistema, Facturación, AuxiliarR, CoordinadorR',
   [P.LIMITE_SERVICIOS]:   '500',
+  [P.TOPE_VALOR_BASE]:    '3000000',
 };
 
 function normalizarTexto(valor) {
@@ -81,6 +83,74 @@ async function obtenerConfigServiciosMasivo(rol) {
   };
 }
 
+// Tope de Cantidad × Valor Unitario de un servicio (agregar, editar y carga masiva).
+async function obtenerTopeValorBaseServicio() {
+  const p = await obtenerParametrosServicios();
+  return enteroPositivo(valor(p, P.TOPE_VALOR_BASE), 3000000);
+}
+
+// ── Pestaña Recibos (Seccion = 'Recibos') ───────────────────────────────────
+// Quién ve la pestaña y qué operaciones: Maestro_Menu (facturacion / Recibos).
+const SECCION_RECIBOS = 'Recibos';
+const PR = {
+  CREAR:          'Roles que pueden crear y editar recibos',
+  EDITAR_VERDE:   'Roles que pueden editar recibos validados',
+  RETENCIONES:    'Roles que pueden modificar retenciones de recibos',
+  ELIMINAR:       'Roles que pueden eliminar recibos',
+  ELIMINAR_SERV:  'Roles que pueden eliminar servicios',
+  REASIGNAR:      'Roles que pueden reasignar servicios a otro recibo',
+  NITS_RETENCION: 'NITs con retención obligatoria de Fuente e IVA',
+};
+const DEFAULTS_RECIBOS = {
+  [PR.CREAR]:          'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR, Lider',
+  [PR.EDITAR_VERDE]:   'Facturación, Sistema',
+  [PR.RETENCIONES]:    'Facturación, Sistema',
+  [PR.ELIMINAR]:       'Sistema',
+  [PR.ELIMINAR_SERV]:  'Sistema',
+  [PR.REASIGNAR]:      'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
+  [PR.NITS_RETENCION]: '860350940, 890204199',
+};
+
+async function obtenerParametrosRecibos() {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Concepto`, `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ?',
+      [MODULO, SECCION_RECIBOS]
+    );
+    const mapa = {};
+    rows.forEach(r => { mapa[r.Concepto] = r.Parametro == null ? '' : String(r.Parametro); });
+    return mapa;
+  } catch (err) {
+    console.error('[configFacturacion] No se pudieron leer parámetros de Recibos, usando defaults:', err.message);
+    return {};
+  }
+}
+
+function valorRecibos(params, concepto) {
+  return Object.prototype.hasOwnProperty.call(params || {}, concepto) ? params[concepto] : DEFAULTS_RECIBOS[concepto];
+}
+
+// Permisos del rol en Recibos: { crear, editarValidados, modificarRetenciones,
+// eliminarRecibos, eliminarServicios, reasignarServicios }
+async function obtenerPermisosRecibos(rol) {
+  const p = await obtenerParametrosRecibos();
+  const tiene = concepto => enLista(valorRecibos(p, concepto), rol);
+  return {
+    crear:                tiene(PR.CREAR),
+    editarValidados:      tiene(PR.EDITAR_VERDE),
+    modificarRetenciones: tiene(PR.RETENCIONES),
+    eliminarRecibos:      tiene(PR.ELIMINAR),
+    eliminarServicios:    tiene(PR.ELIMINAR_SERV),
+    reasignarServicios:   tiene(PR.REASIGNAR),
+  };
+}
+
+// NITs a los que siempre se aplica ReteFuente y ReteIVA (regla heredada de AppSheet).
+async function obtenerNitsRetencionObligatoria() {
+  const p = await obtenerParametrosRecibos();
+  return lista(valorRecibos(p, PR.NITS_RETENCION)).map(n => Number(String(n).replace(/\D/g, ''))).filter(n => n > 0);
+}
+
 // ── Pestaña Clientes: maestros de Transportadoras, Proveedores y Placas ─────
 // Seccion = 'Clientes'. Depurar = eliminar, eliminar y reemplazar, unificar duplicados de
 // Placas y las acciones provisionales (mayúsculas, normalizar textos). Antes era fijo: Sistema.
@@ -140,6 +210,10 @@ async function puedeEditarRetenciones(rol) {
 
 module.exports = {
   obtenerConfigServiciosMasivo,
+  obtenerTopeValorBaseServicio,
+  obtenerPermisosRecibos,
+  obtenerNitsRetencionObligatoria,
+  PARAMETROS_FACTURACION_RECIBOS: PR,
   puedeDepurarMaestros,
   puedeGestionarMaestros,
   puedeEditarRetenciones,

@@ -1423,7 +1423,7 @@
             <button type="button" class="btn-secondary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
             </button>
-            <button class="btn-primary" onclick="abrirModalRecibo('crear')">
+            <button class="btn-primary btn-crear-recibo" onclick="abrirModalRecibo('crear')">
               ➕ Agregar Recibo
             </button>
           </div>
@@ -1694,7 +1694,7 @@
             <button type="button" class="btn-secondary" id="btn-carga-masiva-recibos" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
             </button>
-            <button class="btn-primary" onclick="abrirModalRecibo('crear')">
+            <button class="btn-primary btn-crear-recibo" onclick="abrirModalRecibo('crear')">
               ➕ Agregar Recibo
             </button>
           </div>
@@ -8881,7 +8881,14 @@
     let reciboDetalleActual = null; // { recibo, servicios, totales, estadoColor }
     let servicioDetalleActual = null; // { idServicio, idRecibo, consecutivoRecibo } — ver verDetalleServicio()
     let modalRecibo = { modo: 'crear' }; // 'crear' | 'editar'
-    const ROLES_EDICION_LIBRE_RECIBOS_FRONT = ['Facturación', 'Sistema'];
+    // Permisos de Recibos calculados en el servidor (Config_Parametros facturacion / Recibos)
+    const PERMISOS_RECIBOS = CONFIG.permisosRecibos || {};
+    const TOPE_VALOR_BASE_SERVICIO = Number(CONFIG.topeValorBaseServicio) || 3000000;
+    if (!PERMISOS_RECIBOS.crear) {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.btn-crear-recibo').forEach(b => { b.style.display = 'none'; });
+      });
+    }
 
     let sortRecibosState = {
       col: 'fecha_registro',
@@ -9275,13 +9282,13 @@
 
         // Gating de Editar/Eliminar: Facturación y Sistema editan siempre;
         // los demás roles solo si el recibo no está validado (Green).
-        const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS_FRONT.includes(CONFIG.rol);
+        const rolPrivilegiado = !!PERMISOS_RECIBOS.editarValidados;
         const btnEditar = document.getElementById('btn-editar-recibo');
-        const puedeEditar = rolPrivilegiado || estadoColor !== 'Green';
+        const puedeEditar = !!PERMISOS_RECIBOS.crear && (rolPrivilegiado || estadoColor !== 'Green');
         btnEditar.style.display = puedeEditar ? 'inline-flex' : 'none';
 
         const btnEliminar = document.getElementById('btn-eliminar-recibo');
-        btnEliminar.style.display = (CONFIG.rol === 'Sistema') ? 'inline-flex' : 'none';
+        btnEliminar.style.display = PERMISOS_RECIBOS.eliminarRecibos ? 'inline-flex' : 'none';
 
         // Ver Recibo del Cliente: solo Modalidad RECAUDO. Para Facturación/Sistema basta con
         // RECAUDO; para los demás roles además se requiere que todos los servicios estén en Green.
@@ -9350,7 +9357,7 @@
         } else {
           tbodySrv.innerHTML = srvs.map(s => {
             const sc = estadoServicioColores(s.Estado);
-            const puedeEliminarSrv = CONFIG.rol === 'Sistema';
+            const puedeEliminarSrv = !!PERMISOS_RECIBOS.eliminarServicios;
             return `
             <tr onclick="abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="cursor: pointer;" title="Clic para editar este servicio">
               <td data-label="Estado"><span class="badge" style="background:${sc.bg}; color:${sc.color};">${esc(s.Estado || '-')}</span></td>
@@ -9365,7 +9372,7 @@
               <td data-label="Total Pago" style="font-weight: 700; color: var(--accent);">$ ${formatMiles(s.totalPago)}</td>
               <td data-label="Acciones">
                 <button type="button" onclick="event.stopPropagation(); abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Editar">✏️</button>
-                ${puedeEliminarSrv ? `<button type="button" onclick="event.stopPropagation(); eliminarServicio('${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Eliminar (Sistema)">🗑️</button>` : ''}
+                ${puedeEliminarSrv ? `<button type="button" onclick="event.stopPropagation(); eliminarServicio('${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Eliminar servicio">🗑️</button>` : ''}
               </td>
             </tr>
           `;
@@ -9755,10 +9762,11 @@
     let mrServiciosCount = 0;
 
     function rolPuedeEditarRetenciones() {
-      return ROLES_EDICION_LIBRE_RECIBOS_FRONT.includes(CONFIG.rol);
+      return !!PERMISOS_RECIBOS.modificarRetenciones;
     }
 
     async function abrirModalRecibo(modo) {
+      if (!PERMISOS_RECIBOS.crear) { alert('Su rol no tiene permiso para crear o editar recibos.'); return; }
       if (modo === 'editar' && !reciboDetalleActual) return;
       await cargarClientesAFacturarRecibo();
       mrAjustes = {};
@@ -10756,7 +10764,6 @@
     let msSearchProveedorTimeout = null;
     let msSearchPlacaTimeout = null;
     let msSearchAuxiliarTimeout = null;
-    const ROLES_EDITAR_IDRECIBO_SERVICIO_FRONT = ['Sistema', 'Facturación', 'Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR'];
 
     function toDatetimeLocalBogota(value) {
       if (!value) return '';
@@ -10844,7 +10851,7 @@
       document.getElementById('ms-fecha-transferencia').value = existente?.['Fecha Transferencia'] ? toDatetimeLocalBogota(existente['Fecha Transferencia']) : ahoraDatetimeLocalBogota();
 
       document.getElementById('ms-idrecibo-info').textContent = (pendiente ? 'Recibo nuevo (sin guardar)' : (reciboDetalleActual.recibo['Consecutivo Recibo'] || modalServicio.idRecibo)) + ' — ' + (msContexto.operacion || '');
-      const puedeReasignar = modo === 'editar' && ROLES_EDITAR_IDRECIBO_SERVICIO_FRONT.includes(CONFIG.rol);
+      const puedeReasignar = modo === 'editar' && !!PERMISOS_RECIBOS.reasignarServicios;
       const selRecibo = document.getElementById('ms-idrecibo-select');
       if (puedeReasignar) {
         selRecibo.style.display = 'block';
@@ -11360,8 +11367,8 @@
         const valorUnitario = parseFloat(document.getElementById('ms-valor-unitario').value);
         const descripcion = [textoSel('.ms-area-btn.sel'), textoSel('.ms-actividad-btn.sel'), document.getElementById('ms-pl1-input').value.trim()]
           .filter(Boolean).join(' · ') || 'Servicio';
-        if (!isNaN(cantidad) && !isNaN(valorUnitario) && cantidad * valorUnitario > 3000000) {
-          return alert('El Valor Base (Cantidad x Valor Unitario) no puede superar $3.000.000.');
+        if (!isNaN(cantidad) && !isNaN(valorUnitario) && cantidad * valorUnitario > TOPE_VALOR_BASE_SERVICIO) {
+          return alert(`El Valor Base (Cantidad x Valor Unitario) no puede superar $${TOPE_VALOR_BASE_SERVICIO.toLocaleString('es-CO')}.`);
         }
         mrServiciosPendientes.push({
           fd,
@@ -12639,8 +12646,8 @@
       const cant = parseFloat(f.cantidad) || 0;
       const vunit = parseFloat(f.valorUnitario) || 0;
       const subtotal = Math.round(cant * vunit);
-      if (subtotal > 3000000) {
-        errores.push('V. Base supera $3.000.000');
+      if (subtotal > TOPE_VALOR_BASE_SERVICIO) {
+        errores.push(`V. Base supera $${TOPE_VALOR_BASE_SERVICIO.toLocaleString('es-CO')}`);
       }
 
       const durInfo = calcularDuracionFila(f);
