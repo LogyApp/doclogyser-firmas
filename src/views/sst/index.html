@@ -4295,6 +4295,35 @@
     </div>
   </div>
 
+  <!-- Modal Editar Capacitación SST -->
+  <div class="modal-overlay" id="modal-editar-cap" onclick="if(event.target === this) cerrarModalEditarCapacitacion();">
+    <div class="modal-content" style="max-width: 460px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text);">✏️ Editar Capacitación SST</div>
+        <button type="button" class="modal-close" onclick="cerrarModalEditarCapacitacion()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-editar-cap" onsubmit="guardarEdicionCapacitacion(event)">
+        <input type="hidden" id="modal-editar-cap-id">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Trabajador</label>
+          <input type="text" id="modal-editar-cap-trabajador" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Fecha de Capacitación *</label>
+          <input type="date" id="modal-editar-cap-fecha" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Tema de Capacitación *</label>
+          <input type="text" id="modal-editar-cap-tema" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalEditarCapacitacion()">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm">💾 Guardar y Regenerar PDF</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal Editar Contacto Asistente (Participación) -->
   <div class="modal-overlay" id="modal-contacto-part">
     <div class="modal-content" style="max-width: 480px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
@@ -5735,6 +5764,9 @@
       if (modulo === 'ev' && (item.url_doc || item.firma_trabajador)) {
         return permisoSst('ev', 'eliminarFirmado');
       }
+      if (modulo === 'cap' && (item.url_doc || item.firma_trabajador)) {
+        return permisoSst('cap', 'eliminarFirmado');
+      }
       if (modulo === 'part' && item.url_doc) {
         return permisoSst('part', 'eliminarFirmado');
       }
@@ -6717,7 +6749,7 @@
             <td><strong>${fechaFmt}</strong></td>
             <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
             <td><strong style="color:var(--text);">${it.tema || '—'}</strong></td>
-            <td><strong>${it.puntaje !== null && it.puntaje !== undefined ? it.puntaje + ' / 100' : '—'}</strong></td>
+            <td><strong>${it.puntaje !== null && it.puntaje !== undefined ? it.puntaje + (it.total_preguntas ? ' / ' + it.total_preguntas : '') : '—'}</strong></td>
             <td>${resultBadge}</td>
             <td>${evaluador}</td>
           </tr>
@@ -6737,6 +6769,23 @@
       if (row) row.classList.add('selected');
 
       const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+      let fechaRegFmt = '—';
+      if (item.fecha_registro) {
+        const dReg = new Date(item.fecha_registro);
+        if (!isNaN(dReg)) {
+          fechaRegFmt = dReg.toLocaleString('es-CO', {
+            timeZone: 'America/Bogota',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+        } else {
+          fechaRegFmt = String(item.fecha_registro).replace('T', ' ').slice(0, 16);
+        }
+      }
       const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
       const cedula = item.identificacion || '—';
 
@@ -6775,6 +6824,19 @@
             <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
               📄 Abrir Evaluación Firmada (PDF)
             </a>
+            ${permisoSst('cap', 'editarFirmado') ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarCapacitacion('${item.id_capacitacion}')">
+                ✏️ Editar Capacitación
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="regenerarPDFCapacitacion('${item.id_capacitacion}')">
+                🔄 Regenerar PDF
+              </button>
+            ` : ''}
+            ${puedeEliminarRegistro(item, 'cap') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('cap', '${item.id_capacitacion}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
           </div>
         `;
       }
@@ -6794,7 +6856,8 @@
           <div class="detail-section-title">Detalles de Capacitación</div>
           <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--text);">${item.tema || '—'}</span></div>
           <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
-          <div class="detail-row"><span class="label">Puntaje:</span><span class="value" style="color:var(--accent-hover);">${item.puntaje !== null && item.puntaje !== undefined ? item.puntaje + ' / 100' : 'Pendiente respuesta'}</span></div>
+          <div class="detail-row"><span class="label">Fecha de Registro:</span><span class="value">${fechaRegFmt}</span></div>
+          <div class="detail-row"><span class="label">Puntaje:</span><span class="value" style="color:var(--accent-hover);">${item.puntaje !== null && item.puntaje !== undefined ? item.puntaje + (item.total_preguntas ? ' / ' + item.total_preguntas : '') : 'Pendiente respuesta'}</span></div>
           <div class="detail-row"><span class="label">Resultado:</span><span class="value">${item.url_doc ? item.resultado : 'Pendiente de firma'}</span></div>
           <div class="detail-row"><span class="label">Evaluador:</span><span class="value">${item.nombre_evaluador || item.usuario || '—'}</span></div>
         </div>
@@ -6807,6 +6870,86 @@
       document.getElementById('layout-cap').classList.add('detail-active');
       document.getElementById('detail-cap').style.display = 'block';
       sincronizarUrlPestana('capacitacion', 'evals', { id: item.id_capacitacion, push: true });
+    }
+
+    function abrirModalEditarCapacitacion(id) {
+      const item = (dataStore.cap || []).find(x => String(x.id_capacitacion) === String(id));
+      if (!item) return;
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      document.getElementById('modal-editar-cap-id').value = item.id_capacitacion;
+      document.getElementById('modal-editar-cap-trabajador').value = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const fechaInput = document.getElementById('modal-editar-cap-fecha');
+      fechaInput.max = hoyStr;
+      fechaInput.value = item.fecha ? String(item.fecha).slice(0, 10) : hoyStr;
+      document.getElementById('modal-editar-cap-tema').value = item.tema || '';
+      const modalEl = document.getElementById('modal-editar-cap');
+      modalEl.style.display = 'flex';
+      modalEl._backEntry = registrarModalBack(() => cerrarModalEditarCapacitacion());
+    }
+
+    function cerrarModalEditarCapacitacion() {
+      const modalEl = document.getElementById('modal-editar-cap');
+      if (!modalEl) return;
+      modalEl.style.display = 'none';
+      cerrarModalBack(modalEl._backEntry);
+      modalEl._backEntry = null;
+    }
+
+    async function guardarEdicionCapacitacion(e) {
+      e.preventDefault();
+      const id = document.getElementById('modal-editar-cap-id').value;
+      const fecha = document.getElementById('modal-editar-cap-fecha').value;
+      const tema = document.getElementById('modal-editar-cap-tema').value;
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      if (fecha > hoyStr) {
+        showToast('La fecha de la capacitación no puede ser superior a hoy', 'error');
+        return;
+      }
+      showLoading('Guardando cambios y regenerando PDF...');
+      try {
+        const res = await fetch(`/capacitacionsst/api/capacitacion/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fecha, tema, usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          cerrarModalEditarCapacitacion();
+          showToast('Capacitación actualizada y PDF regenerado exitosamente', 'success');
+          await cargarCapacitaciones();
+          abrirDetalleCapacitacion(id);
+        } else {
+          showToast(data.error || 'Error al actualizar la capacitación', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al actualizar la capacitación', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarPDFCapacitacion(id) {
+      if (!confirm('¿Desea regenerar el PDF de esta capacitación? Se actualizará el documento con la plantilla vigente manteniendo la firma.')) return;
+      showLoading('Regenerando documento PDF...');
+      try {
+        const res = await fetch(`/capacitacionsst/api/capacitacion/${encodeURIComponent(id)}/regenerar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('PDF regenerado exitosamente', 'success');
+          await cargarCapacitaciones();
+          abrirDetalleCapacitacion(id);
+        } else {
+          showToast(data.error || 'No se pudo regenerar el PDF', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     async function reenviarFirmaCapacitacion(id) {

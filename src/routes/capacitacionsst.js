@@ -84,6 +84,60 @@ async function computarAccesoCAPSST(usuarioId) {
   return computarAccesoSst(usuarioId, SECCION_MENU_SST);
 }
 
+function hoyBogotaStr() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+async function regenerarPdfCapacitacion(capActualizado, oldUrlDoc) {
+  const [items] = await pool.execute(
+    'SELECT * FROM Maestro_capacitacionsst_items WHERE id_capacitacion = ? ORDER BY pregunta, id_capacitacion_item',
+    [capActualizado.id_capacitacion]
+  );
+
+  const [vinRows] = await pool.execute(
+    `SELECT Trabajador, \`Id Vinculación\`, Regional, \`Operación\`, Estado, Cargo, \`Fecha de Ingreso\`
+     FROM \`Maestro_Vinculación\`
+     WHERE Identificación = ?
+     ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+    [capActualizado.identificacion]
+  );
+  const vin = vinRows.length ? vinRows[0] : { Trabajador: capActualizado.identificacion };
+
+  const [uRows] = await pool.execute(
+    'SELECT Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+    [capActualizado.usuario]
+  );
+  const evaluadorNombre = uRows.length ? uRows[0].Nombre : capActualizado.usuario;
+
+  const pdfBuffer = await renderPDF(capActualizado, vin, evaluadorNombre, items);
+  const timestamp = formatTimestamp();
+  const nuevoUrlDoc = await subirPDFCapacitacionSST(capActualizado.identificacion, timestamp, pdfBuffer);
+
+  await pool.execute(
+    'UPDATE Maestro_capacitacionsst SET url_doc = ? WHERE id_capacitacion = ?',
+    [nuevoUrlDoc, capActualizado.id_capacitacion]
+  );
+
+  if (oldUrlDoc) {
+    const [updRes] = await pool.execute(
+      "UPDATE Maestro_docTrabajador SET Doc = ? WHERE Identificación = ? AND Prefijo = 'CAPSST' AND Doc = ?",
+      [nuevoUrlDoc, capActualizado.identificacion, oldUrlDoc]
+    );
+    if (!updRes.affectedRows) {
+      await registrarDocumentoTrabajador(capActualizado.identificacion, nuevoUrlDoc, capActualizado.usuario, 74, 'CAPSST');
+    }
+  } else {
+    await registrarDocumentoTrabajador(capActualizado.identificacion, nuevoUrlDoc, capActualizado.usuario, 74, 'CAPSST');
+  }
+
+  return nuevoUrlDoc;
+}
+
 // ═════ REDIRECCIÓN A SST HUB O PANELES ESPECÍFICOS ═════
 router.get('/', async (req, res) => {
   try {
@@ -433,10 +487,16 @@ router.get('/api/capacitaciones', async (req, res) => {
     const query = `
       SELECT c.id_capacitacion, c.fecha, c.identificacion, c.usuario, c.tema, c.url_doc, 
              c.token_firma, c.token_expira, c.puntaje, c.resultado, c.fecha_registro,
+             COALESCE(item_cnt.total_preguntas, 0) AS total_preguntas,
              vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,
              usu.Nombre AS nombre_evaluador
       FROM Maestro_capacitacionsst c
+      LEFT JOIN (
+        SELECT id_capacitacion, COUNT(DISTINCT pregunta) AS total_preguntas
+        FROM Maestro_capacitacionsst_items
+        GROUP BY id_capacitacion
+      ) item_cnt ON item_cnt.id_capacitacion = c.id_capacitacion
       LEFT JOIN (
         SELECT t1.Identificación, t1.Trabajador, t1.Cargo, t1.Regional, t1.\`Operación\`
         FROM Maestro_Vinculación t1
@@ -513,6 +573,9 @@ router.post('/api/crear', async (req, res) => {
     const { fecha, identificacion, usuario, enviar_correo, id_plantilla } = req.body;
     if (!fecha || !identificacion || !usuario) {
       return res.status(400).json({ error: 'fecha, identificacion y usuario requeridos' });
+    }
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de la capacitación no puede ser superior a hoy.' });
     }
 
     const accesoCrear = await computarAccesoSst(usuario, SECCION_MENU_SST);
@@ -618,6 +681,9 @@ router.post('/api/crear-masivo', async (req, res) => {
     const { fecha, identificaciones, usuario, enviar_correo, id_plantilla } = req.body;
     if (!fecha || !identificaciones || !Array.isArray(identificaciones) || !identificaciones.length || !usuario) {
       return res.status(400).json({ error: 'fecha, identificaciones (array) y usuario requeridos' });
+    }
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de la capacitación no puede ser superior a hoy.' });
     }
 
     const accesoCrearMasivo = await computarAccesoSst(usuario, SECCION_MENU_SST);
@@ -929,6 +995,107 @@ router.post('/api/reenviar-firma', async (req, res) => {
   }
 });
 
+// ═════ API: PUT /api/capacitacion/:id (Editar y regenerar PDF) ═════
+router.put('/api/capacitacion/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.body.usuario || req.query.usuario;
+    const { fecha, tema } = req.body;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+    if (!fecha) {
+      return res.status(400).json({ error: 'La fecha de capacitación es obligatoria.' });
+    }
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de la capacitación no puede ser superior a hoy.' });
+    }
+
+    const acceso = await computarAccesoCAPSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Maestro_capacitacionsst WHERE id_capacitacion = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Capacitación no encontrada' });
+    }
+    const cap = rows[0];
+    const estaFirmado = !!(cap.url_doc || cap.firma_trabajador);
+
+    if (estaFirmado) {
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'editarFirmado'))) {
+        return res.status(403).json({ error: 'Tu rol no tiene permiso para editar y regenerar el PDF de una capacitación ya firmada.' });
+      }
+    } else if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para editar capacitaciones.' });
+    }
+
+    const nuevoTema = tema ? String(tema).trim() : cap.tema;
+    const nuevaFecha = String(fecha).slice(0, 10);
+
+    await pool.execute(
+      'UPDATE Maestro_capacitacionsst SET fecha = ?, tema = ? WHERE id_capacitacion = ?',
+      [nuevaFecha, nuevoTema, id]
+    );
+
+    let urlDoc = cap.url_doc;
+    if (estaFirmado) {
+      const capActualizado = { ...cap, fecha: nuevaFecha, tema: nuevoTema };
+      urlDoc = await regenerarPdfCapacitacion(capActualizado, cap.url_doc);
+    }
+
+    res.json({ ok: true, id_capacitacion: id, fecha: nuevaFecha, tema: nuevoTema, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[capacitacionsst] PUT /api/capacitacion/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/capacitacion/:id/regenerar-pdf ═════
+router.post('/api/capacitacion/:id/regenerar-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.body.usuario || req.query.usuario;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoCAPSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'editarFirmado'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para regenerar el PDF de una capacitación firmada.' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Maestro_capacitacionsst WHERE id_capacitacion = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Capacitación no encontrada' });
+    }
+    const cap = rows[0];
+
+    if (!cap.url_doc && !cap.firma_trabajador) {
+      return res.status(400).json({ error: 'Esta capacitación aún no ha sido respondida ni firmada.' });
+    }
+
+    const urlDoc = await regenerarPdfCapacitacion(cap, cap.url_doc);
+    res.json({ ok: true, id_capacitacion: id, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[capacitacionsst] POST /api/capacitacion/:id/regenerar-pdf:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: DELETE /api/capacitacion/:id ═════
 router.delete('/api/capacitacion/:id', async (req, res) => {
   try {
@@ -946,33 +1113,41 @@ router.delete('/api/capacitacion/:id', async (req, res) => {
 
     // 1. Verificar si existe la capacitación y su estado de firma
     const [rows] = await pool.execute(
-      'SELECT usuario, url_doc, firma_trabajador FROM Maestro_capacitacionsst WHERE id_capacitacion = ? LIMIT 1',
+      'SELECT identificacion, usuario, url_doc, firma_trabajador FROM Maestro_capacitacionsst WHERE id_capacitacion = ? LIMIT 1',
       [id]
     );
     if (!rows.length) {
       return res.status(404).json({ error: 'Capacitación no encontrada' });
     }
     const cap = rows[0];
+    const estaFirmado = !!(cap.url_doc || cap.firma_trabajador);
 
-    // 2. Solo se puede eliminar si NO está firmado
-    if (cap.url_doc || cap.firma_trabajador) {
-      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
-    }
+    if (estaFirmado) {
+      // 2a. Si ya está firmado/generado el PDF, solo los roles en "Roles que pueden eliminar capacitaciones firmadas en SST"
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminarFirmado'))) {
+        return res.status(403).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
+      }
+      if (cap.url_doc) {
+        await pool.execute(
+          "DELETE FROM Maestro_docTrabajador WHERE Identificación = ? AND Prefijo = 'CAPSST' AND Doc = ?",
+          [cap.identificacion, cap.url_doc]
+        );
+      }
+    } else {
+      // 2b. Si NO está firmado, aplica "Roles que pueden eliminar capacitaciones en SST"
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
+        return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
+      }
 
-    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
-    // Rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña)
-    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
-      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
-    }
+      const esSistema = acceso.rol === 'Sistema';
+      const creador = String(cap.usuario || '').trim().toLowerCase();
+      const usuSolicitante = String(usuario).trim().toLowerCase();
+      const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
+      const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
 
-    const esSistema = acceso.rol === 'Sistema';
-    const creador = String(cap.usuario || '').trim().toLowerCase();
-    const usuSolicitante = String(usuario).trim().toLowerCase();
-    const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
-    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
-
-    if (!esSistema && !esPropio) {
-      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+      if (!esSistema && !esPropio) {
+        return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+      }
     }
 
     await pool.execute('DELETE FROM Maestro_capacitacionsst_items WHERE id_capacitacion = ?', [id]);

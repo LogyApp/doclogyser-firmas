@@ -121,6 +121,9 @@ async function armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, preguntasList
     resultado_html: resultadoHtml,
     nombre_trabajador: esc(limpiarNombre(vin && vin.Trabajador)) || '—',
     identificacion: esc(ev.identificacion) || '—',
+    cargo: esc(vin && vin.Cargo) || '—',
+    operacion: esc(vin && (vin.operacion || vin['Operación'])) || '—',
+    regional: esc(vin && (vin.regional || vin.Regional)) || '—',
     nombre_evaluador: esc(limpiarNombre(evaluadorNombre)) || '—',
     cuestionario_html: armarCuestionarioPlantillaHtml(preguntasList),
     firma_trabajador_html: firmaTrabajadorHtml,
@@ -269,12 +272,15 @@ async function renderPDF(ev, vin, evaluadorNombre, items) {
         <img src="${LOGO_BASE64}" alt="LOG&SER">
       </td>
       <td class="title-col">
-        EVALUACIÓN DE CAPACITACIÓN<br>SST
+        <div style="font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25;">EVALUACIÓN DE CAPACITACIÓN SST</div>
+        <div style="font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px;">${esc(ev.tema || 'Capacitación SST')}</div>
+        <div style="font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px;">SISTEMA DE GESTIÓN DE SEGURIDAD Y SALUD EN EL TRABAJO</div>
       </td>
       <td class="meta-col">
-        <strong>F-SST-002</strong><br>
-        FECHA: 28/05/2026<br>
-        <strong>VERSION: 01</strong>
+        <div style="font-weight: 800; color: #000b59; font-size: 8.5pt;">${formato.codigo}</div>
+        <div style="color: #334155;">Versión: ${formato.version}</div>
+        <div style="color: #64748b; font-size: 7.5pt;">${formato.fecha}</div>
+        <div style="margin-top: 2px; font-size: 7pt; color: #000b59; font-weight: 800;">ID: #${ev.id_capacitacion || '—'}</div>
       </td>
     </tr>
   </table>

@@ -302,8 +302,11 @@
  
     document.getElementById('user-badge').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
  
-    // Inicializar fecha
-    document.getElementById('input-fecha').valueAsDate = new Date();
+    // Inicializar fecha (hora Colombia, max hoy)
+    const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const inputFecha = document.getElementById('input-fecha');
+    inputFecha.value = hoyBogota;
+    inputFecha.max = hoyBogota;
  
     // Poblar Regionales
     const rSelect = document.getElementById('select-regional');
@@ -473,6 +476,11 @@
       e.preventDefault();
        
       const fecha = document.getElementById('input-fecha').value;
+      const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      if (fecha && fecha > hoyBogota) {
+        alert('La fecha de la capacitación no puede ser superior a la fecha actual.');
+        return;
+      }
       const enviar_correo = document.getElementById('check-correo').checked;
       const id_plantilla = document.getElementById('select-plantilla').value;
  
