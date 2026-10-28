@@ -11,12 +11,14 @@ const P = {
   ROLES_CARGA_MASIVA:    'Roles que pueden usar carga masiva de servicios',
   LIMITE_SERVICIOS:      'Límite máximo de servicios por carga',
   TOPE_VALOR_BASE:       'Tope del Valor Base por servicio',
+  OPS_AREA_USUARIO:      'Operaciones donde el Área del servicio se prellena con la del usuario',
 };
 
 const DEFAULTS = {
   [P.ROLES_CARGA_MASIVA]: 'Sistema, Facturación, AuxiliarR, CoordinadorR',
   [P.LIMITE_SERVICIOS]:   '500',
   [P.TOPE_VALOR_BASE]:    '3000000',
+  [P.OPS_AREA_USUARIO]:   '',
 };
 
 function normalizarTexto(valor) {
@@ -221,7 +223,51 @@ async function puedeEditarRetenciones(rol) {
   return enLista(texto, rol);
 }
 
+// Área con la que se prellena el servicio en las operaciones configuradas (antes, fórmula de
+// AppSheet de Cedi Vegas): la de Maestro_Usuarios.Area del usuario, si es un ID de Config_Area de
+// esa operación. Devuelve { operaciones: [...], area: 'ID' | '' } para el usuario y la operación.
+async function obtenerAreaUsuarioServicio(usuarioId, operacion) {
+  const p = await obtenerParametrosServicios();
+  const operaciones = lista(valor(p, P.OPS_AREA_USUARIO));
+  if (!operacion || !enLista(operaciones.join(','), operacion) || !usuarioId) return { operaciones, area: '' };
+  try {
+    const [rows] = await pool.execute(
+      `SELECT ca.ID AS id FROM Maestro_Usuarios mu
+         JOIN Config_Area ca ON CAST(ca.ID AS CHAR) = TRIM(mu.Area) AND ca.\`OPERACIÓN\` = ?
+       WHERE mu.ID = ? LIMIT 1`,
+      [operacion, usuarioId]
+    );
+    return { operaciones, area: rows.length ? String(rows[0].id) : '' };
+  } catch (err) {
+    console.error('[configFacturacion] No se pudo leer el Área del usuario:', err.message);
+    return { operaciones, area: '' };
+  }
+}
+
+// Operaciones donde aplica el Área del usuario y las Áreas (IDs) del usuario por operación, para la página
+async function obtenerAreasUsuarioServicio(usuarioId) {
+  const p = await obtenerParametrosServicios();
+  const operaciones = lista(valor(p, P.OPS_AREA_USUARIO));
+  const areas = {};
+  if (operaciones.length && usuarioId) {
+    try {
+      const [rows] = await pool.query(
+        `SELECT ca.\`OPERACIÓN\` AS operacion, ca.ID AS id FROM Maestro_Usuarios mu
+           JOIN Config_Area ca ON CAST(ca.ID AS CHAR) = TRIM(mu.Area)
+         WHERE mu.ID = ?`,
+        [usuarioId]
+      );
+      rows.filter(r => enLista(operaciones.join(','), r.operacion)).forEach(r => { areas[r.operacion] = String(r.id); });
+    } catch (err) {
+      console.error('[configFacturacion] No se pudo leer el Área del usuario:', err.message);
+    }
+  }
+  return { operaciones, areas };
+}
+
 module.exports = {
+  obtenerAreaUsuarioServicio,
+  obtenerAreasUsuarioServicio,
   obtenerConfigServiciosMasivo,
   obtenerTopeValorBaseServicio,
   obtenerPermisosRecibos,

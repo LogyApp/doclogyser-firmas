@@ -1876,6 +1876,802 @@
       line-height: 1;
     }
 
+    /* Restaurado: se había borrado por error en 1e89f00 (móvil, backdrop, Reportes, modales) */
+    .mobile-header-right {
+      display: flex;
+      align-items: center;
+    }
+    .mobile-profile-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border-radius: 50%;
+      outline: none;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+    .mobile-profile-btn:active {
+      transform: scale(.92);
+      opacity: .85;
+    }
+    .mobile-profile-thumb {
+      width: 33px;
+      height: 33px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover;
+      background: var(--card-bg);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
+    .mobile-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: 140;
+    }
+    .mobile-backdrop.open {
+      display: block;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE DRAWER Y ADAPTACIÓN GENERAL (≤ 900px)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      body {
+        flex-direction: column;
+        overflow: visible;
+        height: auto;
+      }
+
+      .mobile-header {
+        display: flex;
+      }
+
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 200;
+        box-shadow: none; /* escondido no debe asomar la sombra en el borde */
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 11, 89, 0.35);
+      }
+
+      .wrapper {
+        margin-left: 0 !important;
+        padding: 12px 10px !important;
+        height: auto !important;
+        min-height: calc(100vh - 48px);
+        overflow-y: visible !important;
+      }
+
+      /* Cabecera interna en móvil: compacta y sin logos/perfil redundantes */
+      .wrapper > header {
+        padding: 10px 12px !important;
+        margin-bottom: 12px !important;
+        gap: 10px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        border-bottom: 2px solid var(--primary) !important;
+      }
+
+      .wrapper > header .logo-container {
+        gap: 0 !important;
+      }
+
+      .wrapper > header .header-titles h1 {
+        font-size: 1.05rem !important;
+      }
+
+      .wrapper > header .header-titles p {
+        font-size: .72rem !important;
+      }
+
+      .wrapper > header .user-profile {
+        display: none !important;
+      }
+
+      /* Cabeceras nuevas (.page-hd): título compacto y acciones a todo el ancho */
+      .page-hd {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .page-title {
+        font-size: 1.05rem;
+      }
+      .page-sub {
+        font-size: .72rem;
+      }
+      .page-hd-actions {
+        width: 100%;
+        gap: 6px;
+      }
+      .page-hd-actions > button,
+      .page-hd-actions > a {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
+      /* El perfil ya está en el encabezado móvil (foto arriba a la derecha) */
+      .page-hd-actions .user-profile {
+        display: none !important;
+      }
+      /* Subpestañas en una fila que se desliza de lado, sin ensanchar la página */
+      .bio-subnav,
+      .subtabs-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
+        min-width: 0;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .bio-subnav::-webkit-scrollbar,
+      .subtabs-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .bio-subnav .bio-subnav-btn,
+      .subtabs-bar .subtab-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 7px 12px;
+        font-size: .78rem;
+      }
+
+      /* Pendiente por Recibir ya no tiene título propio en el header (se
+         quitó por quedar duplicado con "Transferencias Pendientes por
+         Recibir"); sin logo ni perfil (ocultos arriba) no queda nada que
+         mostrar ahí, así que se oculta el header completo en móvil. */
+      #content-tab-pendiente-recibir > header {
+        display: none !important;
+      }
+
+      .wrapper > header > div[style*="margin-left: auto"],
+      .wrapper > header > div[style*="margin-left:auto"] {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+      }
+
+      .btn-confirmar {
+        width: 100% !important;
+        justify-content: center !important;
+      }
+
+      .tabs-container {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        margin-bottom: 12px !important;
+      }
+
+      .tabs-container > div:first-child {
+        display: flex;
+        width: 100%;
+        gap: 6px;
+      }
+
+      .tabs-container .tab-btn {
+        flex: 1;
+        text-align: center;
+        padding: 7px 6px;
+        font-size: 0.78rem;
+        border-radius: 6px;
+      }
+
+      .tabs-container > div:last-child {
+        display: flex !important;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        margin-top: 2px;
+        gap: 6px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .mini-stat-card {
+        flex: 0 0 auto;
+        min-width: 120px;
+        padding: 8px 10px;
+        border-radius: 8px;
+      }
+
+      #btn-actualizar-global {
+        margin: 8px 16px 14px 16px !important;
+        justify-content: center;
+      }
+
+      .filters-card {
+        padding: 12px;
+      }
+
+      .filters-grid {
+        gap: 8px !important;
+      }
+
+      .category-chip {
+        padding: 4px 8px;
+        font-size: 0.76rem;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      .kardex-table th, .kardex-table td,
+      .rep-table th, .rep-table td {
+        padding: 6px 8px;
+        font-size: 0.74rem;
+      }
+
+      .kardex-table-container,
+      .rep-table-container {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .modal {
+        padding: 8px;
+      }
+
+      .modal-content {
+        max-width: 100% !important;
+        max-height: 96vh !important;
+        margin: 4px auto !important;
+        border-radius: 10px !important;
+      }
+
+      .modal-header {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      /* Dashboard / Reportes */
+      #rep-header-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      #rep-header-actions .rep-last-updated {
+        width: 100%;
+        justify-content: center;
+        order: -1;
+        margin-right: 0;
+      }
+
+      #btn-rep-exportar-excel, #btn-rep-refrescar {
+        flex: 1;
+        justify-content: center;
+        white-space: nowrap;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+
+      .rep-filters-box {
+        padding: 12px;
+      }
+
+      .rep-filters-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .rep-filters-inputs {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .rep-select-group {
+        min-width: 100%;
+      }
+
+      #btn-rep-limpiar {
+        width: 100%;
+      }
+
+      .rep-metric-align {
+        width: 100%;
+        align-items: stretch !important;
+      }
+
+      .rep-metric-switch {
+        width: 100%;
+      }
+
+      .rep-metric-btn {
+        flex: 1;
+        font-size: 0.7rem;
+        padding: 7px 4px;
+      }
+
+      .rep-kpi-card {
+        padding: 12px;
+      }
+
+      .rep-charts-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .rep-chart-canvas-wrap {
+        height: 230px;
+      }
+
+      .rep-chart-header {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .rep-table-card {
+        padding: 12px;
+      }
+
+      #rep-table-search, #modal-rep-search {
+        width: 100% !important;
+      }
+
+      .rep-modal-footer {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .rep-modal-footer button {
+        flex: 1;
+        justify-content: center;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       OPTIMIZACIÓN MÓVIL COMPACTA (360×800: Redmi, Galaxy, Vivo, Honor)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .mobile-header {
+        padding: 5px 10px;
+        min-height: 44px;
+      }
+      .mobile-menu-btn {
+        font-size: 1.35rem;
+      }
+      .mobile-logo-app {
+        height: 22px;
+        max-height: 22px;
+      }
+      .mobile-title {
+        font-size: .88rem;
+        max-width: 175px;
+      }
+      .mobile-profile-thumb {
+        width: 31px;
+        height: 31px;
+      }
+
+      .wrapper {
+        padding: 8px 6px !important;
+        min-height: calc(100vh - 44px);
+      }
+
+      .wrapper > header {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+      }
+      .wrapper > header .header-titles h1 {
+        font-size: .98rem !important;
+        line-height: 1.25;
+      }
+      .wrapper > header .header-titles p {
+        font-size: .68rem !important;
+        line-height: 1.3;
+        margin-top: 1px;
+      }
+
+      /* Filtros compactos */
+      .filters-card,
+      .rep-filters-box {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .filters-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 5px !important;
+      }
+      .filter-group label {
+        font-size: .66rem !important;
+        margin-bottom: 2px !important;
+        font-weight: 600;
+      }
+      .filter-group select,
+      .filter-group input {
+        height: 30px !important;
+        font-size: .74rem !important;
+        padding: 3px 6px !important;
+        border-radius: 5px !important;
+      }
+
+      /* Chips de categoría horizontales deslizables al tacto */
+      .category-chips,
+      #category-chips-container,
+      .chips-container,
+      .sol-btn-group {
+        display: flex !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        padding-bottom: 3px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .category-chip {
+        flex-shrink: 0;
+        padding: 4px 8px !important;
+        font-size: .70rem !important;
+        border-radius: 6px !important;
+      }
+      .sol-btn-group-item {
+        flex-shrink: 0;
+        padding: 4px 8px !important;
+        font-size: .72rem !important;
+        border-radius: 5px !important;
+      }
+
+      /* Tarjetas de Métricas y KPIs en Reportes y Stock */
+      .rep-kpis-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 5px !important;
+      }
+      .rep-kpi-card {
+        padding: 7px 8px !important;
+        gap: 6px !important;
+        border-radius: 8px !important;
+      }
+      .rep-kpi-icon {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 1.05rem !important;
+        border-radius: 8px !important;
+      }
+      .rep-kpi-val {
+        font-size: 1.05rem !important;
+      }
+      .rep-kpi-title {
+        font-size: .65rem !important;
+      }
+
+      /* Tablas de alta densidad de datos */
+      .kardex-table-container,
+      .rep-table-container,
+      .table-responsive {
+        max-height: calc(100vh - 150px) !important;
+        border-radius: 8px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      table th,
+      .kardex-table th,
+      .rep-table th {
+        padding: 5px 6px !important;
+        font-size: .66rem !important;
+        letter-spacing: .1px;
+      }
+      table td,
+      .kardex-table td,
+      .rep-table td {
+        padding: 5px 6px !important;
+        font-size: .72rem !important;
+      }
+      .estado-badge {
+        font-size: .62rem !important;
+        padding: 2px 5px !important;
+      }
+
+      /* Botones y acciones */
+      .btn-primary,
+      .btn-secondary,
+      .btn-confirmar {
+        padding: 5px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      #btn-actualizar-global {
+        padding: 6px 10px !important;
+        font-size: .75rem !important;
+        margin: 4px 10px 10px 10px !important;
+      }
+
+      /* Formularios de detalle (Solicitudes y Actas) */
+      .sol-form-grid,
+      .actas-form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+
+      /* Modales compactos */
+      .modal {
+        padding: 4px !important;
+      }
+      .modal-content {
+        max-width: 100% !important;
+        max-height: 96vh !important;
+        border-radius: 8px !important;
+      }
+      .modal-header {
+        padding: 8px 12px !important;
+        font-size: .86rem !important;
+      }
+      .modal-body {
+        padding: 10px 12px !important;
+      }
+      .modal-footer {
+        padding: 8px 12px !important;
+        gap: 5px !important;
+      }
+
+      /* Modales "conf-modal" (ej. Recibir Pedido / Acta de Ingreso) — este
+         sistema de modal es distinto al de arriba (.modal) y nunca tuvo
+         ajuste móvil propio, por eso se veía igual que en escritorio. */
+      .conf-modal {
+        padding: 4px !important;
+      }
+      .conf-modal-content {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 98vh !important;
+        border-radius: 8px !important;
+      }
+      .conf-modal-header {
+        padding: 10px 12px !important;
+      }
+      .conf-modal-header h2 {
+        font-size: .92rem !important;
+      }
+      .conf-modal-body {
+        padding: 10px 12px !important;
+        gap: 10px !important;
+      }
+      .conf-modal-footer {
+        padding: 10px 12px !important;
+        gap: 6px !important;
+      }
+      /* Tabla de ítems a recibir: en vez de achicar el texto hasta hacerlo
+         ilegible (como hacía esta regla antes), se mantiene un tamaño de
+         columna y de fuente usable y se confía en el scroll horizontal que
+         ya tiene el contenedor (overflow-x:auto inline, linea ~4446) — es
+         preferible desplazar la tabla que mostrar todo diminuto. También se
+         agranda el input de "Recibido" (antes 55px fijos por JS) para que
+         se pueda tocar/editar bien con el dedo. */
+      #recibir-modal-items-table {
+        min-width: 640px !important;
+        font-size: .82rem !important;
+      }
+      #recibir-modal-items-table th:nth-child(1) { width: 48px !important; }
+      #recibir-modal-items-table th:nth-child(2) { width: 46px !important; }
+      #recibir-modal-items-table th:nth-child(3) { width: 180px !important; }
+      #recibir-modal-items-table th:nth-child(4) { width: 130px !important; }
+      #recibir-modal-items-table th:nth-child(5) { width: 68px !important; }
+      #recibir-modal-items-table th:nth-child(6) { width: 78px !important; }
+      #recibir-modal-items-table th:nth-child(7) { width: 150px !important; }
+      #recibir-modal-items-container {
+        max-height: 46vh !important;
+      }
+      .recibir-item-cant-input {
+        width: 64px !important;
+        font-size: .88rem !important;
+        padding: 6px 4px !important;
+      }
+      .recibir-item-novedad-input {
+        font-size: .82rem !important;
+      }
+
+      /* Modales "+ Agregar Artículos" (Acta de Entrega / Solicitudes): usan
+         estilos inline sin las clases .modal-content/.modal-body/.modal-footer,
+         por lo que el CSS móvil genérico de arriba no les aplicaba y la
+         "sección fija" (banner de tallas, aviso, buscador y filtros) se
+         quedaba siempre visible SIN hacer scroll (flex:1/min-height:0 en la
+         lista la encerraba en su propia cajita chica), dejando muy poco
+         espacio para ver los artículos. Ahora todo el modal se desplaza como
+         una sola unidad: solo el título (arriba) y el footer de acciones
+         (abajo) quedan "sticky"; el banner de tallas, el aviso, los filtros
+         y la lista de artículos se desplazan juntos, así al hacer scroll se
+         gana toda la pantalla para elegir artículos. */
+      #acta-add-articles-modal > div,
+      #sol-add-articles-modal > div {
+        max-height: 96vh !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        overflow-y: auto !important;
+      }
+      #acta-add-articles-modal .modal-header,
+      #sol-add-articles-modal .modal-header {
+        padding: 10px 14px !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 2 !important;
+      }
+      #acta-modal-filtros-fijos,
+      #sol-modal-filtros-fijos {
+        padding: 10px 14px 0 14px !important;
+      }
+      #acta-modal-filtros-fijos p,
+      #sol-modal-filtros-fijos p {
+        padding: 7px 10px !important;
+        margin-bottom: 8px !important;
+        font-size: .72rem !important;
+      }
+      #acta-modal-tallas-banner {
+        padding: 7px 10px !important;
+        margin-bottom: 8px !important;
+      }
+      #acta-modal-tallas-banner > div:first-child {
+        margin-bottom: 5px !important;
+      }
+      #acta-modal-articles-list,
+      #sol-modal-articles-list {
+        padding: 10px 14px !important;
+        flex: none !important;
+        min-height: 0 !important;
+        overflow-y: visible !important;
+      }
+      #acta-modal-footer,
+      #sol-modal-footer {
+        padding: 10px 14px !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 2 !important;
+      }
+
+      /* Tarjetas informativas (mini-stat-card): más compactas para dejar
+         espacio a los registros, que son lo importante. */
+      .mini-stat-card {
+        padding: 5px 8px !important;
+        min-width: 0 !important;
+        gap: 5px !important;
+      }
+      .mini-stat-icon {
+        font-size: .85rem !important;
+      }
+      .mini-stat-info .lbl {
+        font-size: .56rem !important;
+      }
+      .mini-stat-info .val {
+        font-size: .74rem !important;
+      }
+
+      /* Descripciones largas de encabezado: solo aportan en pantallas
+         grandes, en móvil quitan espacio a los registros. */
+      .desc-desktop-only {
+        display: none !important;
+      }
+
+      /* Filtros de Kardex: el campo "Artículo" (input + datalist) se
+         desbordaba de su columna en el grid de 2 columnas móvil. */
+      #kardex-filter-articulo-search {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .filters-grid {
+        overflow-x: hidden;
+      }
+      .filter-group {
+        min-width: 0;
+      }
+      .filter-group select,
+      .filter-group input {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+    }
+
+    /* "Mostrando N artículos/movimientos": no aporta valor, se quita en
+       todas las resoluciones. */
+    #results-text,
+    #kardex-results-text,
+    #articulos-results-text {
+      display: none !important;
+    }
+
+    /* ── Dashboard / Reportes de Inventario ── */
+    .rep-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .rep-kpis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .rep-kpi-card {
+      position: relative;
+      overflow: hidden;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .rep-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+    }
+
+    .rep-kpi-card.kpi-blue::before { background: linear-gradient(90deg, var(--info-dark), var(--info)); }
+    .rep-kpi-card.kpi-green::before { background: linear-gradient(90deg, var(--success), var(--success)); }
+    .rep-kpi-card.kpi-purple::before { background: linear-gradient(90deg, #9333ea, #c084fc); }
+    .rep-kpi-card.kpi-amber::before { background: linear-gradient(90deg, var(--warning), var(--warning)); }
+    .rep-kpi-card.kpi-indigo::before { background: var(--primary-gradient); }
+
+    .rep-kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .rep-kpi-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      background: var(--bg-elevated);
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+
+    .rep-kpi-card:hover .rep-kpi-icon {
+      transform: scale(1.06);
+    }
+
+    .rep-kpi-card.kpi-blue .rep-kpi-icon { background: var(--info-soft); color: var(--info-dark); }
+    .rep-kpi-card.kpi-green .rep-kpi-icon { background: var(--success-soft); color: var(--success); }
+    .rep-kpi-card.kpi-purple .rep-kpi-icon { background: #f3e8ff; color: #9333ea; }
+    .rep-kpi-card.kpi-amber .rep-kpi-icon { background: var(--warning-soft); color: var(--warning); }
+    .rep-kpi-card.kpi-indigo .rep-kpi-icon { background: var(--info-soft); color: var(--info-dark); }
+
+    .rep-kpi-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .rep-kpi-val {
+      font-size: 1.42rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .rep-kpi-lbl {
       font-size: 0.72rem;
       font-weight: 600;
@@ -2369,6 +3165,15 @@
       .wrapper {
         padding: 32px 48px;
       }
+    }
+
+  
+    /* El contenido ocupa siempre todo el ancho que deja el menú lateral, aunque el navegador
+       (por ejemplo una extensión) inserte otros elementos en la página: <body> reparte su ancho
+       entre todo lo que contiene y le quitaba espacio a la tabla y los filtros. */
+    .wrapper { flex: 0 0 calc(100% - 280px); }
+    @media (max-width: 900px) {
+      .wrapper { flex: 1; } /* en celular, como antes */
     }
 
   </style>

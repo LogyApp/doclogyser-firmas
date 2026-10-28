@@ -3131,7 +3131,8 @@ async function enviarNotificacionCesantias({
   solicitud = {},
   trabajador = {},
   observaciones = '',
-  usuarioAccion = ''
+  usuarioAccion = '',
+  medioPago = ''
 }) {
   try {
     // Req. 9: Interruptor Maestro de Notificaciones de Cesantías
@@ -3240,7 +3241,16 @@ async function enviarNotificacionCesantias({
       asunto = `Solicitud de Cesantías Tramitada y Pagada — ${radicadoId} — ${nombreColab}`;
       tituloBadge = 'TRAMITADO · PAGO APLICADO';
       colorBadge = '#059669';
-      mensajePrincipal = `Te informamos que tu solicitud de cesantías con radicado <strong>${radicadoId}</strong> ha sido aprobada y tramitada formalmente para su respectivo pago.`;
+      const medioPagoNorm = String(medioPago || solicitud.medio_pago || '').trim().toLowerCase();
+      if (medioPagoNorm.includes('banco')) {
+        mensajePrincipal = 'Tu solicitud de retiro de cesantías fue autorizada. Por favor, acércate a la sucursal bancaria especificada en el documento adjunto, presentando tanto este soporte impreso como tu documento de identidad para realizar el cobro.';
+      } else if (medioPagoNorm.includes('cheque')) {
+        mensajePrincipal = 'Tu solicitud de retiro de cesantías fue autorizada. Debes dirigirte a la sede del fondo indicada en el documento adjunto, llevando contigo este soporte impreso y tu documento de identidad para reclamar el cheque y entregarlo al tercero correspondiente.';
+      } else if (medioPagoNorm.includes('consignaci') || medioPagoNorm.includes('cuenta')) {
+        mensajePrincipal = 'Tu solicitud de retiro de cesantías fue autorizada. El fondo realizará el abono directamente en tu cuenta de nómina registrada, de acuerdo con los tiempos y detalles indicados en el documento adjunto.';
+      } else {
+        mensajePrincipal = `Tu solicitud de retiro de cesantías con radicado <strong>${radicadoId}</strong> fue autorizada y tramitada formalmente. Consulta los detalles en el documento adjunto.`;
+      }
 
       if (emailColab && emailColab.includes('@')) toEmails.push(emailColab);
     }
@@ -3260,7 +3270,7 @@ async function enviarNotificacionCesantias({
 
     // Req. 6: Hipervínculos a los documentos relacionados en validado y aprobado
     let seccionDocumentosHtml = '';
-    if (evento === 'validado' || evento === 'aprobado') {
+    if (evento === 'validado' || evento === 'aprobado' || evento === 'tramitado') {
       try {
         const [docsRows] = await pool.execute(
           `SELECT Doc, Observaciones, TipoDocumento, Prefijo 
@@ -3273,17 +3283,19 @@ async function enviarNotificacionCesantias({
           const links = docsRows.map(d => {
             const docUrl = d.Doc.startsWith('http') ? d.Doc : `https://storage.googleapis.com/talenthub_central/${d.Doc.replace(/^\/+/, '')}`;
             const nombre = d.Observaciones || `${d.Prefijo || 'Soporte'} (${d.TipoDocumento})`;
-            return `<li style="margin-bottom:8px;">
-              <a href="${docUrl}" target="_blank" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">
-                📄 ${nombre}
-              </a>
-            </li>`;
+            const esComprobante = String(d.Observaciones || '').toLowerCase().includes('comprobante');
+            const badgeExtra = esComprobante ? ' <span style="background:#059669; color:#fff; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700; margin-left:6px;">Comprobante de Trámite</span>' : '';
+            return `<li style="margin-bottom:8px;"><a href="${docUrl}" target="_blank" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">📄 ${nombre}</a>${badgeExtra}</li>`;
+
+
+
+
           }).join('');
 
           seccionDocumentosHtml = `
             <div style="margin:20px 0; padding:16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
               <strong style="display:block; color:#0f172a; margin-bottom:10px; font-size:0.9rem;">
-                📎 Documentos y Soportes Adjuntos:
+                ${evento === 'tramitado' ? '📎 Documentos de la Solicitud y Comprobante de Autorización:' : '📎 Documentos y Soportes Adjuntos:'}
               </strong>
               <ul style="margin:0; padding-left:22px; font-size:0.86rem; line-height:1.6;">
                 ${links}
@@ -3367,6 +3379,11 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
               <td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0">Motivo de Retiro:</td>
               <td style="padding:10px 14px;color:#0f172a;border-bottom:1px solid #e2e8f0">${motivoFmt}</td>
             </tr>
+            ${(medioPago || solicitud.medio_pago) ? `
+            <tr>
+              <td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0">Medio de Pago / Entrega:</td>
+              <td style="padding:10px 14px;font-weight:700;color:#059669;border-bottom:1px solid #e2e8f0">${medioPago || solicitud.medio_pago}</td>
+            </tr>` : ''}
             ${observaciones ? `
             <tr>
               <td style="padding:10px 14px;color:#64748b;background:#fef2f2;">Observaciones / Novedad:</td>

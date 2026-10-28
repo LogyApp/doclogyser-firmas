@@ -1351,6 +1351,15 @@
       }
     }
 
+  
+    /* El contenido ocupa siempre todo el ancho que deja el menú lateral, aunque el navegador
+       (por ejemplo una extensión) inserte otros elementos en la página: <body> reparte su ancho
+       entre todo lo que contiene y le quitaba espacio a la tabla y los filtros. */
+    .wrapper { flex: 0 0 calc(100% - 280px); }
+    @media (max-width: 900px) {
+      .wrapper { flex: 1; } /* en celular, como antes */
+    }
+
   </style>
 </head>
 <body>
@@ -10859,6 +10868,13 @@
         }
         if (crear && c.defecto && !actual()) seleccionar(Number(c.defecto));
       });
+
+      // Área del usuario (Maestro_Usuarios.Area) en las operaciones configuradas, como hacía AppSheet
+      // en Cedi Vegas; gana sobre el valor por defecto de Ajustes Servicios.
+      const areaUsuario = (CONFIG.areasUsuarioServicio?.areas || {})[msContexto.operacion];
+      if (crear && areaUsuario && document.querySelector(`.ms-area-btn[data-id="${areaUsuario}"]`)) {
+        seleccionarAreaServicio(Number(areaUsuario));
+      }
 
       // Listas desplegables
       [['Vehiculo', 'ms-vehiculo'], ['Unidad', 'ms-unidad'], ['Duración', 'ms-duracion']].forEach(([col, id]) => {

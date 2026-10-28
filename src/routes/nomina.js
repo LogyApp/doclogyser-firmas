@@ -27,6 +27,7 @@ const {
   crearSolicitudCesantias,
   obtenerDetalleCesantia,
   actualizarEstadoCesantia,
+  tramitarSolicitudCesantias,
   eliminarSolicitudCesantias,
   obtenerPermisosUsuarioCesantias,
   registrarFirmaTrabajador,
@@ -2278,6 +2279,34 @@ router.post('/api/cesantias/:id/estado', async (req, res) => {
     res.json({ ok: true, ...resEstado });
   } catch (err) {
     console.error('[nomina Cesantias API] Error actualizando estado:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/cesantias/:id/tramitar', uploadCesantias.single('comprobante'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, observaciones, medio_pago } = req.body;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro usuario es requerido' });
+    if (!medio_pago) return res.status(400).json({ ok: false, error: 'Debe seleccionar el medio de pago o entrega' });
+    if (!req.file) return res.status(400).json({ ok: false, error: 'Debe adjuntar el archivo de comprobante de autorización' });
+
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length) return res.status(403).json({ ok: false, error: 'Usuario no válido' });
+    const rol = uRows[0].Rol;
+
+    const resultado = await tramitarSolicitudCesantias({
+      idCesantia: id,
+      usuario,
+      file: req.file,
+      observaciones: observaciones || '',
+      medio_pago,
+      rolUsuario: rol
+    });
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error tramitando solicitud:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

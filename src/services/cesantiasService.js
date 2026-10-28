@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
+const path = require('path');
 const pool = require('./db');
 const {
   subirSoporteCesantias,
@@ -455,6 +456,7 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
       c.gestionado_por,
       DATE_FORMAT(c.fecha_gestion, '%Y-%m-%d %H:%i') AS fecha_gestion,
       c.tramitado_por,
+      c.medio_pago,
       DATE_FORMAT(c.fecha_tramite, '%Y-%m-%d %H:%i') AS fecha_tramite,
       c.observaciones,
       DATE_FORMAT(c.fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro,
@@ -897,8 +899,8 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
     const puedeAnular = await verificarPermisoRolCesantias(rolUsuario, 'Puede anular registros de Cesantias');
     if (!puedeAnular) throw new Error('No tienes permisos para anular registros de Cesantías.');
   } else if (estadoNormalizado === 'tramitado') {
-    const puedeTramitar = await verificarPermisoConRespaldo(rolUsuario, 'Puede tramitar registros de Cesantias', RESPALDO_TRAMITAR);
-    if (!puedeTramitar) throw new Error('No tienes permisos para tramitar solicitudes de Cesantías.');
+    throw new Error('Para tramitar la solicitud de cesantías debe adjuntar el comprobante de autorización mediante la opción "Registrar Pago / Tramitar".');
+
   } else if (estadoNormalizado === 'devuelto') {
     const puedeDevolver = await verificarPermisoConRespaldo(rolUsuario, 'Puede devolver registros de Cesantias', RESPALDO_DEVOLVER);
     if (!puedeDevolver) throw new Error('No tienes permisos para devolver solicitudes de Cesantías.');
@@ -1026,6 +1028,122 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
   });
 
   return { ok: true, estado: estadoNormalizado };
+}
+
+// ── Tramitar Solicitud de Cesantías con Comprobante ──────────────────────────
+async function tramitarSolicitudCesantias({ idCesantia, usuario, file, observaciones = '', medio_pago = '', rolUsuario = null }) {
+  if (!idCesantia) throw new Error('ID de solicitud requerido.');
+  if (!file || !file.buffer) throw new Error('Debe adjuntar el comprobante de autorización para tramitar.');
+
+  const opcionesValidas = ['Banco', 'Cheque', 'Consignación en cuenta'];
+  const medioPagoLimpio = String(medio_pago || '').trim();
+  const esValido = opcionesValidas.some(o => o.toLowerCase() === medioPagoLimpio.toLowerCase());
+  if (!esValido) {
+    throw new Error('Debe seleccionar un medio de pago o entrega válido: Banco, Cheque o Consignación en cuenta.');
+  }
+  const medioPagoFinal = opcionesValidas.find(o => o.toLowerCase() === medioPagoLimpio.toLowerCase()) || medioPagoLimpio;
+
+  // Resolver rol del usuario si no fue provisto directamente
+  if (!rolUsuario && usuario) {
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (uRows.length) rolUsuario = uRows[0].Rol;
+  }
+
+  // Req. 7: Verificar permiso de tramitar contra Config_Parametros
+  const puedeTramitar = await verificarPermisoConRespaldo(rolUsuario, 'Puede tramitar registros de Cesantias', RESPALDO_TRAMITAR);
+  if (!puedeTramitar) throw new Error('No tienes permisos para tramitar solicitudes de Cesantías.');
+
+  // Validar tamaño máximo permitido
+  const { maxSoporteMB } = await obtenerLimitesCesantias();
+  if (file.size > maxSoporteMB * 1024 * 1024) {
+    throw new Error(`El archivo de comprobante supera el tamaño máximo permitido (${maxSoporteMB} MB).`);
+  }
+
+  // Validar formato de archivo permitido
+  const ext = (path.extname(file.originalname || '') || '').toLowerCase();
+  const permitidas = ['.pdf', '.png', '.jpg', '.jpeg'];
+  if (!permitidas.includes(ext)) {
+    throw new Error('Formato de comprobante no válido. Formatos permitidos: PDF, PNG, JPG, JPEG.');
+  }
+
+  // Consultar solicitud
+  const [solRows] = await pool.execute('SELECT Id, estado, identificacion, observaciones FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
+  if (!solRows.length) throw new Error('Solicitud no encontrada.');
+  const sol = solRows[0];
+
+  if (sol.estado !== 'aprobado') {
+    throw new Error(`La solicitud no está en estado "Aprobado" (Estado actual: "${sol.estado}"). Solo se pueden tramitar solicitudes aprobadas.`);
+  }
+
+  // Obtener datos del colaborador para Maestro_docTrabajador
+  const [vinRows] = await pool.execute(
+    `SELECT Regional, \`Operación\` AS Operacion, Estado, DATE_FORMAT(\`Fecha de Ingreso\`, '%Y-%m-%d') AS FechaIngreso 
+     FROM \`Maestro_Vinculación\` 
+     WHERE \`Identificación\` = ? 
+     ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+    [sol.identificacion]
+  );
+  const vin = vinRows[0] || {};
+
+  // 1. Guardar archivo en el bucket talenthub en la carpeta del empleado: /{identificacion}/{identificacion}.RCES.{ts}{ext}
+  const gcsUrl = await subirSoporteCesantias(sol.identificacion, file.buffer, file.originalname);
+
+  // 2. Insertar en Maestro_docTrabajador con TipoDocumento = '46', Prefijo = 'RCES', Observaciones = 'Comprobante autorización fondo de cesantias'
+  const docId = uuidv4();
+  await pool.execute(
+    `INSERT INTO Maestro_docTrabajador (
+      id, \`Validación\`, Regional, \`Operación\`, \`Identificación\`, Estado,
+      Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Observaciones,
+      Visualizar, Solicitud, Justificacion_Solicitud, Usuario, recurso, Url, FechaRegistro
+    ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, '46', 'RCES', ?, 'Comprobante autorización fondo de cesantias', NULL, NULL, NULL, ?, ?, ?, NOW())`,
+    [
+      docId,
+      vin.Regional || null,
+      vin.Operacion || null,
+      sol.identificacion,
+      vin.Estado || 'Activo',
+      vin.FechaIngreso || null,
+      gcsUrl,
+      usuario,
+      idCesantia,
+      gcsUrl,
+    ]
+  );
+
+  // 3. Actualizar estado a 'tramitado' en Dynamic_Cesantias
+  const fechaActual = fechaHoraBogota();
+  await pool.execute(
+    `UPDATE Dynamic_Cesantias 
+     SET estado = 'tramitado',
+         tramitado_por = ?,
+         fecha_tramite = ?,
+         medio_pago = ?,
+         observaciones = IF(LENGTH(?) > 0, ?, observaciones),
+         fecha_actualizacion = NOW()
+     WHERE Id = ?`,
+    [usuario, fechaActual, medioPagoFinal, observaciones, observaciones, idCesantia]
+  );
+
+  // 4. Enviar notificación por correo con el enlace del documento
+  setImmediate(async () => {
+    try {
+      const detalle = await obtenerDetalleCesantia(idCesantia);
+      if (detalle) {
+        await enviarNotificacionCesantias({
+          evento: 'tramitado',
+          solicitud: { ...detalle.solicitud, medio_pago: medioPagoFinal },
+          trabajador: detalle.trabajador || {},
+          observaciones: observaciones || '',
+          usuarioAccion: usuario,
+          medioPago: medioPagoFinal,
+        });
+      }
+    } catch (eMail) {
+      console.warn('[tramitarSolicitudCesantias - background] Error procesando correo de notificación:', eMail.message);
+    }
+  });
+
+  return { ok: true, estado: 'tramitado', urlComprobante: gcsUrl };
 }
 
 // ── Req. 4: Eliminar Registro de Cesantías ────────────────────────────────────
@@ -1250,6 +1368,7 @@ module.exports = {
   crearSolicitudCesantias,
   obtenerDetalleCesantia,
   actualizarEstadoCesantia,
+  tramitarSolicitudCesantias,
   eliminarSolicitudCesantias,
   obtenerPermisosUsuarioCesantias,
   obtenerLimitesCesantias,

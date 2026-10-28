@@ -983,6 +983,7 @@
     #cesantiasModalNuevaOverlay .modal-full,
     #cesantiasModalDetalleOverlay .modal-full,
     #cesantiasModalCompartirOverlay .modal-full,
+    #cesantiasModalTramitarOverlay .modal-full,
     #cesantiasModalTutorialOverlay .modal-full {
       width: 100% !important;
       max-width: 100% !important;
@@ -1074,7 +1075,16 @@
     content: ''; position: absolute; left: -5px; top: 12px; width: 8px; height: 8px;
     border-radius: 50%; background: var(--accent);
   }
-</style>
+
+    /* El contenido ocupa siempre todo el ancho que deja el menú lateral, aunque el navegador
+       (por ejemplo una extensión) inserte otros elementos en la página: <body> reparte su ancho
+       entre todo lo que contiene y le quitaba espacio a la tabla y los filtros. */
+    .wrapper { flex: 0 0 calc(100% - 280px); }
+    @media (max-width: 900px) {
+      .wrapper { flex: 1; } /* en celular, como antes */
+    }
+
+  </style>
 </head>
 <body>
 
@@ -2552,6 +2562,79 @@
         </button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Subir Comprobante y Tramitar Cesantías -->
+<div class="modal-full-overlay" id="cesantiasModalTramitarOverlay" style="display:none; z-index:2100;">
+  <div class="modal-full" style="max-width:550px; height:auto; max-height:92vh; overflow-y:auto; border-radius:12px;">
+    <div class="modal-full-header" style="background:linear-gradient(135deg, #1B2A5E 0%, #2b4594 100%); color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-weight:700; font-size:1.02rem; display:flex; align-items:center; gap:8px;">
+        💸 Registrar Pago y Trámite de Cesantías
+      </span>
+      <button type="button" onclick="cerrarModalTramitarCesantias()" style="background:transparent; border:none; color:#fff; font-size:1.15rem; cursor:pointer; padding:4px 8px; border-radius:4px;">&#10005;</button>
+    </div>
+    <div class="modal-ficha-body" style="padding: 20px;">
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; margin-bottom:16px; font-size:0.83rem; color:#1e40af; line-height:1.45;">
+        Adjunte el soporte o comprobante de autorización emitido por el fondo de cesantías o entidad pagadora. Al guardar, el archivo se almacenará en la carpeta del colaborador en TalentHub (Tipo 46) y la solicitud pasará a estado <strong>Tramitado</strong>.
+      </div>
+
+      <!-- Resumen de la Solicitud -->
+      <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:16px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.82rem;">
+          <div><span style="color:var(--text-muted); font-size:0.72rem; display:block;">Radicado:</span><strong id="ces_tr_radicado">—</strong></div>
+          <div><span style="color:var(--text-muted); font-size:0.72rem; display:block;">Monto Solicitado:</span><strong style="color:var(--accent); font-size:0.95rem;" id="ces_tr_monto">—</strong></div>
+          <div style="grid-column: span 2;"><span style="color:var(--text-muted); font-size:0.72rem; display:block;">Colaborador:</span><strong id="ces_tr_colaborador">—</strong></div>
+          <div style="grid-column: span 2;"><span style="color:var(--text-muted); font-size:0.72rem; display:block;">Fondo de Cesantías:</span><span id="ces_tr_fondo">—</span></div>
+        </div>
+      </div>
+
+      <form id="cesantiasTramitarForm" onsubmit="event.preventDefault(); guardarTramiteCesantia();">
+        <input type="hidden" id="ces_tr_id">
+        
+        <!-- Selector Medio de Pago / Entrega -->
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:0.84rem; font-weight:700; color:var(--text); margin-bottom:6px;">
+            Medio de Pago / Entrega <span style="color:#dc2626;">*</span>
+          </label>
+          <select id="ces_tr_medio_pago" required onchange="actualizarPreviewMensajeTramite(this.value)" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:0.85rem; font-family:inherit;">
+            <option value="">-- Seleccionar medio de pago / entrega --</option>
+            <option value="Banco">Banco</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Consignación en cuenta">Consignación en cuenta</option>
+          </select>
+          <div id="ces_tr_medio_pago_preview" style="display:none; margin-top:8px; padding:10px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; font-size:0.77rem; color:#166534; line-height:1.45;">
+            <!-- Texto dinámico del mensaje al trabajador -->
+          </div>
+        </div>
+
+        <!-- Input Archivo Comprobante -->
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:0.84rem; font-weight:700; color:var(--text); margin-bottom:6px;">
+            Comprobante de Autorización / Pago <span style="color:#dc2626;">*</span>
+          </label>
+          <input type="file" id="ces_tr_file" accept=".pdf,.png,.jpg,.jpeg" required style="width:100%; padding:10px 12px; border:1.5px dashed var(--accent); border-radius:8px; background:var(--bg); color:var(--text); font-size:0.85rem; cursor:pointer;">
+          <span style="display:block; font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
+            Formatos admitidos: PDF, JPG, PNG (máx. 15 MB).
+          </span>
+        </div>
+
+        <!-- Observaciones / Referencia -->
+        <div style="margin-bottom:18px;">
+          <label style="display:block; font-size:0.84rem; font-weight:600; color:var(--text); margin-bottom:6px;">
+            Observaciones / Número de Referencia (Opcional):
+          </label>
+          <textarea id="ces_tr_observaciones" rows="3" placeholder="Ej: Autorizado por fondo, transacción #123456..." style="width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:0.84rem; resize:vertical; font-family:inherit;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--border); padding-top:14px;">
+          <button type="button" class="btn-reset" onclick="cerrarModalTramitarCesantias()" style="margin:0;">Cancelar</button>
+          <button type="submit" class="btn-guardar-ficha" id="ces_btn_guardar_tramite" style="background:#6366f1;">
+            ✓ Subir Comprobante y Tramitar
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -7407,7 +7490,7 @@
       // 4. Tramitar / Registrar Pago (si está en aprobado y tiene permiso de tramitar)
       if (r.estado === 'aprobado' && conf.puedeTramitar) {
         accionesHtml += `
-          <button type="button" class="btn-icon-circle" style="background:#6366f1; color:#fff;" onclick="event.stopPropagation(); ejecutarAccionEstadoCesantia('${r.Id}', 'tramitado', true, 'Ingrese referencia o comprobante de trámite / pago:')" title="Registrar Trámite / Pago de Nómina">
+          <button type="button" class="btn-icon-circle" style="background:#6366f1; color:#fff;" onclick="event.stopPropagation(); abrirModalTramitarCesantia('${r.Id}')" title="Registrar Trámite / Subir Comprobante de Pago">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
           </button>`;
       }
@@ -8323,7 +8406,7 @@
       document.getElementById('ces_d_aud_radicado').textContent = `${sol.usuario || '—'} (${sol.fecha_registro_fmt || '—'})`;
       document.getElementById('ces_d_aud_validado').textContent = sol.validado_por ? `${sol.validado_por} (${sol.fecha_validacion_fmt})` : 'Pendiente';
       document.getElementById('ces_d_aud_gestionado').textContent = sol.gestionado_por ? `${sol.gestionado_por} (${sol.fecha_gestion_fmt})` : 'Pendiente';
-      document.getElementById('ces_d_aud_tramitado').textContent = sol.tramitado_por ? `${sol.tramitado_por} (${sol.fecha_tramite_fmt})` : 'Pendiente';
+      document.getElementById('ces_d_aud_tramitado').textContent = sol.tramitado_por ? `${sol.tramitado_por} (${sol.fecha_tramite_fmt})${sol.medio_pago ? ' • ' + sol.medio_pago : ''}` : 'Pendiente';
 
       const obsBox = document.getElementById('ces_d_observaciones_box');
       if (sol.observaciones && sol.observaciones.trim()) {
@@ -8353,7 +8436,7 @@
         docsContainer.innerHTML = '<div style="font-size:.82rem; color:var(--text-muted);">No hay soportes anexos en Maestro_docTrabajador.</div>';
       }
 
-      const pdfDoc = docs.find(d => String(d.Observaciones || '').toLowerCase().includes('formato') || String(d.Doc || '').endsWith('.pdf'));
+      const pdfDoc = docs.find(d => String(d.Observaciones || '').toLowerCase().includes('formato')) || docs.find(d => String(d.Doc || '').endsWith('.pdf') && !String(d.Observaciones || '').toLowerCase().includes('comprobante'));
       if (pdfDoc && sol.firma_trabajador) {
         document.getElementById('ces_d_pdf_status_info').innerHTML = `<span style="color:#10b981; font-weight:700;">✓ Formato de solicitud firmado y disponible.</span>`;
         const btnPdf = document.getElementById('ces_d_btn_ver_pdf');
@@ -8416,7 +8499,7 @@
 
     // Tramitar / Pago
     if (conf.puedeTramitar && sol.estado === 'aprobado') {
-      wrap.innerHTML += `<button type="button" class="btn-guardar-ficha" style="background:#6366f1;" onclick="ejecutarAccionEstadoCesantia('${sol.Id}', 'tramitado', true, 'Ingrese referencia o comprobante de pago / trámite de nómina:')">✓ Registrar Pago / Tramitar</button>`;
+      wrap.innerHTML += `<button type="button" class="btn-guardar-ficha" style="background:#6366f1;" onclick="abrirModalTramitarCesantia('${sol.Id}')">💸 Registrar Pago / Subir Comprobante</button>`;
     }
 
     // Anular (Req. 5)
@@ -8431,6 +8514,10 @@
   }
 
   async function ejecutarAccionEstadoCesantia(id, nuevoEstado, requiereNota = false, promptTexto = '') {
+    if (nuevoEstado === 'tramitado') {
+      abrirModalTramitarCesantia(id);
+      return;
+    }
     let nota = '';
     if (requiereNota) {
       nota = prompt(promptTexto || `Ingrese el motivo / observación para marcar la solicitud como "${nuevoEstado}":`, '');
@@ -8501,6 +8588,142 @@
       fetchCesantiasData();
     } catch (err) {
       alert('Error: ' + err.message);
+    }
+  }
+
+  // ── Modal de Trámite / Subir Comprobante de Cesantías ─────────────────────
+  function actualizarPreviewMensajeTramite(val) {
+    const box = document.getElementById('ces_tr_medio_pago_preview');
+    if (!box) return;
+    const v = String(val || '').trim().toLowerCase();
+    if (v.includes('banco')) {
+      box.style.display = 'block';
+      box.innerHTML = '<strong>Mensaje al colaborador en la notificación:</strong><br>Tu solicitud de retiro de cesantías fue autorizada. Por favor, acércate a la sucursal bancaria especificada en el documento adjunto, presentando tanto este soporte impreso como tu documento de identidad para realizar el cobro.';
+    } else if (v.includes('cheque')) {
+      box.style.display = 'block';
+      box.innerHTML = '<strong>Mensaje al colaborador en la notificación:</strong><br>Tu solicitud de retiro de cesantías fue autorizada. Debes dirigirte a la sede del fondo indicada en el documento adjunto, llevando contigo este soporte impreso y tu documento de identidad para reclamar el cheque y entregarlo al tercero correspondiente.';
+    } else if (v.includes('consignaci') || v.includes('cuenta')) {
+      box.style.display = 'block';
+      box.innerHTML = '<strong>Mensaje al colaborador en la notificación:</strong><br>Tu solicitud de retiro de cesantías fue autorizada. El fondo realizará el abono directamente en tu cuenta de nómina registrada, de acuerdo con los tiempos y detalles indicados en el documento adjunto.';
+    } else {
+      box.style.display = 'none';
+      box.textContent = '';
+    }
+  }
+
+  function abrirModalTramitarCesantia(id) {
+    const overlay = document.getElementById('cesantiasModalTramitarOverlay');
+    if (!overlay) return;
+
+    document.getElementById('ces_tr_id').value = id;
+    document.getElementById('ces_tr_radicado').textContent = id;
+    document.getElementById('ces_tr_colaborador').textContent = 'Cargando...';
+    document.getElementById('ces_tr_monto').textContent = '—';
+    document.getElementById('ces_tr_fondo').textContent = '—';
+    document.getElementById('ces_tr_file').value = '';
+    document.getElementById('ces_tr_observaciones').value = '';
+
+    const selMedio = document.getElementById('ces_tr_medio_pago');
+    if (selMedio) selMedio.value = '';
+    actualizarPreviewMensajeTramite('');
+
+    const btnGuardar = document.getElementById('ces_btn_guardar_tramite');
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+      btnGuardar.textContent = '✓ Subir Comprobante y Tramitar';
+    }
+
+    if (_cesantiasState && _cesantiasState.detalleActual && _cesantiasState.detalleActual.solicitud && _cesantiasState.detalleActual.solicitud.Id === id) {
+      const sol = _cesantiasState.detalleActual.solicitud;
+      const trab = _cesantiasState.detalleActual.trabajador || {};
+      document.getElementById('ces_tr_colaborador').textContent = `${trab.nombre || trab.trabajadorCompleto || sol.identificacion} (${sol.identificacion})`;
+      document.getElementById('ces_tr_monto').textContent = '$ ' + Number(sol.monto_solicitado || 0).toLocaleString('es-CO');
+      document.getElementById('ces_tr_fondo').textContent = sol.fondo_cesantias || '—';
+    } else {
+      const rec = (cesantiasData.records || []).find(r => r.Id === id);
+      if (rec) {
+        document.getElementById('ces_tr_colaborador').textContent = `${rec.nombre_completo || rec.identificacion} (${rec.identificacion})`;
+        document.getElementById('ces_tr_monto').textContent = '$ ' + Number(rec.monto_solicitado || 0).toLocaleString('es-CO');
+        document.getElementById('ces_tr_fondo').textContent = rec.fondo_cesantias || '—';
+      }
+    }
+
+    overlay.style.display = 'flex';
+    if (window.registrarModalBack) {
+      overlay._backEntry = registrarModalBack(() => cerrarModalTramitarCesantias());
+    }
+  }
+
+  function cerrarModalTramitarCesantias() {
+    const overlay = document.getElementById('cesantiasModalTramitarOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'none';
+    if (window.cerrarModalBack && overlay._backEntry) {
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
+  }
+
+  async function guardarTramiteCesantia() {
+    const id = document.getElementById('ces_tr_id').value;
+    const fileInput = document.getElementById('ces_tr_file');
+    const obs = (document.getElementById('ces_tr_observaciones').value || '').trim();
+    const btnGuardar = document.getElementById('ces_btn_guardar_tramite');
+
+    const medioPago = (document.getElementById('ces_tr_medio_pago')?.value || '').trim();
+    if (!medioPago) {
+      alert('Debe seleccionar el medio de pago / entrega (Banco, Cheque o Consignación en cuenta).');
+      document.getElementById('ces_tr_medio_pago')?.focus();
+      return;
+    }
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      alert('Debe adjuntar el archivo o comprobante de autorización.');
+      fileInput.focus();
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const maxBytes = 15 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert('El archivo supera el tamaño máximo permitido de 15 MB.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('usuario', usuario);
+    formData.append('medio_pago', medioPago);
+    formData.append('observaciones', obs);
+    formData.append('comprobante', file);
+
+    try {
+      if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.textContent = 'Subiendo comprobante...';
+      }
+
+      const res = await fetch(`/nomina/api/cesantias/${encodeURIComponent(id)}/tramitar`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo tramitar la solicitud.');
+
+      alert(`✅ Solicitud ${id} tramitada exitosamente con comprobante.`);
+      cerrarModalTramitarCesantias();
+
+      const detalleOverlay = document.getElementById('cesantiasModalDetalleOverlay');
+      if (detalleOverlay && detalleOverlay.style.display !== 'none') {
+        abrirModalDetalleCesantia(id);
+      }
+      fetchCesantiasData();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      if (btnGuardar) {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = '✓ Subir Comprobante y Tramitar';
+      }
     }
   }
 

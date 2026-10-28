@@ -170,7 +170,16 @@
     .modal { max-width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; }
     .table-container { max-height: calc(100vh - 200px); }
   }
-</style>
+
+    /* El contenido ocupa siempre todo el ancho que deja el menú lateral, aunque el navegador
+       (por ejemplo una extensión) inserte otros elementos en la página: <body> reparte su ancho
+       entre todo lo que contiene y le quitaba espacio a la tabla y los filtros. */
+    .wrapper { flex: 0 0 calc(100% - 280px); }
+    @media (max-width: 900px) {
+      .wrapper { flex: 1; } /* en celular, como antes */
+    }
+
+  </style>
 </head>
 <body>
 

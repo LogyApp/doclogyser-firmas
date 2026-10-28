@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
@@ -169,6 +169,8 @@ router.get('/', async (req, res) => {
       quincenaActual,
       serviciosMasivo: cfgServiciosMasivo,
       permisosRecibos,
+      // Área del usuario con que se prellena el servicio en ciertas operaciones (Config_Parametros)
+      areasUsuarioServicio: await obtenerAreasUsuarioServicio(base.usuarioId || usuario),
       topeValorBaseServicio,
       puedeGestionarClientesCredito: puedeGestionarCredito,
       clientesMaestros: {
@@ -3453,6 +3455,14 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         if (errorModalidad) return res.status(400).json({ error: errorModalidad });
       }
       const unidadVaciaEnCarga = !limpiarValorPlano(f.unidad); // la unidad de la Actividad gana sobre el ajuste general
+      // Área del usuario en las operaciones configuradas (Config_Parametros) si la celda viene vacía
+      if (!limpiarValorPlano(f.area)) {
+        const claveArea = `AreaUsuario|${opInfo.operacion}`;
+        if (!ajustesPorOperacion.has(claveArea)) {
+          ajustesPorOperacion.set(claveArea, (await obtenerAreaUsuarioServicio(acceso.usuarioId || usuario, opInfo.operacion)).area);
+        }
+        if (ajustesPorOperacion.get(claveArea)) f.area = ajustesPorOperacion.get(claveArea);
+      }
       Object.values(ajustesFila).forEach((c) => {
         const celda = CELDA_MASIVO_POR_CAMPO[c.bodyKey];
         if (celda && c.defecto && !limpiarValorPlano(f[celda])) f[celda] = c.defecto;
@@ -5680,6 +5690,12 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
     const body = req.body || {};
     const files = req.files || {};
     const idServicio = generarPackedUUID();
+
+    // Área del usuario en las operaciones configuradas (Config_Parametros) si no llegó Área
+    if (!String(body.area || '').trim()) {
+      const { area } = await obtenerAreaUsuarioServicio(acceso.usuarioId || usuario, contexto.operacion);
+      if (area) body.area = area;
+    }
 
     // Unidad por defecto de la Actividad (Config_Actividad.Unidad_Defecto) si no llegó Unidad
     if (!String(body.unidad || '').trim() && body.actividad) {
