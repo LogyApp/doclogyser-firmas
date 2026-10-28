@@ -8560,8 +8560,8 @@
         </button>
       `;
 
-      // Formas de pago conocidas: 0, 1, 2, 3, 4
-      [0, 1, 2, 3, 4].forEach(code => {
+      // Formas de pago conocidas, en el orden de uso: 3 Crédito, 1 Efectivo, 2 Transferencia, 4 Pendiente, 0 Anulado
+      [3, 1, 2, 4, 0].forEach(code => {
         const item = fps.find(f => Number(f.formaDePago) === code);
         const count = item ? Number(item.totalCount || 0) : 0;
         const sum = item ? Number(modoSumas === 'total' ? (item.sumTotalPago || 0) : (item.sumValorBase || 0)) : 0;
