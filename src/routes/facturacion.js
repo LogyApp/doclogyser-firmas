@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
@@ -155,6 +155,8 @@ router.get('/', async (req, res) => {
       opsPorRegional: base.opsPorRegional,
       quincenaActual,
       serviciosMasivo: cfgServiciosMasivo,
+      permisosRecibos: await obtenerPermisosRecibos(base.rol),
+      topeValorBaseServicio: await obtenerTopeValorBaseServicio(),
       puedeGestionarClientesCredito: await puedeGestionarClientesCredito(base.rol),
       clientesMaestros: {
         puedeDepurar: await puedeDepurarMaestros(base.rol),
@@ -2085,7 +2087,9 @@ async function getImpuestos() {
     reteIcaMap[key] = Number(r.Porcentaje);
     reteIcaValorBaseMap[key] = Number(r['Valor Base']) || 0;
   });
+  const nitsRetencion = await obtenerNitsRetencionObligatoria();
   cachedImpuestos = {
+    nitsRetencion,
     iva, reteFuente, reteIva,
     reteFuenteValorBase, reteIvaValorBase,
     reteIcaMap, reteIcaValorBaseMap,
@@ -2095,15 +2099,20 @@ async function getImpuestos() {
   return cachedImpuestos;
 }
 
+function anioActualBogota() {
+  return parseInt(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric' }).format(new Date()), 10);
+}
+
 // NITs con retención obligatoria de Fuente/IVA sin importar el Subtotal ni el flag del cliente
-// (regla fija heredada de la fórmula AppSheet del campo Retefuente/ReteIVA de Recibos).
+// (regla heredada de la fórmula AppSheet). Config_Parametros facturacion / Recibos
+// 'NITs con retención obligatoria de Fuente e IVA'; se carga con los impuestos.
 const NITS_RETENCION_OBLIGATORIA = [860350940, 890204199];
 
 // Replica las fórmulas AppSheet de Retefuente/ReteIVA/ReteICA de Dynamic_Recibos.
 // clienteFlags = { RTSERVIC, RTIVA, RTICA } (columnas de Maestro_Clientes para ese Nit).
 function sugerirRetenciones({ nit, operacion, subtotal }, clienteFlags, impuestos) {
   const nitNum = nit ? Number(nit) : null;
-  const esObligatorio = nitNum && NITS_RETENCION_OBLIGATORIA.includes(nitNum);
+  const esObligatorio = nitNum && (impuestos.nitsRetencion || NITS_RETENCION_OBLIGATORIA).includes(nitNum);
   const sub = Number(subtotal) || 0;
   const flags = clienteFlags || {};
 
@@ -2212,10 +2221,10 @@ router.get('/api/servicios', async (req, res) => {
       params.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
     }
 
-    // Año (default: 2026 si no se especifica y no hay filtro desde/hasta)
-    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : '2026') : anio;
+    // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
+    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || 2026;
+      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       whereClauses.push('s.`Hora Inicio` >= ? AND s.`Hora Inicio` <= ?');
       params.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -2410,10 +2419,10 @@ router.get('/api/servicios/metricas', async (req, res) => {
       commonParams.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
     }
 
-    // Año (default: 2026 si no se especifica y no hay filtro desde/hasta)
-    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : '2026') : anio;
+    // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
+    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || 2026;
+      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       commonWhere.push('s.`Hora Inicio` >= ? AND s.`Hora Inicio` <= ?');
       commonParams.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -3065,6 +3074,7 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
     if (!cfg.puedeCargaMasiva) {
       return res.status(403).json({ error: 'Su rol no tiene permiso para usar la Carga Masiva de Servicios.' });
     }
+    const topeValorBase = await obtenerTopeValorBaseServicio();
 
     const filasRaw = Array.isArray(req.body && req.body.filas) ? req.body.filas : [];
     const filasActivas = filasRaw.filter(f => {
@@ -3571,9 +3581,9 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
 
       const cantidad = parseNumeroPlano(f.cantidad);
       const valorUnitario = parseNumeroPlano(f.valorUnitario);
-      if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > 3000000) {
+      if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
         return res.status(400).json({
-          error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $3.000.000.`
+          error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $${topeValorBase.toLocaleString('es-CO')}.`
         });
       }
 
@@ -4258,10 +4268,10 @@ router.get('/api/recibos', async (req, res) => {
       params.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
     }
 
-    // Año (default: 2026 si no se especifica y no hay filtro desde/hasta)
-    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : '2026') : anio;
+    // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
+    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || 2026;
+      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       whereClauses.push('dr.Fecha >= ? AND dr.Fecha <= ?');
       params.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -4519,9 +4529,9 @@ router.get('/api/recibos/metricas', async (req, res) => {
       commonParams.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
     }
 
-    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : '2026') : anio;
+    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || 2026;
+      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       commonWhere.push('dr.Fecha >= ? AND dr.Fecha <= ?');
       commonParams.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -4843,7 +4853,7 @@ router.get('/api/recibos/:idRecibo', async (req, res) => {
 
 // Roles con permiso para editar libremente (sin el bloqueo por Estado=Green) y
 // para tocar ReteIVA/ReteICA, replicando la regla de negocio definida por el usuario.
-const ROLES_EDICION_LIBRE_RECIBOS = ['Facturación', 'Sistema'];
+// Permisos de Recibos: Config_Parametros facturacion / Recibos (configFacturacion.js).
 
 // Estado agregado del recibo según la validación de sus Servicios (Dynamic_Servicios.Validacion:
 // Green=1, Yellow=2, resto=0), igual lógica que ya usa GET /api/recibos.
@@ -5002,6 +5012,9 @@ router.post('/api/recibos', async (req, res) => {
       telefono, email, retefuente, reteiva, reteica, observaciones
     } = req.body;
 
+    const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
+    if (!permisosRecibos.crear) return res.status(403).json({ error: 'Su rol no tiene permiso para crear recibos.' });
+
     if (!operacion) return res.status(400).json({ error: 'La Operación es obligatoria.' });
     if (!acceso.sinFiltro && (!acceso.operacionesFiltro || !acceso.operacionesFiltro.includes(operacion))) {
       return res.status(403).json({ error: 'No autorizado para registrar recibos en esa Operación.' });
@@ -5033,9 +5046,8 @@ router.post('/api/recibos', async (req, res) => {
     else ({ telefono, email } = camposRecibo);
     observaciones = camposRecibo.observaciones;
 
-    const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS.includes(acceso.rol);
     const retenciones = await resolverRetenciones({
-      rolPrivilegiado,
+      rolPrivilegiado: permisosRecibos.modificarRetenciones,
       payload: { retefuente, reteiva, reteica },
       nit: null, operacion, subtotal: 0
     });
@@ -5082,8 +5094,9 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
       return res.status(403).json({ error: 'No autorizado para editar este recibo' });
     }
 
-    const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS.includes(acceso.rol);
-    if (!rolPrivilegiado) {
+    const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
+    if (!permisosRecibos.crear) return res.status(403).json({ error: 'Su rol no tiene permiso para editar recibos.' });
+    if (!permisosRecibos.editarValidados) {
       const estadoActual = await obtenerEstadoRecibo(idRecibo);
       if (estadoActual === 'Green') {
         return res.status(403).json({ error: 'Este recibo ya fue validado (verde) y no puede editarse.' });
@@ -5152,7 +5165,7 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
 
     const subtotalActual = (modalidadFinal === 'RECAUDO') ? await obtenerSubtotalRecibo(idRecibo) : 0;
     const retenciones = await resolverRetenciones({
-      rolPrivilegiado,
+      rolPrivilegiado: permisosRecibos.modificarRetenciones,
       payload: { retefuente: body.retefuente, reteiva: body.reteiva, reteica: body.reteica },
       nit: nitFinal, operacion: operacionFinal, subtotal: subtotalActual
     });
@@ -5189,8 +5202,8 @@ router.delete('/api/recibos/:idRecibo', async (req, res) => {
                 || await computarAccesoFacturacion(usuario, 'Servicios');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    if (acceso.rol !== 'Sistema') {
-      return res.status(403).json({ error: 'Solo el rol Sistema puede eliminar recibos.' });
+    if (!(await obtenerPermisosRecibos(acceso.rol)).eliminarRecibos) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para eliminar recibos.' });
     }
 
     const [existRows] = await pool.execute(
@@ -5216,7 +5229,6 @@ router.delete('/api/recibos/:idRecibo', async (req, res) => {
 // Solo se agregan/editan desde el Recibo al que corresponden.
 // ══════════════════════════════════════════════════════════════════════════════
 
-const ROLES_EDITAR_IDRECIBO_SERVICIO = ['Sistema', 'Facturación', 'Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR'];
 const TIPO_DOC_FOTO_DOCUMENTO = 90;
 const TIPO_DOC_FOTO_EVIDENCIA = 91;
 const TIPO_DOC_FOTO_TRANSFERENCIA = 92;
@@ -5601,8 +5613,9 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
 
     const cantidad = (body.cantidad !== undefined && body.cantidad !== '') ? Math.round(parseFloat(body.cantidad) * 1000) / 1000 : null;
     const valorUnitario = (body.valorUnitario !== undefined && body.valorUnitario !== '') ? Math.round(parseFloat(body.valorUnitario) * 1000) / 1000 : null;
-    if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > 3000000) {
-      return res.status(400).json({ error: 'El Valor Base (Cantidad x Valor Unitario) no puede superar $3.000.000.' });
+    const topeValorBase = await obtenerTopeValorBaseServicio();
+    if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
+      return res.status(400).json({ error: `El Valor Base (Cantidad x Valor Unitario) no puede superar $${topeValorBase.toLocaleString('es-CO')}.` });
     }
 
     let formaDePago;
@@ -5713,8 +5726,8 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       return res.status(403).json({ error: 'No autorizado para editar este servicio' });
     }
 
-    const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS.includes(acceso.rol);
-    if (!rolPrivilegiado) {
+    const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
+    if (!permisosRecibos.editarValidados) {
       const estadoRecibo = await obtenerEstadoRecibo(existente.IdRecibo);
       if (estadoRecibo === 'Green') {
         return res.status(403).json({ error: 'Este recibo ya fue validado (verde) y no puede editarse.' });
@@ -5727,7 +5740,7 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
     // Reasignar a otro Recibo: solo roles autorizados.
     let idReciboFinal = existente.IdRecibo;
     if (typeof body.idRecibo !== 'undefined' && body.idRecibo && body.idRecibo !== existente.IdRecibo) {
-      if (!ROLES_EDITAR_IDRECIBO_SERVICIO.includes(acceso.rol)) {
+      if (!permisosRecibos.reasignarServicios) {
         return res.status(403).json({ error: 'No tiene permiso para reasignar este servicio a otro recibo.' });
       }
       const nuevoContexto = await obtenerContextoRecibo(body.idRecibo);
@@ -5757,8 +5770,9 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
     const valorUnitario = (typeof body.valorUnitario !== 'undefined')
       ? ((body.valorUnitario !== '') ? Math.round(parseFloat(body.valorUnitario) * 1000) / 1000 : null)
       : existente['Valor Unitario'];
-    if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > 3000000) {
-      return res.status(400).json({ error: 'El Valor Base (Cantidad x Valor Unitario) no puede superar $3.000.000.' });
+    const topeValorBase = await obtenerTopeValorBaseServicio();
+    if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
+      return res.status(400).json({ error: `El Valor Base (Cantidad x Valor Unitario) no puede superar $${topeValorBase.toLocaleString('es-CO')}.` });
     }
 
     let formaDePago;
@@ -5882,7 +5896,7 @@ router.delete('/api/servicios/:idServicio', async (req, res) => {
 
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-    if (acceso.rol !== 'Sistema') return res.status(403).json({ error: 'Solo el rol Sistema puede eliminar servicios.' });
+    if (!(await obtenerPermisosRecibos(acceso.rol)).eliminarServicios) return res.status(403).json({ error: 'Su rol no tiene permiso para eliminar servicios.' });
 
     const [existRows] = await pool.execute('SELECT IdRecibo FROM Dynamic_Servicios WHERE IdServicio = ? LIMIT 1', [idServicio]);
     if (!existRows.length) return res.status(404).json({ error: 'Servicio no encontrado' });
