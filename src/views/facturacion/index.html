@@ -1331,6 +1331,26 @@
       color: var(--text-muted);
     }
 
+  
+    /* Widescreen / High-resolution desktop enhancements */
+    @media (min-width: 1440px) {
+      .wrapper {
+        padding: 28px 36px;
+      }
+      .table-container {
+        width: 100%;
+      }
+      .filtros-grid {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+    }
+    @media (min-width: 1920px) {
+      .wrapper {
+        padding: 32px 48px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1937,6 +1957,11 @@
                   ➕ Adicionar
                 </button>
               </div>
+            </div>
+            <div id="det-recib-servicios-buscar-wrap" style="display:none; position:relative; margin-bottom:10px;">
+              <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none;">🔍</span>
+              <input type="search" id="det-recib-servicios-buscar" placeholder="Buscar por Id Servicio, Actividad, Placa o Transportadora..." autocomplete="off" oninput="filtrarServiciosRecibo()"
+                style="width:100%; padding:9px 12px 9px 36px; border:1.5px solid var(--border); border-radius:8px; font-size:0.88rem; font-family:inherit; background:var(--card-bg); color:var(--text);">
             </div>
             <div class="table-container">
               <table class="data-table" id="tabla-det-recibo-servicios">
@@ -9509,6 +9534,8 @@
 
         // Servicios table
         document.getElementById('det-recib-servicios-count').textContent = srvs.length;
+        document.getElementById('det-recib-servicios-buscar').value = '';
+        document.getElementById('det-recib-servicios-buscar-wrap').style.display = srvs.length > 1 ? 'block' : 'none';
         const tbodySrv = document.getElementById('det-recib-servicios-tbody');
         if (!srvs.length) {
           tbodySrv.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 16px;">No hay servicios registrados para este recibo.</td></tr>';
@@ -9517,7 +9544,8 @@
             const sc = estadoServicioColores(s.Estado);
             const puedeEliminarSrv = !!PERMISOS_RECIBOS.eliminarServicios;
             return `
-            <tr onclick="abrirDetalleServicioDesdeRecibo('${esc(s.IdServicio)}', '${esc(r.IdRecibo)}')" style="cursor: pointer;" title="Clic para ver el detalle del servicio">
+            <tr onclick="abrirDetalleServicioDesdeRecibo('${esc(s.IdServicio)}', '${esc(r.IdRecibo)}')" style="cursor: pointer;" title="Clic para ver el detalle del servicio"
+              data-buscar="${esc(textoBusquedaServicioRecibo(s))}">
               <td data-label="Estado"><span role="img" title="${{ Green: 'Verde', Yellow: 'Amarillo', Red: 'Rojo' }[s.Estado] || 'Sin estado'}" style="display:inline-block; width:14px; height:14px; border-radius:50%; background:${sc.color};"></span></td>
               <td data-label="Id Servicio" style="font-family: monospace; font-size: 0.78rem;">${esc(s.IdServicio)}</td>
               <td data-label="Hora Inicio">${formatFechaBogota(s['Hora Inicio'])}</td>
@@ -9540,6 +9568,39 @@
         console.error('[verDetalleRecibo]', err);
         alert('No se pudo cargar el detalle del recibo seleccionado.');
         volverAListadoRecibos();
+      }
+    }
+
+    // ── Búsqueda en los servicios del detalle del recibo ──
+    function normalizarBusqueda(texto) {
+      return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    }
+    function textoBusquedaServicioRecibo(s) {
+      return normalizarBusqueda([
+        s.IdServicio, s.actividadNombre || s.Actividad, s.placaNombre || s.PL1, s.transportadoraNombre || s.Transportadora,
+      ].filter(Boolean).join(' '));
+    }
+    function filtrarServiciosRecibo() {
+      const palabras = normalizarBusqueda(document.getElementById('det-recib-servicios-buscar').value).split(/\s+/).filter(Boolean);
+      const tbody = document.getElementById('det-recib-servicios-tbody');
+      const filas = [...tbody.querySelectorAll('tr[data-buscar]')];
+      let visibles = 0;
+      filas.forEach(tr => {
+        const coincide = palabras.every(p => tr.dataset.buscar.includes(p)); // todas las palabras escritas
+        tr.style.display = coincide ? '' : 'none';
+        if (coincide) visibles++;
+      });
+      document.getElementById('det-recib-servicios-count').textContent = palabras.length ? `${visibles} de ${filas.length}` : filas.length;
+      let vacio = document.getElementById('det-recib-servicios-sin-resultados');
+      if (!visibles && filas.length) {
+        if (!vacio) {
+          vacio = document.createElement('tr');
+          vacio.id = 'det-recib-servicios-sin-resultados';
+          vacio.innerHTML = '<td colspan="11" style="text-align:center; color:var(--text-muted); padding:16px;">Ningún servicio coincide con la búsqueda.</td>';
+          tbody.appendChild(vacio);
+        }
+      } else if (vacio) {
+        vacio.remove();
       }
     }
 

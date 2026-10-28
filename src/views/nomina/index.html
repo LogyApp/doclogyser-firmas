@@ -138,7 +138,14 @@
   }
   .filtros-chevron { display: inline-block; transition: transform .2s ease; color: var(--text); font-size: .95rem; }
   .filtros-body { overflow: hidden; margin-top: 16px; }
-  .filtros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  @media (min-width: 1440px) {
+    .filtros-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .wrapper { padding: 28px 36px; }
+  }
+  @media (min-width: 1920px) {
+    .wrapper { padding: 32px 48px; }
+  }
   .filtro-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
   .filtro-field select, .filtro-field input {
     width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: .88rem; background: var(--card-bg); color: var(--text);

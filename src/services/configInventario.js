@@ -57,6 +57,7 @@ const PAC = {
   REGENERAR_PDF:    'Roles que pueden regenerar PDF de actas',
   LOGICA:           'Roles que pueden gestionar la lógica de abastecimiento',
   HORAS_ENLACE:     'Horas de vigencia del enlace de firma de actas',
+  PERSONAL_RETIRADO: 'Roles que pueden generar actas a personal retirado',
 };
 
 // Artículos
@@ -144,6 +145,7 @@ const DEFAULTS = {
     [PAC.REGENERAR_PDF]: 'Sistema, Inventario',
     [PAC.LOGICA]: 'Sistema, Inventario, AdmSst',
     [PAC.HORAS_ENLACE]: '48',
+    [PAC.PERSONAL_RETIRADO]: 'Inventario, Sistema',
   },
   [SECCION_SOLICITUDES]: {
     [PS.EDITAR_CERRADAS]: 'Sistema',
@@ -424,7 +426,14 @@ async function obtenerConfigActas(rol) {
     puedeEditarFirmadas: enLista(valor(p, SECCION_ACTAS, PAC.EDITAR_FIRMADAS), rol),
     puedeRegenerarPdf: enLista(valor(p, SECCION_ACTAS, PAC.REGENERAR_PDF), rol),
     puedeGestionarLogica: enLista(valor(p, SECCION_ACTAS, PAC.LOGICA), rol),
+    puedePersonalRetirado: enLista(valor(p, SECCION_ACTAS, PAC.PERSONAL_RETIRADO), rol),
   };
+}
+
+// ¿Puede el rol generar actas a personal retirado?
+async function puedeCrearActasRetirados(rol) {
+  const p = await obtenerParametros(SECCION_ACTAS);
+  return enLista(valor(p, SECCION_ACTAS, PAC.PERSONAL_RETIRADO), rol);
 }
 
 // Horas que dura el enlace de firma de un acta (al crearlo y en la tarea que cierra las vencidas).
@@ -492,6 +501,7 @@ module.exports = {
   obtenerConfigArticulos,
   PARAMETROS_ARTICULOS: PA,
   obtenerConfigActas,
+  puedeCrearActasRetirados,
   horasVigenciaEnlaceActas,
   correoActasHabilitado,
   PARAMETROS_ACTAS: PAC,

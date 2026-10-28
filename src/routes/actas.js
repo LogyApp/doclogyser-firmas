@@ -180,8 +180,16 @@ async function computarConfigCreacionActa(usuarioId) {
 
   const opsPorRegional = agruparOperacionesPorRegional(opRows);
   const categoriasConds = [4, 5, 6].includes(accesoCode) ? await obtenerCategoriasRestringidas() : null;
+  const cfgActas = await obtenerConfigActas(rol);
 
-  return { rol, regional, operacion, opsPorRegional, categoriasRestringidas: categoriasConds };
+  return {
+    rol,
+    regional,
+    operacion,
+    opsPorRegional,
+    categoriasRestringidas: categoriasConds,
+    puedePersonalRetirado: !!cfgActas.puedePersonalRetirado,
+  };
 }
 
 // ═════ Redirección a la interfaz (pestaña Actas dentro del módulo de Inventario) ═════
@@ -316,17 +324,33 @@ router.get('/api/config-creacion', async (req, res) => {
 router.get('/api/trabajadores-buscar', async (req, res) => {
   try {
     // Seguridad: exige usuario con la pestaña Actas (antes respondía sin usuario)
-    if (!req.query.usuario || !(await computarAccesoActas(req.query.usuario))) {
+    if (!req.query.usuario) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+    const acceso = await computarAccesoActas(req.query.usuario);
+    if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
     const { q } = req.query;
     if (!q || q.trim().length < 2) return res.json([]);
 
+    const cfgActas = await obtenerConfigActas(acceso.rol);
+    const puedeRetirados = !!cfgActas.puedePersonalRetirado;
+    const term = `%${q.trim()}%`;
+    const estadoCond = puedeRetirados ? "AND v.Estado IN ('Activo', 'Retirado')" : "AND v.Estado = 'Activo'";
+
     const [rows] = await pool.execute(
-      `SELECT Identificación, Trabajador, Regional, \`Operación\` FROM \`Maestro_Vinculación\`
-       WHERE Estado = 'Activo' AND UPPER(Trabajador) LIKE UPPER(?)
-       ORDER BY Trabajador LIMIT 15`,
-      [`%${q.trim()}%`]
+      `SELECT v.Identificación, v.Trabajador, v.Regional, v.\`Operación\`, v.Estado
+       FROM \`Maestro_Vinculación\` v
+       INNER JOIN (
+         SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+         FROM \`Maestro_Vinculación\`
+         GROUP BY Identificación
+       ) ult ON v.Identificación = ult.Identificación AND v.\`Fecha de Ingreso\` = ult.MaxFecha
+       WHERE (v.Identificación LIKE ? OR v.Trabajador LIKE ?)
+         ${estadoCond}
+       ORDER BY v.Trabajador LIMIT 15`,
+      [term, term]
     );
     res.json(rows);
   } catch (err) {
@@ -588,6 +612,20 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
     // Exige la pestaña Actas, la operación dentro de su alcance y, si el rol es restringido, su categoría.
     const errCreacion = await validarCreacionActa(usuario, operacion, categoria);
     if (errCreacion) return res.status(403).json({ error: errCreacion });
+
+    // Validar si el trabajador está retirado y si el rol del usuario puede generarle actas
+    const [[vincEstadoRow]] = await pool.execute(
+      'SELECT Estado FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [identificacion]
+    );
+    const esRetirado = vincEstadoRow && String(vincEstadoRow.Estado || '').trim().toLowerCase() === 'retirado';
+    if (esRetirado) {
+      const accesoUser = await computarAccesoActas(usuario);
+      const cfgActas = await obtenerConfigActas(accesoUser ? accesoUser.rol : '');
+      if (!cfgActas.puedePersonalRetirado) {
+        return res.status(403).json({ error: 'No tiene permiso para generar actas de entrega a personal retirado.' });
+      }
+    }
 
     let itemsParsed = [];
     if (items) {
