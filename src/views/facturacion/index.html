@@ -9129,7 +9129,7 @@
         </button>
       `;
 
-      ['RECAUDO', 'CREDITO'].forEach(modKey => {
+      ['CREDITO', 'RECAUDO'].forEach(modKey => {
         const item = mods.find(m => String(m.modalidad || '').toUpperCase() === modKey);
         const count = item ? Number(item.totalCount || 0) : 0;
         const sum = item ? Number(recibModoSumas === 'total' ? (item.sumTotal || 0) : (item.sumSubtotal || 0)) : 0;
