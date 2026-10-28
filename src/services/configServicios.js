@@ -10,6 +10,8 @@ const pool = require('./db');
 // 'archivo' = adjunto; 'texto' = valor libre. bodyKey = nombre del campo en el formulario/API.
 const CAMPOS = {
   Recibo: [
+    // Modalidad: modalidades permitidas en la operación y la que llega escogida (fila sin modalidad)
+    { columna: 'Modalidad', etiqueta: 'Modalidad', tipo: 'lista', catalogo: 'modalidad', bodyKey: 'modalidad' },
     { columna: 'Cliente a Facturar', etiqueta: 'Cliente a Facturar', tipo: 'lista', catalogo: 'clienteCredito', bodyKey: 'clienteAFacturar' },
     { columna: 'Categoria', etiqueta: 'Categoría', tipo: 'texto', bodyKey: 'categoria' },
     { columna: 'Telefono', etiqueta: 'Teléfono', tipo: 'texto', bodyKey: 'telefono' },
@@ -188,6 +190,8 @@ async function opcionesCatalogo(catalogo, operacion) {
       const [r] = await pool.execute('SELECT DISTINCT `Cliente a Facturar` AS valor FROM Maestro_Clientes_Credito WHERE `Cliente a Facturar` IS NOT NULL ORDER BY `Cliente a Facturar`');
       return r.map((x) => ({ valor: x.valor, texto: x.valor }));
     }
+    case 'modalidad':
+      return MODALIDADES.map((m) => ({ valor: m, texto: m }));
     case 'grupoDtjo':
       return [{ valor: 'GRUPAL', texto: 'GRUPAL' }, { valor: 'INDIVIDUAL', texto: 'INDIVIDUAL' }];
     default:

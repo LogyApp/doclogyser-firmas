@@ -2724,7 +2724,7 @@ async function getMasivoLookupsBase() {
       "SELECT ID as id, AREA as area, `OPERACIÓN` as operacion, OPERATIVO as operativo, ADMINISTRATIVO as administrativo FROM Config_Area ORDER BY `OPERACIÓN` ASC, AREA ASC"
     ),
     pool.query(
-      "SELECT ID as id, Actividad as actividad, `Operación` as operacion FROM Config_Actividad ORDER BY `Operación` ASC, Actividad ASC"
+      "SELECT ID as id, Actividad as actividad, `Operación` as operacion, Unidad_Defecto as unidadDefecto FROM Config_Actividad ORDER BY `Operación` ASC, Actividad ASC"
     ),
     pool.query('SELECT Vehiculo as vehiculo FROM Config_Vehiculo ORDER BY Vehiculo ASC'),
     pool.query('SELECT Unidad as unidad FROM Config_Unidad ORDER BY Unidad ASC'),
@@ -2995,7 +2995,8 @@ router.post('/api/servicios/masivo-validar-lote', async (req, res) => {
         const totalS = Number(r.totalServicios) || 0;
         const verdesS = Number(r.serviciosVerdes) || 0;
         const amarillosS = Number(r.serviciosAmarillos) || 0;
-        const todosEnVerde = totalS > 0 && verdesS === totalS;
+        // Bloquea agregar servicios solo en RECAUDO: un recibo de CREDITO admite más aunque esté en verde
+        const todosEnVerde = totalS > 0 && verdesS === totalS && (r.modalidad || '').toUpperCase() !== 'CREDITO';
         recibosPorConsecutivo[key] = {
           idRecibo: r.idRecibo,
           consecutivo: key,
@@ -3254,7 +3255,8 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
           clienteAFacturar: r.clienteAFacturar || '',
           modalidad: (r.modalidad || '').toUpperCase(),
           nit: r.nit || null,
-          todosEnVerde: totalS > 0 && verdesS === totalS
+          // Solo RECAUDO: un recibo de CREDITO admite más servicios aunque esté en verde
+          todosEnVerde: totalS > 0 && verdesS === totalS && (r.modalidad || '').toUpperCase() !== 'CREDITO'
         });
       }
     });
@@ -3355,6 +3357,18 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         }));
       }
       const ajustesFila = ajustesPorOperacion.get(claveAjustes);
+      if (reciboNuevoGrupo) {
+        const claveRecibo = `Recibo|${opInfo.operacion}`;
+        if (!ajustesPorOperacion.has(claveRecibo)) {
+          ajustesPorOperacion.set(claveRecibo, await configServicios.resolverConfig({ seccion: 'Recibo', operacion: opInfo.operacion, modalidad: '', rol: acceso.rol }));
+        }
+        const errorModalidad = await configServicios.aplicarConfig({
+          seccion: 'Recibo', operacion: opInfo.operacion, modalidad: modalidadFila, rol: acceso.rol, body: { modalidad: modalidadFila },
+          crear: false, config: ajustesPorOperacion.get(claveRecibo), soloPresentes: true, prefijo: `Fila ${numFila}: `
+        });
+        if (errorModalidad) return res.status(400).json({ error: errorModalidad });
+      }
+      const unidadVaciaEnCarga = !limpiarValorPlano(f.unidad); // la unidad de la Actividad gana sobre el ajuste general
       Object.values(ajustesFila).forEach((c) => {
         const celda = CELDA_MASIVO_POR_CAMPO[c.bodyKey];
         if (celda && c.defecto && !limpiarValorPlano(f[celda])) f[celda] = c.defecto;
@@ -3562,6 +3576,9 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
           error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $3.000.000.`
         });
       }
+
+      // Unidad por defecto de la Actividad (Config_Actividad.Unidad_Defecto) si la celda venía vacía
+      if (unidadVaciaEnCarga && actMatch.unidadDefecto) f.unidad = actMatch.unidadDefecto;
 
       // Ajustes de la operación: obligatorios y datos habilitados (solo las columnas de la carga)
       const camposFila = {
@@ -5007,7 +5024,7 @@ router.post('/api/recibos', async (req, res) => {
 
     // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
     // Cada modalidad revisa solo sus campos; Categoría depende del cliente y la maneja el formulario.
-    const camposRecibo = (modalidad === 'CREDITO') ? { clienteAFacturar, observaciones } : { telefono, email, observaciones };
+    const camposRecibo = (modalidad === 'CREDITO') ? { modalidad, clienteAFacturar, observaciones } : { modalidad, telefono, email, observaciones };
     const errorAjustes = await configServicios.aplicarConfig({
       seccion: 'Recibo', operacion, modalidad, rol: acceso.rol, body: camposRecibo, crear: true, soloPresentes: true
     });
@@ -5124,10 +5141,10 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
     const errorAjustes = await configServicios.aplicarConfig({
       seccion: 'Recibo', operacion: operacionFinal, modalidad: modalidadFinal, rol: acceso.rol, crear: false, soloPresentes: true,
       body: (modalidadFinal === 'CREDITO')
-        ? { clienteAFacturar: clienteAFacturarFinal, observaciones: observacionesFinal }
-        : { telefono: telefonoFinal, email: emailFinal, observaciones: observacionesFinal },
+        ? { modalidad: modalidadFinal, clienteAFacturar: clienteAFacturarFinal, observaciones: observacionesFinal }
+        : { modalidad: modalidadFinal, telefono: telefonoFinal, email: emailFinal, observaciones: observacionesFinal },
       anteriores: {
-        clienteAFacturar: existente['Cliente a Facturar'], categoria: existente.Categoria, telefono: existente.Telefono,
+        modalidad: existente.Modalidad, clienteAFacturar: existente['Cliente a Facturar'], categoria: existente.Categoria, telefono: existente.Telefono,
         email: existente.Email, observaciones: existente.Observaciones,
       },
     });
@@ -5303,7 +5320,7 @@ router.get('/api/config/actividades', async (req, res) => {
     if (!operacion) return res.json([]);
 
     const [rows] = await pool.execute(
-      'SELECT ID as id, Actividad as actividad FROM Config_Actividad WHERE `Operación` = ? ORDER BY Actividad ASC',
+      'SELECT ID as id, Actividad as actividad, Unidad_Defecto as unidadDefecto FROM Config_Actividad WHERE `Operación` = ? ORDER BY Actividad ASC',
       [operacion]
     );
     res.json(rows);
@@ -5556,17 +5573,23 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       return res.status(403).json({ error: 'No autorizado para agregar servicios en este recibo' });
     }
 
-    const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS.includes(acceso.rol);
-    if (!rolPrivilegiado) {
+    // Un recibo de RECAUDO validado (verde) no admite más servicios; uno de CREDITO sí, aunque esté en verde.
+    if (contexto.modalidad !== 'CREDITO') {
       const estadoRecibo = await obtenerEstadoRecibo(idRecibo);
       if (estadoRecibo === 'Green') {
-        return res.status(403).json({ error: 'Este recibo ya fue validado (verde); no se pueden agregar más servicios.' });
+        return res.status(403).json({ error: 'Este recibo de Recaudo ya fue validado (verde); no se pueden agregar más servicios.' });
       }
     }
 
     const body = req.body || {};
     const files = req.files || {};
     const idServicio = generarPackedUUID();
+
+    // Unidad por defecto de la Actividad (Config_Actividad.Unidad_Defecto) si no llegó Unidad
+    if (!String(body.unidad || '').trim() && body.actividad) {
+      const [act] = await pool.execute('SELECT Unidad_Defecto FROM Config_Actividad WHERE ID = ? LIMIT 1', [parseInt(body.actividad, 10) || 0]);
+      if (act.length && act[0].Unidad_Defecto) body.unidad = act[0].Unidad_Defecto;
+    }
 
     // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
     const configServ = await configServicios.resolverConfig({ seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol });
@@ -6196,7 +6219,8 @@ function leerAjusteServicio(body) {
   if (!configServicios.SECCIONES.includes(seccion)) return { error: 'La Sección debe ser Recibo o Servicio.' };
   const campo = configServicios.campoDe(seccion, body.columna_origen);
   if (!campo) return { error: 'El campo escogido no se puede ajustar.' };
-  const modalidad = String(body.modalidad || '').trim().toUpperCase();
+  // La fila del campo Modalidad aplica a ambas modalidades (se usa antes de escoger una)
+  const modalidad = campo.columna === 'Modalidad' ? '' : String(body.modalidad || '').trim().toUpperCase();
   if (modalidad && !configServicios.MODALIDADES.includes(modalidad)) return { error: 'La Modalidad debe ser RECAUDO, CREDITO o vacía.' };
   const operacion = String(body.operacion || '').trim();
   const limpiarLista = (v) => configServicios.lista(Array.isArray(v) ? v.join(',') : v).join(', ');

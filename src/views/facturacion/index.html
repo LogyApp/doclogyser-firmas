@@ -654,7 +654,35 @@
       border-color: var(--accent-light);
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
-    .form-group input:disabled {
+    /* Móvil: los servicios del detalle del recibo se ven como tarjetas (la tabla no cabe) */
+    @media (max-width: 768px) {
+      #tabla-det-recibo-servicios { min-width: 0 !important; table-layout: auto !important; }
+      #tabla-det-recibo-servicios thead { display: none; }
+      #tabla-det-recibo-servicios, #tabla-det-recibo-servicios tbody,
+      #tabla-det-recibo-servicios tr, #tabla-det-recibo-servicios td { display: block; width: 100% !important; }
+      #tabla-det-recibo-servicios tr {
+        border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;
+        padding: 6px 12px; background: var(--card-bg);
+      }
+      #tabla-det-recibo-servicios td {
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        padding: 5px 0 !important; border: none !important; white-space: normal !important;
+        overflow: visible !important; text-align: right; max-width: none !important;
+      }
+      #tabla-det-recibo-servicios td[data-label]::before {
+        content: attr(data-label); flex: none; text-align: left;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);
+      }
+      #tabla-det-recibo-servicios td[colspan] { justify-content: center; }
+    }
+
+    /* Fondo y texto según el tema (sin esto el navegador pinta el campo blanco con texto claro en oscuro) */
+    .form-group input:not([type="checkbox"]):not([type="radio"]), .form-group select, .form-group textarea {
+      background-color: var(--card-bg);
+      color: var(--text);
+    }
+    :root[data-theme="oscuro"] { color-scheme: dark; } /* calendario, hora y flechas nativas en oscuro */
+    .form-group input:disabled, .form-group select:disabled, .form-group textarea:disabled {
       background: var(--bg);
       color: var(--text-muted);
       cursor: not-allowed;
@@ -3696,9 +3724,10 @@
             </div>
             <div class="form-group" id="mr-categoria-wrap" style="display:none;">
               <label>Categoría</label>
-              <select id="mr-categoria">
+              <select id="mr-categoria" style="display:none;">
                 <option value="">— Sin categoría —</option>
               </select>
+              <div id="mr-categoria-botones" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
             </div>
           </div>
 
@@ -3909,11 +3938,10 @@
           <div class="form-group">
             <label>Estado *</label>
             <div class="btn-grupo">
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-green" style="color:var(--success-dark);" onclick="setEstadoServicio('Green')">🟢 Verde</button>
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-yellow" style="color:var(--warning-dark);" onclick="setEstadoServicio('Yellow')">🟡 Amarillo</button>
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-red" style="color:var(--danger-dark);" onclick="setEstadoServicio('Red')">🔴 Rojo</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-green" style="color:var(--success-dark);" onclick="setEstadoServicio('Green')" title="Verde" aria-label="Verde">🟢</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-yellow" style="color:var(--warning-dark);" onclick="setEstadoServicio('Yellow')" title="Amarillo" aria-label="Amarillo">🟡</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-red" style="color:var(--danger-dark);" onclick="setEstadoServicio('Red')" title="Rojo" aria-label="Rojo">🔴</button>
             </div>
-            <small style="color: var(--text-muted); font-size: 0.76rem;">Verde requiere Cantidad, Valor Unitario y Forma de Pago (y Foto de Transferencia si la Forma de Pago es Transferencia).</small>
           </div>
 
           <div class="form-group">
@@ -3961,7 +3989,8 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
             <div class="form-group">
               <label>Unidad</label>
-              <select id="ms-unidad"><option value="">— Seleccione —</option></select>
+              <select id="ms-unidad" onchange="msUnidadManual = true; pintarUnidadServicio()"><option value="">— Seleccione —</option></select>
+              <div id="ms-unidad-botones" style="display:none; flex-wrap:wrap; gap:6px;"></div>
             </div>
             <div class="form-group">
               <label>Cantidad</label>
@@ -9303,7 +9332,15 @@
 
         // Botón Agregar Servicio: misma regla que Editar Recibo (Facturación/Sistema siempre;
         // los demás roles solo si el recibo no está validado en Green).
-        document.getElementById('btn-agregar-servicio').style.display = puedeEditar ? 'inline-flex' : 'none';
+        // Agregar Servicio: un recibo de CREDITO siempre admite más servicios; uno de RECAUDO validado
+        // (verde) no, para ningún rol. El botón se ve deshabilitado.
+        const btnAgregarServ = document.getElementById('btn-agregar-servicio');
+        const reciboCerrado = String(r.Modalidad || '').toUpperCase() !== 'CREDITO' && estadoColor === 'Green';
+        btnAgregarServ.style.display = 'inline-flex';
+        btnAgregarServ.disabled = reciboCerrado;
+        btnAgregarServ.style.opacity = reciboCerrado ? '0.45' : '';
+        btnAgregarServ.style.cursor = reciboCerrado ? 'not-allowed' : '';
+        btnAgregarServ.title = reciboCerrado ? 'Recibo de Recaudo validado (verde): no admite más servicios.' : '';
 
         // Servicios table
         document.getElementById('det-recib-servicios-count').textContent = srvs.length;
@@ -9316,17 +9353,17 @@
             const puedeEliminarSrv = CONFIG.rol === 'Sistema';
             return `
             <tr onclick="abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="cursor: pointer;" title="Clic para editar este servicio">
-              <td><span class="badge" style="background:${sc.bg}; color:${sc.color};">${esc(s.Estado || '-')}</span></td>
-              <td style="font-family: monospace; font-size: 0.78rem;">${esc(s.IdServicio)}</td>
-              <td>${formatFechaBogota(s['Hora Inicio'])}</td>
-              <td>${esc(s.actividadNombre || s.Actividad || '-')}</td>
-              <td><strong>${esc(s.placaNombre || s.PL1 || '-')}</strong></td>
-              <td>${esc(s.transportadoraNombre || s.Transportadora || '-')}</td>
-              <td>${esc(s.Cantidad || 0)}</td>
-              <td>$ ${formatMiles(s['Valor Unitario'])}</td>
-              <td style="font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
-              <td style="font-weight: 700; color: var(--accent);">$ ${formatMiles(s.totalPago)}</td>
-              <td>
+              <td data-label="Estado"><span class="badge" style="background:${sc.bg}; color:${sc.color};">${esc(s.Estado || '-')}</span></td>
+              <td data-label="Id Servicio" style="font-family: monospace; font-size: 0.78rem;">${esc(s.IdServicio)}</td>
+              <td data-label="Hora Inicio">${formatFechaBogota(s['Hora Inicio'])}</td>
+              <td data-label="Actividad">${esc(s.actividadNombre || s.Actividad || '-')}</td>
+              <td data-label="Placa"><strong>${esc(s.placaNombre || s.PL1 || '-')}</strong></td>
+              <td data-label="Transportadora">${esc(s.transportadoraNombre || s.Transportadora || '-')}</td>
+              <td data-label="Cantidad">${esc(s.Cantidad || 0)}</td>
+              <td data-label="Valor Unitario">$ ${formatMiles(s['Valor Unitario'])}</td>
+              <td data-label="Valor Base" style="font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
+              <td data-label="Total Pago" style="font-weight: 700; color: var(--accent);">$ ${formatMiles(s.totalPago)}</td>
+              <td data-label="Acciones">
                 <button type="button" onclick="event.stopPropagation(); abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Editar">✏️</button>
                 ${puedeEliminarSrv ? `<button type="button" onclick="event.stopPropagation(); eliminarServicio('${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Eliminar (Sistema)">🗑️</button>` : ''}
               </td>
@@ -9923,6 +9960,18 @@
       document.getElementById('mr-cliente-con-servicios').style.display = hayGuardados ? 'block' : 'none';
     }
 
+    // Categoría en botones: escriben en el <select id="mr-categoria"> oculto, que es el que se guarda
+    function pintarBotonesCategoriaRecibo() {
+      const catSel = document.getElementById('mr-categoria');
+      document.getElementById('mr-categoria-botones').innerHTML = [...catSel.options].filter(o => o.value).map(o => `
+        <button type="button" class="btn-grupo-opt ${o.value === catSel.value ? 'sel' : ''}" style="flex:none; padding:7px 14px;"
+          onclick="seleccionarCategoriaRecibo(this.dataset.valor)" data-valor="${esc(o.value)}">${o.value ? esc(o.textContent) : 'Sin categoría'}</button>`).join('');
+    }
+    function seleccionarCategoriaRecibo(valor) {
+      document.getElementById('mr-categoria').value = valor;
+      pintarBotonesCategoriaRecibo();
+    }
+
     function onModalRecioClienteFacturarChange() {
       cargarCategoriasModalRecibo();
     }
@@ -9951,6 +10000,7 @@
         catSel.innerHTML = '<option value="">— Sin categoría —</option>' +
           data.map(c => `<option value="${esc(c.id)}">${esc(c.categoria)}</option>`).join('');
         if (categoriaPreseleccionada) catSel.value = categoriaPreseleccionada;
+        pintarBotonesCategoriaRecibo();
         wrap.style.display = (mrAjustes.Categoria && !mrAjustes.Categoria.visible) ? 'none' : 'block';
       } catch (e) {
         catSel.innerHTML = '<option value="">— Sin categoría —</option>';
@@ -10077,7 +10127,7 @@
       if (!operacion) return alert('Debe seleccionar la Operación.');
       if (!modalidad) return alert('Debe seleccionar la Modalidad (RECAUDO o CREDITO).');
       const faltantesRecibo = Object.entries(mrAjustes)
-        .filter(([col, c]) => c.visible && c.obligatorio && CAMPOS_FORM_AJUSTES.Recibo[col])
+        .filter(([col, c]) => c.visible && c.obligatorio && CAMPOS_FORM_AJUSTES.Recibo[col] && col !== 'Modalidad')
         .filter(([col]) => !String(document.getElementById(CAMPOS_FORM_AJUSTES.Recibo[col]).value || '').trim())
         .filter(([col]) => !(col === 'Categoria' && document.getElementById('mr-categoria-wrap').style.display === 'none'))
         .filter(([col]) => !(['Cliente a Facturar', 'Categoria'].includes(col) && modalidad !== 'CREDITO'))
@@ -10349,6 +10399,11 @@
       if (typeof defectoInicial !== 'string' && onAjusteCampoChange.clave !== clave) ajHabSel.clear();
       onAjusteCampoChange.clave = clave;
 
+      const esModalidad = seccion === 'Recibo' && columna === 'Modalidad';
+      const selModalidad = document.getElementById('aj-modalidad');
+      if (esModalidad) selModalidad.value = '';
+      selModalidad.disabled = esModalidad || !ajPuede('editar');
+
       habWrap.style.display = campo.tipo === 'lista' ? '' : 'none';
       defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto') ? '' : 'none';
       defSel.style.display = campo.tipo === 'lista' ? '' : 'none';
@@ -10505,7 +10560,7 @@
         'Foto Evidencia': 'ms-foto-evidencia', 'Telefono': 'ms-telefono', 'Observaciones': 'ms-observaciones',
       },
       Recibo: {
-        'Cliente a Facturar': 'mr-cliente-facturar', 'Categoria': 'mr-categoria', 'Telefono': 'mr-telefono',
+        'Modalidad': 'btn-mr-modalidad-recaudo', 'Cliente a Facturar': 'mr-cliente-facturar', 'Categoria': 'mr-categoria', 'Telefono': 'mr-telefono',
         'Email': 'mr-email', 'Observaciones': 'mr-observaciones',
       },
     };
@@ -10597,6 +10652,8 @@
         if (crear && c.defecto) setGrupoDtjoServicio(c.defecto);
       }
 
+      pintarUnidadServicio(); // botones o lista según cuántas unidades quedaron
+
       // Campos de texto con valor por defecto
       if (crear) {
         ['Remolque', 'Cantidad', 'Valor Unitario', 'Origen', 'Destino', 'Manifiesto', 'Etapa', 'Muelle', 'Notas', 'Telefono', 'Observaciones'].forEach(col => {
@@ -10628,10 +10685,25 @@
       const modalidad = modalRecibo.modoActual;
       const clave = `${operacion}|${modalidad || ''}`;
       aplicarAjustesRecibo.clave = clave;
-      const ajustes = (operacion && modalidad) ? await obtenerAjustesFormulario('Recibo', operacion, modalidad) : {};
+      const ajustes = operacion ? await obtenerAjustesFormulario('Recibo', operacion, modalidad) : {};
       if (aplicarAjustesRecibo.clave !== clave) return; // llegó tarde: ya se escogió otra operación
       mrAjustes = ajustes;
       aplicarEtiquetasYVisibilidad('Recibo', mrAjustes);
+
+      // Modalidad: solo las permitidas en la operación; si hay una sola (o un valor por defecto) llega escogida
+      const cm = mrAjustes.Modalidad;
+      const permitidas = (cm && cm.habilitados.length) ? cm.habilitados.map(m => String(m).toUpperCase()) : ['RECAUDO', 'CREDITO'];
+      const original = modalRecibo.modo === 'editar' ? String(reciboDetalleActual?.recibo?.Modalidad || '').toUpperCase() : '';
+      [['RECAUDO', 'btn-mr-modalidad-recaudo'], ['CREDITO', 'btn-mr-modalidad-credito']].forEach(([m, id]) => {
+        document.getElementById(id).style.display = (permitidas.includes(m) || m === original) ? '' : 'none';
+      });
+      if (modalRecibo.modo === 'crear' && !mrServiciosPendientes.length) {
+        const actual = modalRecibo.modoActual;
+        const sugerida = permitidas.length === 1 ? permitidas[0]
+          : (cm && cm.defecto && permitidas.includes(cm.defecto.toUpperCase()) ? cm.defecto.toUpperCase() : null);
+        if (!actual && sugerida) return setModalidadRecibo(sugerida); // vuelve a aplicar los ajustes con la modalidad
+        if (actual && !permitidas.includes(actual)) return setModalidadRecibo(sugerida);
+      }
 
       const cf = mrAjustes['Cliente a Facturar'];
       const cfSel = document.getElementById('mr-cliente-facturar');
@@ -10745,6 +10817,7 @@
       msAuxiliaresSeleccionados = existente && existente.Auxiliares ? existente.Auxiliares.split(',').map(s => s.trim()).filter(Boolean) : [];
       msAreaSeleccionada = existente ? existente.Area : null;
       msActividadSeleccionada = existente ? existente.Actividad : null;
+      msUnidadManual = modo === 'editar'; // en un servicio guardado no se cambia la Unidad que ya tiene
 
       document.getElementById('ms-transportadora-input').value = existente?.transportadoraNombre || '';
       document.getElementById('ms-pl1-input').value = existente?.placaNombre || '';
@@ -10876,14 +10949,40 @@
         const data = resp.ok ? await resp.json() : [];
         if (!data.length) { cont.innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Sin actividades configuradas para esta Operación.</span>'; return; }
         cont.innerHTML = data.map(a => `
-          <button type="button" class="btn-grupo-opt ms-actividad-btn ${String(actividadSeleccionada) === String(a.id) ? 'sel' : ''}" data-id="${a.id}" style="flex:none; padding:7px 14px;" onclick="seleccionarActividadServicio(${a.id})">${esc(a.actividad)}</button>
+          <button type="button" class="btn-grupo-opt ms-actividad-btn ${String(actividadSeleccionada) === String(a.id) ? 'sel' : ''}" data-id="${a.id}" data-unidad="${esc(a.unidadDefecto || '')}" style="flex:none; padding:7px 14px;" onclick="seleccionarActividadServicio(${a.id})">${esc(a.actividad)}</button>
         `).join('');
       } catch (e) { cont.innerHTML = ''; }
     }
     function seleccionarActividadServicio(id) {
       msActividadSeleccionada = id;
       document.querySelectorAll('.ms-actividad-btn').forEach(b => b.classList.toggle('sel', Number(b.dataset.id) === Number(id)));
+      // Unidad por defecto de la Actividad (Config_Actividad.Unidad_Defecto), mientras no se haya cambiado a mano
+      const unidad = document.querySelector(`.ms-actividad-btn[data-id="${id}"]`)?.dataset.unidad;
+      const selUnidad = document.getElementById('ms-unidad');
+      if (unidad && !msUnidadManual && [...selUnidad.options].some(o => o.value === unidad)) selUnidad.value = unidad;
+      pintarUnidadServicio();
     }
+
+    // Unidad: con 5 opciones o menos se escoge con botones; con más, con la lista. Los botones
+    // escriben en el <select id="ms-unidad">, que es el que se guarda.
+    function pintarUnidadServicio() {
+      const sel = document.getElementById('ms-unidad');
+      const cont = document.getElementById('ms-unidad-botones');
+      const opciones = [...sel.options].filter(o => o.value);
+      const conBotones = opciones.length > 0 && opciones.length <= 5;
+      sel.style.display = conBotones ? 'none' : '';
+      cont.style.display = conBotones ? 'flex' : 'none';
+      cont.innerHTML = conBotones ? opciones.map(o => `
+        <button type="button" class="btn-grupo-opt ${o.value === sel.value ? 'sel' : ''}" style="flex:none; padding:7px 12px;"
+          data-valor="${esc(o.value)}" onclick="seleccionarUnidadServicio(this.dataset.valor)">${esc(o.textContent)}</button>`).join('') : '';
+    }
+    function seleccionarUnidadServicio(valor) {
+      const sel = document.getElementById('ms-unidad');
+      sel.value = sel.value === valor ? '' : valor; // un segundo clic la quita
+      msUnidadManual = true;
+      pintarUnidadServicio();
+    }
+    let msUnidadManual = false; // la Unidad la escogió la persona: la Actividad ya no la cambia
 
     async function cargarVehiculosServicio(seleccionado) {
       const sel = document.getElementById('ms-vehiculo');
