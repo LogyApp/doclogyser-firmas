@@ -13,7 +13,7 @@ const { notificarRetiro, notificarInicioLegalizacionSinRetirar, notificarDocumen
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenEVR, reconstruirToken } = require('../services/token');
-const { determinarNivelYAreas } = require('../services/pazYSalvoService');
+const { determinarNivelYAreas, notificarAreasPendientesPazYSalvo } = require('../services/pazYSalvoService');
 const { obtenerPermisosActivos } = require('../services/configActivos');
 const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, obtenerPermisosRetiro, nominaDebeMarcarRetirado, obtenerResponsablesConfirmarRetiro } = require('../services/configRetiro');
 
@@ -212,6 +212,13 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
     const tokenPZ = await generarTokenPZ(idPz, 'token_trabajador', 'token_trabajador_expira');
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const urlFirma = `${baseUrl}/firmar-pazysalvo/${idPz}?token=${encodeURIComponent(tokenPZ)}`;
+
+    // Disparar en paralelo la notificación a las áreas requeridas para que puedan firmar de inmediato
+    setImmediate(() => {
+      notificarAreasPendientesPazYSalvo(idPz, { baseUrl }).catch(e => {
+        console.error('[actualizar-articulos-pz notificarAreas]', e.message);
+      });
+    });
 
     res.json({ ok: true, urlFirma });
   } catch (err) {

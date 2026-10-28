@@ -65,10 +65,28 @@ function vacio(valor) {
   return valor === undefined || valor === null || String(valor).trim() === '';
 }
 
+// Datos del recibo por los que se puede condicionar un campo ("mostrar solo si"), como el Show_If
+// de AppSheet ([IdRecibo].[Cliente a Facturar]="COLTANQUES"). clave = dato en el contexto.
+const CONDICIONES = {
+  'Cliente a Facturar': { clave: 'clienteAFacturar', catalogo: 'clienteCredito' },
+};
+
+// ¿La fila aplica para este recibo? Sin condición siempre aplica.
+function cumpleCondicion(fila, contexto) {
+  const condicion = CONDICIONES[String(fila.condicion_campo || '').trim()];
+  if (!condicion) return true;
+  const valores = lista(fila.condicion_valores);
+  if (!valores.length) return true;
+  const actual = normalizar((contexto || {})[condicion.clave]);
+  return !!actual && valores.some((v) => normalizar(v) === actual);
+}
+
 // Reglas de cada campo para una Operación y Modalidad, según el rol de quien llena el formulario:
 // { [columna]: { etiqueta, visible, obligatorio, habilitados: [], defecto, paraRol } }
-// visible ya considera el rol (si el campo es para otros roles, no aparece).
-async function resolverConfig({ seccion, operacion, modalidad, rol }) {
+// visible ya considera el rol (si el campo es para otros roles, no aparece) y la condición
+// ("mostrar solo si"): si el recibo no la cumple, el campo no aparece, no es obligatorio y no toma
+// valor por defecto. contexto: datos del recibo, ej. { clienteAFacturar }.
+async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {} }) {
   let filas = [];
   try {
     [filas] = await pool.execute(
@@ -97,12 +115,13 @@ async function resolverConfig({ seccion, operacion, modalidad, rol }) {
     const campo = campoDe(seccion, columna);
     const roles = lista(f.rol);
     const paraRol = !roles.length || roles.some((r) => normalizar(r) === rolNorm);
+    const aplica = cumpleCondicion(f, contexto);
     config[columna] = {
       etiqueta: String(f.etiqueta_columna || '').trim() || campo.etiqueta,
-      visible: Number(f.visible) === 1 && paraRol,
-      obligatorio: Number(f.obligatorio) === 1,
+      visible: Number(f.visible) === 1 && paraRol && aplica,
+      obligatorio: Number(f.obligatorio) === 1 && aplica,
       habilitados: campo.tipo === 'lista' ? lista(f.datos_habilitados) : [],
-      defecto: (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',
+      defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',
       paraRol,
       tipo: campo.tipo,
       bodyKey: campo.bodyKey,
@@ -120,8 +139,8 @@ async function resolverConfig({ seccion, operacion, modalidad, rol }) {
 // config: reglas ya resueltas (para no consultarlas de nuevo en cada fila de la carga masiva).
 // soloPresentes: solo se revisan los campos que trae body (la carga masiva no tiene todos).
 // Devuelve null si todo está bien o el mensaje de error.
-async function aplicarConfig({ seccion, operacion, modalidad, rol, body, anteriores = null, archivos = {}, crear = true, prefijo = '', config = null, soloPresentes = false }) {
-  if (!config) config = await resolverConfig({ seccion, operacion, modalidad, rol });
+async function aplicarConfig({ seccion, operacion, modalidad, rol, body, anteriores = null, archivos = {}, crear = true, prefijo = '', config = null, soloPresentes = false, contexto = {} }) {
+  if (!config) config = await resolverConfig({ seccion, operacion, modalidad, rol, contexto });
   for (const [columna, c] of Object.entries(config)) {
     const key = c.bodyKey;
     if (soloPresentes && !Object.prototype.hasOwnProperty.call(body, key)) continue;
@@ -222,6 +241,6 @@ async function permisosAjustesServicios(rol) {
 
 module.exports = {
   CAMPOS, SECCIONES, MODALIDADES,
-  campoDe, resolverConfig, aplicarConfig, visibleEnConfig, opcionesCatalogo, normalizar, lista,
+  CONDICIONES, campoDe, resolverConfig, aplicarConfig, visibleEnConfig, opcionesCatalogo, normalizar, lista,
   permisosAjustesServicios,
 };

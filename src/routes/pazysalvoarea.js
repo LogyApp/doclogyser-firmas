@@ -46,10 +46,13 @@ function formatFechaCO(fecha) {
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function buildFirmaHtml(url, fecha, etiquetaArea) {
+function buildFirmaHtml(url, fecha, tipo) {
   if (url) {
     return `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">
        <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(fecha)}</div>`;
+  }
+  if (tipo === 'trabajador') {
+    return `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:7.5px;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">Documento soportado por correo electrónico – No firmó</div>`;
   }
   return `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9;min-height:48px;display:flex;align-items:center;justify-content:center">
      Se informó al área por correo electrónico
@@ -91,8 +94,8 @@ async function generarPazYSalvoFinalPDF(pz, areasRequeridas) {
     operacion:               pz['Operación'] || '',
     fecha_retiro:            formatFechaCO(pz['Fecha de Retiro']),
     filas_articulos:         generarFilasArticulosHTML(articulos),
-    firma_trabajador_html:   buildFirmaHtml(pz.firma_trabajador_url, pz.fecha_firma_trabajador),
-    firma_responsable_html:  buildFirmaHtml(pz.firma_responsable_url, pz.fecha_firma_responsable),
+    firma_trabajador_html:   buildFirmaHtml(pz.firma_trabajador_url, pz.fecha_firma_trabajador, 'trabajador'),
+    firma_responsable_html:  buildFirmaHtml(pz.firma_responsable_url, pz.fecha_firma_responsable, 'responsable'),
     nombre_firmante:         pz.firma_responsable_nombre || '',
     cargo_firmante:          pz.firma_responsable_cargo || '',
     observaciones:           (() => {
@@ -444,4 +447,6 @@ router.post('/:area/:idPz/novedad', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.generarPazYSalvoFinalPDF = generarPazYSalvoFinalPDF;
 module.exports.regenerarPazYSalvoFinal = regenerarPazYSalvoFinal;
+module.exports.buildFirmaHtml = buildFirmaHtml;

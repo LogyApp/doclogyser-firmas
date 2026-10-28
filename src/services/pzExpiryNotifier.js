@@ -186,8 +186,10 @@ async function procesarEsperandoAreas() {
      FROM Maestro_pazysalvo pz
      JOIN \`Maestro_Vinculación\` v ON v.\`Id Vinculación\` = pz.id_vinculacion
      WHERE pz.estado = 'esperando_areas'
-       AND pz.fecha_firma_trabajador IS NOT NULL
-       AND pz.fecha_firma_trabajador < DATE_SUB(NOW(), INTERVAL 120 HOUR)`
+       AND (
+         (pz.fecha_firma_trabajador IS NOT NULL AND pz.fecha_firma_trabajador < DATE_SUB(NOW(), INTERVAL 120 HOUR))
+         OR (pz.fecha_firma_trabajador IS NULL AND pz.fecha_creacion IS NOT NULL AND pz.fecha_creacion < DATE_SUB(NOW(), INTERVAL 120 HOUR))
+       )`
   );
 
   for (const pz of rows) {

@@ -1,15 +1,29 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { validarTokenPZ, generarTokenPZ } = require('../services/token');
-const { notificarAreaPazYSalvo } = require('../services/email');
+const { notificarPazYSalvoCompletado } = require('../services/email');
 const { resolverRutaFirmaTrabajador } = require('../services/firmaPathResolver');
-const { EMAILS_AREA } = require('../services/pazYSalvoService');
+const { notificarAreasPendientesPazYSalvo, estaCompleto, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
+const { generarPazYSalvoFinalPDF } = require('./pazysalvoarea');
 
 const router = express.Router();
 const FIRMA_HTML = path.join(__dirname, '../views/pazysalvo/firma.html');
+
+function toDateStr(val) {
+  if (!val) return null;
+  if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+  return String(val).slice(0, 10);
+}
+
+function fechaHoraBogota() {
+  const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const p = n => String(n).padStart(2, '0');
+  return `${b.getFullYear()}-${p(b.getMonth() + 1)}-${p(b.getDate())} ${p(b.getHours())}:${p(b.getMinutes())}:${p(b.getSeconds())}`;
+}
 
 function paginaError(mensaje) {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Error</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0}div{background:#fff;padding:2rem;border-radius:8px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15);max-width:400px;width:90%}h2{color:#e74c3c;margin-top:0}p{color:#666;margin:0}</style></head><body><div><h2>Enlace no válido</h2><p>${mensaje}</p></div></body></html>`;
@@ -124,56 +138,78 @@ router.post('/:idPz', async (req, res) => {
 
     const ahora = new Date();
 
-    // Actualizar: guardar firma trabajador, cambiar estado, limpiar token
+    // Actualizar: guardar firma trabajador, limpiar token de trabajador
     await pool.execute(
       `UPDATE Maestro_pazysalvo
        SET firma_trabajador_url = ?, fecha_firma_trabajador = ?,
-           estado = 'esperando_areas',
            token_trabajador = NULL, token_trabajador_expira = NULL
        WHERE id = ?`,
       [urlFirma, ahora, idPz]
     );
 
-    // Generar tokens por área y enviar emails
-    const areasRequeridas = typeof pz.areas_requeridas === 'string'
-      ? JSON.parse(pz.areas_requeridas)
-      : (pz.areas_requeridas || []);
-
-    console.log(`[pazysalvo POST] areas_requeridas para ${idPz}:`, areasRequeridas);
-
-    const nombreTrabajador = limpiarNombre(pz.Trabajador);
+    // Recargar registro para verificar si todas las áreas ya firmaron
+    const [rowsActual] = await pool.execute(
+      `SELECT pz.*, v.Trabajador, v.Cargo, v.Operación, v.\`Fecha de Retiro\`,
+              v.\`Fecha de Ingreso\`, v.Regional, v.Usuario
+       FROM Maestro_pazysalvo pz
+       JOIN \`Maestro_Vinculación\` v ON v.\`Id Vinculación\` = pz.id_vinculacion
+       WHERE pz.id = ?`,
+      [idPz]
+    );
+    const pzActual = rowsActual[0];
+    const areasRequeridas = normalizarAreasRequeridas(pzActual.areas_requeridas);
+    const completadoTotal = estaCompleto(pzActual, areasRequeridas);
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
-    // La firma del trabajador ya quedó guardada arriba. Generar los tokens por área y enviar
-    // los correos puede tardar (varias áreas = varios envíos secuenciales), así que se hace en
-    // segundo plano para no retrasar la confirmación al trabajador que acaba de firmar.
-    (async () => {
-      for (const area of areasRequeridas) {
-        try {
-          console.log(`[pazysalvo POST] Generando token para área: ${area}`);
-          const tokenArea = await generarTokenPZ(idPz, `token_${area}`, `token_${area}_expira`);
-          const urlFirmaArea = `${baseUrl}/pazysalvo-area/${area}/${idPz}?token=${encodeURIComponent(tokenArea)}`;
-          // CC 1117517812 permanece en modo prueba; el resto usa correos reales por área
-          const esPrueba = String(pz.identificacion) === '1117517812';
-          const destinatarios = esPrueba ? ['admin@logyser.com'] : (EMAILS_AREA[area] || []);
-          console.log(`[pazysalvo POST] Enviando email ${area} a:`, destinatarios);
-          if (destinatarios.length) {
-            await notificarAreaPazYSalvo({
-              area,
-              destinatarios,
-              trabajador: nombreTrabajador,
-              identificacion: pz.identificacion,
-              cargo: pz.Cargo || '',
-              operacion: pz['Operación'] || '',
-              urlFirma: urlFirmaArea,
-            });
-            console.log(`[pazysalvo POST] Email ${area} enviado OK`);
-          }
-        } catch (eArea) {
-          console.error(`[pazysalvo POST] Error notificando área ${area}:`, eArea.message);
-        }
+    if (completadoTotal || pzActual.estado === 'completado') {
+      const urlPdf = await generarPazYSalvoFinalPDF(pzActual, areasRequeridas);
+      const ahoraFin = new Date();
+      await pool.execute(
+        `UPDATE Maestro_pazysalvo SET estado = 'completado', url_pdf_final = ?, fecha_completado = ? WHERE id = ?`,
+        [urlPdf, ahoraFin, idPz]
+      );
+
+      // Actualizar o registrar en Maestro_docTrabajador
+      const [docExist] = await pool.execute(
+        `SELECT id FROM Maestro_docTrabajador
+         WHERE Identificación = ? AND TipoDocumento = '59' AND DATE(Fecha_Ingreso) = DATE(?)
+         ORDER BY FechaRegistro DESC LIMIT 1`,
+        [String(pzActual.identificacion), toDateStr(pzActual['Fecha de Ingreso'])]
+      );
+      if (docExist.length) {
+        await pool.execute(
+          `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+          [urlPdf, fechaHoraBogota(), docExist[0].id]
+        );
+      } else {
+        const idDoc = uuidv4();
+        await pool.execute(
+          `INSERT INTO Maestro_docTrabajador
+           (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+            TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
+            Justificacion_Solicitud, FechaRegistro, Usuario)
+           VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, '59', 'PZ', ?, NULL, NULL, NULL, NULL, ?, ?)`,
+          [idDoc, pzActual.Regional || null, pzActual['Operación'] || null, String(pzActual.identificacion),
+           toDateStr(pzActual['Fecha de Ingreso']), urlPdf, fechaHoraBogota(), pzActual.Usuario || null]
+        ).catch(e => console.error('[PZ docTrabajador]', e.message));
       }
-    })();
+
+      notificarPazYSalvoCompletado({
+        trabajador:     limpiarNombre(pzActual.Trabajador),
+        identificacion: String(pzActual.identificacion),
+        cargo:          pzActual.Cargo || '',
+        operacion:      pzActual['Operación'] || '',
+        urlDoc:         urlPdf,
+      }).catch(e => console.error('[pazysalvo email completado]', e.message));
+    } else {
+      await pool.execute(`UPDATE Maestro_pazysalvo SET estado = 'esperando_areas' WHERE id = ?`, [idPz]);
+      // Asegurar que las áreas pendientes reciban su enlace de firma si aún no fueron notificadas
+      setImmediate(() => {
+        notificarAreasPendientesPazYSalvo(idPz, { baseUrl }).catch(e => {
+          console.error('[pazysalvo POST notificarAreas]', e.message);
+        });
+      });
+    }
 
     res.json({ ok: true });
   } catch (err) {

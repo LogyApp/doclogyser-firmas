@@ -1,4 +1,13 @@
 // Servicio central de lógica para el Paz y Salvo de retiro
+const pool = require('./db');
+const { generarTokenPZ, validarTokenPZ, reconstruirToken } = require('./token');
+const { notificarAreaPazYSalvo } = require('./email');
+
+function limpiarNombre(trabajador) {
+  if (!trabajador) return '';
+  const partes = String(trabajador).split(' ** ');
+  return (partes.length > 1 ? partes[1] : trabajador).trim();
+}
 
 // Cargos que requieren nivel ALTO de compromiso (TH-R-022) con más áreas
 const CARGOS_ALTO = [
@@ -211,6 +220,85 @@ function normalizarAreasRequeridas(val) {
   return [];
 }
 
+/**
+ * Notifica a las áreas requeridas pendientes de firma en el Paz y Salvo.
+ * Genera el token de cada área si no lo tiene (o si ha expirado o si forzarReenvio = true)
+ * y envía el correo con el enlace directo para firmar.
+ *
+ * @param {string} idPz - ID del Paz y Salvo en Maestro_pazysalvo
+ * @param {object} [options]
+ * @param {string} [options.baseUrl] - Base URL del sistema
+ * @param {boolean} [options.forzarReenvio] - Si es true, regenera token y envía a todas las pendientes
+ * @returns {Promise<{ ok: boolean, notificados: number, areasNotificadas: string[] }>}
+ */
+async function notificarAreasPendientesPazYSalvo(idPz, { baseUrl, forzarReenvio = false } = {}) {
+  const [pzRows] = await pool.execute(
+    `SELECT pz.*, v.Trabajador, v.Cargo, v.\`Operación\`, v.\`Identificación\`
+     FROM Maestro_pazysalvo pz
+     JOIN \`Maestro_Vinculación\` v ON v.\`Id Vinculación\` = pz.id_vinculacion
+     WHERE pz.id = ? LIMIT 1`,
+    [idPz]
+  );
+  if (!pzRows.length) return { ok: false, error: 'Paz y Salvo no encontrado', notificados: 0, areasNotificadas: [] };
+  const pz = pzRows[0];
+
+  const hostBase = baseUrl || process.env.BASE_URL || 'https://digital.logyser.com';
+  const areasReq = normalizarAreasRequeridas(pz.areas_requeridas);
+  const areasPendientes = areasReq.filter(a => !pz[`firma_${a}_url`]);
+
+  if (!areasPendientes.length) {
+    return { ok: true, notificados: 0, areasNotificadas: [] };
+  }
+
+  const nombreTrabajador = limpiarNombre(pz.Trabajador);
+  const esPrueba = String(pz.identificacion) === '1117517812';
+  const areasNotificadas = [];
+
+  for (const area of areasPendientes) {
+    try {
+      const destinatarios = esPrueba ? ['admin@logyser.com'] : (EMAILS_AREA[area] || []);
+      if (!destinatarios.length) {
+        console.warn(`[notificarAreasPendientesPazYSalvo] Área "${area}" sin destinatarios configurados`);
+        continue;
+      }
+
+      const campoToken = `token_${area}`;
+      const campoExpira = `token_${area}_expira`;
+
+      let tokenArea = null;
+      if (!forzarReenvio && pz[campoToken]) {
+        const resVal = await validarTokenPZ(pz[campoToken], idPz, campoToken, campoExpira).catch(() => ({ valido: false }));
+        if (resVal.valido) {
+          tokenArea = reconstruirToken(pz[campoToken], idPz, pz[campoExpira]);
+        }
+      }
+
+      if (!tokenArea) {
+        tokenArea = await generarTokenPZ(idPz, campoToken, campoExpira);
+      }
+
+      const urlFirmaArea = `${hostBase}/pazysalvo-area/${area}/${encodeURIComponent(idPz)}?token=${encodeURIComponent(tokenArea)}`;
+
+      await notificarAreaPazYSalvo({
+        area,
+        destinatarios,
+        trabajador: nombreTrabajador,
+        identificacion: String(pz.identificacion),
+        cargo: pz.Cargo || '',
+        operacion: pz['Operación'] || '',
+        urlFirma: urlFirmaArea,
+      });
+
+      areasNotificadas.push(area);
+      console.log(`[notificarAreasPendientesPazYSalvo] Notificada área ${area} (${destinatarios.join(', ')}) para idPz=${idPz}`);
+    } catch (errArea) {
+      console.error(`[notificarAreasPendientesPazYSalvo] Error notificando área ${area}:`, errArea.message);
+    }
+  }
+
+  return { ok: true, notificados: areasNotificadas.length, areasNotificadas };
+}
+
 module.exports = {
   EMAILS_AREA,
   NOMBRES_AREA,
@@ -222,4 +310,6 @@ module.exports = {
   fechaFirmaTexto,
   escapeHtml,
   normalizarAreasRequeridas,
+  limpiarNombre,
+  notificarAreasPendientesPazYSalvo,
 };

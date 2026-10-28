@@ -16,6 +16,7 @@ const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileS
 // Quién gestiona Clientes Crédito: Config_Parametros facturacion / Clientes_credito
 const { puedeGestionarClientesCredito } = require('../services/configBloqueo');
 const configServicios = require('../services/configServicios');
+const { buscarTarifa } = require('../services/tarifasServicio');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
   area: 'area', actividad: 'actividad', vehiculo: 'vehiculo', unidad: 'unidad', remolque: 'remolque',
@@ -3436,10 +3437,13 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
 
       // Ajustes de la operación (Config_Servicios): las celdas vacías toman el valor por defecto
       const modalidadFila = formaDePago === 3 ? 'CREDITO' : 'RECAUDO';
-      const claveAjustes = `${opInfo.operacion}|${modalidadFila}`;
+      const clienteFila = formaDePago === 3
+        ? (limpiarValorPlano(f.clienteAFacturar) || (reciboExistenteInfo && reciboExistenteInfo.clienteAFacturar) || '') : '';
+      const claveAjustes = `${opInfo.operacion}|${modalidadFila}|${clienteFila.toUpperCase()}`;
       if (!ajustesPorOperacion.has(claveAjustes)) {
         ajustesPorOperacion.set(claveAjustes, await configServicios.resolverConfig({
-          seccion: 'Servicio', operacion: opInfo.operacion, modalidad: modalidadFila, rol: acceso.rol
+          seccion: 'Servicio', operacion: opInfo.operacion, modalidad: modalidadFila, rol: acceso.rol,
+          contexto: { clienteAFacturar: clienteFila }
         }));
       }
       const ajustesFila = ajustesPorOperacion.get(claveAjustes);
@@ -3664,7 +3668,17 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
       const placaTexto = limpiarValorPlano(f.placa).toUpperCase();
 
       const cantidad = parseNumeroPlano(f.cantidad);
-      const valorUnitario = parseNumeroPlano(f.valorUnitario);
+      let valorUnitario = parseNumeroPlano(f.valorUnitario);
+      if (valorUnitario === null) {
+        // Valor Unitario según Maestro_Tarifas (si no hay tarifa queda vacío)
+        const transpFila = transportadoraTexto ? transpMap.get(normalizarClaveCatalogo(transportadoraTexto)) : null;
+        const provFila = proveedorTexto ? provMap.get(normalizarClaveCatalogo(proveedorTexto)) : null;
+        const tarifa = await buscarTarifa({
+          actividad: actMatch.id, unidad: limpiarValorPlano(f.unidad), vehiculo: limpiarValorPlano(f.vehiculo),
+          transportadora: transpFila ? transpFila.id : '', proveedores: provFila ? [provFila.id] : [],
+        });
+        if (tarifa) valorUnitario = tarifa.valor;
+      }
       if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
         return res.status(400).json({
           error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $${topeValorBase.toLocaleString('es-CO')}.`
@@ -5133,7 +5147,8 @@ router.post('/api/recibos', async (req, res) => {
     // Cada modalidad revisa solo sus campos; Categoría depende del cliente y la maneja el formulario.
     const camposRecibo = (modalidad === 'CREDITO') ? { modalidad, clienteAFacturar, observaciones } : { modalidad, telefono, email, observaciones };
     const errorAjustes = await configServicios.aplicarConfig({
-      seccion: 'Recibo', operacion, modalidad, rol: acceso.rol, body: camposRecibo, crear: true, soloPresentes: true
+      seccion: 'Recibo', operacion, modalidad, rol: acceso.rol, body: camposRecibo, crear: true, soloPresentes: true,
+      contexto: { clienteAFacturar }
     });
     if (errorAjustes) return res.status(400).json({ error: errorAjustes });
     if (modalidad === 'CREDITO') clienteAFacturar = camposRecibo.clienteAFacturar;
@@ -5247,6 +5262,7 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
     // Ajustes de la operación (Config_Servicios): obligatorios y datos habilitados
     const errorAjustes = await configServicios.aplicarConfig({
       seccion: 'Recibo', operacion: operacionFinal, modalidad: modalidadFinal, rol: acceso.rol, crear: false, soloPresentes: true,
+      contexto: { clienteAFacturar: clienteAFacturarFinal },
       body: (modalidadFinal === 'CREDITO')
         ? { modalidad: modalidadFinal, clienteAFacturar: clienteAFacturarFinal, observaciones: observacionesFinal }
         : { modalidad: modalidadFinal, telefono: telefonoFinal, email: emailFinal, observaciones: observacionesFinal },
@@ -5703,8 +5719,20 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       if (act.length && act[0].Unidad_Defecto) body.unidad = act[0].Unidad_Defecto;
     }
 
+    // Valor Unitario según Maestro_Tarifas si no llegó (si no hay tarifa queda vacío)
+    if (!String(body.valorUnitario ?? '').trim()) {
+      const tarifa = await buscarTarifa({
+        actividad: body.actividad, unidad: body.unidad, vehiculo: body.vehiculo, transportadora: body.transportadora,
+        proveedores: String(body.proveedor || '').split(','),
+      });
+      if (tarifa) body.valorUnitario = String(tarifa.valor);
+    }
+
     // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
-    const configServ = await configServicios.resolverConfig({ seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol });
+    const configServ = await configServicios.resolverConfig({
+      seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol,
+      contexto: { clienteAFacturar: contexto.clienteAFacturar },
+    });
     const errorAjustes = await configServicios.aplicarConfig({
       seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol, body, crear: true, config: configServ,
       archivos: { fotoDocumento: !!files.fotoDocumento?.[0], fotoEvidencia: !!files.fotoEvidencia?.[0] },
@@ -5856,7 +5884,10 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
     // valores que el servicio ya tenía guardados aunque hoy no estén habilitados.
     const anterioresServ = {};
     configServicios.CAMPOS.Servicio.forEach((c) => { anterioresServ[c.bodyKey] = existente[c.columna]; });
-    const configServ = await configServicios.resolverConfig({ seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol });
+    const configServ = await configServicios.resolverConfig({
+      seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol,
+      contexto: { clienteAFacturar: contexto.clienteAFacturar },
+    });
     const errorAjustes = await configServicios.aplicarConfig({
       seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol, body,
       anteriores: anterioresServ, crear: false, config: configServ,
@@ -6287,15 +6318,34 @@ router.post('/api/tickets/:ticket/estado', async (req, res) => {
 // Las usa el formulario al escoger Operación y Modalidad; ya considera el rol del usuario.
 router.get('/api/config-servicios', async (req, res) => {
   try {
-    const { usuario, seccion, operacion, modalidad } = req.query;
+    const { usuario, seccion, operacion, modalidad, clienteAFacturar } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
     if (!configServicios.SECCIONES.includes(seccion)) return res.status(400).json({ error: 'Sección inválida' });
-    res.json(await configServicios.resolverConfig({ seccion, operacion, modalidad, rol: acceso.rol }));
+    res.json(await configServicios.resolverConfig({ seccion, operacion, modalidad, rol: acceso.rol, contexto: { clienteAFacturar } }));
   } catch (err) {
     console.error('[facturacion] GET /api/config-servicios:', err);
     res.status(500).json({});
+  }
+});
+
+// ── GET /api/tarifa (Valor Unitario según Maestro_Tarifas) ─────────────────────
+// actividad, unidad, vehiculo, transportadora (ID) y proveedores (IDs separados por coma).
+router.get('/api/tarifa', async (req, res) => {
+  try {
+    const { usuario, actividad, unidad, vehiculo, transportadora, proveedores } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    const tarifa = await buscarTarifa({
+      actividad, unidad, vehiculo, transportadora,
+      proveedores: String(proveedores || '').split(',').map(p => p.trim()).filter(Boolean),
+    });
+    res.json(tarifa || { valor: null });
+  } catch (err) {
+    console.error('[facturacion] GET /api/tarifa:', err);
+    res.status(500).json({ valor: null });
   }
 });
 
@@ -6348,6 +6398,11 @@ function leerAjusteServicio(body) {
   }
   const orden = String(body.orden ?? '').trim();
   if (orden && !/^-?\d+$/.test(orden)) return { error: 'El Orden debe ser un número entero.' };
+  // "Mostrar solo si": dato del recibo y valores con los que el campo aparece
+  const condicionCampo = String(body.condicion_campo || '').trim();
+  if (condicionCampo && !configServicios.CONDICIONES[condicionCampo]) return { error: 'La condición escogida no se puede usar.' };
+  const condicionValores = condicionCampo ? limpiarLista(body.condicion_valores) : '';
+  if (condicionCampo && !condicionValores) return { error: `Escoja con qué ${condicionCampo} se muestra el campo, o quite la condición.` };
   return {
     fila: {
       seccion,
@@ -6360,6 +6415,8 @@ function leerAjusteServicio(body) {
       visible: Number(body.visible) === 0 ? 0 : 1,
       obligatorio: Number(body.obligatorio) === 1 ? 1 : 0,
       rol: limpiarLista(body.rol) || null,
+      condicion_campo: condicionCampo || null,
+      condicion_valores: condicionValores || null,
       orden: orden ? parseInt(orden, 10) : null,
     },
   };
@@ -6375,7 +6432,7 @@ router.get('/api/ajustes-servicios', async (req, res) => {
     if (!(await accesoAjustesServicios(req, res))) return;
     const [rows] = await pool.query(
       `SELECT id, seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados, valor_defecto,
-              visible, obligatorio, rol, orden, usuario, DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
+              visible, obligatorio, rol, condicion_campo, condicion_valores, orden, usuario, DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
        FROM Config_Servicios ORDER BY operacion, seccion, modalidad, COALESCE(orden, 999), columna_origen`
     );
     res.json(rows);
@@ -6415,11 +6472,12 @@ async function guardarAjusteServicio(req, res, id) {
     if (error) return res.status(400).json({ error });
     const usuarioVal = acceso.usuarioId || req.query.usuario;
     const valores = [fila.seccion, fila.operacion, fila.modalidad, fila.columna_origen, fila.etiqueta_columna, fila.datos_habilitados,
-      fila.valor_defecto, fila.visible, fila.obligatorio, fila.rol, fila.orden, usuarioVal, formatearAhoraBogota()];
+      fila.valor_defecto, fila.visible, fila.obligatorio, fila.rol, fila.condicion_campo, fila.condicion_valores, fila.orden, usuarioVal, formatearAhoraBogota()];
     if (id) {
       const [r] = await pool.execute(
         `UPDATE Config_Servicios SET seccion = ?, operacion = ?, modalidad = ?, columna_origen = ?, etiqueta_columna = ?,
-           datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?, rol = ?, orden = ?, usuario = ?, fecha_registro = ?
+           datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?, rol = ?, condicion_campo = ?, condicion_valores = ?,
+           orden = ?, usuario = ?, fecha_registro = ?
          WHERE id = ?`,
         [...valores, id]
       );
@@ -6427,8 +6485,8 @@ async function guardarAjusteServicio(req, res, id) {
     } else {
       const [r] = await pool.execute(
         `INSERT INTO Config_Servicios (seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados,
-           valor_defecto, visible, obligatorio, rol, orden, usuario, fecha_registro)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           valor_defecto, visible, obligatorio, rol, condicion_campo, condicion_valores, orden, usuario, fecha_registro)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         valores
       );
       id = r.insertId;
@@ -6488,7 +6546,7 @@ router.post('/api/ajustes-servicios/copiar', async (req, res) => {
       const campo = configServicios.campoDe(f.seccion, f.columna_origen);
       const propioDeOperacion = campo && ['area', 'actividad'].includes(campo.catalogo);
       const datos = [f.etiqueta_columna, propioDeOperacion ? null : f.datos_habilitados, propioDeOperacion ? null : f.valor_defecto,
-        f.visible, f.obligatorio, f.rol, f.orden, usuarioVal, ahora];
+        f.visible, f.obligatorio, f.rol, f.condicion_campo, f.condicion_valores, f.orden, usuarioVal, ahora];
       const [existe] = await conn.execute(
         'SELECT id FROM Config_Servicios WHERE seccion = ? AND operacion = ? AND modalidad = ? AND columna_origen = ?',
         [f.seccion, hacia, f.modalidad, f.columna_origen]
@@ -6497,14 +6555,14 @@ router.post('/api/ajustes-servicios/copiar', async (req, res) => {
       if (existe.length) {
         await conn.execute(
           `UPDATE Config_Servicios SET etiqueta_columna = ?, datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?,
-             rol = ?, orden = ?, usuario = ?, fecha_registro = ? WHERE id = ?`,
+             rol = ?, condicion_campo = ?, condicion_valores = ?, orden = ?, usuario = ?, fecha_registro = ? WHERE id = ?`,
           [...datos, existe[0].id]
         );
       } else {
         await conn.execute(
           `INSERT INTO Config_Servicios (seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados,
-             valor_defecto, visible, obligatorio, rol, orden, usuario, fecha_registro)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             valor_defecto, visible, obligatorio, rol, condicion_campo, condicion_valores, orden, usuario, fecha_registro)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [f.seccion, hacia, f.modalidad, f.columna_origen, ...datos]
         );
       }

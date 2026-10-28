@@ -2123,13 +2123,14 @@
               <th style="width:240px">Datos habilitados</th>
               <th style="width:140px">Valor por defecto</th>
               <th style="width:150px">Rol</th>
+              <th style="width:200px">Mostrar solo si</th>
               <th style="width:70px">Orden</th>
               <th style="width:140px">Usuario</th>
               <th style="width:130px">Fecha</th>
             </tr>
           </thead>
           <tbody id="tabla-ajustes-body">
-            <tr><td colspan="13" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando ajustes...</td></tr>
+            <tr><td colspan="14" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando ajustes...</td></tr>
           </tbody>
         </table>
       </div>
@@ -3917,6 +3918,14 @@
           <label>Rol <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(ninguno marcado = todos los que entran a Recibos o Servicios)</small></label>
           <div id="aj-roles" style="display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto;"></div>
         </div>
+        <div class="form-group">
+          <label>Mostrar solo si <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(sin condición = siempre; si el recibo no la cumple, el campo no aparece)</small></label>
+          <select id="aj-condicion-campo" onchange="onCondicionAjusteChange()">
+            <option value="">Sin condición</option>
+            <option value="Cliente a Facturar">El Cliente a Facturar del recibo es…</option>
+          </select>
+          <div id="aj-condicion-valores" style="display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto; margin-top:8px;"></div>
+        </div>
         <div class="form-group" style="max-width: 160px;">
           <label>Orden</label>
           <input type="number" id="aj-orden" step="1" placeholder="Opcional">
@@ -4006,7 +4015,7 @@
             </div>
             <div class="form-group">
               <label>Vehículo</label>
-              <select id="ms-vehiculo"><option value="">— Seleccione —</option></select>
+              <select id="ms-vehiculo" onchange="recalcularTarifaServicio()"><option value="">— Seleccione —</option></select>
             </div>
           </div>
 
@@ -4033,7 +4042,7 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
             <div class="form-group">
               <label>Unidad</label>
-              <select id="ms-unidad" onchange="msUnidadManual = true; pintarUnidadServicio()"><option value="">— Seleccione —</option></select>
+              <select id="ms-unidad" onchange="msUnidadManual = true; pintarUnidadServicio(); recalcularTarifaServicio()"><option value="">— Seleccione —</option></select>
               <div id="ms-unidad-botones" style="display:none; flex-wrap:wrap; gap:6px;"></div>
             </div>
             <div class="form-group">
@@ -4042,7 +4051,8 @@
             </div>
             <div class="form-group">
               <label>Valor Unitario</label>
-              <input type="number" id="ms-valor-unitario" step="1" min="0">
+              <input type="number" id="ms-valor-unitario" step="1" min="0" oninput="msValorManual = true; document.getElementById('ms-tarifa-info').textContent = '';">
+              <small id="ms-tarifa-info" style="color: var(--text-muted); font-size: 0.74rem;"></small>
             </div>
           </div>
 
@@ -10210,6 +10220,7 @@
 
     function onModalRecioClienteFacturarChange() {
       cargarCategoriasModalRecibo();
+      aplicarAjustesRecibo(); // campos que dependen del Cliente a Facturar
     }
 
     // El campo Categoría solo se muestra si hay combinaciones válidas para ese
@@ -10502,7 +10513,7 @@
         if (!resp.ok) throw new Error(data.error || 'No se pudieron cargar los ajustes.');
         allAjustes = data;
       } catch (e) {
-        document.getElementById('tabla-ajustes-body').innerHTML = `<tr><td colspan="13" style="text-align:center; color:var(--danger-dark); padding:24px;">${esc(e.message)}</td></tr>`;
+        document.getElementById('tabla-ajustes-body').innerHTML = `<tr><td colspan="14" style="text-align:center; color:var(--danger-dark); padding:24px;">${esc(e.message)}</td></tr>`;
         return;
       }
       const fOp = document.getElementById('aj-f-operacion');
@@ -10523,7 +10534,7 @@
         (!texto || [a.columna_origen, a.etiqueta_columna, a.rol, a.datos_habilitados, a.valor_defecto, a.operacion].join(' ').toLowerCase().includes(texto)));
       const body = document.getElementById('tabla-ajustes-body');
       if (!filas.length) {
-        body.innerHTML = `<tr><td colspan="13" style="text-align:center; color:var(--text-muted); padding:24px;">${allAjustes.length ? 'Ningún ajuste coincide con los filtros.' : 'Aún no hay ajustes: todos los formularios funcionan como siempre.'}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="14" style="text-align:center; color:var(--text-muted); padding:24px;">${allAjustes.length ? 'Ningún ajuste coincide con los filtros.' : 'Aún no hay ajustes: todos los formularios funcionan como siempre.'}</td></tr>`;
         return;
       }
       const si = (v, txt) => Number(v) === 1 ? `<span style="color:var(--success-dark); font-weight:700;">✓ ${txt}</span>` : '<span style="color:var(--text-muted);">✕ No</span>';
@@ -10539,6 +10550,7 @@
           <td>${a.datos_habilitados ? esc(a.datos_habilitados) : '<span style="color:var(--text-muted);">Todos</span>'}</td>
           <td>${esc(a.valor_defecto || '')}</td>
           <td>${a.rol ? esc(a.rol) : '<span style="color:var(--text-muted);">Todos</span>'}</td>
+          <td>${a.condicion_campo ? `${esc(a.condicion_campo)}: <strong>${esc(a.condicion_valores || '')}</strong>` : '<span style="color:var(--text-muted);">Siempre</span>'}</td>
           <td>${a.orden ?? ''}</td>
           <td>${esc(a.usuario || '')}</td>
           <td>${esc(a.fecha_registro || '')}</td>
@@ -10580,6 +10592,9 @@
       setAjusteBool('obligatorio', ajEditando ? Number(a.obligatorio) : 0);
       ajHabSel = new Set(String(a.datos_habilitados || '').split(',').map(s => s.trim()).filter(Boolean));
       ajRolesSel = new Set(String(a.rol || '').split(',').map(s => s.trim()).filter(Boolean));
+      ajCondSel = new Set(String(a.condicion_valores || '').split(',').map(s => s.trim()).filter(Boolean));
+      document.getElementById('aj-condicion-campo').value = a.condicion_campo || '';
+      onCondicionAjusteChange();
       document.getElementById('aj-defecto-texto').value = a.valor_defecto || '';
       pintarRolesAjuste();
       onAjusteCampoChange(a.valor_defecto || '');
@@ -10602,6 +10617,33 @@
       overlay.classList.remove('open');
       cerrarModalBack(overlay._backEntry);
       overlay._backEntry = null;
+    }
+
+    // "Mostrar solo si": valores del dato del recibo con los que el campo aparece
+    let ajCondSel = new Set();
+    let ajCondCatalogo = null;
+    async function onCondicionAjusteChange() {
+      const campo = document.getElementById('aj-condicion-campo').value;
+      const cont = document.getElementById('aj-condicion-valores');
+      if (!campo) { cont.innerHTML = ''; return; }
+      if (!ajCondCatalogo) {
+        cont.innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Cargando...</span>';
+        try {
+          const r = await fetch(ajUrl('/opciones', { seccion: 'Recibo', columna: campo }));
+          ajCondCatalogo = r.ok ? (await r.json()).opciones || [] : [];
+        } catch (e) { ajCondCatalogo = []; }
+      }
+      pintarCondicionAjuste();
+    }
+    function pintarCondicionAjuste() {
+      const valores = [...new Set([...(ajCondCatalogo || []).map(o => o.valor), ...ajCondSel])];
+      document.getElementById('aj-condicion-valores').innerHTML = valores.map(v =>
+        chipAjuste(v, v, ajCondSel.has(v), 'toggleCondicionAjuste(this.dataset.valor)')).join('');
+      if (!ajPuede('editar')) document.querySelectorAll('#aj-condicion-valores button').forEach(b => { b.disabled = true; });
+    }
+    function toggleCondicionAjuste(valor) {
+      if (ajCondSel.has(valor)) ajCondSel.delete(valor); else ajCondSel.add(valor);
+      pintarCondicionAjuste();
     }
 
     function pintarRolesAjuste() {
@@ -10700,6 +10742,8 @@
         valor_defecto: campo.tipo === 'lista' ? document.getElementById('aj-defecto-select').value
           : campo.tipo === 'texto' ? document.getElementById('aj-defecto-texto').value : '',
         rol: [...ajRolesSel].join(', '),
+        condicion_campo: document.getElementById('aj-condicion-campo').value,
+        condicion_valores: document.getElementById('aj-condicion-campo').value ? [...ajCondSel].join(', ') : '',
         orden: document.getElementById('aj-orden').value,
       };
       if (ajBool.obligatorio === 1 && ajBool.visible === 0) {
@@ -10803,10 +10847,10 @@
     let msAjustes = {}; // reglas vigentes del formulario de servicio
     let mrAjustes = {}; // reglas vigentes del formulario de recibo
 
-    async function obtenerAjustesFormulario(seccion, operacion, modalidad) {
+    async function obtenerAjustesFormulario(seccion, operacion, modalidad, clienteAFacturar) {
       if (!operacion) return {};
       try {
-        const params = new URLSearchParams({ usuario: CONFIG.usuario, seccion, operacion, modalidad: modalidad || '' });
+        const params = new URLSearchParams({ usuario: CONFIG.usuario, seccion, operacion, modalidad: modalidad || '', clienteAFacturar: clienteAFacturar || '' });
         const r = await fetch(`/facturacion/api/config-servicios?${params}`);
         return r.ok ? await r.json() : {};
       } catch (e) { return {}; }
@@ -10847,7 +10891,7 @@
 
     // Se aplica al abrir el formulario de servicio, cuando ya cargaron áreas, actividades y listas
     async function aplicarAjustesServicio(crear) {
-      msAjustes = await obtenerAjustesFormulario('Servicio', msContexto.operacion, msContexto.modalidad);
+      msAjustes = await obtenerAjustesFormulario('Servicio', msContexto.operacion, msContexto.modalidad, msContexto.clienteAFacturar);
       const a = msAjustes;
       aplicarEtiquetasYVisibilidad('Servicio', a);
       // Manifiesto y Teléfono son de CREDITO, salvo que la operación diga otra cosa
@@ -10926,9 +10970,10 @@
     async function aplicarAjustesRecibo() {
       const operacion = document.getElementById('mr-operacion').value;
       const modalidad = modalRecibo.modoActual;
-      const clave = `${operacion}|${modalidad || ''}`;
+      const clienteRecibo = document.getElementById('mr-cliente-facturar').value || '';
+      const clave = `${operacion}|${modalidad || ''}|${clienteRecibo}`;
       aplicarAjustesRecibo.clave = clave;
-      const ajustes = operacion ? await obtenerAjustesFormulario('Recibo', operacion, modalidad) : {};
+      const ajustes = operacion ? await obtenerAjustesFormulario('Recibo', operacion, modalidad, clienteRecibo) : {};
       if (aplicarAjustesRecibo.clave !== clave) return; // llegó tarde: ya se escogió otra operación
       mrAjustes = ajustes;
       aplicarEtiquetasYVisibilidad('Recibo', mrAjustes);
@@ -11060,6 +11105,8 @@
       msAreaSeleccionada = existente ? existente.Area : null;
       msActividadSeleccionada = existente ? existente.Actividad : null;
       msUnidadManual = modo === 'editar'; // en un servicio guardado no se cambia la Unidad que ya tiene
+      msValorManual = modo === 'editar'; // ni el Valor Unitario: la tarifa solo se busca al crear
+      document.getElementById('ms-tarifa-info').textContent = '';
 
       document.getElementById('ms-transportadora-input').value = existente?.transportadoraNombre || '';
       document.getElementById('ms-pl1-input').value = existente?.placaNombre || '';
@@ -11135,6 +11182,7 @@
 
       // Ajustes de la operación (Config_Servicios): etiquetas, campos, datos habilitados y valores por defecto
       await aplicarAjustesServicio(modo !== 'editar');
+      recalcularTarifaServicio();
 
       const overlayServicio = document.getElementById('modal-servicio-overlay');
       overlayServicio.classList.add('open');
@@ -11198,12 +11246,53 @@
     }
     function seleccionarActividadServicio(id) {
       msActividadSeleccionada = id;
+      recalcularTarifaServicio();
       document.querySelectorAll('.ms-actividad-btn').forEach(b => b.classList.toggle('sel', Number(b.dataset.id) === Number(id)));
       // Unidad por defecto de la Actividad (Config_Actividad.Unidad_Defecto), mientras no se haya cambiado a mano
       const unidad = document.querySelector(`.ms-actividad-btn[data-id="${id}"]`)?.dataset.unidad;
       const selUnidad = document.getElementById('ms-unidad');
       if (unidad && !msUnidadManual && [...selUnidad.options].some(o => o.value === unidad)) selUnidad.value = unidad;
       pintarUnidadServicio();
+    }
+
+    // ── Valor Unitario según Maestro_Tarifas (antes, fórmula de AppSheet) ──
+    // Se busca la tarifa de la Actividad con la Unidad (o el Vehículo si la Unidad es CUPO): primero la
+    // del Proveedor, luego la de la Transportadora y por último la general. Solo al crear y mientras
+    // la persona no haya escrito el valor; si no hay tarifa el campo queda vacío para escribirlo.
+    let msValorManual = false;
+    let msTarifaTimer = null;
+    function recalcularTarifaServicio() {
+      clearTimeout(msTarifaTimer);
+      msTarifaTimer = setTimeout(async () => {
+        if (msValorManual) return;
+        const input = document.getElementById('ms-valor-unitario');
+        const info = document.getElementById('ms-tarifa-info');
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          actividad: msActividadSeleccionada || '',
+          unidad: document.getElementById('ms-unidad').value || '',
+          vehiculo: document.getElementById('ms-vehiculo').value || '',
+          transportadora: msTransportadoraId || '',
+          proveedores: msProveedorSeleccionados.map(p => p.id).join(','),
+        });
+        let tarifa = null;
+        if (params.get('actividad') && params.get('unidad')) {
+          try {
+            const r = await fetch(`/facturacion/api/tarifa?${params}`);
+            tarifa = r.ok ? await r.json() : null;
+          } catch (e) { tarifa = null; }
+        }
+        if (msValorManual) return; // escribió mientras se buscaba
+        if (tarifa && tarifa.valor != null) {
+          input.value = tarifa.valor;
+          input.dataset.tarifa = '1';
+          info.textContent = `Tarifa ${{ proveedor: 'del proveedor', transportadora: 'de la transportadora', general: 'general' }[tarifa.criterio] || ''}`;
+        } else {
+          if (input.dataset.tarifa === '1') input.value = ''; // la tarifa anterior ya no aplica
+          delete input.dataset.tarifa;
+          info.textContent = (params.get('actividad') && params.get('unidad')) ? 'Sin tarifa: escriba el valor' : '';
+        }
+      }, 250);
     }
 
     // Unidad: con 5 opciones o menos se escoge con botones; con más, con la lista. Los botones
@@ -11224,6 +11313,7 @@
       sel.value = sel.value === valor ? '' : valor; // un segundo clic la quita
       msUnidadManual = true;
       pintarUnidadServicio();
+      recalcularTarifaServicio();
     }
     let msUnidadManual = false; // la Unidad la escogió la persona: la Actividad ya no la cambia
 
@@ -11317,6 +11407,7 @@
               document.getElementById('ms-transportadora-input').value = t.transportadora;
               msTransportadoraId = t.id;
               listEl.style.display = 'none';
+              recalcularTarifaServicio();
             };
             listEl.appendChild(row);
           });
@@ -11334,6 +11425,7 @@
           document.getElementById('ms-transportadora-input').value = data.transportadora;
           msTransportadoraId = data.id;
           document.getElementById('ms-transportadora-list').style.display = 'none';
+          recalcularTarifaServicio();
         } else {
           alert('Error: ' + (data.error || 'No se pudo crear la transportadora.'));
         }
@@ -11400,6 +11492,7 @@
       renderProveedorChips();
     }
     function renderProveedorChips() {
+      recalcularTarifaServicio();
       document.getElementById('ms-proveedor-chips').innerHTML = msProveedorSeleccionados.map(p => `
         <span style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); border:1px solid var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
           ${esc(p.proveedor)}

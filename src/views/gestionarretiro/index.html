@@ -879,12 +879,16 @@
           </div>
           ${firmado.url ? `<a href="${firmado.url}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>` : ''}`;
       } else {
+        const extraBtn = (prefijo === 'PZ')
+          ? `<a href="#cardEstadoPZ" class="btn-ver-doc" style="margin-right:6px" onclick="document.getElementById('cardEstadoPZ')?.scrollIntoView({behavior:'smooth'}); return false;">&#128065; Ver estado</a>`
+          : '';
         row.innerHTML = `
           <span class="doc-icon-big">&#9997;&#65039;</span>
           <div class="doc-info">
             <div class="doc-nombre">${label}</div>
             <div class="doc-estado pending">&#9203; Enlace vigente — pendiente de firma del trabajador</div>
           </div>
+          ${extraBtn}
           <a href="${urlFirma}" target="_blank" class="btn-ver-doc">&#128279; Enlace</a>`;
       }
       lista.appendChild(row);
@@ -1190,7 +1194,7 @@
       if (puedeModificarArticulosPz && pazYSalvo.estado !== 'completado') {
         document.getElementById('btnEditarArts').style.display = 'inline-block';
       }
-      if (pazYSalvo.workerSigned) {
+      if (pazYSalvo.articulosGuardados || pazYSalvo.workerSigned) {
         document.getElementById('cardEstadoPZ').style.display = 'block';
         iniciarEstadoPZ(_idPzActual);
       }
@@ -1333,6 +1337,7 @@
         if (puedeModificarArticulosPz) {
           document.getElementById('btnEditarArts').style.display = 'inline-block';
         }
+        iniciarEstadoPZ(_idPzActual);
         if (d.urlFirma) {
           _urlFirmaPZActual = d.urlFirma;
           renderDocs();

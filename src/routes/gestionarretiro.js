@@ -167,7 +167,8 @@ router.get('/:idVinculacion', async (req, res) => {
     let pzInfo = null;
     const [pzRows] = await pool.execute(
       `SELECT id, estado, token_trabajador, token_trabajador_expira,
-              articulos, observaciones, firma_responsable_url, url_pdf_final
+              articulos, observaciones, firma_responsable_url, url_pdf_final,
+              firma_trabajador_url
        FROM Maestro_pazysalvo
        WHERE id_vinculacion = ? ORDER BY fecha_creacion DESC LIMIT 1`,
       [idVinculacion]
@@ -178,9 +179,10 @@ router.get('/:idVinculacion', async (req, res) => {
         : typeof p.articulos === 'string' ? (() => { try { return JSON.parse(p.articulos); } catch { return []; } })()
         : [];
       const baseUrl2 = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const workerSigned = !!p.firma_trabajador_url;
       // p.token_trabajador es solo el JTI; hay que reconstruir el JWT completo para que sea válido
       let urlFirmaPZ = null;
-      if (p.token_trabajador) {
+      if (p.token_trabajador && !workerSigned) {
         let jwt_pz = reconstruirToken(p.token_trabajador, p.id, p.token_trabajador_expira);
         if (!jwt_pz) {
           // Token expirado → regenerar
@@ -195,8 +197,8 @@ router.get('/:idVinculacion', async (req, res) => {
         urlPdfFinal:        p.url_pdf_final || null,
         articulos:          articulosParsed,
         observaciones:      p.observaciones || '',
-        articulosGuardados: !!p.token_trabajador || p.estado !== 'esperando_trabajador' || articulosParsed.length > 0,
-        workerSigned:       p.token_trabajador === null && p.estado !== 'esperando_trabajador',
+        articulosGuardados: !!p.token_trabajador || workerSigned || p.estado !== 'esperando_trabajador' || articulosParsed.length > 0,
+        workerSigned,
       };
     }
 
@@ -395,45 +397,15 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'No tiene permiso para reenviar Paz y Salvo ya completado' });
     }
 
-    const { EMAILS_AREA, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
-    const { notificarAreaPazYSalvo } = require('../services/email');
-    const areasReq = normalizarAreasRequeridas(pz.areas_requeridas);
-    const baseUrl  = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const { notificarAreasPendientesPazYSalvo } = require('../services/pazYSalvoService');
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
-    const areasPendientes = areasReq.filter(a => !pz[`firma_${a}_url`]);
-    if (!areasPendientes.length) return res.json({ ok: true, reenviados: 0 });
-
-    let reenviados = 0;
-    for (const area of areasPendientes) {
-      const destinatarios = EMAILS_AREA[area] || [];
-      if (!destinatarios.length) continue;
-      // Reconstruir o generar token del área
-      const campoToken  = `token_${area}`;
-      const campoExpira = `token_${area}_expira`;
-      const { generarTokenPZ, validarTokenPZ } = require('../services/token');
-      let tokenFinal = null;
-      if (pz[campoToken]) {
-        tokenFinal = await validarTokenPZ(pz[campoToken], idPz, campoToken, campoExpira)
-          .then(r => r.valido ? pz[campoToken] : null).catch(() => null);
-      }
-      if (!tokenFinal) {
-        tokenFinal = await generarTokenPZ(idPz, campoToken, campoExpira);
-      }
-      const urlFirma   = `${baseUrl}/pazysalvo-area/${area}/${encodeURIComponent(idPz)}?token=${encodeURIComponent(tokenFinal)}`;
-      try {
-        await notificarAreaPazYSalvo({
-          area, destinatarios,
-          trabajador:    limpiarNombre(pz.Trabajador),
-          identificacion: String(pz['Identificación']),
-          cargo:         pz.Cargo || '',
-          operacion:     pz['Operación'] || '',
-          urlFirma,
-        });
-        reenviados++;
-      } catch (e) { console.error(`[reenviar-pz ${area}]`, e.message); }
+    const resNotif = await notificarAreasPendientesPazYSalvo(idPz, { baseUrl, forzarReenvio: true });
+    if (!resNotif.ok) {
+      return res.status(500).json({ ok: false, error: resNotif.error || 'Error al enviar notificaciones' });
     }
 
-    res.json({ ok: true, reenviados, areasPendientes });
+    res.json({ ok: true, reenviados: resNotif.notificados, areasPendientes: resNotif.areasNotificadas });
   } catch (err) {
     console.error('[reenviar-pz-areas]', err);
     res.status(500).json({ ok: false, error: err.message });
