@@ -100,6 +100,10 @@ const PR = {
   ELIMINAR_SERV:  'Roles que pueden eliminar servicios',
   REASIGNAR:      'Roles que pueden reasignar servicios a otro recibo',
   NITS_RETENCION: 'NITs con retención obligatoria de Fuente e IVA',
+  VER_RECIBO_ESTADO:     'Roles que ven el Recibo del Cliente en cualquier estado',
+  VER_RECIBO_MODALIDAD:  'Roles que ven el Recibo del Cliente en cualquier modalidad',
+  VER_SERVICIO_FPAGO:    'Roles que ven el registro del servicio en cualquier forma de pago',
+  VER_SERVICIO_SIN_TEL:  'Roles que ven el registro del servicio sin teléfono',
 };
 const DEFAULTS_RECIBOS = {
   [PR.CREAR]:          'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR, Lider',
@@ -109,6 +113,10 @@ const DEFAULTS_RECIBOS = {
   [PR.ELIMINAR_SERV]:  'Sistema',
   [PR.REASIGNAR]:      'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [PR.NITS_RETENCION]: '860350940, 890204199',
+  [PR.VER_RECIBO_ESTADO]:    'Facturación, Sistema',
+  [PR.VER_RECIBO_MODALIDAD]: '',
+  [PR.VER_SERVICIO_FPAGO]:   '',
+  [PR.VER_SERVICIO_SIN_TEL]: '',
 };
 
 async function obtenerParametrosRecibos() {
@@ -142,6 +150,11 @@ async function obtenerPermisosRecibos(rol) {
     eliminarRecibos:      tiene(PR.ELIMINAR),
     eliminarServicios:    tiene(PR.ELIMINAR_SERV),
     reasignarServicios:   tiene(PR.REASIGNAR),
+    // Botones "Ver Recibo del Cliente" y "Ver Servicio / Firma del Cliente"
+    verReciboCualquierEstado:      tiene(PR.VER_RECIBO_ESTADO),
+    verReciboCualquierModalidad:   tiene(PR.VER_RECIBO_MODALIDAD),
+    verServicioCualquierFormaPago: tiene(PR.VER_SERVICIO_FPAGO),
+    verServicioSinTelefono:        tiene(PR.VER_SERVICIO_SIN_TEL),
   };
 }
 

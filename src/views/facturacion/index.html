@@ -1582,8 +1582,9 @@
             </button>
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
-            <span id="det-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
-            <span id="det-consecutivo-badge" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
+            <span id="det-estado-badge" role="img" style="display:inline-block; width:16px; height:16px; border-radius:50%; flex:none;"></span>
+            <button type="button" id="btn-editar-servicio-detalle" onclick="editarServicioDesdeDetalle()" title="Editar este servicio" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 12px; font-weight:600; cursor:pointer; border-radius:8px; border:1px solid var(--border); background:var(--card-bg); color:var(--text);">✏️ Editar</button>
+            <button type="button" id="det-consecutivo-badge" onclick="abrirReciboDesdeServicio()" title="Abrir el detalle del recibo" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 3px;">-</button>
           </div>
         </div>
 
@@ -1600,8 +1601,9 @@
           </div>
 
           <div id="det-serv-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--accent-light); background:var(--accent-soft); color:var(--accent); text-decoration:none;">
-              👁️ Ver Servicio / Firma del Cliente
+            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid #2563eb; background:rgba(37, 99, 235, 0.12); color:#2563eb; text-decoration:none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 17c1.2-1.6 2-1.6 2.6 0 .5 1.3 1.2 1.3 2 .2.6-.8 1.3-.9 2.4-.2"></path></svg>
+              Ver Servicio / Firma del Cliente
             </a>
           </div>
 
@@ -1852,7 +1854,7 @@
             <span>←</span> Volver al listado de recibos
           </button>
           <div style="display: flex; align-items: center; gap: 10px;">
-            <span id="det-recib-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
+            <span id="det-recib-estado-badge" role="img" style="display:inline-block; width:16px; height:16px; border-radius:50%; flex:none;"></span>
             <span id="det-recib-consecutivo-badge" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
             <button type="button" id="btn-editar-recibo" class="btn-secondary" onclick="abrirModalRecibo('editar')" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);" title="Editar este recibo">
               ✏️ Editar
@@ -1877,11 +1879,13 @@
           </div>
 
           <div id="det-recib-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--accent-light); background:var(--accent-soft); color:var(--accent); text-decoration:none;">
-              👁️ Ver Recibo del Cliente
+            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid #2563eb; background:rgba(37, 99, 235, 0.12); color:#2563eb; text-decoration:none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+              Ver Recibo del Cliente
             </a>
-            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:var(--text-inverse); text-decoration:none;">
-              💬 Enviar por WhatsApp
+            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:#ffffff; text-decoration:none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.43 9.43 0 0 1-4.8-1.32l-.35-.2-3.57.94.95-3.48-.22-.36a9.4 9.4 0 0 1-1.44-5.02c0-5.2 4.24-9.43 9.45-9.43 2.52 0 4.89.98 6.67 2.77a9.37 9.37 0 0 1 2.76 6.67c0 5.2-4.24 9.43-9.44 9.43zm8.03-17.47A11.3 11.3 0 0 0 12.05.7C5.79.7.7 5.79.7 12.04c0 2 .52 3.95 1.51 5.67L.6 23.3l5.73-1.5a11.3 11.3 0 0 0 5.71 1.46h.01c6.25 0 11.34-5.09 11.35-11.34a11.27 11.27 0 0 0-3.32-8.02z"/></svg>
+              Enviar por WhatsApp
             </a>
           </div>
 
@@ -1923,10 +1927,16 @@
           <!-- Sección 4: Servicios Vinculados -->
           <div style="margin-top: 24px;">
             <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-              <span><span>📦</span> Servicios del Recibo (<span id="det-recib-servicios-count">0</span>)</span>
-              <button type="button" id="btn-agregar-servicio" class="btn-primary" style="display:none; padding: 7px 14px; font-size: 0.82rem;" onclick="abrirModalServicio('crear')">
-                ➕ Agregar Servicio
-              </button>
+              <span><span>📦</span> Servicios (<span id="det-recib-servicios-count">0</span>)</span>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                <a id="btn-expandir-recibo" href="#" onclick="return expandirServiciosRecibo(event)" title="Ver los servicios de este recibo en la pestaña Servicios" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 14px; font-weight:700; font-size:0.82rem; border-radius:8px; border:1.5px solid var(--border-strong); background:var(--card-bg); color:var(--text); text-decoration:none; text-transform:none;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                  Expandir
+                </a>
+                <button type="button" id="btn-agregar-servicio" class="btn-primary" style="display:none; padding: 7px 14px; font-size: 0.82rem; text-transform:none;" onclick="abrirModalServicio('crear')">
+                  ➕ Adicionar
+                </button>
+              </div>
             </div>
             <div class="table-container">
               <table class="data-table" id="tabla-det-recibo-servicios">
@@ -4851,28 +4861,12 @@
       // listado) aunque no usan el sistema .modal-overlay de los demás
       // modales de este archivo, así que se manejan aparte con su propio
       // listener de popstate en vez de registrarModalBack/cerrarModalBack.
-      window.addEventListener('popstate', () => {
-        const params = new URLSearchParams(window.location.search);
-        const idServicio = params.get('idservicio');
-        const idRecibo = params.get('idrecibo');
+      window.addEventListener('popstate', () => { aplicarUrlActual(); });
 
-        const detalleServicioEl = document.getElementById('servicios-vista-detalle');
-        const detalleReciboEl = document.getElementById('recibos-vista-detalle');
-        const servicioVisible = !!detalleServicioEl && detalleServicioEl.style.display === 'block';
-        const reciboVisible = !!detalleReciboEl && detalleReciboEl.style.display === 'block';
-
-        if (!idServicio && servicioVisible) {
-          volverAListadoServicios();
-        } else if (!idRecibo && reciboVisible) {
-          volverAListadoRecibos();
-        } else if (idServicio && !servicioVisible) {
-          switchMainTab('servicios');
-          verDetalleServicio(idServicio);
-        } else if (idRecibo && !reciboVisible) {
-          switchMainTab('recibos');
-          verDetalleRecibo(idRecibo);
-        }
-      });
+      // ?tab=servicios&q=... (enlace "Expandir" del recibo): se abre con esa búsqueda
+      if (!idServicioParam && (tabParam === 'servicios' || tabParam === 'servicio') && (paramsUrl.get('q') || '').trim()) {
+        aplicarBusquedaServicios(paramsUrl.get('q').trim());
+      }
 
       // Inicializar columnas redimensionables
       makeTableResizable(document.getElementById('tabla-servicios'));
@@ -5007,11 +5001,12 @@
       }
       if (tab !== 'servicios') {
         url.searchParams.delete('idservicio');
+        url.searchParams.delete('q'); // búsqueda de la pestaña Servicios
       }
       if (tab !== 'recibos') {
         url.searchParams.delete('idrecibo');
       }
-      history.replaceState(null, '', url);
+      actualizarUrl(url, 'replace');
 
       if (soloVista) return; // los datos los carga el inicio de la página
 
@@ -5079,7 +5074,7 @@
       if (url.searchParams.get('tab') === 'clientes' || url.searchParams.get('tab') === 'clientescredito') {
         url.searchParams.set('tab', 'clientes');
         url.searchParams.set('subtab', subtab);
-        history.replaceState(null, '', url);
+        actualizarUrl(url, 'replace');
       }
 
       if (subtab === 'clientes') {
@@ -8348,6 +8343,9 @@
     }
 
     function onServicioSearchInput(val) {
+      const url = new URL(window.location);
+      if (String(val || '').trim()) url.searchParams.set('q', String(val).trim()); else url.searchParams.delete('q');
+      actualizarUrl(url, 'replace');
       if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
       searchDebounceTimeout = setTimeout(() => {
         cargarServicios();
@@ -8374,6 +8372,9 @@
 
     function resetFiltrosServicios() {
       document.getElementById('serv-filtro-q').value = '';
+      const urlSinQ = new URL(window.location);
+      urlSinQ.searchParams.delete('q');
+      actualizarUrl(urlSinQ, 'replace');
       if (document.getElementById('serv-filtro-desde')) document.getElementById('serv-filtro-desde').value = '';
       if (document.getElementById('serv-filtro-hasta')) document.getElementById('serv-filtro-hasta').value = '';
       document.getElementById('serv-filtro-anio').value = '2026';
@@ -8708,7 +8709,8 @@
       const url = new URL(window.location);
       url.searchParams.set('tab', 'servicios');
       url.searchParams.set('idservicio', idServicio);
-      history.pushState(null, '', url);
+      url.searchParams.delete('idrecibo'); // la dirección solo nombra la vista abierta
+      actualizarUrl(url, 'push');
 
       document.getElementById('det-id-servicio').textContent = idServicio;
       document.getElementById('det-total-pago-header').textContent = 'Cargando...';
@@ -8720,24 +8722,11 @@
 
         // Estado Badge
         const estadoBadge = document.getElementById('det-estado-badge');
-        estadoBadge.textContent = s.Estado || 'Sin Estado';
-        if (s.Estado === 'Yellow') {
-          estadoBadge.style.background = 'var(--warning-soft)';
-          estadoBadge.style.color = 'var(--warning-dark)';
-          estadoBadge.style.border = '1px solid var(--warning-soft)';
-        } else if (s.Estado === 'Green') {
-          estadoBadge.style.background = 'var(--success-soft)';
-          estadoBadge.style.color = 'var(--success-dark)';
-          estadoBadge.style.border = '1px solid var(--success-soft)';
-        } else if (s.Estado === 'Red') {
-          estadoBadge.style.background = 'var(--danger-soft)';
-          estadoBadge.style.color = 'var(--danger-dark)';
-          estadoBadge.style.border = '1px solid var(--danger-soft)';
-        } else {
-          estadoBadge.style.background = 'var(--bg-elevated)';
-          estadoBadge.style.color = 'var(--text-muted)';
-          estadoBadge.style.border = '1px solid var(--border-strong)';
-        }
+        const estadoPunto = { Green: ['var(--success)', 'Verde'], Yellow: ['var(--warning)', 'Amarillo'], Red: ['var(--danger)', 'Rojo'] }[s.Estado]
+          || ['var(--border-strong)', 'Sin estado'];
+        estadoBadge.style.background = estadoPunto[0];
+        estadoBadge.title = estadoPunto[1];
+        estadoBadge.setAttribute('aria-label', 'Estado: ' + estadoPunto[1]);
 
         document.getElementById('det-consecutivo-badge').textContent = 'Recibo: ' + (s.consecutivoRecibo || 'Sin Consecutivo');
         servicioDetalleActual = { idServicio, idRecibo: s.IdRecibo, consecutivoRecibo: s.consecutivoRecibo, operacion: s.operacion };
@@ -8755,11 +8744,14 @@
         document.getElementById('det-forma-pago').textContent = s['Forma De Pago'] != null ? `${s['Forma De Pago']}: ${FORMAS_PAGO_NOMBRES[s['Forma De Pago']] || ''}` : '-';
         document.getElementById('det-fecha-transferencia').textContent = s['Fecha Transferencia'] || '-';
 
-        // Ver Servicio / Firma del Cliente: solo si es Forma De Pago 3 (Crédito) y hay
-        // un teléfono diligenciado (propio del servicio o el del recibo asociado).
+        // Ver Servicio / Firma del Cliente (Config_Parametros facturacion / Recibos): con Forma De
+        // Pago 3 (Crédito) y un teléfono diligenciado (del servicio o del recibo), salvo los roles
+        // que lo ven en cualquier forma de pago o sin teléfono.
         const btnVerServicio = document.getElementById('btn-ver-servicio-cliente');
         const telefonoServicio = s.Telefono || s.reciboTelefono;
-        if (s['Forma De Pago'] === 3 && telefonoServicio) {
+        const formaPagoOk = Number(s['Forma De Pago']) === 3 || !!PERMISOS_RECIBOS.verServicioCualquierFormaPago;
+        const telefonoOk = !!telefonoServicio || !!PERMISOS_RECIBOS.verServicioSinTelefono;
+        if (formaPagoOk && telefonoOk) {
           btnVerServicio.href = `https://digital.logyser.com/servicio/${encodeURIComponent(idServicio)}`;
           btnVerServicio.style.display = 'inline-flex';
         } else {
@@ -8814,10 +8806,17 @@
           evidContainer.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No hay evidencias fotográficas adjuntas para este servicio.</span>';
         } else {
           evidContainer.innerHTML = fotos.map(f => {
+            const url = urlArchivoServicio(f.path);
+            const contenido = url
+              ? `<a href="${esc(url)}" target="_blank" rel="noopener" title="Abrir en una pestaña nueva" style="display:block;">
+                   <img src="${esc(url)}" alt="${esc(f.label)}" loading="lazy" style="width:150px; height:150px; object-fit:cover; border-radius:6px; background:var(--bg-elevated);"
+                     onerror="this.replaceWith(Object.assign(document.createElement('span'), { textContent: 'Abrir archivo ↗', style: 'display:block; padding:24px 8px; font-size:0.8rem; font-weight:700; color:var(--accent);' }))">
+                 </a>`
+              : `<div style="font-size: 0.75rem; color: var(--text-muted); padding: 24px 8px;">${/^\d{4}-\d{2}-\d{2}/.test(f.path) ? esc(f.path) : 'Imagen no disponible'}</div>`;
             return `
-              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--card-bg); text-align: center; max-width: 180px;">
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--card-bg); text-align: center; width: 172px;">
                 <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">${esc(f.label)}</div>
-                <div style="font-size: 0.72rem; word-break: break-all; color: var(--accent); font-family: monospace; padding: 4px; background: var(--accent-soft); border-radius: 4px;">${esc(f.path)}</div>
+                ${contenido}
               </div>
             `;
           }).join('');
@@ -8830,12 +8829,162 @@
       }
     }
 
+    // Archivos de Dynamic_Servicios (fotos y firma). Mientras se trasladan al bucket, los que subió
+    // AppSheet guardan una ruta relativa (ej. "Foto_Documentos/2026/.../x.jpg") que se ve por la URL
+    // de AppSheet. Devuelve '' si no hay archivo (AppSheet guardó "Unable to load image data..." o,
+    // en la firma, solo la fecha).
+    const URL_ARCHIVOS_APPSHEET_SERVICIOS = 'https://www.appsheet.com/template/gettablefileurl?appName=Control-661901843&tableName=Servicios&fileName=';
+    function urlArchivoServicio(ruta) {
+      const r = String(ruta || '').trim();
+      if (!r || /^unable to load/i.test(r) || /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(r)) return '';
+      if (/^https?:\/\//i.test(r)) return r;
+      if (/^gs:\/\//i.test(r)) return 'https://storage.googleapis.com/' + r.slice(5);
+      return URL_ARCHIVOS_APPSHEET_SERVICIOS + encodeURIComponent(r);
+    }
+
+    // Enlace "Ver archivo actual" del formulario de servicio
+    function archivoActualServicio(ruta) {
+      if (!String(ruta || '').trim()) return 'Sin archivo';
+      const url = urlArchivoServicio(ruta);
+      return url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Ver archivo actual</a>` : 'Archivo no disponible';
+    }
+
     let origenReciboId = null;
 
     function abrirDetalleServicioDesdeRecibo(idServicio, idRecibo) {
       origenReciboId = idRecibo;
-      switchMainTab('servicios');
+      sinHistorial(() => switchMainTab('servicios')); // la entrada del recibo se conserva para "Atrás"
       verDetalleServicio(idServicio);
+    }
+
+    // ── Historial del navegador ─────────────────────────────────────────────
+    // Cada vista (pestaña, detalle de recibo o de servicio, búsqueda de "Expandir") queda en la
+    // dirección; con Atrás/Adelante la página muestra lo que dice la dirección. Mientras se aplica
+    // una dirección del historial no se escribe una nueva.
+    let navegandoHistorial = false;
+    function actualizarUrl(url, modo) {
+      if (navegandoHistorial) return;
+      if (modo === 'push') history.pushState(null, '', url);
+      else history.replaceState(null, '', url);
+    }
+    function sinHistorial(fn) {
+      const antes = navegandoHistorial;
+      navegandoHistorial = true;
+      try { return fn(); } finally { navegandoHistorial = antes; }
+    }
+    const TAB_DESDE_URL = {
+      servicios: 'servicios', servicio: 'servicios', recibos: 'recibos', recibo: 'recibos',
+      clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
+      clientes_credito: 'clientescredito', credito: 'clientescredito',
+      bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets', ajustes: 'ajustes',
+    };
+    function pestanaVisible() {
+      return ['servicios', 'recibos', 'clientes', 'bloqueo', 'tickets', 'ajustes']
+        .find(t => document.getElementById('tab-content-' + t)?.style.display === 'block');
+    }
+
+    async function aplicarUrlActual() {
+      const params = new URLSearchParams(window.location.search);
+      const idServicio = params.get('idservicio');
+      const idRecibo = params.get('idrecibo');
+      let tab = TAB_DESDE_URL[(params.get('tab') || '').toLowerCase().trim()] || 'recibos';
+      const detServ = document.getElementById('servicios-vista-detalle');
+      const detRecib = document.getElementById('recibos-vista-detalle');
+      const irAPestana = (t) => {
+        const destino = t === 'clientescredito' ? 'clientes' : t;
+        if (destino === 'clientes') {
+          const sub = (params.get('subtab') || (t === 'clientescredito' ? 'credito' : '')).toLowerCase();
+          if (SUBTABS_CLIENTES.includes(sub)) activeSubTabClientes = sub;
+        }
+        if (pestanaVisible() !== destino) switchMainTab(t);
+        else if (destino === 'clientes') switchSubTabClientes(activeSubTabClientes);
+      };
+      navegandoHistorial = true;
+      try {
+        if (idServicio) {
+          irAPestana('servicios');
+          if (detServ.style.display !== 'block' || servicioDetalleActual?.idServicio !== idServicio) await verDetalleServicio(idServicio);
+        } else if (idRecibo) {
+          if (detServ.style.display === 'block') volverAListadoServicios();
+          irAPestana('recibos');
+          if (detRecib.style.display !== 'block' || document.getElementById('det-recib-id').textContent !== idRecibo) await verDetalleRecibo(idRecibo);
+        } else {
+          if (detServ.style.display === 'block') volverAListadoServicios();
+          if (detRecib.style.display === 'block') volverAListadoRecibos();
+          irAPestana(tab);
+          const q = (params.get('q') || '').trim();
+          if (tab === 'servicios' && q && document.getElementById('serv-filtro-q').value.trim() !== q) aplicarBusquedaServicios(q);
+        }
+      } finally {
+        navegandoHistorial = false;
+      }
+    }
+
+    // "Expandir" del detalle del recibo: los servicios del recibo en la pestaña Servicios, como si
+    // se escribiera el IdRecibo en Buscar (sin los demás filtros, para que salgan todos).
+    function expandirServiciosRecibo(e) {
+      if (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)) return true; // abrir en otra pestaña
+      if (e) e.preventDefault();
+      const id = reciboDetalleActual?.recibo?.IdRecibo;
+      if (!id) return false;
+      const url = new URL(window.location);
+      url.searchParams.set('tab', 'servicios');
+      url.searchParams.delete('idrecibo');
+      url.searchParams.delete('idservicio');
+      url.searchParams.set('q', id);
+      history.pushState(null, '', url);
+      aplicarUrlActual();
+      return false;
+    }
+
+    function aplicarBusquedaServicios(q) {
+      document.getElementById('serv-filtro-q').value = q;
+      ['serv-filtro-desde', 'serv-filtro-hasta', 'serv-filtro-mes', 'serv-filtro-quincena', 'serv-filtro-regional',
+       'serv-filtro-operacion', 'serv-filtro-usuario', 'serv-filtro-cliente'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      document.getElementById('serv-filtro-anio').value = 'todos';
+      activeFormaPago = '';
+      const cuerpo = document.getElementById('servFiltrosBody');
+      if (cuerpo && cuerpo.style.display !== 'none') toggleFiltrosServicios(); // filtros plegados
+      cargarServicios();
+      cargarMetricasServicios();
+    }
+
+    // Clic en el consecutivo del recibo (detalle del servicio): abre el detalle del recibo. Si el
+    // servicio se abrió desde ese mismo recibo, es como volver atrás.
+    function abrirReciboDesdeServicio() {
+      const idRecibo = servicioDetalleActual?.idRecibo;
+      if (!idRecibo) return;
+      if (origenReciboId === idRecibo) return volverAReciboOrigen();
+      sinHistorial(() => switchMainTab('recibos')); // la entrada del servicio se conserva para "Atrás"
+      verDetalleRecibo(idRecibo);
+    }
+
+    // Lápiz del detalle del servicio: abre el formulario de edición. El formulario trabaja con el
+    // recibo del servicio (reciboDetalleActual), así que se carga si no es el que está en memoria.
+    let msEditandoDesdeDetalle = false;
+    async function editarServicioDesdeDetalle() {
+      const idServicio = servicioDetalleActual?.idServicio;
+      const idRecibo = servicioDetalleActual?.idRecibo;
+      if (!idServicio || !idRecibo) return;
+      const enMemoria = reciboDetalleActual?.recibo?.IdRecibo === idRecibo
+        && (reciboDetalleActual.servicios || []).some(x => x.IdServicio === idServicio);
+      if (!enMemoria) {
+        try {
+          const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(idRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+          if (!resp.ok) throw new Error();
+          const data = await resp.json();
+          const srvs = data.servicios || [];
+          const estadoColor = srvs.some(x => x.Validacion === 2) ? 'Yellow' : srvs.some(x => x.Validacion === 1) ? 'Green' : 'Red';
+          reciboDetalleActual = { recibo: data.recibo, servicios: srvs, totales: data.totales || {}, estadoColor };
+        } catch (e) {
+          return alert('No se pudo cargar el recibo del servicio para editarlo.');
+        }
+      }
+      msEditandoDesdeDetalle = true;
+      abrirModalServicio('editar', idServicio);
     }
 
     function volverAReciboOrigen() {
@@ -8844,8 +8993,8 @@
       const btnVolver = document.getElementById('btn-volver-a-recibo');
       if (btnVolver) btnVolver.style.display = 'none';
       if (targetId) {
-        switchMainTab('recibos');
-        verDetalleRecibo(targetId);
+        // El servicio se abrió desde el recibo: la entrada anterior del historial es el recibo
+        history.back();
       } else {
         volverAListadoServicios();
       }
@@ -8866,7 +9015,7 @@
       const url = new URL(window.location);
       url.searchParams.set('tab', 'servicios');
       url.searchParams.delete('idservicio');
-      history.pushState(null, '', url);
+      actualizarUrl(url, 'push');
 
       makeTableResizable(document.getElementById('tabla-servicios'));
     }
@@ -9263,7 +9412,9 @@
         const url = new URL(window.location);
         url.searchParams.set('tab', 'recibos');
         url.searchParams.set('idrecibo', idRecibo);
-        history.pushState(null, '', url);
+        url.searchParams.delete('idservicio'); // la dirección solo nombra la vista abierta
+        url.searchParams.delete('q');
+        actualizarUrl(url, 'push');
 
         // Header info — el Consecutivo Recibo es el identificador principal (visual, cliente e interno);
         // el IdRecibo (UUID) queda como dato secundario solo para consulta.
@@ -9272,17 +9423,19 @@
         document.getElementById('det-recib-total-header').textContent = '$ ' + formatMiles(tots.total);
 
         const badgeEstado = document.getElementById('det-recib-estado-badge');
-        let col = 'var(--text-muted)', bg = 'var(--bg-elevated)', estadoColor = 'Red';
-        if (srvs.some(s => s.Validacion === 2)) { col = 'var(--warning)'; bg = 'var(--warning-soft)'; estadoColor = 'Yellow'; }
-        else if (srvs.some(s => s.Validacion === 1)) { col = 'var(--success)'; bg = 'var(--success-soft)'; estadoColor = 'Green'; }
-        badgeEstado.textContent = estadoColor;
-        badgeEstado.style.color = col;
-        badgeEstado.style.background = bg;
+        let col = 'var(--text-muted)', estadoColor = 'Red', nombreEstado = 'Sin servicios validados';
+        if (srvs.some(s => s.Validacion === 2)) { col = 'var(--warning)'; estadoColor = 'Yellow'; nombreEstado = 'Amarillo'; }
+        else if (srvs.some(s => s.Validacion === 1)) { col = 'var(--success)'; estadoColor = 'Green'; nombreEstado = 'Verde'; }
+        badgeEstado.style.background = col;
+        badgeEstado.title = nombreEstado;
+        badgeEstado.setAttribute('aria-label', 'Estado: ' + nombreEstado);
 
         document.getElementById('det-recib-consecutivo-badge').textContent = 'Recibo: ' + (r['Consecutivo Recibo'] || 'S/N');
 
         // Guardar detalle actual para el modal de edición/eliminación
         reciboDetalleActual = { recibo: r, servicios: srvs, totales: tots, estadoColor };
+        document.getElementById('btn-expandir-recibo').href =
+          `/facturacion?tab=servicios&usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(r.IdRecibo)}`;
 
         // Gating de Editar/Eliminar: Facturación y Sistema editan siempre;
         // los demás roles solo si el recibo no está validado (Green).
@@ -9294,10 +9447,11 @@
         const btnEliminar = document.getElementById('btn-eliminar-recibo');
         btnEliminar.style.display = PERMISOS_RECIBOS.eliminarRecibos ? 'inline-flex' : 'none';
 
-        // Ver Recibo del Cliente: solo Modalidad RECAUDO. Para Facturación/Sistema basta con
-        // RECAUDO; para los demás roles además se requiere que todos los servicios estén en Green.
+        // Ver Recibo del Cliente (Config_Parametros facturacion / Recibos): en RECAUDO y con todos
+        // los servicios en verde, salvo los roles que lo ven en cualquier modalidad o estado.
         const btnVerRecibo = document.getElementById('btn-ver-recibo-cliente');
-        const puedeVerRecibo = (r.Modalidad === 'RECAUDO') && (rolPrivilegiado || estadoColor === 'Green');
+        const puedeVerRecibo = (r.Modalidad === 'RECAUDO' || !!PERMISOS_RECIBOS.verReciboCualquierModalidad)
+          && (estadoColor === 'Green' || !!PERMISOS_RECIBOS.verReciboCualquierEstado);
         if (puedeVerRecibo) {
           btnVerRecibo.href = `https://digital.logyser.com/recibo/${encodeURIComponent(r.IdRecibo)}`;
           btnVerRecibo.style.display = 'inline-flex';
@@ -9363,8 +9517,8 @@
             const sc = estadoServicioColores(s.Estado);
             const puedeEliminarSrv = !!PERMISOS_RECIBOS.eliminarServicios;
             return `
-            <tr onclick="abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="cursor: pointer;" title="Clic para editar este servicio">
-              <td data-label="Estado"><span class="badge" style="background:${sc.bg}; color:${sc.color};">${esc(s.Estado || '-')}</span></td>
+            <tr onclick="abrirDetalleServicioDesdeRecibo('${esc(s.IdServicio)}', '${esc(r.IdRecibo)}')" style="cursor: pointer;" title="Clic para ver el detalle del servicio">
+              <td data-label="Estado"><span role="img" title="${{ Green: 'Verde', Yellow: 'Amarillo', Red: 'Rojo' }[s.Estado] || 'Sin estado'}" style="display:inline-block; width:14px; height:14px; border-radius:50%; background:${sc.color};"></span></td>
               <td data-label="Id Servicio" style="font-family: monospace; font-size: 0.78rem;">${esc(s.IdServicio)}</td>
               <td data-label="Hora Inicio">${formatFechaBogota(s['Hora Inicio'])}</td>
               <td data-label="Actividad">${esc(s.actividadNombre || s.Actividad || '-')}</td>
@@ -9400,7 +9554,7 @@
       const url = new URL(window.location);
       url.searchParams.set('tab', 'recibos');
       url.searchParams.delete('idrecibo');
-      history.pushState(null, '', url);
+      actualizarUrl(url, 'push');
 
       makeTableResizable(document.getElementById('tabla-recibos'));
     }
@@ -10847,9 +11001,9 @@
       document.getElementById('ms-foto-documento').value = '';
       document.getElementById('ms-foto-evidencia').value = '';
       document.getElementById('ms-foto-transferencia').value = '';
-      document.getElementById('ms-foto-documento-actual').innerHTML = existente?.['Foto Documento'] ? `<a href="${esc(existente['Foto Documento'])}" target="_blank">Ver archivo actual</a>` : 'Sin archivo';
-      document.getElementById('ms-foto-evidencia-actual').innerHTML = existente?.['Foto Evidencia'] ? `<a href="${esc(existente['Foto Evidencia'])}" target="_blank">Ver archivo actual</a>` : 'Sin archivo';
-      document.getElementById('ms-foto-transferencia-actual').innerHTML = existente?.['Foto Transferencia'] ? `<a href="${esc(existente['Foto Transferencia'])}" target="_blank">Ver archivo actual</a>` : 'Sin archivo';
+      document.getElementById('ms-foto-documento-actual').innerHTML = archivoActualServicio(existente?.['Foto Documento']);
+      document.getElementById('ms-foto-evidencia-actual').innerHTML = archivoActualServicio(existente?.['Foto Evidencia']);
+      document.getElementById('ms-foto-transferencia-actual').innerHTML = archivoActualServicio(existente?.['Foto Transferencia']);
 
       document.getElementById('ms-hora-inicio').value = existente?.['Hora Inicio'] ? toDatetimeLocalBogota(existente['Hora Inicio']) : ahoraDatetimeLocalBogota();
       document.getElementById('ms-fecha-transferencia').value = existente?.['Fecha Transferencia'] ? toDatetimeLocalBogota(existente['Fecha Transferencia']) : ahoraDatetimeLocalBogota();
@@ -10911,6 +11065,7 @@
     }
 
     function cerrarModalServicio() {
+      msEditandoDesdeDetalle = false;
       const overlayServicio = document.getElementById('modal-servicio-overlay');
       overlayServicio.classList.remove('open');
       cerrarModalBack(overlayServicio._backEntry);
@@ -11403,8 +11558,14 @@
         const data = await resp.json();
 
         if (resp.ok && data.ok) {
+          const desdeDetalle = msEditandoDesdeDetalle; // cerrar el formulario borra la marca
           cerrarModalServicio();
-          await verDetalleRecibo(modalServicio.idRecibo);
+          if (desdeDetalle && modalServicio.modo === 'editar') {
+            document.getElementById('det-recib-id').textContent = ''; // el detalle del recibo se recarga al volver
+            await sinHistorial(() => verDetalleServicio(modalServicio.idServicio));
+          } else {
+            await verDetalleRecibo(modalServicio.idRecibo);
+          }
         } else {
           alert('Error: ' + (data.error || 'No se pudo guardar el servicio.'));
         }
