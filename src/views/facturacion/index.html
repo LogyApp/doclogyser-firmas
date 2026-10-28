@@ -4756,9 +4756,8 @@
         }
       }
 
-      // Cargar datos iniciales de forma resiliente
-      const cargarCredito = subTabClientesPermitida('credito');
-      await Promise.allSettled([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarCredito && cargarClientes(), cargarCredito && cargarPreseleccionadosInfo(), cargarTickets(), cargarMetricasTickets()]);
+      // Los datos de cada pestaña se cargan al abrirla (switchMainTab, más abajo): así la
+      // pestaña visible no espera a Servicios, Bloqueos, Clientes Crédito y Tickets.
 
       // Listeners de ordenamiento en tabla de servicios
       document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
@@ -5032,6 +5031,11 @@
         makeTableResizable(document.getElementById('tabla-bloqueos'));
         if (!allBloqueos || !allBloqueos.length) {
           cargarBloqueos();
+        }
+        // El bloqueo manual usa la lista de Clientes Crédito
+        if ((!allClientes || !allClientes.length) && subTabClientesPermitida('credito')) {
+          cargarClientes();
+          cargarPreseleccionadosInfo();
         }
       } else if (tab === 'ajustes') {
         cargarAjustes();
@@ -8556,8 +8560,8 @@
         </button>
       `;
 
-      // Formas de pago conocidas: 0, 1, 2, 3, 4
-      [0, 1, 2, 3, 4].forEach(code => {
+      // Formas de pago conocidas, en el orden de uso: 3 Crédito, 1 Efectivo, 2 Transferencia, 4 Pendiente, 0 Anulado
+      [3, 1, 2, 4, 0].forEach(code => {
         const item = fps.find(f => Number(f.formaDePago) === code);
         const count = item ? Number(item.totalCount || 0) : 0;
         const sum = item ? Number(modoSumas === 'total' ? (item.sumTotalPago || 0) : (item.sumValorBase || 0)) : 0;
@@ -9125,7 +9129,7 @@
         </button>
       `;
 
-      ['RECAUDO', 'CREDITO'].forEach(modKey => {
+      ['CREDITO', 'RECAUDO'].forEach(modKey => {
         const item = mods.find(m => String(m.modalidad || '').toUpperCase() === modKey);
         const count = item ? Number(item.totalCount || 0) : 0;
         const sum = item ? Number(recibModoSumas === 'total' ? (item.sumTotal || 0) : (item.sumSubtotal || 0)) : 0;
