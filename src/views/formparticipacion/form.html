@@ -327,6 +327,11 @@
       });
     });
 
+    // Fecha máxima: fecha actual en Colombia
+    const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const inputFecha = document.getElementById('form-fecha');
+    inputFecha.max = hoyBogota;
+
     // Detectar si estamos editando
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
@@ -336,7 +341,7 @@
       cargarAsistenciaParaEditar(id);
     } else {
       document.getElementById('form-titulo').innerText = 'Crear Formato de Participación';
-      document.getElementById('form-fecha').value = new Date().toISOString().slice(0, 10);
+      inputFecha.value = hoyBogota;
       document.getElementById('form-asistentes-count').innerText = '0';
     }
   });
@@ -524,6 +529,13 @@
 
   async function guardarAsistencia(e) {
     e.preventDefault();
+
+    const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const fechaVal = document.getElementById('form-fecha').value;
+    if (fechaVal && fechaVal > hoyBogota) {
+      showToast('La fecha de la actividad no puede ser superior a la fecha actual.', 'error');
+      return;
+    }
 
     if (!formAsistentes.length) {
       showToast('Por favor selecciona al menos un asistente.', 'error');

@@ -11,29 +11,33 @@ const MODULO = 'sst';
 const SECCION = 'Participación';
 
 const P = {
-  CREAR:      'Roles que pueden crear formatos de participación',
-  EDITAR:     'Roles que pueden editar cualquier formato de participación',
-  ELIMINAR:   'Roles que pueden eliminar cualquier formato de participación',
-  GENERAR:    'Roles que pueden generar el PDF de cualquier formato de participación',
-  ENLACES:    'Roles que pueden enviar enlaces de firma de cualquier formato de participación',
-  HABILITAR:  'Habilitar notificaciones de correo en Participación',
-  CODIGO:     'Código del formato de participación',
-  VERSION:    'Versión del formato de participación',
-  FECHA:      'Fecha del formato de participación',
-  NOTA:       'Anotación en el PDF para asistentes sin firma',
+  CREAR:            'Roles que pueden crear formatos de participación',
+  EDITAR:           'Roles que pueden editar cualquier formato de participación',
+  ELIMINAR:         'Roles que pueden eliminar cualquier formato de participación',
+  GENERAR:          'Roles que pueden generar el PDF de cualquier formato de participación',
+  ENLACES:          'Roles que pueden enviar enlaces de firma de cualquier formato de participación',
+  EDITAR_FIRMADO:   'Roles que pueden editar y regenerar PDF de formatos firmados en Participación',
+  ELIMINAR_FIRMADO: 'Roles que pueden eliminar formatos firmados en Participación',
+  HABILITAR:        'Habilitar notificaciones de correo en Participación',
+  CODIGO:           'Código del formato de participación',
+  VERSION:          'Versión del formato de participación',
+  FECHA:            'Fecha del formato de participación',
+  NOTA:             'Anotación en el PDF para asistentes sin firma',
 };
 
 const DEFAULTS = {
-  [P.CREAR]:     'AdmSst, AnaSst, AuxSst, Calidad, LiderSst, Sistema',
-  [P.EDITAR]:    'Sistema',
-  [P.ELIMINAR]:  'Sistema, AdmSst, LiderSst',
-  [P.GENERAR]:   'Sistema',
-  [P.ENLACES]:   'Sistema, AdmSst, LiderSst',
-  [P.HABILITAR]: '1',
-  [P.CODIGO]:    'SST-F-003',
-  [P.VERSION]:   '03',
-  [P.FECHA]:     '28/05/2026',
-  [P.NOTA]:      'Soportado por correo electrónico',
+  [P.CREAR]:            'AdmSst, AnaSst, AuxSst, Calidad, LiderSst, Sistema',
+  [P.EDITAR]:           'Sistema',
+  [P.ELIMINAR]:         'Sistema, AdmSst, LiderSst',
+  [P.GENERAR]:          'Sistema',
+  [P.ENLACES]:          'Sistema, AdmSst, LiderSst',
+  [P.EDITAR_FIRMADO]:   'Sistema',
+  [P.ELIMINAR_FIRMADO]: 'Sistema',
+  [P.HABILITAR]:        '1',
+  [P.CODIGO]:           'SST-F-003',
+  [P.VERSION]:          '03',
+  [P.FECHA]:            '28/05/2026',
+  [P.NOTA]:             'Soportado por correo electrónico',
 };
 
 async function obtenerParametrosParticipacion() {
@@ -70,6 +74,8 @@ async function permisosParticipacion(rol, params) {
     eliminarCualquiera: rolEnLista(p, P.ELIMINAR, rol),
     generarCualquiera:  rolEnLista(p, P.GENERAR, rol),
     enlacesCualquiera:  rolEnLista(p, P.ENLACES, rol),
+    editarFirmado:      rolEnLista(p, P.EDITAR_FIRMADO, rol),
+    eliminarFirmado:    rolEnLista(p, P.ELIMINAR_FIRMADO, rol),
   };
 }
 

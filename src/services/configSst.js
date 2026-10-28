@@ -40,6 +40,13 @@ const PERMISOS_SST = {
     crear: 'Roles que pueden registrar ATS en SST',
     eliminar: 'Roles que pueden eliminar ATS en SST',
   },
+  'Participación': {
+    clave: 'part',
+    crear: 'Roles que pueden crear formatos de participación',
+    eliminar: 'Roles que pueden eliminar cualquier formato de participación',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de formatos firmados en Participación',
+    eliminarFirmado: 'Roles que pueden eliminar formatos firmados en Participación',
+  },
 };
 
 const DEFECTO_POR_ACCION = {

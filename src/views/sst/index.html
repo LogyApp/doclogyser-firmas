@@ -1422,7 +1422,7 @@
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
       border-top: 4px solid var(--accent);
-      padding: 20px;
+      padding: 0;
       position: sticky;
       top: 24px;
       max-height: calc(100vh - 120px);
@@ -1434,9 +1434,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 12px;
-      margin-bottom: 14px;
+      padding: 14px 18px;
+      margin-bottom: 0;
       border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
 
     .detail-title {
@@ -1446,25 +1450,35 @@
     }
 
     .detail-close {
-      background: none;
-      border: none;
-      font-size: 1.3rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      font-size: 1.25rem;
       cursor: pointer;
-      color: var(--text-muted);
-      padding: 4px 8px;
-      border-radius: 4px;
+      color: var(--text);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       line-height: 1;
+      padding: 0;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
     }
 
     .detail-close:hover {
-      background: var(--bg-elevated);
-      color: var(--text);
+      background: var(--danger);
+      color: var(--text-inverse);
+      border-color: var(--danger);
+      transform: scale(1.05);
     }
 
     .detail-body {
       display: flex;
       flex-direction: column;
       gap: 14px;
+      padding: 18px;
     }
 
     .detail-section {
@@ -2016,7 +2030,7 @@
         border-radius: 0;
         max-height: 100vh;
         margin: 0;
-        padding: 16px;
+        padding: 0 !important;
       }
       .modal-content.modal-form-large {
         height: 95vh;
@@ -2177,7 +2191,13 @@
         right: 8px !important;
       }
       .detail-card {
-        padding: 12px 10px !important;
+        padding: 0 !important;
+      }
+      .detail-header {
+        padding: 12px 14px !important;
+      }
+      .detail-body {
+        padding: 12px 14px !important;
       }
       .detail-card-header {
         padding: 10px 12px !important;
@@ -3207,6 +3227,14 @@
               <input type="text" class="form-control" id="filtro-part-search" placeholder="Tema o nombre..." oninput="filtrarDebounce('part')">
             </div>
             <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-control" id="filtro-part-estado" onchange="filtrarAutomatico('part')">
+                <option value="">Todos</option>
+                <option value="COMPLETADO">Completados</option>
+                <option value="PENDIENTE">Pendientes</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label">Regional</label>
               <select class="form-control" id="filtro-part-regional" onchange="onRegionalChange('part')">
                 <option value="">Todas</option>
@@ -3240,12 +3268,20 @@
             <table class="data-table" id="table-part">
               <thead>
                 <tr>
-                  <th style="width: 190px; min-width: 160px;" class="sortable" onclick="toggleSortSst('part', 'pdf')" id="th-part-pdf">
+                  <th style="width: 120px; min-width: 100px;" class="sortable" onclick="toggleSortSst('part', 'pdf')" id="th-part-pdf">
                     <div class="th-content"><span>Documento</span><span class="sort-icon" id="sort-icon-part-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 105px; min-width: 90px;" class="sortable" onclick="toggleSortSst('part', 'total_asistentes')" id="th-part-total_asistentes">
+                    <div class="th-content"><span>Asistentes</span><span class="sort-icon" id="sort-icon-part-total_asistentes">↕</span></div>
                     <div class="col-resizer"></div>
                   </th>
                   <th style="width: 110px; min-width: 95px;" class="sortable" onclick="toggleSortSst('part', 'fecha')" id="th-part-fecha">
                     <div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-part-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 145px; min-width: 130px;" class="sortable" onclick="toggleSortSst('part', 'fecha_creacion')" id="th-part-fecha_creacion">
+                    <div class="th-content"><span>Fecha Registro</span><span class="sort-icon" id="sort-icon-part-fecha_creacion">↕</span></div>
                     <div class="col-resizer"></div>
                   </th>
                   <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('part', 'tema')" id="th-part-tema">
@@ -3258,10 +3294,6 @@
                   </th>
                   <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('part', 'responsable')" id="th-part-responsable">
                     <div class="th-content"><span>Responsable</span><span class="sort-icon" id="sort-icon-part-responsable">↕</span></div>
-                    <div class="col-resizer"></div>
-                  </th>
-                  <th style="width: 110px; min-width: 90px;" class="sortable" onclick="toggleSortSst('part', 'duracion')" id="th-part-duracion">
-                    <div class="th-content"><span>Duración</span><span class="sort-icon" id="sort-icon-part-duracion">↕</span></div>
                     <div class="col-resizer"></div>
                   </th>
                 </tr>
@@ -4789,7 +4821,7 @@
       ev: { key: 'fecha', dir: 'desc' },
       cap: { key: 'fecha', dir: 'desc' },
       pc: { key: 'fecha', dir: 'desc' },
-      part: { key: 'fecha', dir: 'desc' },
+      part: { key: 'fecha_creacion', dir: 'desc' },
       csst: { key: 'fecha', dir: 'desc' },
       cm: { key: 'trabajador', dir: 'asc' },
       inc: { key: 'fecha', dir: 'desc' },
@@ -4885,6 +4917,13 @@
         case 'pdf':
         case 'acciones':
           return item.url_doc ? 1 : 0;
+        case 'fecha_creacion':
+        case 'fecha_registro':
+        case 'registro':
+          return item.fecha_creacion || item.fecha_registro || '';
+        case 'asistentes':
+        case 'total_asistentes':
+          return Number(item.total_asistentes || 0);
         case 'fecha':
           return item.fecha || item.fecha_registro || '';
         case 'trabajador':
@@ -5696,11 +5735,14 @@
       if (modulo === 'ev' && (item.url_doc || item.firma_trabajador)) {
         return permisoSst('ev', 'eliminarFirmado');
       }
+      if (modulo === 'part' && item.url_doc) {
+        return permisoSst('part', 'eliminarFirmado');
+      }
       // Solo se puede eliminar si NO está firmado
       if (item.url_doc) return false;
       if (modulo !== 'part' && item.firma_trabajador) return false;
       if (modulo === 'csst' && (item.firma_analista || item.firma_lidersst)) return false;
-      if (['ev', 'cap', 'pc', 'csst'].includes(modulo) && !permisoSst(modulo, 'eliminar')) return false;
+      if (['ev', 'cap', 'pc', 'csst', 'part'].includes(modulo) && !permisoSst(modulo, 'eliminar')) return false;
 
       // Rol de Sistema puede eliminar
       if (CONFIG.rol === 'Sistema') return true;
@@ -6063,9 +6105,19 @@
 
       let count = 0;
       if (modKey === 'part') {
-        if (document.getElementById('filtro-part-search').value.trim()) count++;
-        if (document.getElementById('filtro-part-desde').value) count++;
-        if (document.getElementById('filtro-part-hasta').value) count++;
+        const search = document.getElementById('filtro-part-search');
+        const est = document.getElementById('filtro-part-estado');
+        const reg = document.getElementById('filtro-part-regional');
+        const op = document.getElementById('filtro-part-operacion');
+        const fd = document.getElementById('filtro-part-desde');
+        const fh = document.getElementById('filtro-part-hasta');
+
+        if (search && search.value.trim()) count++;
+        if (est && est.value) count++;
+        if (reg && reg.value) count++;
+        if (op && op.value) count++;
+        if (fd && fd.value) count++;
+        if (fh && fh.value) count++;
       } else if (modKey === 'cm') {
         const trab = document.getElementById('filtro-cm-trabajador');
         const reg = document.getElementById('filtro-cm-regional');
@@ -6092,18 +6144,6 @@
           const input = document.getElementById(`filtro-ins-${campo}`);
           if (input && input.value.trim()) count++;
         });
-      } else if (modKey === 'part') {
-        const search = document.getElementById('filtro-part-search');
-        const reg = document.getElementById('filtro-part-regional');
-        const op = document.getElementById('filtro-part-operacion');
-        const fd = document.getElementById('filtro-part-desde');
-        const fh = document.getElementById('filtro-part-hasta');
-
-        if (search && search.value.trim()) count++;
-        if (reg && reg.value) count++;
-        if (op && op.value) count++;
-        if (fd && fd.value) count++;
-        if (fh && fh.value) count++;
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -6183,6 +6223,8 @@
     function limpiarFiltros(modKey) {
       if (modKey === 'part') {
         document.getElementById('filtro-part-search').value = '';
+        const est = document.getElementById('filtro-part-estado');
+        if (est) est.value = '';
         const reg = document.getElementById('filtro-part-regional');
         if (reg) reg.value = '';
         const op = document.getElementById('filtro-part-operacion');
@@ -7021,6 +7063,7 @@
 
     async function cargarParticipaciones() {
       const q = (document.getElementById('filtro-part-search')?.value || '').trim();
+      const est = document.getElementById('filtro-part-estado')?.value || '';
       const reg = document.getElementById('filtro-part-regional')?.value || '';
       const op = document.getElementById('filtro-part-operacion')?.value || '';
       const fd = document.getElementById('filtro-part-desde')?.value || '';
@@ -7029,6 +7072,7 @@
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
         tema: q,
+        estado: est,
         regional: reg,
         operacion: op,
         fechaDesde: fd,
@@ -7052,7 +7096,7 @@
       }
 
       dataStore.part = participaciones;
-      countsStore.part = counts || { regionales: {}, operaciones: {} };
+      countsStore.part = counts || { regionales: {}, operaciones: {}, estados: {} };
 
       actualizarSelectConteos('part', countsStore.part);
       aplicarFiltroYOrdenPart();
@@ -7069,14 +7113,30 @@
       document.getElementById('badge-total-part').innerText = `${items.length} Registros`;
 
       if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron formatos de asistencia.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron formatos de asistencia.</td></tr>';
         inicializarRedimensionColumnasSst();
         return;
       }
 
       tbody.innerHTML = items.map(it => {
         const fechaFmt = it.fecha ? it.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
-        const duracionFmt = it.duracion ? it.duracion.slice(0, 5) : '—';
+        let fechaRegFmt = '—';
+        if (it.fecha_creacion) {
+          const dReg = new Date(it.fecha_creacion);
+          if (!isNaN(dReg)) {
+            fechaRegFmt = dReg.toLocaleString('es-CO', {
+              timeZone: 'America/Bogota',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+          } else {
+            fechaRegFmt = String(it.fecha_creacion).replace('T', ' ').slice(0, 16);
+          }
+        }
         let resp = it.nombre_responsable || it.responsable || '—';
         if (resp.includes(' ** ')) resp = resp.split(' ** ')[1];
 
@@ -7084,19 +7144,21 @@
           ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">Ver PDF ↗</a>`
           : `<button class="btn btn-secondary btn-sm" disabled style="opacity:0.5;">Pendiente</button>`;
 
+        const totalAsistentes = Number(it.total_asistentes || 0);
+
         return `
           <tr onclick="abrirDetalleParticipacion('${it.id_asistencia}')" id="row-part-${it.id_asistencia}">
-            <td>
-              <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
-                ${btnPdf}
-                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); abrirDetalleParticipacion('${it.id_asistencia}')">Ver Asistentes</button>
-              </div>
+            <td style="text-align:center;">${btnPdf}</td>
+            <td style="text-align:center;">
+              <span style="display:inline-block; padding: 2px 8px; border-radius: 10px; font-weight:700; font-size:12px; background: rgba(33, 150, 243, 0.12); color: #1976d2;">
+                ${totalAsistentes}
+              </span>
             </td>
             <td><strong>${fechaFmt}</strong></td>
+            <td style="font-size:12px; color:var(--text-muted); font-weight:600;">${fechaRegFmt}</td>
             <td><strong style="color:var(--text);">${it.tema || '—'}</strong></td>
             <td>${it.lugar || '—'}</td>
             <td>${resp}</td>
-            <td>${duracionFmt}</td>
           </tr>
         `;
       }).join('');
@@ -7117,6 +7179,23 @@
         if (row) row.classList.add('selected');
 
         const fechaFmt = data.fecha ? data.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        let fechaRegFmt = '—';
+        if (data.fecha_creacion) {
+          const dReg = new Date(data.fecha_creacion);
+          if (!isNaN(dReg)) {
+            fechaRegFmt = dReg.toLocaleString('es-CO', {
+              timeZone: 'America/Bogota',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+          } else {
+            fechaRegFmt = String(data.fecha_creacion).replace('T', ' ').slice(0, 16);
+          }
+        }
         const duracionFmt = data.duracion ? data.duracion.slice(0, 5) : '—';
         const horaIniFmt = data.hora_inicial ? data.hora_inicial.slice(0, 5) : '—';
         const horaFinFmt = data.hora_final ? data.hora_final.slice(0, 5) : '—';
@@ -7144,40 +7223,56 @@
           evidenciasHtml = '<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-top: 6px;">Sin fotos de evidencia registradas.</div>';
         }
 
-        // 2. Acciones globales: permisos que calcula el servidor (Config_Parametros sst / Participación;
-        //    quien creó el formato siempre puede gestionarlo).
+        // 2. Acciones globales: permisos que calcula el servidor (Config_Parametros sst / Participación)
+        // Estructura idéntica a Evaluación SST
         const permisosPart = data.permisos || {};
         const pendientesFirma = (data.items || []).filter(i => i.estado_firma !== 'FIRMADA').length;
 
         let accionesGlobalesHtml = '';
-        if (permisosPart.generar) {
-          const btnPdfText = data.url_doc ? '🔄 Regenerar PDF' : '⚙️ Generar PDF';
-          accionesGlobalesHtml += `
-            <button class="btn btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, ${pendientesFirma})" style="background: var(--accent); color: var(--accent-contrast); border: none; font-weight: 600;">
-              ${btnPdfText}
-            </button>
-          `;
-        }
-        if (permisosPart.enlaces && pendientesFirma > 0) {
-          accionesGlobalesHtml += `
-            <button class="btn btn-primary btn-sm" onclick="notificarTodosParticipacion(${data.id_asistencia})">
-              ✉️ Reenviar correo a los ${pendientesFirma} sin firma
-            </button>
-          `;
-        }
-        if (permisosPart.editar) {
-          accionesGlobalesHtml += `
-            <button class="btn btn-secondary btn-sm" onclick="abrirEditarParticipacion(${data.id_asistencia})">
-              ✏️ Editar Formato
-            </button>
-          `;
-        }
+        const puedeEditarFirmado = permisosPart.editar || permisoSst('part', 'editarFirmado');
+        const puedeEliminar = permisosPart.eliminar || puedeEliminarRegistro(data, 'part');
 
-        if (permisosPart.eliminar) {
-          accionesGlobalesHtml += `
-            <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background: var(--danger); color: var(--text-inverse); border: none; font-weight: 600;">
-              🗑️ Eliminar Registro
-            </button>
+        if (data.url_doc) {
+          accionesGlobalesHtml = `
+            <a href="${data.url_doc}" target="_blank" class="btn btn-accent btn-sm">
+              📄 Abrir Registro Firmado (PDF)
+            </a>
+            ${puedeEditarFirmado ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirEditarParticipacion(${data.id_asistencia})">
+                ✏️ Editar Formato
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, ${pendientesFirma})">
+                🔄 Regenerar PDF
+              </button>
+            ` : ''}
+            ${puedeEliminar ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
+          `;
+        } else {
+          accionesGlobalesHtml = `
+            ${permisosPart.generar ? `
+              <button class="btn btn-primary btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, ${pendientesFirma})" style="background: var(--accent); color: var(--accent-contrast); border: none; font-weight: 600;">
+                ⚙️ Generar PDF
+              </button>
+            ` : ''}
+            ${(permisosPart.enlaces && pendientesFirma > 0) ? `
+              <button class="btn btn-primary btn-sm" onclick="notificarTodosParticipacion(${data.id_asistencia})">
+                ✉️ Reenviar correo a los ${pendientesFirma} sin firma
+              </button>
+            ` : ''}
+            ${permisosPart.editar ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirEditarParticipacion(${data.id_asistencia})">
+                ✏️ Editar Formato
+              </button>
+            ` : ''}
+            ${puedeEliminar ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
           `;
         }
 
@@ -7266,18 +7361,14 @@
             <div class="detail-section-title">Datos de la Actividad</div>
             <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--text);">${data.tema || '—'}</span></div>
             <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
+            <div class="detail-row"><span class="label">Fecha de Registro:</span><span class="value">${fechaRegFmt}</span></div>
+            <div class="detail-row"><span class="label">Operación:</span><span class="value">${data.operacion_responsable || '—'}</span></div>
+            <div class="detail-row"><span class="label">Regional:</span><span class="value">${data.regional_responsable || '—'}</span></div>
             <div class="detail-row"><span class="label">Horario:</span><span class="value">${horaIniFmt} a ${horaFinFmt} (${duracionFmt} Hs)</span></div>
             <div class="detail-row"><span class="label">Lugar:</span><span class="value">${data.lugar || '—'}</span></div>
             <div class="detail-row"><span class="label">Responsable:</span><span class="value">${cleanResponsable}</span></div>
             <div class="detail-row"><span class="label">Objetivo:</span><span class="value">${data.objetivo || '—'}</span></div>
             <div class="detail-row"><span class="label">Creado por:</span><span class="value">${creadorStr}</span></div>
-            ${data.url_doc ? `
-              <div style="margin-top:10px;">
-                <a href="${data.url_doc}" target="_blank" class="btn btn-accent btn-sm" style="width:100%; display:inline-flex; justify-content:center; align-items:center; gap:6px;">
-                  📄 Abrir Acta de Asistencia (PDF)
-                </a>
-              </div>
-            ` : ''}
           </div>
 
           <div class="detail-section">
@@ -9507,31 +9598,44 @@
     function actualizarSelectConteos(modKey, counts) {
       const filtroReg = document.getElementById(`filtro-${modKey}-regional`);
       const filtroOp = document.getElementById(`filtro-${modKey}-operacion`);
-      if (!filtroReg || !filtroOp) return;
+      if (filtroReg && filtroOp) {
+        const alcance = obtenerAlcanceModuloSst(modKey);
+        const curReg = filtroReg.value;
+        filtroReg.innerHTML = '<option value="">Todas</option>';
+        (alcance.regionalesFiltro || []).forEach(r => {
+          const cnt = (counts.regionales && counts.regionales[r]) || 0;
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = `${r} (${cnt})`;
+          if (r === curReg) opt.selected = true;
+          filtroReg.appendChild(opt);
+        });
 
-      const alcance = obtenerAlcanceModuloSst(modKey);
-      const curReg = filtroReg.value;
-      filtroReg.innerHTML = '<option value="">Todas</option>';
-      (alcance.regionalesFiltro || []).forEach(r => {
-        const cnt = (counts.regionales && counts.regionales[r]) || 0;
-        const opt = document.createElement('option');
-        opt.value = r;
-        opt.textContent = `${r} (${cnt})`;
-        if (r === curReg) opt.selected = true;
-        filtroReg.appendChild(opt);
-      });
+        const curOp = filtroOp.value;
+        filtroOp.innerHTML = '<option value="">Todas</option>';
+        const ops = curReg ? ((alcance.opsPorRegional && alcance.opsPorRegional[curReg]) || []) : (alcance.operacionesFiltro || []);
+        ops.forEach(op => {
+          const cnt = (counts.operaciones && counts.operaciones[op]) || 0;
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = `${op} (${cnt})`;
+          if (op === curOp) opt.selected = true;
+          filtroOp.appendChild(opt);
+        });
+      }
 
-      const curOp = filtroOp.value;
-      filtroOp.innerHTML = '<option value="">Todas</option>';
-      const ops = curReg ? ((alcance.opsPorRegional && alcance.opsPorRegional[curReg]) || []) : (alcance.operacionesFiltro || []);
-      ops.forEach(op => {
-        const cnt = (counts.operaciones && counts.operaciones[op]) || 0;
-        const opt = document.createElement('option');
-        opt.value = op;
-        opt.textContent = `${op} (${cnt})`;
-        if (op === curOp) opt.selected = true;
-        filtroOp.appendChild(opt);
-      });
+      const filtroEst = document.getElementById(`filtro-${modKey}-estado`);
+      if (filtroEst && counts && counts.estados) {
+        const curEst = filtroEst.value;
+        const cComp = counts.estados.COMPLETADO || 0;
+        const cPend = counts.estados.PENDIENTE || 0;
+        filtroEst.innerHTML = `
+          <option value="">Todos (${cComp + cPend})</option>
+          <option value="COMPLETADO">Completados (${cComp})</option>
+          <option value="PENDIENTE">Pendientes (${cPend})</option>
+        `;
+        if (curEst) filtroEst.value = curEst;
+      }
     }
 
     function cerrarDetalle(modKey) {
