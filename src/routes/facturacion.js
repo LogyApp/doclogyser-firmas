@@ -111,38 +111,51 @@ router.get('/', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send(paginaError('Parámetro ?usuario requerido'));
 
-    const accesoServicios = await computarAccesoFacturacion(usuario, 'Servicios');
-    const accesoRecibos = await computarAccesoFacturacion(usuario, 'Recibos');
-    const accesoBloqueo = await computarAccesoFacturacion(usuario, 'Bloqueo_datos');
-    const accesoClientes = await computarAccesoFacturacion(usuario, 'Clientes_credito');
-    const accesoTickets = await computarAccesoFacturacion(usuario, 'Tickets');
-    // Subpestañas de la pestaña Clientes: cada una con su Sección en Maestro_Menu (facturacion)
-    const accesoMaestroClientes = await computarAccesoFacturacion(usuario, 'Clientes');
-    const accesoProveedor = await computarAccesoFacturacion(usuario, 'Proveedor');
-    const accesoTransportadora = await computarAccesoFacturacion(usuario, 'Transportadora');
-    const accesoPlacas = await computarAccesoFacturacion(usuario, 'Placas');
+    // Acceso a cada Sección (Maestro_Menu facturacion), calculado en paralelo.
+    // Subpestañas de la pestaña Clientes: Clientes, Clientes_credito, Proveedor, Transportadora, Placas.
+    const [
+      accesoServicios, accesoRecibos, accesoBloqueo, accesoClientes, accesoTickets,
+      accesoMaestroClientes, accesoProveedor, accesoTransportadora, accesoPlacas, accesoAjustes
+    ] = await Promise.all([
+      'Servicios', 'Recibos', 'Bloqueo_datos', 'Clientes_credito', 'Tickets',
+      'Clientes', 'Proveedor', 'Transportadora', 'Placas', 'Ajustes_Servicios'
+    ].map(seccion => computarAccesoFacturacion(usuario, seccion)));
     const accesoPestanaClientes = accesoMaestroClientes || accesoClientes || accesoProveedor
       || accesoTransportadora || accesoPlacas;
-    const accesoAjustes = await computarAccesoFacturacion(usuario, 'Ajustes_Servicios');
 
     if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes) {
       return res.status(403).send(paginaError('Usuario no autorizado para el módulo de Facturación'));
     }
 
     const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoPestanaClientes;
-    const cfgServiciosMasivo = await obtenerConfigServiciosMasivo(base.rol);
     const template = fs.readFileSync(FACTURACION_HTML, 'utf8');
 
     // Quincena actual de hoy
-    let quincenaActual = '';
-    try {
-      const [fechaHoy] = await pool.query('SELECT Quincena FROM Maestro_Fechas WHERE Fecha = CURDATE() LIMIT 1');
-      if (fechaHoy.length && fechaHoy[0].Quincena) {
-        quincenaActual = fechaHoy[0].Quincena;
+    const leerQuincenaActual = async () => {
+      try {
+        const [fechaHoy] = await pool.query('SELECT Quincena FROM Maestro_Fechas WHERE Fecha = CURDATE() LIMIT 1');
+        return (fechaHoy.length && fechaHoy[0].Quincena) ? fechaHoy[0].Quincena : '';
+      } catch (eFecha) {
+        console.error('[facturacion] Error obteniendo quincena actual:', eFecha.message);
+        return '';
       }
-    } catch (eFecha) {
-      console.error('[facturacion] Error obteniendo quincena actual:', eFecha.message);
-    }
+    };
+
+    // Parámetros de Config_Parametros y quincena actual, leídos en paralelo
+    const [
+      cfgServiciosMasivo, quincenaActual, permisosRecibos, topeValorBaseServicio,
+      puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, ajustesServicios
+    ] = await Promise.all([
+      obtenerConfigServiciosMasivo(base.rol),
+      leerQuincenaActual(),
+      obtenerPermisosRecibos(base.rol),
+      obtenerTopeValorBaseServicio(),
+      puedeGestionarClientesCredito(base.rol),
+      puedeDepurarMaestros(base.rol),
+      puedeGestionarMaestros(base.rol),
+      puedeEditarRetenciones(base.rol),
+      accesoAjustes ? configServicios.permisosAjustesServicios(base.rol) : null
+    ]);
 
     const config = JSON.stringify({
       usuario,
@@ -155,13 +168,13 @@ router.get('/', async (req, res) => {
       opsPorRegional: base.opsPorRegional,
       quincenaActual,
       serviciosMasivo: cfgServiciosMasivo,
-      permisosRecibos: await obtenerPermisosRecibos(base.rol),
-      topeValorBaseServicio: await obtenerTopeValorBaseServicio(),
-      puedeGestionarClientesCredito: await puedeGestionarClientesCredito(base.rol),
+      permisosRecibos,
+      topeValorBaseServicio,
+      puedeGestionarClientesCredito: puedeGestionarCredito,
       clientesMaestros: {
-        puedeDepurar: await puedeDepurarMaestros(base.rol),
-        puedeGestionar: await puedeGestionarMaestros(base.rol),
-        puedeEditarRetenciones: await puedeEditarRetenciones(base.rol)
+        puedeDepurar,
+        puedeGestionar,
+        puedeEditarRetenciones: puedeEditarRet
       }, // Config_Parametros (facturacion / Clientes)
       tabs: {
         servicios: resumenAcceso(accesoServicios),
@@ -176,7 +189,7 @@ router.get('/', async (req, res) => {
         ajustes: resumenAcceso(accesoAjustes),
       },
       // Pestaña Ajustes Servicios (Config_Servicios): permisos de Config_Parametros
-      ajustesServicios: accesoAjustes ? await configServicios.permisosAjustesServicios(base.rol) : null,
+      ajustesServicios,
       camposServicios: configServicios.CAMPOS,
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -2103,6 +2116,61 @@ function anioActualBogota() {
   return parseInt(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric' }).format(new Date()), 10);
 }
 
+// ── Filtros de fecha que aprovechan los índices ──────────────────────────────
+// Filtrar con `mf.Quincena = ?` (a través de Maestro_Fechas) o `MONTH(col) = ?` obliga a
+// MySQL a recorrer todo el año. Aquí la quincena y el mes se convierten en rangos de
+// fecha (col >= inicio AND col < fin), que usan los índices de Hora Inicio / Fecha.
+// Los días de cada quincena salen de Maestro_Fechas (cache de 10 minutos).
+const cacheRangosQuincena = new Map();
+const TTL_RANGOS_QUINCENA = 10 * 60 * 1000;
+
+async function rangosQuincena(quincena, anioNum) {
+  const clave = `${quincena}|${anioNum || '*'}`;
+  const enCache = cacheRangosQuincena.get(clave);
+  if (enCache && Date.now() - enCache.t < TTL_RANGOS_QUINCENA) return enCache.rangos;
+
+  const params = [quincena];
+  let filtroAnio = '';
+  if (anioNum) {
+    filtroAnio = 'AND Fecha >= ? AND Fecha < ?';
+    params.push(`${anioNum}-01-01`, `${anioNum + 1}-01-01`);
+  }
+  const [rows] = await pool.query(
+    `SELECT DATE_FORMAT(MIN(Fecha), '%Y-%m-%d') AS inicio,
+            DATE_FORMAT(DATE_ADD(MAX(Fecha), INTERVAL 1 DAY), '%Y-%m-%d') AS fin
+       FROM Maestro_Fechas
+      WHERE Quincena = ? ${filtroAnio}
+      GROUP BY YEAR(Fecha)
+      ORDER BY inicio`,
+    params
+  );
+  const rangos = rows.map(r => ({ inicio: r.inicio, fin: r.fin }));
+  cacheRangosQuincena.set(clave, { t: Date.now(), rangos });
+  return rangos;
+}
+
+// Devuelve la condición SQL para los rangos y agrega sus valores a `params`.
+function sqlRangosFecha(col, rangos, params) {
+  if (!rangos || !rangos.length) return '1 = 0';
+  const partes = rangos.map(r => {
+    params.push(`${r.inicio} 00:00:00`, `${r.fin} 00:00:00`);
+    return `(${col} >= ? AND ${col} < ?)`;
+  });
+  return partes.length === 1 ? partes[0] : `(${partes.join(' OR ')})`;
+}
+
+// Mes: con año fijo se usa el rango del mes; con "todos los años" se mantiene MONTH().
+function sqlFiltroMes(col, mes, anioNum, params) {
+  const m = parseInt(mes, 10);
+  if (anioNum && m >= 1 && m <= 12) {
+    const fin = m === 12 ? `${anioNum + 1}-01-01` : `${anioNum}-${String(m + 1).padStart(2, '0')}-01`;
+    params.push(`${anioNum}-${String(m).padStart(2, '0')}-01 00:00:00`, `${fin} 00:00:00`);
+    return `(${col} >= ? AND ${col} < ?)`;
+  }
+  params.push(m);
+  return `MONTH(${col}) = ?`;
+}
+
 // NITs con retención obligatoria de Fuente/IVA sin importar el Subtotal ni el flag del cliente
 // (regla heredada de la fórmula AppSheet). Config_Parametros facturacion / Recibos
 // 'NITs con retención obligatoria de Fuente e IVA'; se carga con los impuestos.
@@ -2223,8 +2291,9 @@ router.get('/api/servicios', async (req, res) => {
 
     // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
     const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
+    let anioNum = null;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
+      anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       whereClauses.push('s.`Hora Inicio` >= ? AND s.`Hora Inicio` <= ?');
       params.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -2237,14 +2306,12 @@ router.get('/api/servicios', async (req, res) => {
 
     // Mes
     if (mes && mes !== 'todos') {
-      whereClauses.push('MONTH(s.`Hora Inicio`) = ?');
-      params.push(parseInt(mes, 10));
+      whereClauses.push(sqlFiltroMes('s.`Hora Inicio`', mes, anioNum, params));
     }
 
-    // Quincena
+    // Quincena (como rango de fechas para usar el índice de Hora Inicio)
     if (quincena && quincena !== 'todas') {
-      whereClauses.push('mf.Quincena = ?');
-      params.push(quincena);
+      whereClauses.push(sqlRangosFecha('s.`Hora Inicio`', await rangosQuincena(quincena, anioNum), params));
     }
 
     // Regional
@@ -2421,8 +2488,9 @@ router.get('/api/servicios/metricas', async (req, res) => {
 
     // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
     const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
+    let anioNum = null;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
+      anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       commonWhere.push('s.`Hora Inicio` >= ? AND s.`Hora Inicio` <= ?');
       commonParams.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -2436,13 +2504,10 @@ router.get('/api/servicios/metricas', async (req, res) => {
       commonParams.push(operacion);
     }
     if (mes && mes !== 'todos') {
-      commonWhere.push('MONTH(s.`Hora Inicio`) = ?');
-      commonParams.push(parseInt(mes, 10));
+      commonWhere.push(sqlFiltroMes('s.`Hora Inicio`', mes, anioNum, commonParams));
     }
-    let quincenaFiltro = null;
-    if (quincena && quincena !== 'todas') {
-      quincenaFiltro = quincena;
-    }
+    // Quincena: se convierte en rangos de fecha (se aplica a todas las agrupaciones menos Meses/Quincenas)
+    const rangosQ = (quincena && quincena !== 'todas') ? await rangosQuincena(quincena, anioNum) : null;
     if (usuarioServicio && usuarioServicio !== 'todos') {
       commonWhere.push('s.Usuario = ?');
       commonParams.push(usuarioServicio);
@@ -2484,12 +2549,11 @@ router.get('/api/servicios/metricas', async (req, res) => {
     // 1. Agrupación Forma De Pago (no filtra por formaDePago pero sí por quincena si existe)
     const fpWhere = [...commonWhere];
     const fpParams = [...commonParams];
-    if (quincenaFiltro) {
-      fpWhere.push('mf.Quincena = ?');
-      fpParams.push(quincenaFiltro);
+    if (rangosQ) {
+      fpWhere.push(sqlRangosFecha('s.`Hora Inicio`', rangosQ, fpParams));
     }
     const whereSqlFP = fpWhere.length ? `WHERE ${fpWhere.join(' AND ')}` : '';
-    const [fpRows] = await pool.query(`
+    const q_fpRows = pool.query(`
       SELECT 
         s.\`Forma De Pago\` as formaDePago,
         COUNT(*) as totalCount,
@@ -2498,7 +2562,6 @@ router.get('/api/servicios/metricas', async (req, res) => {
       FROM Dynamic_Servicios s
       LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(s.\`Hora Inicio\`)
       ${whereSqlFP}
       GROUP BY s.\`Forma De Pago\`
     `, fpParams);
@@ -2506,9 +2569,8 @@ router.get('/api/servicios/metricas', async (req, res) => {
     // 2. Agrupaciones para los demás filtros (SÍ incluye formaDePago y quincena)
     const dropdownWhere = [...commonWhere];
     const dropdownParams = [...commonParams];
-    if (quincenaFiltro) {
-      dropdownWhere.push('mf.Quincena = ?');
-      dropdownParams.push(quincenaFiltro);
+    if (rangosQ) {
+      dropdownWhere.push(sqlRangosFecha('s.`Hora Inicio`', rangosQ, dropdownParams));
     }
     if (typeof formaDePago !== 'undefined' && formaDePago !== '' && formaDePago !== 'todas') {
       dropdownWhere.push('s.`Forma De Pago` = ?');
@@ -2517,7 +2579,7 @@ router.get('/api/servicios/metricas', async (req, res) => {
     const whereSqlDropdowns = dropdownWhere.length ? `WHERE ${dropdownWhere.join(' AND ')}` : '';
 
     // Agrupación Regionales & Operaciones
-    const [opsRows] = await pool.query(`
+    const q_opsRows = pool.query(`
       SELECT 
         COALESCE(mo.REGIONAL, 'SIN REGIONAL') as regional,
         r.\`Operación\` as operacion,
@@ -2527,7 +2589,6 @@ router.get('/api/servicios/metricas', async (req, res) => {
       FROM Dynamic_Servicios s
       LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(s.\`Hora Inicio\`)
       ${whereSqlDropdowns}
       GROUP BY mo.REGIONAL, r.\`Operación\`
     `, dropdownParams);
@@ -2541,23 +2602,33 @@ router.get('/api/servicios/metricas', async (req, res) => {
     }
     const whereSqlFechas = fechasWhere.length ? `WHERE ${fechasWhere.join(' AND ')}` : '';
 
-    const [fechasRows] = await pool.query(`
-      SELECT 
-        MONTH(s.\`Hora Inicio\`) as mes,
+    // Se agrupa primero por día (pocas filas) y luego se cruza con Maestro_Fechas: evita una
+    // búsqueda en Maestro_Fechas por cada servicio del año.
+    const q_fechasRows = pool.query(`
+      SELECT
+        MONTH(t.dia) as mes,
         mf.Quincena as quincena,
-        COUNT(*) as totalCount,
-        ROUND(SUM(${vBaseSql})) as sumValorBase,
-        ROUND(SUM(${totalPagoSql})) as sumTotalPago
-      FROM Dynamic_Servicios s
-      LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
-      LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(s.\`Hora Inicio\`)
-      ${whereSqlFechas}
-      GROUP BY MONTH(s.\`Hora Inicio\`), mf.Quincena
+        CAST(SUM(t.totalCount) AS UNSIGNED) as totalCount,
+        ROUND(SUM(t.sumValorBase)) as sumValorBase,
+        ROUND(SUM(t.sumTotalPago)) as sumTotalPago
+      FROM (
+        SELECT
+          DATE(s.\`Hora Inicio\`) as dia,
+          COUNT(*) as totalCount,
+          SUM(${vBaseSql}) as sumValorBase,
+          SUM(${totalPagoSql}) as sumTotalPago
+        FROM Dynamic_Servicios s
+        LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+        LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
+        ${whereSqlFechas}
+        GROUP BY DATE(s.\`Hora Inicio\`)
+      ) t
+      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = t.dia
+      GROUP BY MONTH(t.dia), mf.Quincena
     `, fechasParams);
 
     // Clientes a Facturar (orden ascendente)
-    const [cliRows] = await pool.query(`
+    const q_cliRows = pool.query(`
       SELECT 
         r.\`Cliente a Facturar\` as cliente,
         COUNT(*) as totalCount,
@@ -2566,14 +2637,13 @@ router.get('/api/servicios/metricas', async (req, res) => {
       FROM Dynamic_Servicios s
       LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(s.\`Hora Inicio\`)
       ${whereSqlDropdowns} AND r.\`Cliente a Facturar\` IS NOT NULL AND r.\`Cliente a Facturar\` != ''
       GROUP BY r.\`Cliente a Facturar\`
       ORDER BY r.\`Cliente a Facturar\` ASC
     `, dropdownParams);
 
     // Usuarios
-    const [userRows] = await pool.query(`
+    const q_userRows = pool.query(`
       SELECT 
         s.Usuario as usuario,
         COUNT(*) as totalCount,
@@ -2582,12 +2652,16 @@ router.get('/api/servicios/metricas', async (req, res) => {
       FROM Dynamic_Servicios s
       LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(s.\`Hora Inicio\`)
       ${whereSqlDropdowns} AND s.Usuario IS NOT NULL AND s.Usuario != ''
       GROUP BY s.Usuario
       ORDER BY totalCount DESC
       LIMIT 100
     `, dropdownParams);
+
+    // Las cinco agrupaciones se consultan en paralelo
+    const [[fpRows], [opsRows], [fechasRows], [cliRows], [userRows]] = await Promise.all([
+      q_fpRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows
+    ]);
 
     res.json({
       formasDePago: fpRows,
@@ -4270,22 +4344,21 @@ router.get('/api/recibos', async (req, res) => {
 
     // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
     const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
+    let anioNum = null;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
+      anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       whereClauses.push('dr.Fecha >= ? AND dr.Fecha <= ?');
       params.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
 
     // Mes
     if (mes && mes !== 'todos') {
-      whereClauses.push('MONTH(dr.Fecha) = ?');
-      params.push(parseInt(mes, 10));
+      whereClauses.push(sqlFiltroMes('dr.Fecha', mes, anioNum, params));
     }
 
-    // Quincena
+    // Quincena (como rango de fechas para usar el índice de Fecha)
     if (quincena && quincena !== 'todas') {
-      whereClauses.push('mf.Quincena = ?');
-      params.push(quincena);
+      whereClauses.push(sqlRangosFecha('dr.Fecha', await rangosQuincena(quincena, anioNum), params));
     }
 
     // Regional
@@ -4409,10 +4482,15 @@ router.get('/api/recibos', async (req, res) => {
     const provIds = [...new Set(aggRows.map(a => a.proveedor_latest).filter(Boolean))];
     const placaIds = [...new Set(aggRows.map(a => a.PL1_latest).filter(Boolean))];
 
-    const [areas] = areaIds.length > 0 ? await pool.query('SELECT ID, AREA FROM Config_Area WHERE ID IN (?)', [areaIds]) : [[]];
-    const [transps] = transpIds.length > 0 ? await pool.query('SELECT ID, Transportadora FROM Maestro_Transportadora WHERE ID IN (?)', [transpIds]) : [[]];
-    const [provs] = provIds.length > 0 ? await pool.query('SELECT ID, Proveedor FROM Maestro_Proveedor WHERE ID IN (?)', [provIds]) : [[]];
-    const [placas] = placaIds.length > 0 ? await pool.query('SELECT ID, Placa FROM Maestro_Placas WHERE ID IN (?)', [placaIds]) : [[]];
+    // Nombres de área, transportadora, proveedor y placa: cuatro consultas en paralelo
+    const sinFilas = Promise.resolve([[]]);
+    const [[areas], [transps], [provs], [placas], impuestos] = await Promise.all([
+      areaIds.length > 0 ? pool.query('SELECT ID, AREA FROM Config_Area WHERE ID IN (?)', [areaIds]) : sinFilas,
+      transpIds.length > 0 ? pool.query('SELECT ID, Transportadora FROM Maestro_Transportadora WHERE ID IN (?)', [transpIds]) : sinFilas,
+      provIds.length > 0 ? pool.query('SELECT ID, Proveedor FROM Maestro_Proveedor WHERE ID IN (?)', [provIds]) : sinFilas,
+      placaIds.length > 0 ? pool.query('SELECT ID, Placa FROM Maestro_Placas WHERE ID IN (?)', [placaIds]) : sinFilas,
+      getImpuestos()
+    ]);
 
     const areaMap = Object.fromEntries(areas.map(a => [a.ID, a.AREA]));
     const transpMap = Object.fromEntries(transps.map(t => [t.ID, t.Transportadora]));
@@ -4420,7 +4498,6 @@ router.get('/api/recibos', async (req, res) => {
     const placaMap = Object.fromEntries(placas.map(p => [p.ID, p.Placa]));
     const aggMap = Object.fromEntries(aggRows.map(a => [a.IdRecibo, a]));
 
-    const impuestos = await getImpuestos();
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
     const data = recibos.map(dr => {
@@ -4530,8 +4607,9 @@ router.get('/api/recibos/metricas', async (req, res) => {
     }
 
     const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
+    let anioNum = null;
     if (anioFiltro !== 'todos') {
-      const anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
+      anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
       commonWhere.push('dr.Fecha >= ? AND dr.Fecha <= ?');
       commonParams.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
@@ -4545,13 +4623,10 @@ router.get('/api/recibos/metricas', async (req, res) => {
       commonParams.push(operacion);
     }
     if (mes && mes !== 'todos') {
-      commonWhere.push('MONTH(dr.Fecha) = ?');
-      commonParams.push(parseInt(mes, 10));
+      commonWhere.push(sqlFiltroMes('dr.Fecha', mes, anioNum, commonParams));
     }
-    let quincenaFiltro = null;
-    if (quincena && quincena !== 'todas') {
-      quincenaFiltro = quincena;
-    }
+    // Quincena: se convierte en rangos de fecha (se aplica a todas las agrupaciones menos Meses/Quincenas)
+    const rangosQ = (quincena && quincena !== 'todas') ? await rangosQuincena(quincena, anioNum) : null;
     if (usuarioRecibo && usuarioRecibo !== 'todos') {
       commonWhere.push('dr.Usuario = ?');
       commonParams.push(usuarioRecibo);
@@ -4592,12 +4667,11 @@ router.get('/api/recibos/metricas', async (req, res) => {
     // 1. Agrupación por Modalidad (incluye quincena si existe)
     const modWhere = [...commonWhere];
     const modParams = [...commonParams];
-    if (quincenaFiltro) {
-      modWhere.push('mf.Quincena = ?');
-      modParams.push(quincenaFiltro);
+    if (rangosQ) {
+      modWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, modParams));
     }
     const whereSqlMod = modWhere.length ? `WHERE ${modWhere.join(' AND ')}` : '';
-    const [modRows] = await pool.query(`
+    const q_modRows = pool.query(`
       SELECT 
         COALESCE(dr.Modalidad, 'SIN MODALIDAD') as modalidad,
         COUNT(DISTINCT dr.IdRecibo) as totalCount,
@@ -4606,7 +4680,6 @@ router.get('/api/recibos/metricas', async (req, res) => {
       FROM Dynamic_Recibos dr
       LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.Fecha)
       ${whereSqlMod}
       GROUP BY dr.Modalidad
     `, modParams);
@@ -4614,9 +4687,8 @@ router.get('/api/recibos/metricas', async (req, res) => {
     // 2. Agrupaciones para desplegables (incluye quincena y modalidad)
     const dropdownWhere = [...commonWhere];
     const dropdownParams = [...commonParams];
-    if (quincenaFiltro) {
-      dropdownWhere.push('mf.Quincena = ?');
-      dropdownParams.push(quincenaFiltro);
+    if (rangosQ) {
+      dropdownWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, dropdownParams));
     }
     if (modalidad && modalidad !== 'todas') {
       dropdownWhere.push('dr.Modalidad = ?');
@@ -4624,7 +4696,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
     }
     const whereSqlDropdowns = dropdownWhere.length ? `WHERE ${dropdownWhere.join(' AND ')}` : '';
 
-    const [opsRows] = await pool.query(`
+    const q_opsRows = pool.query(`
       SELECT 
         COALESCE(mo.REGIONAL, 'SIN REGIONAL') as regional,
         dr.\`Operación\` as operacion,
@@ -4634,7 +4706,6 @@ router.get('/api/recibos/metricas', async (req, res) => {
       FROM Dynamic_Recibos dr
       LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.Fecha)
       ${whereSqlDropdowns}
       GROUP BY mo.REGIONAL, dr.\`Operación\`
     `, dropdownParams);
@@ -4648,22 +4719,32 @@ router.get('/api/recibos/metricas', async (req, res) => {
     }
     const whereSqlFechas = fechasWhere.length ? `WHERE ${fechasWhere.join(' AND ')}` : '';
 
-    const [fechasRows] = await pool.query(`
-      SELECT 
-        MONTH(dr.Fecha) as mes,
+    // Se agrupa primero por día y luego se cruza con Maestro_Fechas. Cada recibo tiene una
+    // sola Fecha, así que sumar los conteos por día da el mismo total de recibos distintos.
+    const q_fechasRows = pool.query(`
+      SELECT
+        MONTH(t.dia) as mes,
         mf.Quincena as quincena,
-        COUNT(DISTINCT dr.IdRecibo) as totalCount,
-        ROUND(SUM(${subtotalExpr})) as sumSubtotal,
-        ROUND(SUM(${totalExpr})) as sumTotal
-      FROM Dynamic_Recibos dr
-      LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
-      LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.Fecha)
-      ${whereSqlFechas}
-      GROUP BY MONTH(dr.Fecha), mf.Quincena
+        CAST(SUM(t.totalCount) AS UNSIGNED) as totalCount,
+        ROUND(SUM(t.sumSubtotal)) as sumSubtotal,
+        ROUND(SUM(t.sumTotal)) as sumTotal
+      FROM (
+        SELECT
+          DATE(dr.Fecha) as dia,
+          COUNT(DISTINCT dr.IdRecibo) as totalCount,
+          SUM(${subtotalExpr}) as sumSubtotal,
+          SUM(${totalExpr}) as sumTotal
+        FROM Dynamic_Recibos dr
+        LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
+        LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
+        ${whereSqlFechas}
+        GROUP BY DATE(dr.Fecha)
+      ) t
+      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = t.dia
+      GROUP BY MONTH(t.dia), mf.Quincena
     `, fechasParams);
 
-    const [cliRows] = await pool.query(`
+    const q_cliRows = pool.query(`
       SELECT 
         dr.\`Cliente a Facturar\` as cliente,
         COUNT(DISTINCT dr.IdRecibo) as totalCount,
@@ -4672,13 +4753,12 @@ router.get('/api/recibos/metricas', async (req, res) => {
       FROM Dynamic_Recibos dr
       LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.Fecha)
       ${whereSqlDropdowns} AND dr.\`Cliente a Facturar\` IS NOT NULL AND dr.\`Cliente a Facturar\` != ''
       GROUP BY dr.\`Cliente a Facturar\`
       ORDER BY dr.\`Cliente a Facturar\` ASC
     `, dropdownParams);
 
-    const [userRows] = await pool.query(`
+    const q_userRows = pool.query(`
       SELECT 
         dr.Usuario as usuario,
         COUNT(DISTINCT dr.IdRecibo) as totalCount,
@@ -4687,12 +4767,16 @@ router.get('/api/recibos/metricas', async (req, res) => {
       FROM Dynamic_Recibos dr
       LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
       LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.Fecha)
       ${whereSqlDropdowns} AND dr.Usuario IS NOT NULL AND dr.Usuario != ''
       GROUP BY dr.Usuario
       ORDER BY totalCount DESC
       LIMIT 100
     `, dropdownParams);
+
+    // Las cinco agrupaciones se consultan en paralelo
+    const [[modRows], [opsRows], [fechasRows], [cliRows], [userRows]] = await Promise.all([
+      q_modRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows
+    ]);
 
     res.json({
       modalidades: modRows,

@@ -4756,9 +4756,8 @@
         }
       }
 
-      // Cargar datos iniciales de forma resiliente
-      const cargarCredito = subTabClientesPermitida('credito');
-      await Promise.allSettled([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarCredito && cargarClientes(), cargarCredito && cargarPreseleccionadosInfo(), cargarTickets(), cargarMetricasTickets()]);
+      // Los datos de cada pestaña se cargan al abrirla (switchMainTab, más abajo): así la
+      // pestaña visible no espera a Servicios, Bloqueos, Clientes Crédito y Tickets.
 
       // Listeners de ordenamiento en tabla de servicios
       document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
@@ -5032,6 +5031,11 @@
         makeTableResizable(document.getElementById('tabla-bloqueos'));
         if (!allBloqueos || !allBloqueos.length) {
           cargarBloqueos();
+        }
+        // El bloqueo manual usa la lista de Clientes Crédito
+        if ((!allClientes || !allClientes.length) && subTabClientesPermitida('credito')) {
+          cargarClientes();
+          cargarPreseleccionadosInfo();
         }
       } else if (tab === 'ajustes') {
         cargarAjustes();
