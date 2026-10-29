@@ -4116,9 +4116,14 @@
                 <span class="badge badge-estado" id="acta-badge-total" style="background: var(--info-soft); border: 1px solid var(--info); color: var(--info-dark); font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
                 <span class="badge badge-estado" style="background: var(--warning-soft); border: 1px solid var(--warning-soft); color: var(--warning-dark); font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">⏳ Pendientes: <span id="acta-stat-pendientes">0</span></span>
               </div>
-              <button class="btn-primary" id="acta-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: var(--text-inverse); cursor: pointer;">
-                <span>➕</span> Nueva Acta
-              </button>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-secondary" id="acta-btn-carga-masiva" onclick="openGridActasModal()" style="display: none; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text); cursor: pointer;">
+                  <span>📋</span> Carga Masiva (Grid)
+                </button>
+                <button class="btn-primary" id="acta-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: var(--text-inverse); cursor: pointer;">
+                  <span>➕</span> Nueva Acta
+                </button>
+              </div>
             </div>
 
             <!-- Filters Card -->
@@ -5542,6 +5547,134 @@
     </div>
   </div>
 
+  <!-- Modal: Carga Masiva de Actas de Entrega (Editor de Grid) -->
+  <div id="modal-grid-actas" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 4vh; z-index: 10000;">
+    <div style="max-width: 1450px; width: 96vw; height: 92vh; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column;">
+      
+      <!-- Modal Header -->
+      <div style="background: var(--bg-elevated); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px;">
+            <span>📋</span> Carga Masiva de Actas de Entrega (Editor de Grid)
+          </h3>
+          <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--text-muted);">
+            Edita los ítems directamente o pega filas desde Excel. Se creará automáticamente un acta por cada agrupación de Trabajador y Categoría.
+          </p>
+        </div>
+        <span id="gridactas-modal-close" style="color: var(--text-muted); font-size: 1.6rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+
+      <!-- Tab selector inside header -->
+      <div style="background: var(--bg-elevated); padding: 6px 24px 0 24px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <button type="button" id="gridactas-tab-btn-manual" style="padding: 8px 18px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: var(--card-bg); font-weight: 600; font-size: 0.8rem; color: var(--text);">
+          ✍️ Editor de Grid (<span id="gridactas-tab-cnt-rows">0</span> filas)
+        </button>
+        <button type="button" id="gridactas-tab-btn-excel" style="padding: 8px 18px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">
+          📋 Pegar desde Excel
+        </button>
+      </div>
+
+      <!-- Scrollable content area -->
+      <div style="flex-grow: 1; overflow-y: auto; padding: 20px; min-height: 0;">
+
+        <!-- Tab Manual Grid Editor -->
+        <div id="gridactas-tab-manual" style="display: block;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" id="gridactas-btn-add-row" style="padding: 6px 14px; border: 1px solid var(--primary); border-radius: 6px; background: var(--card-bg); color: var(--text); font-weight: 600; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                <span>➕</span> Agregar Fila
+              </button>
+              <button type="button" id="gridactas-btn-clear" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text-muted); font-size: 0.78rem; cursor: pointer;">
+                <span>🗑️</span> Limpiar Todo
+              </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; font-size: 0.78rem; font-weight: 600;">
+              <span style="color: var(--text);">👤 <span id="gridactas-cnt-trabajadores" style="color: var(--primary);">0</span> Colaborador(es)</span>
+              <span style="color: var(--text);">📄 <span id="gridactas-cnt-actas" style="color: var(--info);">0</span> Acta(s) a generar</span>
+              <span style="color: var(--text);">📦 <span id="gridactas-cnt-items" style="color: var(--text);">0</span> Ítem(s)</span>
+            </div>
+          </div>
+
+          <!-- Alert / Warning Banner for Retirados -->
+          <div id="gridactas-warn-retirados" style="display: none; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); color: #d97706; padding: 8px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 600;">
+            ⚠️ Hay <span id="gridactas-warn-retirados-cnt">0</span> trabajador(es) en estado RETIRADO seleccionado(s). Se generará el acta normalmente sin envío de correo al trabajador.
+          </div>
+
+          <!-- Error Banner for Stock or Validation -->
+          <div id="gridactas-err-banner" style="display: none; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); color: #dc2626; padding: 8px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 0.8rem; font-weight: 600;">
+          </div>
+
+          <!-- Grid Table Container -->
+          <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+            <div style="max-height: 48vh; overflow-y: auto; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.78rem; min-width: 1380px;" id="gridactas-table">
+                <thead>
+                  <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
+                    <th style="padding: 10px 8px; font-weight: 600; width: 40px; text-align: center;">#</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 310px;">Trabajador *</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 130px;">Fecha Entrega *</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 140px;">Categoría *</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 155px;">Clasificación *</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 290px;">Artículo *</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 105px; text-align: center;">Stock Actual</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 85px; text-align: center;">Cantidad *</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 175px;">Notas</th>
+                    <th style="padding: 10px 8px; font-weight: 600; width: 45px; text-align: center;"></th>
+                  </tr>
+                </thead>
+                <tbody id="gridactas-tbody">
+                  <!-- Filas dinámicas -->
+                </tbody>
+              </table>
+              <datalist id="gridactas-workers-datalist"></datalist>
+            </div>
+          </div>
+
+          <!-- Grouping preview box -->
+          <div id="gridactas-preview-wrap" style="margin-top: 14px; padding: 12px 16px; border: 1px dashed var(--border); border-radius: 8px; background: var(--bg-elevated); font-size: 0.78rem;">
+            <div style="font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>📑</span> Resumen de Actas que se generarán:
+            </div>
+            <div id="gridactas-preview-items" style="display: flex; flex-wrap: wrap; gap: 8px; color: var(--text-muted);">
+              Agrega filas a la grilla para ver la agrupación de actas resultante.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Excel Import -->
+        <div id="gridactas-tab-excel" style="display: none;">
+          <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; color: var(--text);">
+            Pegar datos tabulados (TSV / Copiado directo desde Excel o Google Sheets):
+          </label>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+            Copia los datos de tu hoja de cálculo e incluye las siguientes columnas en este orden (con o sin encabezados):<br>
+            <code style="background: var(--bg-elevated); padding: 3px 6px; border-radius: 4px; font-family: monospace; color: var(--primary);">
+              Trabajador (Cédula o Nombre) | Fecha Entrega (AAAA-MM-DD) | Categoría | Clasificación | Artículo | Cantidad | Notas
+            </code>
+          </p>
+          <textarea id="gridactas-paste-area" placeholder="Ejemplo:&#10;1000001701&#9;2026-10-29&#9;EPP&#9;GUANTES&#9;GUANTES HDPE NIVEL 5&#9;2&#9;Dotación de ingreso&#10;255889&#9;2026-10-29&#9;DOTACIÓN&#9;CAMISA&#9;CAMISA OXFORD TALLA M&#9;1&#9;Reposición" style="width: 100%; height: 260px; font-family: monospace; font-size: 0.8rem; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); resize: vertical; margin-bottom: 14px;"></textarea>
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="button" id="gridactas-btn-process-excel" style="padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: var(--text-inverse); font-weight: 600; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+              <span>🚀</span> Procesar y Cargar a la Grilla
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Fixed Footer -->
+      <div style="background: var(--bg-elevated); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-shrink: 0;">
+        <button type="button" id="gridactas-btn-cancel" style="padding: 8px 20px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--card-bg); font-weight: 600; font-size: 0.85rem; color: var(--text);">
+          Cancelar
+        </button>
+        <button type="button" id="gridactas-btn-guardar" style="padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; background: var(--success); color: var(--text-inverse); font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+          <span>💾</span> Guardar y Generar Actas (<span id="gridactas-btn-guardar-cnt">0</span>)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Modal: Visualización de Stock de Artículo -->
   <div id="articulo-stock-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 8vh;">
     <div style="max-width: 620px; width: 95%; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 84vh;">
@@ -6799,6 +6932,7 @@
         'formarticulos-modal',
         'ajuste-stock-modal',
         'formkardex-modal',
+        'modal-grid-actas',
         'articulo-stock-modal',
         'sol-add-articles-modal',
         'acta-add-articles-modal',
@@ -16063,6 +16197,38 @@
 
       initActaEvidenciaDropzone();
 
+      // ── Botón Carga Masiva (Grid) de Actas ──
+      const btnCargaMasiva = document.getElementById('acta-btn-carga-masiva');
+      const puedeCargaMasiva = Boolean(CONFIG.actas && CONFIG.actas.puedeCargaMasiva);
+      if (btnCargaMasiva) {
+        btnCargaMasiva.style.display = puedeCargaMasiva ? 'inline-flex' : 'none';
+        btnCargaMasiva.addEventListener('click', openGridActasModal);
+      }
+
+      // Eventos del modal de carga masiva
+      const gridActasClose = document.getElementById('gridactas-modal-close');
+      const gridActasCancel = document.getElementById('gridactas-btn-cancel');
+      if (gridActasClose) gridActasClose.addEventListener('click', closeGridActasModal);
+      if (gridActasCancel) gridActasCancel.addEventListener('click', closeGridActasModal);
+
+      const tabBtnManual = document.getElementById('gridactas-tab-btn-manual');
+      const tabBtnExcel = document.getElementById('gridactas-tab-btn-excel');
+      if (tabBtnManual) tabBtnManual.addEventListener('click', () => switchGridActasTab('manual'));
+      if (tabBtnExcel) tabBtnExcel.addEventListener('click', () => switchGridActasTab('excel'));
+
+      const btnAddRow = document.getElementById('gridactas-btn-add-row');
+      const btnClear = document.getElementById('gridactas-btn-clear');
+      if (btnAddRow) btnAddRow.addEventListener('click', () => addGridActasRow());
+      if (btnClear) btnClear.addEventListener('click', clearGridActas);
+
+      const btnProcessExcel = document.getElementById('gridactas-btn-process-excel');
+      if (btnProcessExcel) btnProcessExcel.addEventListener('click', processGridActasExcelPaste);
+
+      const btnGuardarActas = document.getElementById('gridactas-btn-guardar');
+      if (btnGuardarActas) btnGuardarActas.addEventListener('click', saveGridActasBatch);
+
+      initGridActasEventDelegation();
+
       // Bind click listeners for acta-table headers
       const actaHeaders = document.querySelectorAll('#acta-table thead th[data-sort]');
       actaHeaders.forEach(th => {
@@ -18791,6 +18957,835 @@
 
         tbody.appendChild(tr);
       });
+    }
+
+    // ==========================================
+    // ACTAS: EDITOR DE GRID DE CARGA MASIVA
+    // ==========================================
+    let gridActasList = [];
+    let gridActasLookups = null;
+    let gridActasLookupsPromise = null;
+    let gridActasStockCache = new Map(); // key: `${operacion}__${categoria}` -> { [idArticulo]: stockInfo }
+    let gridActasStockPending = new Set();
+    let gridActasActiveTab = 'manual';
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function ensureGridActasLookupsLoaded() {
+      if (gridActasLookups) return gridActasLookups;
+      if (gridActasLookupsPromise) return gridActasLookupsPromise;
+
+      gridActasLookupsPromise = (async () => {
+        const res = await fetch(`/actas/api/grid-lookups?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Error al cargar catálogos para la carga masiva');
+        }
+        gridActasLookups = await res.json();
+
+        // Poblar datalist de trabajadores
+        const dl = document.getElementById('gridactas-workers-datalist');
+        if (dl && gridActasLookups.trabajadores) {
+          dl.innerHTML = gridActasLookups.trabajadores.map(t => {
+            const retTag = t.estado === 'Retirado' ? ' [⚠️ RETIRADO]' : '';
+            return `<option value="${t.identificacion} ** ${t.trabajador.replace(/^\d+\s*\*{1,2}\s*/, '')}${retTag}"></option>`;
+          }).join('');
+        }
+        return gridActasLookups;
+      })();
+
+      try {
+        return await gridActasLookupsPromise;
+      } finally {
+        gridActasLookupsPromise = null;
+      }
+    }
+
+    async function openGridActasModal() {
+      const modal = document.getElementById('modal-grid-actas');
+      if (!modal) {
+        console.error('[GridActas] Modal #modal-grid-actas no encontrado en el DOM');
+        return;
+      }
+
+      mostrarActaLoading('Cargando catálogos...', 'Preparando el editor de carga masiva');
+      try {
+        await ensureGridActasLookupsLoaded();
+      } catch (err) {
+        console.error('[GridActas] Error cargando lookups:', err);
+        alert('No se pudieron cargar los catálogos auxiliares: ' + err.message);
+        return;
+      } finally {
+        ocultarActaLoading();
+      }
+
+      if (gridActasList.length === 0) {
+        addGridActasRow({}, false);
+      }
+
+      switchGridActasTab('manual');
+      modal.style.display = 'flex';
+      if (typeof registrarModalBack === 'function') {
+        modal._backEntry = registrarModalBack(() => closeActiveModals());
+      }
+      renderGridActas();
+    }
+
+    function closeGridActasModal() {
+      const modal = document.getElementById('modal-grid-actas');
+      if (modal) {
+        modal.style.display = 'none';
+        if (typeof cerrarModalBack === 'function') {
+          cerrarModalBack(modal._backEntry);
+          modal._backEntry = null;
+        }
+      }
+    }
+
+    window.openGridActasModal = openGridActasModal;
+    window.closeGridActasModal = closeGridActasModal;
+
+    function switchGridActasTab(tab) {
+      gridActasActiveTab = tab;
+      const tabManual = document.getElementById('gridactas-tab-manual');
+      const tabExcel = document.getElementById('gridactas-tab-excel');
+      const btnManual = document.getElementById('gridactas-tab-btn-manual');
+      const btnExcel = document.getElementById('gridactas-tab-btn-excel');
+
+      if (tab === 'manual') {
+        if (tabManual) tabManual.style.display = 'block';
+        if (tabExcel) tabExcel.style.display = 'none';
+        if (btnManual) {
+          btnManual.style.background = 'var(--card-bg)';
+          btnManual.style.color = 'var(--text)';
+          btnManual.style.borderColor = 'var(--border)';
+        }
+        if (btnExcel) {
+          btnExcel.style.background = 'transparent';
+          btnExcel.style.color = 'var(--text-muted)';
+          btnExcel.style.borderColor = 'transparent';
+        }
+        renderGridActas();
+      } else {
+        if (tabManual) tabManual.style.display = 'none';
+        if (tabExcel) tabExcel.style.display = 'block';
+        if (btnManual) {
+          btnManual.style.background = 'transparent';
+          btnManual.style.color = 'var(--text-muted)';
+          btnManual.style.borderColor = 'transparent';
+        }
+        if (btnExcel) {
+          btnExcel.style.background = 'var(--card-bg)';
+          btnExcel.style.color = 'var(--text)';
+          btnExcel.style.borderColor = 'var(--border)';
+        }
+      }
+    }
+
+    function addGridActasRow(initial = {}, shouldRender = true) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const newRow = {
+        rowId: 'row_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+        identificacion: initial.identificacion || null,
+        trabajadorTexto: initial.trabajadorTexto || '',
+        operacion: initial.operacion || '',
+        estado: initial.estado || 'Activo',
+        fechaEntrega: initial.fechaEntrega || todayStr,
+        categoria: initial.categoria || '',
+        clasificacion: initial.clasificacion || '',
+        idArticulo: initial.idArticulo ? parseInt(initial.idArticulo, 10) : null,
+        cantidad: initial.cantidad ? parseInt(initial.cantidad, 10) : 1,
+        notas: initial.notas || '',
+        stockInfo: null,
+      };
+      gridActasList.push(newRow);
+
+      if (newRow.operacion && newRow.categoria) {
+        triggerGridStockFetch(newRow.operacion, newRow.categoria);
+      }
+
+      if (shouldRender) {
+        renderGridActas();
+      }
+    }
+
+    function removeGridActasRow(idx) {
+      if (gridActasList[idx]) {
+        gridActasList.splice(idx, 1);
+        if (gridActasList.length === 0) {
+          addGridActasRow();
+        } else {
+          renderGridActas();
+        }
+      }
+    }
+
+    function clearGridActas() {
+      if (gridActasList.length === 0) return;
+      if (!confirm('¿Confirma limpiar todas las filas de la grilla?')) return;
+      gridActasList = [];
+      addGridActasRow();
+    }
+
+    async function triggerGridStockFetch(operacion, categoria) {
+      if (!operacion || !categoria) return;
+      const key = `${operacion}__${categoria}`;
+      if (gridActasStockCache.has(key)) return;
+      if (gridActasStockPending.has(key)) return;
+
+      gridActasStockPending.add(key);
+      try {
+        const res = await fetch(`/actas/api/stock-categoria?operacion=${encodeURIComponent(operacion)}&categoria=${encodeURIComponent(categoria)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          gridActasStockCache.set(key, data.stock || {});
+          // Actualizar celdas de stock en filas que correspondan
+          gridActasList.forEach((r, idx) => {
+            if (r.operacion === operacion && r.categoria === categoria && r.idArticulo) {
+              if (data.stock && data.stock[r.idArticulo]) {
+                r.stockInfo = data.stock[r.idArticulo];
+                updateRowStockCell(idx);
+              }
+            }
+          });
+          updateGridActasStatusAndCounters();
+        }
+      } catch (e) {
+        console.error('Error cargando stock para grilla:', e);
+      } finally {
+        gridActasStockPending.delete(key);
+      }
+    }
+
+    function getCategoriasDisponiblesGrid() {
+      return (gridActasLookups && gridActasLookups.categorias) || [];
+    }
+
+    function getClasesDisponiblesGrid(categoria) {
+      if (!categoria || !gridActasLookups) return [];
+      const articulos = (gridActasLookups.articulos || []).filter(a => String(a.Categoria || '').toUpperCase() === String(categoria).toUpperCase());
+      const clases = [...new Set(articulos.map(a => a.ClaseArticulo).filter(Boolean))].sort();
+      return clases;
+    }
+
+    function getArticulosDisponiblesGrid(categoria, clasificacion) {
+      if (!categoria || !clasificacion || !gridActasLookups) return [];
+      return (gridActasLookups.articulos || []).filter(a =>
+        String(a.Categoria || '').toUpperCase() === String(categoria).toUpperCase() &&
+        String(a.ClaseArticulo || '').toUpperCase() === String(clasificacion).toUpperCase()
+      );
+    }
+
+    function renderGridActas() {
+      const tbody = document.getElementById('gridactas-tbody');
+      if (!tbody) return;
+
+      if (!gridActasLookups) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando catálogo...</td></tr>';
+        return;
+      }
+
+      const categorias = getCategoriasDisponiblesGrid();
+
+      tbody.innerHTML = gridActasList.map((row, idx) => {
+        const clases = getClasesDisponiblesGrid(row.categoria);
+        const articulos = getArticulosDisponiblesGrid(row.categoria, row.clasificacion);
+
+        // Opciones de Categoría
+        const catOptions = ['<option value="">-- Seleccionar --</option>', ...categorias.map(c =>
+          `<option value="${c.Categoria}" ${String(c.Categoria).toUpperCase() === String(row.categoria).toUpperCase() ? 'selected' : ''}>${c.Categoria}</option>`
+        )].join('');
+
+        // Opciones de Clasificación
+        const clasifOptions = ['<option value="">-- Seleccionar --</option>', ...clases.map(cl =>
+          `<option value="${cl}" ${String(cl).toUpperCase() === String(row.clasificacion).toUpperCase() ? 'selected' : ''}>${cl}</option>`
+        )].join('');
+
+        // Opciones de Artículo
+        const artOptions = ['<option value="">-- Seleccionar --</option>', ...articulos.map(a => {
+          const extra = [a.Talla ? `Talla: ${a.Talla}` : '', a.Referencia ? `Ref: ${a.Referencia}` : ''].filter(Boolean).join(' • ');
+          const extraText = extra ? ` (${extra})` : '';
+          return `<option value="${a.Id}" ${Number(a.Id) === Number(row.idArticulo) ? 'selected' : ''}>${a.Articulo}${extraText}</option>`;
+        })].join('');
+
+        // Stock informativo
+        const condObj = categorias.find(c => String(c.Categoria).toUpperCase() === String(row.categoria).toUpperCase());
+        const esDefinitivo = condObj && condObj.Condicion === 'Definitivo';
+        let stockHtml = '<span style="color:var(--text-muted); font-size:0.74rem;">—</span>';
+
+        if (row.idArticulo && row.operacion) {
+          const key = `${row.operacion}__${row.categoria}`;
+          const cached = gridActasStockCache.get(key);
+          if (cached && cached[row.idArticulo] !== undefined) {
+            row.stockInfo = cached[row.idArticulo];
+          }
+
+          if (row.stockInfo !== null && row.stockInfo !== undefined) {
+            const disp = Number(row.stockInfo.disponible || 0);
+            if (esDefinitivo) {
+              if (disp > 0) {
+                stockHtml = `<span style="color:#10b981; font-weight:700;">📦 ${disp}</span>`;
+              } else {
+                stockHtml = `<span style="color:#ef4444; font-weight:700;">❌ 0</span>`;
+              }
+            } else {
+              stockHtml = `<span style="color:var(--info); font-weight:600;" title="Condición ${condObj ? condObj.Condicion : 'No aplica'}">ℹ️ ${disp}</span>`;
+            }
+          } else {
+            stockHtml = '<span style="color:var(--text-muted); font-size:0.74rem;">⏳ ...</span>';
+          }
+        }
+
+        // Warning de retirado
+        const esRetirado = row.identificacion && row.estado === 'Retirado';
+        const trabajadorSub = row.identificacion
+          ? `<div style="font-size:0.71rem; color:var(--text-muted); margin-top:2px; display:flex; align-items:center; justify-content:space-between; gap:4px;">
+               <span>🏢 ${row.operacion || 'Sin op asignada'}</span>
+               ${esRetirado ? '<span style="background:rgba(239,68,68,0.15); color:#ef4444; padding:1px 5px; border-radius:4px; font-weight:700; font-size:0.67rem;">⚠️ RETIRADO</span>' : ''}
+             </div>`
+          : '<div style="font-size:0.71rem; color:var(--text-muted); margin-top:2px;">Escriba o elija un trabajador</div>';
+
+        return `
+          <tr id="gridactas-tr-${idx}" style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 6px 8px; text-align: center; font-weight: 700; color: var(--text-muted);">${idx + 1}</td>
+            <td style="padding: 6px 8px;">
+              <input type="text" list="gridactas-workers-datalist" class="gridactas-in-worker" data-idx="${idx}" value="${escapeHtml(row.trabajadorTexto || '')}" placeholder="Cédula o nombre..." style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text);">
+              ${trabajadorSub}
+            </td>
+            <td style="padding: 6px 8px;">
+              <input type="date" class="gridactas-in-date" data-idx="${idx}" value="${row.fechaEntrega || ''}" style="width: 100%; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text);">
+            </td>
+            <td style="padding: 6px 8px;">
+              <select class="gridactas-in-cat" data-idx="${idx}" style="width: 100%; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text);">
+                ${catOptions}
+              </select>
+            </td>
+            <td style="padding: 6px 8px;">
+              <select class="gridactas-in-clasif" data-idx="${idx}" ${!row.categoria ? 'disabled' : ''} style="width: 100%; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text);">
+                ${clasifOptions}
+              </select>
+            </td>
+            <td style="padding: 6px 8px;">
+              <select class="gridactas-in-art" data-idx="${idx}" ${!row.clasificacion ? 'disabled' : ''} style="width: 100%; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text);">
+                ${artOptions}
+              </select>
+            </td>
+            <td id="gridactas-stock-td-${idx}" style="padding: 6px 8px; text-align: center;">
+              ${stockHtml}
+            </td>
+            <td style="padding: 6px 8px; text-align: center;">
+              <input type="number" min="1" step="1" class="gridactas-in-qty" data-idx="${idx}" value="${row.cantidad || 1}" style="width: 100%; text-align: center; padding: 6px 4px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text); font-weight: 700;">
+            </td>
+            <td style="padding: 6px 8px;">
+              <input type="text" class="gridactas-in-notes" data-idx="${idx}" value="${escapeHtml(row.notas || '')}" placeholder="Opcional..." style="width: 100%; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: var(--card-bg); color: var(--text);">
+            </td>
+            <td style="padding: 6px 8px; text-align: center;">
+              <button type="button" class="btn-gridactas-del" data-idx="${idx}" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; padding: 4px;" title="Eliminar fila">🗑️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      updateGridActasStatusAndCounters();
+    }
+
+    function updateRowStockCell(idx) {
+      const td = document.getElementById(`gridactas-stock-td-${idx}`);
+      const row = gridActasList[idx];
+      if (!td || !row || !gridActasLookups) return;
+
+      const categorias = getCategoriasDisponiblesGrid();
+      const condObj = categorias.find(c => String(c.Categoria).toUpperCase() === String(row.categoria).toUpperCase());
+      const esDefinitivo = condObj && condObj.Condicion === 'Definitivo';
+
+      if (!row.idArticulo || !row.operacion) {
+        td.innerHTML = '<span style="color:var(--text-muted); font-size:0.74rem;">—</span>';
+        return;
+      }
+
+      if (row.stockInfo !== null && row.stockInfo !== undefined) {
+        const disp = Number(row.stockInfo.disponible || 0);
+        if (esDefinitivo) {
+          if (disp > 0) {
+            td.innerHTML = `<span style="color:#10b981; font-weight:700;">📦 ${disp}</span>`;
+          } else {
+            td.innerHTML = `<span style="color:#ef4444; font-weight:700;">❌ 0</span>`;
+          }
+        } else {
+          td.innerHTML = `<span style="color:var(--info); font-weight:600;" title="Condición ${condObj ? condObj.Condicion : 'No aplica'}">ℹ️ ${disp}</span>`;
+        }
+      } else {
+        td.innerHTML = '<span style="color:var(--text-muted); font-size:0.74rem;">⏳ ...</span>';
+      }
+    }
+
+    function initGridActasEventDelegation() {
+      const tbody = document.getElementById('gridactas-tbody');
+      if (!tbody || tbody.dataset.delegated) return;
+      tbody.dataset.delegated = '1';
+
+      tbody.addEventListener('change', e => {
+        const target = e.target;
+        const idx = parseInt(target.getAttribute('data-idx'), 10);
+        if (isNaN(idx) || !gridActasList[idx]) return;
+
+        if (target.classList.contains('gridactas-in-worker')) {
+          onGridActasWorkerChange(idx, target.value);
+        } else if (target.classList.contains('gridactas-in-date')) {
+          gridActasList[idx].fechaEntrega = target.value;
+          updateGridActasStatusAndCounters();
+        } else if (target.classList.contains('gridactas-in-cat')) {
+          onGridActasCategoryChange(idx, target.value);
+        } else if (target.classList.contains('gridactas-in-clasif')) {
+          onGridActasClassChange(idx, target.value);
+        } else if (target.classList.contains('gridactas-in-art')) {
+          onGridActasArticleChange(idx, target.value);
+        }
+      });
+
+      tbody.addEventListener('input', e => {
+        const target = e.target;
+        const idx = parseInt(target.getAttribute('data-idx'), 10);
+        if (isNaN(idx) || !gridActasList[idx]) return;
+
+        if (target.classList.contains('gridactas-in-qty')) {
+          const val = parseInt(target.value, 10);
+          gridActasList[idx].cantidad = isNaN(val) ? 0 : val;
+          updateGridActasStatusAndCounters();
+        } else if (target.classList.contains('gridactas-in-notes')) {
+          gridActasList[idx].notas = target.value;
+        }
+      });
+
+      tbody.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-gridactas-del');
+        if (btn) {
+          const idx = parseInt(btn.getAttribute('data-idx'), 10);
+          if (!isNaN(idx)) removeGridActasRow(idx);
+        }
+      });
+    }
+
+    function onGridActasWorkerChange(idx, rawVal) {
+      const row = gridActasList[idx];
+      if (!row || !gridActasLookups) return;
+
+      const trimmed = (rawVal || '').trim();
+      const match = trimmed.match(/^(\d+)/);
+      const iden = match ? parseInt(match[1], 10) : parseInt(trimmed, 10);
+
+      const found = (gridActasLookups.trabajadores || []).find(t =>
+        t.identificacion === iden ||
+        t.trabajador.toLowerCase().includes(trimmed.toLowerCase())
+      );
+
+      if (found) {
+        row.identificacion = found.identificacion;
+        row.trabajadorTexto = `${found.identificacion} ** ${found.trabajador.replace(/^\d+\s*\*{1,2}\s*/, '')}`;
+        row.operacion = found.operacion || '';
+        row.estado = found.estado || 'Activo';
+      } else {
+        row.identificacion = null;
+        row.trabajadorTexto = trimmed;
+        row.operacion = '';
+        row.estado = 'Activo';
+      }
+
+      if (row.operacion && row.categoria) {
+        triggerGridStockFetch(row.operacion, row.categoria);
+      }
+
+      renderGridActas();
+    }
+
+    function onGridActasCategoryChange(idx, val) {
+      const row = gridActasList[idx];
+      if (!row) return;
+
+      row.categoria = val;
+      row.clasificacion = '';
+      row.idArticulo = null;
+      row.stockInfo = null;
+
+      if (row.operacion && row.categoria) {
+        triggerGridStockFetch(row.operacion, row.categoria);
+      }
+
+      renderGridActas();
+    }
+
+    function onGridActasClassChange(idx, val) {
+      const row = gridActasList[idx];
+      if (!row) return;
+
+      row.clasificacion = val;
+      row.idArticulo = null;
+      row.stockInfo = null;
+
+      renderGridActas();
+    }
+
+    function onGridActasArticleChange(idx, val) {
+      const row = gridActasList[idx];
+      if (!row) return;
+
+      const artId = parseInt(val, 10);
+      row.idArticulo = isNaN(artId) ? null : artId;
+
+      if (row.operacion && row.categoria && row.idArticulo) {
+        const key = `${row.operacion}__${row.categoria}`;
+        const cached = gridActasStockCache.get(key);
+        if (cached && cached[row.idArticulo] !== undefined) {
+          row.stockInfo = cached[row.idArticulo];
+        } else {
+          row.stockInfo = null;
+          triggerGridStockFetch(row.operacion, row.categoria);
+        }
+      } else {
+        row.stockInfo = null;
+      }
+
+      updateRowStockCell(idx);
+      updateGridActasStatusAndCounters();
+    }
+
+    function updateGridActasStatusAndCounters() {
+      const totalFilas = gridActasList.length;
+      const tabCnt = document.getElementById('gridactas-tab-cnt-rows');
+      if (tabCnt) tabCnt.textContent = totalFilas;
+
+      const cntTra = document.getElementById('gridactas-cnt-trabajadores');
+      const cntAct = document.getElementById('gridactas-cnt-actas');
+      const cntItm = document.getElementById('gridactas-cnt-items');
+      const btnGuardarCnt = document.getElementById('gridactas-btn-guardar-cnt');
+      const btnGuardar = document.getElementById('gridactas-btn-guardar');
+
+      const uniqueWorkers = new Set(gridActasList.map(r => r.identificacion).filter(Boolean));
+      if (cntTra) cntTra.textContent = uniqueWorkers.size;
+
+      const validItems = gridActasList.filter(r => r.identificacion && r.categoria && r.idArticulo && r.cantidad > 0);
+      if (cntItm) cntItm.textContent = validItems.length;
+
+      // Banner de retirados
+      const retiradosRows = gridActasList.filter(r => r.identificacion && String(r.estado).toLowerCase() === 'retirado');
+      const warnRetirados = document.getElementById('gridactas-warn-retirados');
+      const warnRetiradosCnt = document.getElementById('gridactas-warn-retirados-cnt');
+      if (warnRetirados && warnRetiradosCnt) {
+        if (retiradosRows.length > 0) {
+          warnRetiradosCnt.textContent = [...new Set(retiradosRows.map(r => r.identificacion))].length;
+          warnRetirados.style.display = 'block';
+        } else {
+          warnRetirados.style.display = 'none';
+        }
+      }
+
+      // Agrupación estimada de Actas
+      const gruposMap = new Map();
+      gridActasList.forEach(r => {
+        if (!r.identificacion || !r.categoria) return;
+        const key = `${r.identificacion}__${r.categoria}__${r.fechaEntrega || ''}`;
+        if (!gruposMap.has(key)) {
+          gruposMap.set(key, {
+            identificacion: r.identificacion,
+            trabajador: r.trabajadorTexto || r.identificacion,
+            operacion: r.operacion || '',
+            categoria: r.categoria,
+            fechaEntrega: r.fechaEntrega,
+            estado: r.estado,
+            itemsCount: 0,
+          });
+        }
+        if (r.idArticulo && r.cantidad > 0) {
+          gruposMap.get(key).itemsCount++;
+        }
+      });
+
+      if (cntAct) cntAct.textContent = gruposMap.size;
+      if (btnGuardarCnt) btnGuardarCnt.textContent = gruposMap.size;
+
+      // Renderizar resumen de actas agrupadas
+      const previewItems = document.getElementById('gridactas-preview-items');
+      if (previewItems) {
+        if (gruposMap.size === 0) {
+          previewItems.innerHTML = '<span style="color:var(--text-muted);">Agrega filas válidas para ver la agrupación de actas resultante.</span>';
+        } else {
+          previewItems.innerHTML = [...gruposMap.values()].map(g => {
+            const retBadge = String(g.estado).toLowerCase() === 'retirado' ? ' <span style="color:#ef4444; font-weight:700;">[⚠️ Retirado]</span>' : '';
+            return `
+              <div style="background:var(--card-bg); border:1px solid var(--border); padding:6px 12px; border-radius:6px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px;">
+                <span>📄 <strong>${escapeHtml(g.trabajador)}</strong> (${g.operacion || '—'}) • <span style="color:var(--primary); font-weight:700;">${g.categoria}</span> (${g.itemsCount} ítem${g.itemsCount !== 1 ? 's' : ''}) ${retBadge}</span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // Validación de Stock acumulado y errores
+      const errBanner = document.getElementById('gridactas-err-banner');
+      let tieneErrores = false;
+      const mensajesError = [];
+
+      // Validar campos obligatorios en cada fila
+      gridActasList.forEach((r, idx) => {
+        const tr = document.getElementById(`gridactas-tr-${idx}`);
+        let filaIncompleta = false;
+        if (!r.identificacion) filaIncompleta = true;
+        if (!r.categoria) filaIncompleta = true;
+        if (!r.idArticulo) filaIncompleta = true;
+        if (!r.cantidad || r.cantidad <= 0) filaIncompleta = true;
+
+        if (tr) {
+          tr.style.backgroundColor = filaIncompleta ? 'rgba(239, 68, 68, 0.04)' : '';
+        }
+      });
+
+      // Validar stock de artículos con condición Definitivo
+      const demandaPorOpArt = new Map();
+      const categorias = getCategoriasDisponiblesGrid();
+
+      gridActasList.forEach(r => {
+        if (!r.identificacion || !r.operacion || !r.categoria || !r.idArticulo || !r.cantidad) return;
+        const condObj = categorias.find(c => String(c.Categoria).toUpperCase() === String(r.categoria).toUpperCase());
+        if (condObj && condObj.Condicion === 'Definitivo') {
+          const key = `${r.operacion}__${r.idArticulo}`;
+          const current = demandaPorOpArt.get(key) || { total: 0, operacion: r.operacion, idArticulo: r.idArticulo, categoria: r.categoria };
+          current.total += r.cantidad;
+          demandaPorOpArt.set(key, current);
+        }
+      });
+
+      for (const [key, item] of demandaPorOpArt.entries()) {
+        const keyStock = `${item.operacion}__${item.categoria}`;
+        const cached = gridActasStockCache.get(keyStock);
+        if (cached && cached[item.idArticulo] !== undefined) {
+          const disponible = Number(cached[item.idArticulo].disponible || 0);
+          if (item.total > disponible) {
+            tieneErrores = true;
+            const artMatch = (gridActasLookups.articulos || []).find(a => Number(a.Id) === Number(item.idArticulo));
+            const artNombre = artMatch ? artMatch.Articulo : `ID ${item.idArticulo}`;
+            mensajesError.push(`Stock insuficiente en "${item.operacion}" para "${artNombre}". Disponible: ${disponible}, Solicitado en total: ${item.total}`);
+          }
+        }
+      }
+
+      if (validItems.length < gridActasList.length) {
+        tieneErrores = true;
+        mensajesError.unshift('Hay filas con campos incompletos (Trabajador, Categoría, Artículo o Cantidad).');
+      }
+
+      if (gridActasList.length === 0) {
+        tieneErrores = true;
+      }
+
+      if (errBanner) {
+        if (tieneErrores && gridActasList.length > 0) {
+          errBanner.innerHTML = mensajesError.slice(0, 3).map(m => `<div>❌ ${m}</div>`).join('');
+          errBanner.style.display = 'block';
+        } else {
+          errBanner.style.display = 'none';
+        }
+      }
+
+      if (btnGuardar) {
+        btnGuardar.disabled = tieneErrores || validItems.length === 0;
+        btnGuardar.style.opacity = (tieneErrores || validItems.length === 0) ? '0.6' : '1';
+        btnGuardar.style.cursor = (tieneErrores || validItems.length === 0) ? 'not-allowed' : 'pointer';
+      }
+    }
+
+    function processGridActasExcelPaste() {
+      const area = document.getElementById('gridactas-paste-area');
+      if (!area || !gridActasLookups) return;
+
+      const raw = area.value.trim();
+      if (!raw) {
+        alert('Pega primero los datos de Excel en el cuadro de texto.');
+        return;
+      }
+
+      const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length === 0) {
+        alert('No se encontraron filas válidas en los datos pegados.');
+        return;
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const nuevasFilas = [];
+
+      lines.forEach((line, lineIdx) => {
+        const cols = line.split('\t').map(c => c.trim());
+        if (cols.length === 0) return;
+
+        // Detectar si la primera fila es encabezado
+        if (lineIdx === 0) {
+          const firstCol = cols[0].toLowerCase();
+          if (firstCol.includes('trabajador') || firstCol.includes('cédula') || firstCol.includes('cedula') || firstCol.includes('identificacion')) {
+            return; // saltar encabezado
+          }
+        }
+
+        const rawTra = cols[0] || '';
+        const rawFecha = cols[1] || todayStr;
+        const rawCat = cols[2] || '';
+        const rawClasif = cols[3] || '';
+        const rawArt = cols[4] || '';
+        const rawCant = parseInt(cols[5] || '1', 10);
+        const rawNotas = cols[6] || '';
+
+        // 1. Resolver trabajador
+        let matchTra = null;
+        if (rawTra) {
+          const matchDigits = rawTra.match(/^(\d+)/);
+          const iden = matchDigits ? parseInt(matchDigits[1], 10) : parseInt(rawTra, 10);
+          if (!isNaN(iden)) {
+            matchTra = (gridActasLookups.trabajadores || []).find(t => t.identificacion === iden);
+          }
+          if (!matchTra) {
+            matchTra = (gridActasLookups.trabajadores || []).find(t =>
+              t.trabajador.toLowerCase().includes(rawTra.toLowerCase())
+            );
+          }
+        }
+
+        // 2. Resolver categoría
+        const matchCat = (gridActasLookups.categorias || []).find(c =>
+          String(c.Categoria).trim().toLowerCase() === String(rawCat).trim().toLowerCase()
+        );
+        const categoriaFinal = matchCat ? matchCat.Categoria : rawCat;
+
+        // 3. Resolver clasificación
+        const clasesDisponibles = getClasesDisponiblesGrid(categoriaFinal);
+        const matchClasif = clasesDisponibles.find(cl =>
+          cl.trim().toLowerCase() === String(rawClasif).trim().toLowerCase()
+        );
+        const clasifFinal = matchClasif || rawClasif;
+
+        // 4. Resolver artículo
+        let matchArt = null;
+        const articulosDisponibles = getArticulosDisponiblesGrid(categoriaFinal, clasifFinal);
+        if (rawArt) {
+          const rawArtNum = parseInt(rawArt, 10);
+          if (!isNaN(rawArtNum)) {
+            matchArt = articulosDisponibles.find(a => Number(a.Id) === rawArtNum);
+          }
+          if (!matchArt) {
+            matchArt = articulosDisponibles.find(a =>
+              a.Articulo.trim().toLowerCase() === rawArt.trim().toLowerCase()
+            );
+          }
+          if (!matchArt) {
+            matchArt = articulosDisponibles.find(a =>
+              a.Articulo.trim().toLowerCase().includes(rawArt.trim().toLowerCase())
+            );
+          }
+        }
+
+        // 5. Validar fecha
+        let fechaFinal = todayStr;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(rawFecha)) {
+          fechaFinal = rawFecha;
+        }
+
+        nuevasFilas.push({
+          rowId: 'row_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
+          identificacion: matchTra ? matchTra.identificacion : null,
+          trabajadorTexto: matchTra ? `${matchTra.identificacion} ** ${matchTra.trabajador.replace(/^\d+\s*\*{1,2}\s*/, '')}` : rawTra,
+          operacion: matchTra ? matchTra.operacion : '',
+          estado: matchTra ? matchTra.estado : 'Activo',
+          fechaEntrega: fechaFinal,
+          categoria: categoriaFinal,
+          clasificacion: clasifFinal,
+          idArticulo: matchArt ? matchArt.Id : null,
+          cantidad: isNaN(rawCant) || rawCant <= 0 ? 1 : rawCant,
+          notas: rawNotas,
+          stockInfo: null,
+        });
+      });
+
+      if (nuevasFilas.length === 0) {
+        alert('No se pudieron procesar las filas de Excel. Revisa el formato de columnas.');
+        return;
+      }
+
+      // Si la grilla solo tenía 1 fila vacía, reemplazarla
+      if (gridActasList.length === 1 && !gridActasList[0].identificacion && !gridActasList[0].categoria) {
+        gridActasList = nuevasFilas;
+      } else {
+        gridActasList = gridActasList.concat(nuevasFilas);
+      }
+
+      area.value = '';
+      switchGridActasTab('manual');
+
+      // Prefetch stocks
+      nuevasFilas.forEach(r => {
+        if (r.operacion && r.categoria) {
+          triggerGridStockFetch(r.operacion, r.categoria);
+        }
+      });
+    }
+
+    async function saveGridActasBatch() {
+      const btnGuardar = document.getElementById('gridactas-btn-guardar');
+      if (btnGuardar && btnGuardar.disabled) return;
+
+      const validItems = gridActasList.filter(r => r.identificacion && r.categoria && r.idArticulo && r.cantidad > 0);
+      if (validItems.length === 0) {
+        alert('No hay filas válidas para guardar.');
+        return;
+      }
+
+      // Agrupación estimada
+      const gruposMap = new Map();
+      gridActasList.forEach(r => {
+        if (!r.identificacion || !r.categoria) return;
+        const key = `${r.identificacion}__${r.categoria}__${r.fechaEntrega || ''}`;
+        if (!gruposMap.has(key)) {
+          gruposMap.set(key, true);
+        }
+      });
+
+      const uniqueWorkers = new Set(gridActasList.map(r => r.identificacion).filter(Boolean)).size;
+      const numActas = gruposMap.size;
+      const totalItems = validItems.length;
+
+      const confirmMsg = `¿Confirma generar ${numActas} acta(s) de entrega para ${uniqueWorkers} colaborador(es) con ${totalItems} artículo(s) en total?\n\nEsta acción registrará las actas en estado Pendiente y descontará el inventario en Kardex.`;
+      if (!confirm(confirmMsg)) return;
+
+      mostrarActaLoading('Generando actas de entrega...', `Creando ${numActas} actas y actualizando Kardex`);
+      try {
+        const resp = await fetch(`/actas/api/guardar-masivo?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            filas: gridActasList,
+          }),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.error || 'Error al guardar las actas');
+        }
+
+        alert(`✅ Carga masiva exitosa:\n\nSe crearon ${data.actasGeneradas} acta(s) de entrega con ${data.itemsGenerados} artículo(s) en total en estado Pendiente.`);
+        closeGridActasModal();
+        gridActasList = [];
+        fetchActasList(1); // Refrescar listado principal de actas
+      } catch (err) {
+        console.error('Error al guardar actas masivas:', err);
+        alert('❌ Error al guardar: ' + err.message);
+      } finally {
+        ocultarActaLoading();
+      }
     }
 
     // ==========================================

@@ -189,6 +189,7 @@ async function computarConfigCreacionActa(usuarioId) {
     opsPorRegional,
     categoriasRestringidas: categoriasConds,
     puedePersonalRetirado: !!cfgActas.puedePersonalRetirado,
+    puedeCargaMasiva: !!cfgActas.puedeCargaMasiva,
   };
 }
 
@@ -1313,6 +1314,267 @@ router.delete('/api/logica-abastecimiento/:id', async (req, res) => {
   } catch (err) {
     console.error('[actas] DELETE /api/logica-abastecimiento/:id:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: GET /api/grid-lookups (Catálogos para el Editor de Grid de Carga Masiva) ═════
+router.get('/api/grid-lookups', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const acceso = await computarAccesoActas(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const cfgActas = await obtenerConfigActas(acceso.rol);
+    if (!cfgActas.puedeCargaMasiva) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para usar la carga masiva de actas.' });
+    }
+
+    const restringidas = [4, 5, 6].includes(acceso.accesoCode) ? await obtenerCategoriasRestringidas() : null;
+
+    // Categorías de Config_Categoria_Inventario
+    let queryCat = 'SELECT Categoria, Condicion FROM Config_Categoria_Inventario WHERE Categoria IS NOT NULL';
+    const paramsCat = [];
+    if (restringidas && restringidas.length) {
+      queryCat += ` AND Categoria IN (${restringidas.map(() => '?').join(',')})`;
+      paramsCat.push(...restringidas);
+    }
+    queryCat += ' ORDER BY Categoria ASC';
+    const [categorias] = await pool.execute(queryCat, paramsCat);
+
+    // Artículos de Dynamic_Articulos
+    let queryArt = 'SELECT Id, Categoria, ClaseArticulo, Articulo, Talla, Referencia, Costo FROM Dynamic_Articulos WHERE Articulo IS NOT NULL';
+    const paramsArt = [];
+    if (restringidas && restringidas.length) {
+      queryArt += ` AND Categoria IN (${restringidas.map(() => '?').join(',')})`;
+      paramsArt.push(...restringidas);
+    }
+    queryArt += ' ORDER BY Categoria, ClaseArticulo, Articulo';
+    const [articulos] = await pool.execute(queryArt, paramsArt);
+
+    // Trabajadores de Maestro_Segmentación (Activos y Retirados)
+    const [trabajadores] = await pool.execute(
+      `SELECT Identificación AS identificacion,
+              Trabajador AS trabajador,
+              Estado AS estado,
+              Operación AS operacion
+       FROM Maestro_Segmentación
+       WHERE Estado IN ('Activo', 'Retirado') AND Trabajador IS NOT NULL
+       ORDER BY Trabajador ASC`
+    );
+
+    res.json({
+      categorias,
+      articulos,
+      trabajadores,
+      puedePersonalRetirado: !!cfgActas.puedePersonalRetirado,
+    });
+  } catch (err) {
+    console.error('[actas] GET /api/grid-lookups error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/guardar-masivo (Crear múltiples actas agrupadas desde el Editor de Grid) ═════
+router.post('/api/guardar-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const usuario = req.query.usuario || (req.body && req.body.usuario);
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const acceso = await computarAccesoActas(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const cfgActas = await obtenerConfigActas(acceso.rol);
+    if (!cfgActas.puedeCargaMasiva) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para usar la carga masiva de actas.' });
+    }
+
+    const { filas } = req.body;
+    if (!Array.isArray(filas) || filas.length === 0) {
+      return res.status(400).json({ error: 'Debe incluir al menos una fila en la grilla' });
+    }
+
+    // 1. Validar filas individuales y recolectar identificaciones
+    const cleanFilas = [];
+    const idSet = new Set();
+    for (let i = 0; i < filas.length; i++) {
+      const f = filas[i];
+      const iden = parseInt(f.identificacion || f.Identificación, 10);
+      const cat = String(f.categoria || f.Categoria || '').trim();
+      const idArt = parseInt(f.idArticulo || f.IdArticulo, 10);
+      const cant = parseInt(f.cantidad || f.Cantidad, 10);
+      const fechaEnt = f.fechaEntrega || f.Fecha_Entrega || null;
+      const notas = String(f.notas || f.Notas || f.nota || f.Nota || '').trim();
+
+      if (!iden || isNaN(iden)) {
+        return res.status(400).json({ error: `Fila #${i + 1}: Trabajador / Identificación inválida` });
+      }
+      if (!cat) {
+        return res.status(400).json({ error: `Fila #${i + 1}: Debe seleccionar una Categoría` });
+      }
+      if (!idArt || isNaN(idArt)) {
+        return res.status(400).json({ error: `Fila #${i + 1}: Debe seleccionar un Artículo válido` });
+      }
+      if (!cant || isNaN(cant) || cant <= 0) {
+        return res.status(400).json({ error: `Fila #${i + 1}: Cantidad debe ser mayor a 0` });
+      }
+
+      cleanFilas.push({
+        idx: i + 1,
+        identificacion: iden,
+        trabajadorTexto: f.trabajador || f.Trabajador || '',
+        categoria: cat,
+        idArticulo: idArt,
+        cantidad: cant,
+        fechaEntrega: fechaEnt,
+        nota: notas || null,
+      });
+      idSet.add(iden);
+    }
+
+    // 2. Resolver la Operación más reciente para cada trabajador (Maestro_Vinculación ORDER BY Fecha de Ingreso DESC)
+    const mapOperacion = new Map();
+    const mapEstado = new Map();
+    for (const iden of idSet) {
+      const [vRows] = await pool.execute(
+        'SELECT `Operación` AS op, Estado FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [iden]
+      );
+      if (vRows.length && vRows[0].op) {
+        mapOperacion.set(iden, vRows[0].op);
+        mapEstado.set(iden, vRows[0].Estado);
+      } else {
+        const [sRows] = await pool.execute(
+          'SELECT `Operación` AS op, Estado FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+          [iden]
+        );
+        mapOperacion.set(iden, (sRows.length && sRows[0].op) || 'Operación no asignada');
+        mapEstado.set(iden, (sRows.length && sRows[0].Estado) || 'Activo');
+      }
+    }
+
+    // 3. Validar permisos de creación por operación / categoría
+    for (const f of cleanFilas) {
+      const op = mapOperacion.get(f.identificacion);
+      f.operacion = op;
+      const errCreacion = await validarCreacionActa(usuario, op, f.categoria);
+      if (errCreacion) {
+        return res.status(403).json({ error: `Fila #${f.idx}: ${errCreacion}` });
+      }
+    }
+
+    // 4. Validar Stock acumulado por (operacion, idArticulo) para categorías con Condición = 'Definitivo'
+    const demandaPorOpArt = new Map(); // key: `${op}__${idArticulo}` -> { totalCant, operacion, idArticulo, categoria }
+    for (const f of cleanFilas) {
+      const cond = await resolverCondicionCategoria(f.categoria);
+      if (cond === 'Definitivo') {
+        const key = `${f.operacion}__${f.idArticulo}`;
+        const prev = demandaPorOpArt.get(key) || { totalCant: 0, operacion: f.operacion, idArticulo: f.idArticulo, categoria: f.categoria };
+        prev.totalCant += f.cantidad;
+        demandaPorOpArt.set(key, prev);
+      }
+    }
+
+    for (const [key, itemDemanda] of demandaPorOpArt.entries()) {
+      const { disponible } = await calcularStockActa(itemDemanda.operacion, itemDemanda.idArticulo);
+      if (itemDemanda.totalCant > disponible) {
+        const [[artRow]] = await pool.execute('SELECT Articulo FROM Dynamic_Articulos WHERE Id = ? LIMIT 1', [itemDemanda.idArticulo]);
+        const artNombre = artRow ? artRow.Articulo : `ID ${itemDemanda.idArticulo}`;
+        return res.status(400).json({
+          error: `Stock insuficiente en la operación "${itemDemanda.operacion}" para el artículo "${artNombre}". Disponible: ${disponible}, Solicitado en total: ${itemDemanda.totalCant}`,
+        });
+      }
+    }
+
+    // 5. Agrupar filas por Trabajador (identificacion) y Categoria
+    const grupos = new Map(); // key -> { identificacion, operacion, categoria, fechaEntrega, items: [] }
+    for (const f of cleanFilas) {
+      const key = `${f.identificacion}__${f.categoria}__${f.fechaEntrega || ''}`;
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          identificacion: f.identificacion,
+          operacion: f.operacion,
+          categoria: f.categoria,
+          fechaEntrega: f.fechaEntrega,
+          items: [],
+        });
+      }
+      grupos.get(key).items.push({
+        IdArticulo: f.idArticulo,
+        Cantidad: f.cantidad,
+        Nota: f.nota,
+      });
+    }
+
+    // 6. Iniciar Transacción y crear Actas
+    await conn.beginTransaction();
+
+    const actasCreadas = [];
+
+    for (const [key, grp] of grupos.entries()) {
+      const [resActa] = await conn.execute(
+        `INSERT INTO Dynamic_Actas
+         (identificacion, IdSolicitud, operacion, Fecha_Entrega, Categoria, Observaciones, Usuario, Estado, Fecha_Registro)
+         VALUES (?, NULL, ?, ?, ?, 'Agregado mediante Plano grid', ?, 'Pendiente', CONVERT_TZ(NOW(), '+00:00', '-05:00'))`,
+        [
+          grp.identificacion,
+          grp.operacion,
+          grp.fechaEntrega || null,
+          grp.categoria,
+          usuario,
+        ]
+      );
+      const idActa = resActa.insertId;
+
+      for (const it of grp.items) {
+        await conn.execute(
+          `INSERT INTO Dynamic_Actas_Items
+           (IdActa, IdArticulo, Cantidad, Nota, Usuario, Fecha_Registro)
+           VALUES (?, ?, ?, ?, ?, CONVERT_TZ(NOW(), '+00:00', '-05:00'))`,
+          [idActa, it.IdArticulo, it.Cantidad, it.Nota, usuario]
+        );
+      }
+
+      // Descontar inventario en Kardex
+      const [[actaRow]] = await conn.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [idActa]);
+      await registrarKardexActa({ conn, acta: actaRow, items: grp.items });
+
+      actasCreadas.push({
+        idActa,
+        identificacion: grp.identificacion,
+        operacion: grp.operacion,
+        categoria: grp.categoria,
+        totalItems: grp.items.length,
+      });
+    }
+
+    await conn.commit();
+
+    // Generar tokens de firma post-commit para cada acta
+    const horasVigencia = await horasVigenciaEnlaceActas();
+    for (const a of actasCreadas) {
+      try {
+        await generarToken('Dynamic_Actas', 'IdActa', a.idActa, 'token_firma', 'token_expira', horasVigencia);
+      } catch (eToken) {
+        console.error(`[actas] Error generando token para acta #${a.idActa}:`, eToken.message);
+      }
+    }
+
+    // Notificación al trabajador: para esta opción NO se dispara correo al trabajador.
+    res.json({
+      ok: true,
+      actasGeneradas: actasCreadas.length,
+      itemsGenerados: cleanFilas.length,
+      actas: actasCreadas,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[actas] POST /api/guardar-masivo error:', err);
+    res.status(500).json({ error: err.message || 'Error al guardar las actas' });
+  } finally {
+    conn.release();
   }
 });
 

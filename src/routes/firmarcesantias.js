@@ -220,11 +220,11 @@ router.post('/:idVinculacion', async (req, res) => {
       `INSERT INTO Maestro_docTrabajador
        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
         TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
-        Justificacion_Solicitud, FechaRegistro, Usuario, Url)
-       VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, '60', 'CRS', ?, 'Retiro cesantías', NULL, NULL, NULL, ?, ?, ?)`,
+        Justificacion_Solicitud, FechaRegistro, Usuario)
+       VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, '60', 'CRS', ?, 'Retiro cesantías', NULL, NULL, NULL, ?, ?)`,
       [uuidv4(), vin.Regional || null, vin['Operación'] || null,
        String(vin['Identificación']), toDateStr(vin['Fecha de Ingreso']),
-       urlPdf, fechaHoraBogota(), vin.Usuario || 'sistema', urlPdf]
+       urlPdf, fechaHoraBogota(), vin.Usuario || 'sistema']
     );
 
     // Invalidar token de firma de la carta informativa

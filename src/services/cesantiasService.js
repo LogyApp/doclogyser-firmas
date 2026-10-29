@@ -1144,8 +1144,8 @@ async function tramitarSolicitudCesantias({ idCesantia, usuario, file, observaci
     `INSERT INTO Maestro_docTrabajador (
       id, \`Validación\`, Regional, \`Operación\`, \`Identificación\`, Estado,
       Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Observaciones,
-      Visualizar, Solicitud, Justificacion_Solicitud, Usuario, recurso, Url, FechaRegistro
-    ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, '46', 'RCES', ?, 'Comprobante autorización fondo de cesantias', NULL, NULL, NULL, ?, ?, ?, NOW())`,
+      Visualizar, Solicitud, Justificacion_Solicitud, Usuario, recurso, FechaRegistro
+    ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, '46', 'RCES', ?, 'Comprobante autorización fondo de cesantias', NULL, NULL, NULL, ?, ?, NOW())`,
     [
       docId,
       vin.Regional || null,
@@ -1156,7 +1156,6 @@ async function tramitarSolicitudCesantias({ idCesantia, usuario, file, observaci
       gcsUrl,
       usuario,
       idCesantia,
-      gcsUrl,
     ]
   );
 

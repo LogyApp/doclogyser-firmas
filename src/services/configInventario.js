@@ -58,6 +58,7 @@ const PAC = {
   LOGICA:           'Roles que pueden gestionar la lógica de abastecimiento',
   HORAS_ENLACE:     'Horas de vigencia del enlace de firma de actas',
   PERSONAL_RETIRADO: 'Roles que pueden generar actas a personal retirado',
+  CARGA_MASIVA:     'Roles que pueden usar la carga masiva de actas en grid',
 };
 
 // Artículos
@@ -146,6 +147,7 @@ const DEFAULTS = {
     [PAC.LOGICA]: 'Sistema, Inventario, AdmSst',
     [PAC.HORAS_ENLACE]: '48',
     [PAC.PERSONAL_RETIRADO]: 'Inventario, Sistema',
+    [PAC.CARGA_MASIVA]: 'Sistema, Inventario, AuxiliarR, Auxiliar, Asistencial',
   },
   [SECCION_SOLICITUDES]: {
     [PS.EDITAR_CERRADAS]: 'Sistema',
@@ -427,7 +429,14 @@ async function obtenerConfigActas(rol) {
     puedeRegenerarPdf: enLista(valor(p, SECCION_ACTAS, PAC.REGENERAR_PDF), rol),
     puedeGestionarLogica: enLista(valor(p, SECCION_ACTAS, PAC.LOGICA), rol),
     puedePersonalRetirado: enLista(valor(p, SECCION_ACTAS, PAC.PERSONAL_RETIRADO), rol),
+    puedeCargaMasiva: enLista(valor(p, SECCION_ACTAS, PAC.CARGA_MASIVA, 'Sistema, Inventario, AuxiliarR, Auxiliar, Asistencial'), rol),
   };
+}
+
+// ¿Puede el rol usar la carga masiva de actas en grid?
+async function puedeCargaMasivaActas(rol) {
+  const p = await obtenerParametros(SECCION_ACTAS);
+  return enLista(valor(p, SECCION_ACTAS, PAC.CARGA_MASIVA, 'Sistema, Inventario, AuxiliarR, Auxiliar, Asistencial'), rol);
 }
 
 // ¿Puede el rol generar actas a personal retirado?
@@ -502,6 +511,7 @@ module.exports = {
   PARAMETROS_ARTICULOS: PA,
   obtenerConfigActas,
   puedeCrearActasRetirados,
+  puedeCargaMasivaActas,
   horasVigenciaEnlaceActas,
   correoActasHabilitado,
   PARAMETROS_ACTAS: PAC,
