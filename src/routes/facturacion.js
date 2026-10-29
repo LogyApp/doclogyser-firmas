@@ -172,6 +172,8 @@ router.get('/', async (req, res) => {
       permisosRecibos,
       // Área del usuario con que se prellena el servicio en ciertas operaciones (Config_Parametros)
       areasUsuarioServicio: await obtenerAreasUsuarioServicio(base.usuarioId || usuario),
+      // Porcentajes de Config_Impuestos para los valores informativos de los formularios
+      impuestos: await getImpuestos().then(({ iva, reteFuente, reteIva, reteIcaMap }) => ({ iva, reteFuente, reteIva, reteIcaMap })).catch(() => null),
       topeValorBaseServicio,
       puedeGestionarClientesCredito: puedeGestionarCredito,
       clientesMaestros: {
@@ -5507,10 +5509,11 @@ router.get('/api/transportadoras/buscar', async (req, res) => {
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Lista desplegable del formulario de servicio: sin texto muestra las primeras; primero
-    // las que empiezan por lo escrito y luego las que lo contienen.
+    // las que empiezan por lo escrito y luego las que lo contienen. Las columnas de los maestros
+    // distinguen mayúsculas (utf8mb4_bin): se compara con COLLATE utf8mb4_unicode_ci para que no importen ni tildes.
     const texto = (q || '').trim();
     const [rows] = await pool.execute(
-      'SELECT ID as id, Transportadora as transportadora FROM Maestro_Transportadora WHERE Transportadora LIKE ? ORDER BY (Transportadora LIKE ?) DESC, Transportadora ASC LIMIT 50',
+      'SELECT ID as id, Transportadora as transportadora FROM Maestro_Transportadora WHERE Transportadora COLLATE utf8mb4_unicode_ci LIKE ? ORDER BY (Transportadora COLLATE utf8mb4_unicode_ci LIKE ?) DESC, Transportadora ASC LIMIT 50',
       [`%${texto}%`, `${texto}%`]
     );
     res.json(rows);
@@ -5553,7 +5556,7 @@ router.get('/api/proveedores/buscar', async (req, res) => {
     // Lista desplegable del formulario de servicio (mismo criterio que transportadoras)
     const texto = (q || '').trim();
     const [rows] = await pool.execute(
-      'SELECT ID as id, Proveedor as proveedor FROM Maestro_Proveedor WHERE Proveedor LIKE ? ORDER BY (Proveedor LIKE ?) DESC, Proveedor ASC LIMIT 50',
+      'SELECT ID as id, Proveedor as proveedor FROM Maestro_Proveedor WHERE Proveedor COLLATE utf8mb4_unicode_ci LIKE ? ORDER BY (Proveedor COLLATE utf8mb4_unicode_ci LIKE ?) DESC, Proveedor ASC LIMIT 50',
       [`%${texto}%`, `${texto}%`]
     );
     res.json(rows);
@@ -5600,8 +5603,8 @@ router.get('/api/placas/buscar', async (req, res) => {
               mp.\`Cliente Credito\` as clienteCredito, mp.Nit as nit, mc.\`Razón social\` as razonSocial
        FROM Maestro_Placas mp
        LEFT JOIN Maestro_Clientes mc ON mc.\`Código\` = mp.Nit
-       WHERE mp.Placa LIKE ?
-       ORDER BY (mp.Placa LIKE ?) DESC, mp.Placa ASC, mp.\`Fecha Registro\` DESC
+       WHERE mp.Placa COLLATE utf8mb4_unicode_ci LIKE ?
+       ORDER BY (mp.Placa COLLATE utf8mb4_unicode_ci LIKE ?) DESC, mp.Placa ASC, mp.\`Fecha Registro\` DESC
        LIMIT 50`,
       [`%${texto}%`, `${texto}%`]
     );
@@ -5664,7 +5667,7 @@ router.get('/api/auxiliares/buscar', async (req, res) => {
     const qLike = `%${(q || '').trim()}%`;
     const [rows] = await pool.execute(
       // Trabajadores activos de la Operación del recibo
-      "SELECT DISTINCT Trabajador as trabajador FROM `Maestro_Segmentación` WHERE Estado = 'Activo' AND `Operación` = ? AND Trabajador LIKE ? ORDER BY Trabajador ASC LIMIT 300",
+      "SELECT DISTINCT Trabajador as trabajador FROM `Maestro_Segmentación` WHERE Estado = 'Activo' AND `Operación` = ? AND Trabajador COLLATE utf8mb4_unicode_ci LIKE ? ORDER BY Trabajador ASC LIMIT 300",
       [operacion, qLike]
     );
     res.json(rows);

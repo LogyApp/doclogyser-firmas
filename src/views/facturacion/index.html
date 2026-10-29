@@ -676,6 +676,20 @@
       #tabla-det-recibo-servicios td[colspan] { justify-content: center; }
     }
 
+    /* Formulario de servicio con orden de Ajustes Servicios: los campos quedan en una sola rejilla de
+       6 columnas (las filas originales se "desarman" con display: contents) y se acomodan con order.
+       Los que iban de a dos por fila ocupan 3 columnas y los de a tres, 2. */
+    #form-servicio.form-ordenado { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); column-gap: 12px; }
+    #form-servicio.form-ordenado > .fila-campos { display: contents !important; } /* las filas traen display en línea */
+    #form-servicio.form-ordenado > *,
+    #form-servicio.form-ordenado > .fila-campos > * { grid-column: span 6; }
+    #form-servicio.form-ordenado .ancho-2 { grid-column: span 3; }
+    #form-servicio.form-ordenado .ancho-3 { grid-column: span 2; }
+    @media (max-width: 600px) {
+      #form-servicio.form-ordenado .ancho-2,
+      #form-servicio.form-ordenado .ancho-3 { grid-column: span 6; }
+    }
+
     /* Fondo y texto según el tema (sin esto el navegador pinta el campo blanco con texto claro en oscuro) */
     .form-group input:not([type="checkbox"]):not([type="radio"]), .form-group select, .form-group textarea {
       background-color: var(--card-bg);
@@ -3810,13 +3824,13 @@
             <label style="display:block; font-size: 0.78rem; font-weight:700; color:var(--text); margin-bottom: 8px; text-transform:uppercase;">Retenciones</label>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
-                <input type="checkbox" id="mr-retefuente" style="width:16px;height:16px;"> Aplica Retefuente
+                <input type="checkbox" id="mr-retefuente" style="width:16px;height:16px;" onchange="actualizarTotalesRecibo()"> Aplica Retefuente
               </label>
               <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
-                <input type="checkbox" id="mr-reteiva" style="width:16px;height:16px;"> Aplica ReteIVA
+                <input type="checkbox" id="mr-reteiva" style="width:16px;height:16px;" onchange="actualizarTotalesRecibo()"> Aplica ReteIVA
               </label>
               <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
-                <input type="checkbox" id="mr-reteica" style="width:16px;height:16px;"> Aplica ReteICA
+                <input type="checkbox" id="mr-reteica" style="width:16px;height:16px;" onchange="actualizarTotalesRecibo()"> Aplica ReteICA
               </label>
             </div>
             <small style="color: var(--text-muted); font-size: 0.76rem; display:block; margin-top:6px;">Se calculan automáticamente según el cliente, la operación y el subtotal del recibo.</small>
@@ -3834,6 +3848,7 @@
               <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="agregarServicioPendienteRecibo()">➕ Agregar Servicio</button>
             </div>
             <div id="mr-servicios-lista"></div>
+            <div id="mr-servicios-totales" style="display:none; margin-top:10px; padding:10px 12px; border-radius:8px; background:var(--card-bg); border:1px solid var(--border); font-size:0.84rem;"></div>
             <small id="mr-servicios-nota" style="color: var(--text-muted); font-size: 0.76rem; display:block; margin-top:6px;"></small>
           </div>
 
@@ -3926,9 +3941,9 @@
           </select>
           <div id="aj-condicion-valores" style="display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto; margin-top:8px;"></div>
         </div>
-        <div class="form-group" style="max-width: 160px;">
-          <label>Orden</label>
-          <input type="number" id="aj-orden" step="1" placeholder="Opcional">
+        <div class="form-group">
+          <label>Orden <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(posición en el formulario de servicio: 1 = primero; los campos sin orden conservan su lugar)</small></label>
+          <input type="number" id="aj-orden" step="1" min="1" placeholder="Opcional" style="max-width: 160px;">
         </div>
       </div>
       <div class="modal-footer">
@@ -4047,14 +4062,15 @@
             </div>
             <div class="form-group">
               <label>Cantidad</label>
-              <input type="number" id="ms-cantidad" step="1" min="0">
+              <input type="number" id="ms-cantidad" step="1" min="0" oninput="actualizarValoresServicio()">
             </div>
             <div class="form-group">
               <label>Valor Unitario</label>
-              <input type="number" id="ms-valor-unitario" step="1" min="0" oninput="msValorManual = true; document.getElementById('ms-tarifa-info').textContent = '';">
+              <input type="number" id="ms-valor-unitario" step="1" min="0" oninput="msValorManual = true; document.getElementById('ms-tarifa-info').textContent = ''; actualizarValoresServicio();">
               <small id="ms-tarifa-info" style="color: var(--text-muted); font-size: 0.74rem;"></small>
             </div>
           </div>
+          <div id="ms-valores-info" style="display:none; margin: -6px 0 16px; padding: 8px 12px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.82rem; color: var(--text-muted);"></div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
@@ -10131,6 +10147,66 @@
       renderServiciosPendientesRecibo();
     }
 
+    // ── Valores informativos (mismos cálculos que el servidor: calcularTotalesServicio) ──
+    const IMPUESTOS = CONFIG.impuestos || { iva: 0.19, reteFuente: 0.04, reteIva: 0.15, reteIcaMap: {} };
+    const pesos = (n) => '$ ' + formatMiles(n);
+    const pct = (p) => `${Math.round((Number(p) || 0) * 10000) / 100}%`;
+
+    // Valores de un servicio: { base, iva, reteFuente, reteIva, reteIca, total }; flags = retenciones del recibo
+    function calcularValoresServicio(cantidad, valorUnitario, flags = {}, operacion = '') {
+      const base = Math.round((Number(cantidad) || 0) * (Number(valorUnitario) || 0));
+      const iva = Math.round(base * (IMPUESTOS.iva || 0));
+      const reteFuente = flags.retefuente ? Math.round(base * (IMPUESTOS.reteFuente || 0)) : 0;
+      const reteIva = flags.reteiva ? Math.round(iva * (IMPUESTOS.reteIva || 0)) : 0;
+      const icaPct = (IMPUESTOS.reteIcaMap || {})[String(operacion || '').trim().toLowerCase()] || 0;
+      const reteIca = flags.reteica ? Math.round(base * icaPct) : 0;
+      return { base, iva, reteFuente, reteIva, reteIca, icaPct, total: base + iva - reteFuente - reteIva - reteIca };
+    }
+
+    // Formulario de servicio: valor base e IVA de lo escrito en Cantidad y Valor Unitario
+    function actualizarValoresServicio() {
+      const caja = document.getElementById('ms-valores-info');
+      const cantidad = document.getElementById('ms-cantidad').value;
+      const valorUnitario = document.getElementById('ms-valor-unitario').value;
+      if (cantidad === '' || valorUnitario === '') { caja.style.display = 'none'; return; }
+      const v = calcularValoresServicio(cantidad, valorUnitario);
+      caja.innerHTML = `Valor base: <strong style="color:var(--text);">${pesos(v.base)}</strong>
+        &nbsp;·&nbsp; IVA (${pct(IMPUESTOS.iva)}): <strong style="color:var(--text);">${pesos(v.iva)}</strong>
+        &nbsp;·&nbsp; Base + IVA: <strong style="color:var(--text);">${pesos(v.base + v.iva)}</strong>`;
+      caja.style.display = 'block';
+    }
+
+    // Formulario de recibo: acumulado de los servicios agregados, con las retenciones marcadas
+    function actualizarTotalesRecibo() {
+      const caja = document.getElementById('mr-servicios-totales');
+      if (!caja) return;
+      if (!mrServiciosPendientes.length) { caja.style.display = 'none'; return; }
+      const recaudo = modalRecibo.modoActual === 'RECAUDO';
+      const flags = recaudo ? {
+        retefuente: document.getElementById('mr-retefuente').checked,
+        reteiva: document.getElementById('mr-reteiva').checked,
+        reteica: document.getElementById('mr-reteica').checked,
+      } : {};
+      const operacion = document.getElementById('mr-operacion').value;
+      const t = { base: 0, iva: 0, reteFuente: 0, reteIva: 0, reteIca: 0, total: 0 };
+      let icaPct = 0;
+      mrServiciosPendientes.forEach(sp => {
+        const v = calcularValoresServicio(sp.fd.get('cantidad'), sp.fd.get('valorUnitario'), flags, operacion);
+        Object.keys(t).forEach(k => { t[k] += v[k]; });
+        icaPct = v.icaPct;
+      });
+      const fila = (txt, valor, color) => `<div style="display:flex; justify-content:space-between; gap:12px; padding:2px 0;"><span style="color:var(--text-muted);">${txt}</span><span style="${color ? 'color:' + color + ';' : ''}">${valor}</span></div>`;
+      caja.innerHTML =
+        fila(`Valor base (${mrServiciosPendientes.length} servicio${mrServiciosPendientes.length === 1 ? '' : 's'})`, pesos(t.base)) +
+        fila(`IVA (${pct(IMPUESTOS.iva)})`, pesos(t.iva)) +
+        (recaudo ? fila(`ReteFuente (${pct(IMPUESTOS.reteFuente)})`, (t.reteFuente ? '- ' : '') + pesos(t.reteFuente), 'var(--danger)') +
+          fila(`ReteIVA (${pct(IMPUESTOS.reteIva)} del IVA)`, (t.reteIva ? '- ' : '') + pesos(t.reteIva), 'var(--danger)') +
+          fila(`ReteICA (${pct(icaPct)})`, (t.reteIca ? '- ' : '') + pesos(t.reteIca), 'var(--danger)') : '') +
+        `<div style="display:flex; justify-content:space-between; gap:12px; margin-top:6px; padding-top:6px; border-top:1px solid var(--border); font-weight:800;"><span>Total</span><span style="color:var(--accent);">${pesos(t.total)}</span></div>` +
+        '<small style="color:var(--text-muted); font-size:0.74rem;">Valores informativos; el recibo los recalcula al guardar.</small>';
+      caja.style.display = 'block';
+    }
+
     function renderServiciosPendientesRecibo() {
       const lista = document.getElementById('mr-servicios-lista');
       const nota = document.getElementById('mr-servicios-nota');
@@ -10151,6 +10227,8 @@
       ['mr-regional', 'mr-operacion', 'btn-mr-modalidad-recaudo', 'btn-mr-modalidad-credito']
         .forEach(id => { document.getElementById(id).disabled = hay; });
       mostrarCamposReciboSegunServicios();
+      actualizarTotalesRecibo();
+      if (hay) recalcularSugerenciaRetenciones(); // con el subtotal de los servicios agregados
     }
 
     function cerrarModalRecibo() {
@@ -10352,7 +10430,9 @@
       if (!operacion || modalidad !== 'RECAUDO') return;
 
       const nit = document.getElementById('mr-nit').value || '';
-      const subtotal = (modalRecibo.modo === 'editar' && reciboDetalleActual) ? (reciboDetalleActual.totales.subtotal || 0) : 0;
+      // Subtotal: el del recibo guardado o, al crear, el de los servicios agregados
+      const subtotal = (modalRecibo.modo === 'editar' && reciboDetalleActual) ? (reciboDetalleActual.totales.subtotal || 0)
+        : mrServiciosPendientes.reduce((acc, sp) => acc + calcularValoresServicio(sp.fd.get('cantidad'), sp.fd.get('valorUnitario')).base, 0);
 
       try {
         const params = new URLSearchParams({ usuario: CONFIG.usuario, nit, operacion, subtotal });
@@ -10362,6 +10442,7 @@
         document.getElementById('mr-retefuente').checked = sugerencia.retefuente === 'V';
         document.getElementById('mr-reteiva').checked = sugerencia.reteiva === 'V';
         document.getElementById('mr-reteica').checked = sugerencia.reteica === 'V';
+        actualizarTotalesRecibo();
       } catch (e) {
         console.error('[recalcularSugerenciaRetenciones]', e);
       }
@@ -10940,6 +11021,7 @@
       }
 
       pintarUnidadServicio(); // botones o lista según cuántas unidades quedaron
+      ordenarCamposServicio(a);
 
       // Campos de texto con valor por defecto
       if (crear) {
@@ -10947,6 +11029,39 @@
           const el = document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]);
           if (a[col] && a[col].defecto && el && !el.value) el.value = a[col].defecto;
         });
+      }
+    }
+
+    // Orden de los campos del formulario de servicio (columna orden de Config_Servicios). La primera
+    // vez se marcan las filas y la posición original de cada campo; con orden, la posición n queda
+    // justo antes del campo que hoy va en el lugar n.
+    function ordenarCamposServicio(ajustes) {
+      const form = document.getElementById('form-servicio');
+      if (!form.dataset.camposMarcados) {
+        let posicion = 0;
+        [...form.children].forEach(hijo => {
+          const columnas = (hijo.style.gridTemplateColumns || '').trim().split(/\s+/).filter(Boolean).length;
+          if (columnas > 1 && !hijo.classList.contains('form-group')) {
+            hijo.classList.add('fila-campos');
+            [...hijo.children].forEach(c => { c.classList.add('ancho-' + columnas); c.dataset.ordenBase = ++posicion; });
+          } else {
+            hijo.dataset.ordenBase = ++posicion;
+          }
+        });
+        form.dataset.camposMarcados = '1';
+      }
+      const items = [...form.querySelectorAll('[data-orden-base]')];
+      const conOrden = Object.entries(ajustes || {}).filter(([, c]) => c.orden != null && !isNaN(c.orden));
+      form.classList.toggle('form-ordenado', conOrden.length > 0);
+      items.forEach(el => { el.style.order = conOrden.length ? Number(el.dataset.ordenBase) * 10 : ''; });
+      conOrden.forEach(([col, c]) => {
+        const grupo = grupoCampoFormulario(document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]));
+        if (grupo && grupo.dataset.ordenBase) grupo.style.order = c.orden * 10 - 5;
+      });
+      // Los valores informativos van justo después de Cantidad y Valor Unitario
+      if (conOrden.length) {
+        const ordenDe = id => Number(grupoCampoFormulario(document.getElementById(id))?.style.order) || 0;
+        document.getElementById('ms-valores-info').style.order = Math.max(ordenDe('ms-cantidad'), ordenDe('ms-valor-unitario')) + 1;
       }
     }
 
@@ -11183,6 +11298,7 @@
       // Ajustes de la operación (Config_Servicios): etiquetas, campos, datos habilitados y valores por defecto
       await aplicarAjustesServicio(modo !== 'editar');
       recalcularTarifaServicio();
+      actualizarValoresServicio(); // valores informativos de lo que ya trae (edición o valores por defecto)
 
       const overlayServicio = document.getElementById('modal-servicio-overlay');
       overlayServicio.classList.add('open');
@@ -11292,6 +11408,7 @@
           delete input.dataset.tarifa;
           info.textContent = (params.get('actividad') && params.get('unidad')) ? 'Sin tarifa: escriba el valor' : '';
         }
+        actualizarValoresServicio();
       }, 250);
     }
 

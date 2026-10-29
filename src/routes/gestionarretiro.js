@@ -3,7 +3,7 @@ const fs      = require('fs');
 const path    = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
-const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ } = require('../services/token');
+const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ, generarTokenAutCesantias } = require('../services/token');
 const { obtenerCondicionRetiro, obtenerEstadoLogysign, obtenerPrefijoDoc, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, obtenerPermisosRetiro, obtenerPendientesLegalizacion } = require('../services/configRetiro');
 const { subirDocumentoRetiro } = require('../services/storage');
 const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
@@ -252,6 +252,19 @@ router.get('/:idVinculacion', async (req, res) => {
     const urlFirmaEMOE = await getUrlFirma(vin.token_firma_emoe, vin.token_firma_emoe_expira, generarTokenEMOE, 'EMOE', '/firmar-examen-egreso/');
     const urlFirmaCRS  = await getUrlFirma(vin.token_firma_crs,  vin.token_firma_crs_expira,  generarTokenCRS,  'CRS',  '/firmar-cesantias/');
 
+    let urlAutCesantias = null;
+    const anioIngresoVin = vin['Fecha de Ingreso'] ? new Date(vin['Fecha de Ingreso']).getFullYear() : null;
+    if (anioIngresoVin && anioIngresoVin < new Date().getFullYear()) {
+      if (vin.token_aut_cesantias) {
+        const t = reconstruirToken(vin.token_aut_cesantias, idVinculacion, vin.token_aut_cesantias_expira);
+        const tok = t || await generarTokenAutCesantias(idVinculacion).catch(() => null);
+        if (tok) urlAutCesantias = `${baseUrl}/autorizar-cesantias/${encodeURIComponent(idVinculacion)}?token=${encodeURIComponent(tok)}`;
+      } else {
+        const tok = await generarTokenAutCesantias(idVinculacion).catch(() => null);
+        if (tok) urlAutCesantias = `${baseUrl}/autorizar-cesantias/${encodeURIComponent(idVinculacion)}?token=${encodeURIComponent(tok)}`;
+      }
+    }
+
     // ── Evaluación de Retiro (EVR) ────────────────────────────────────────────
     let evrInfo = null;
     try {
@@ -354,6 +367,7 @@ router.get('/:idVinculacion', async (req, res) => {
       urlFirmaAR,
       urlFirmaEMOE,
       urlFirmaCRS,
+      urlAutCesantias,
       pazYSalvo:        pzInfo,
       evr:              evrInfo,
       contacto:         { email: emailTrabajador, celular: celularTrabajador },

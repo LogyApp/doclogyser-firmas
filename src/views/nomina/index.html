@@ -7444,7 +7444,8 @@
     const opsSinVal = (conf.operacionesSinValidacion || ['administracion']).map(o => String(o).trim().toLowerCase());
 
     tbody.innerHTML = data.map(r => {
-      const montoFmt = Number(r.monto_solicitado || 0).toLocaleString('es-CO');
+      const esRetiroMonto = r.tipo_retiro === 'Retiro' && (!r.monto_solicitado || Number(r.monto_solicitado) === 0);
+      const montoFmt = esRetiroMonto ? 'Total disponible' : '$ ' + Number(r.monto_solicitado || 0).toLocaleString('es-CO');
       const badgeEstado = `<span class="badge-ces badge-ces-${r.estado}">${r.estado}</span>`;
       const firmaTag = r.firmado
         ? '<span style="color:#10b981;font-weight:700;font-size:.78rem;">✓ Firmado</span>'
@@ -7537,7 +7538,7 @@
           <div style="font-size:.72rem; color:var(--text-muted);">${r.regional || ''}</div>
         </td>
         <td>${r.fondo_cesantias || '—'}</td>
-        <td><strong>$ ${montoFmt}</strong></td>
+        <td><strong>${montoFmt}</strong></td>
         <td>
           <div style="font-weight:600;">${r.tipo_retiro || '—'}</div>
           <div style="font-size:.72rem; color:var(--text-muted); white-space:normal;">${r.motivo_texto || ''}</div>
@@ -8381,7 +8382,7 @@
       document.getElementById('ces_d_cargo').textContent = tra.cargo || '—';
       document.getElementById('ces_d_regop').textContent = `${tra.regional || '—'} / ${tra.operacion || '—'}`;
       document.getElementById('ces_d_fondo').textContent = sol.fondo_cesantias || '—';
-      document.getElementById('ces_d_monto').textContent = `$ ${Number(sol.monto_solicitado || 0).toLocaleString('es-CO')}`;
+      document.getElementById('ces_d_monto').textContent = (sol.tipo_retiro === 'Retiro' && (!sol.monto_solicitado || Number(sol.monto_solicitado) === 0)) ? 'Total disponible en el fondo' : `$ ${Number(sol.monto_solicitado || 0).toLocaleString('es-CO')}`;
       document.getElementById('ces_d_motivo').textContent = `[${sol.tipo_retiro}] ${sol.motivo_texto || sol.motivo_retiro}`;
       document.getElementById('ces_d_ciudad_fecha').textContent = `${sol.ciudad_solicitud || '—'}, ${sol.fecha_registro_fmt || '—'}`;
 
@@ -8390,6 +8391,12 @@
         blqCond.innerHTML = `
           <div style="font-weight:700; color:var(--text); margin-bottom:4px;">Modalidad Vivienda</div>
           <div><strong>Aplica Cónyuge / Compañero(a):</strong> ${sol.aplica_conyuge ? 'SÍ' : 'NO'}</div>
+        `;
+      } else if (String(sol.tipo_retiro).toLowerCase() === 'retiro') {
+        blqCond.innerHTML = `
+          <div style="font-weight:700; color:var(--text); margin-bottom:4px;">Modalidad Retiro de Personal</div>
+          <div><strong>Motivo:</strong> Terminación de contrato laboral (Retiro definitivo)</div>
+          <div style="margin-top:4px; color:var(--text-muted); font-size:.78rem;">Autorización de retiro de cesantías generada y firmada digitalmente desde el proceso de retiro (CRS).</div>
         `;
       } else {
         blqCond.innerHTML = `
@@ -8421,10 +8428,11 @@
         docsContainer.innerHTML = docs.map(d => {
           const rawUrl = d.Url || d.Doc || '';
           const docUrl = rawUrl.startsWith('http') ? rawUrl : ('https://storage.googleapis.com/talenthub_central/' + rawUrl.replace(/^\/+/, ''));
-          const prefijoMostrar = d.Prefijo || (d.TipoDocumento === '11' ? 'CC' : 'RCES');
+          const prefijoMostrar = d.Prefijo || (d.TipoDocumento === '11' ? 'CC' : (d.TipoDocumento === '60' ? 'CRS' : 'RCES'));
+          const tituloMostrar = d.Observaciones || (d.TipoDocumento === '60' ? 'Autorización retiro de cesantías' : (d.TipoDocumento === '11' ? 'Cédula de ciudadanía' : 'Soporte de Cesantías'));
           return `<div class="ces-doc-card">
             <div class="ces-doc-info">
-              <span class="ces-doc-title">📄 ${d.Observaciones || 'Soporte de Cesantías'}</span>
+              <span class="ces-doc-title">📄 ${tituloMostrar}</span>
               <span class="ces-doc-sub">TipoDoc: ${d.TipoDocumento} • Prefijo: ${prefijoMostrar} • Fecha: ${d.FechaRegistro ? String(d.FechaRegistro).slice(0,19).replace('T',' ') : '—'} • Estado: ${d.validacion || 'PEND'}</span>
             </div>
             <div>
@@ -8436,11 +8444,17 @@
         docsContainer.innerHTML = '<div style="font-size:.82rem; color:var(--text-muted);">No hay soportes anexos en Maestro_docTrabajador.</div>';
       }
 
-      const pdfDoc = docs.find(d => String(d.Observaciones || '').toLowerCase().includes('formato')) || docs.find(d => String(d.Doc || '').endsWith('.pdf') && !String(d.Observaciones || '').toLowerCase().includes('comprobante'));
-      if (pdfDoc && sol.firma_trabajador) {
-        document.getElementById('ces_d_pdf_status_info').innerHTML = `<span style="color:#10b981; font-weight:700;">✓ Formato de solicitud firmado y disponible.</span>`;
+      const pdfDoc = docs.find(d => String(d.TipoDocumento) === '60' || String(d.Prefijo).toUpperCase() === 'CRS') ||
+                     docs.find(d => String(d.Observaciones || '').toLowerCase().includes('formato')) ||
+                     docs.find(d => String(d.Doc || '').endsWith('.pdf') && !String(d.Observaciones || '').toLowerCase().includes('comprobante'));
+      if (pdfDoc && (sol.firma_trabajador || pdfDoc.Doc)) {
+        const esRetiro = sol.tipo_retiro === 'Retiro' || String(pdfDoc.TipoDocumento) === '60';
+        document.getElementById('ces_d_pdf_status_info').innerHTML = esRetiro
+          ? `<span style="color:#10b981; font-weight:700;">✓ Documento de autorización CRS firmado y disponible.</span>`
+          : `<span style="color:#10b981; font-weight:700;">✓ Formato de solicitud firmado y disponible.</span>`;
         const btnPdf = document.getElementById('ces_d_btn_ver_pdf');
         btnPdf.style.display = 'inline-block';
+        btnPdf.textContent = esRetiro ? '📄 Ver Autorización de Retiro (CRS)' : '📄 Ver Formato Firmado (PDF)';
         btnPdf.dataset.url = pdfDoc.Url || pdfDoc.Doc;
       } else {
         document.getElementById('ces_d_pdf_status_info').innerHTML = sol.firma_trabajador
@@ -8449,6 +8463,11 @@
         if (!sol.firma_trabajador) {
           document.getElementById('ces_d_seccion_firma_pendiente').style.display = 'block';
         }
+      }
+
+      const btnRegen = document.getElementById('ces_d_btn_regen_pdf');
+      if (btnRegen) {
+        btnRegen.style.display = sol.tipo_retiro === 'Retiro' ? 'none' : 'inline-block';
       }
 
       renderBotonesFlujoCesantia(sol);
@@ -8637,13 +8656,13 @@
       const sol = _cesantiasState.detalleActual.solicitud;
       const trab = _cesantiasState.detalleActual.trabajador || {};
       document.getElementById('ces_tr_colaborador').textContent = `${trab.nombre || trab.trabajadorCompleto || sol.identificacion} (${sol.identificacion})`;
-      document.getElementById('ces_tr_monto').textContent = '$ ' + Number(sol.monto_solicitado || 0).toLocaleString('es-CO');
+      document.getElementById('ces_tr_monto').textContent = (sol.tipo_retiro === 'Retiro' && (!sol.monto_solicitado || Number(sol.monto_solicitado) === 0)) ? 'Total disponible en el fondo' : '$ ' + Number(sol.monto_solicitado || 0).toLocaleString('es-CO');
       document.getElementById('ces_tr_fondo').textContent = sol.fondo_cesantias || '—';
     } else {
       const rec = (cesantiasData.records || []).find(r => r.Id === id);
       if (rec) {
         document.getElementById('ces_tr_colaborador').textContent = `${rec.nombre_completo || rec.identificacion} (${rec.identificacion})`;
-        document.getElementById('ces_tr_monto').textContent = '$ ' + Number(rec.monto_solicitado || 0).toLocaleString('es-CO');
+        document.getElementById('ces_tr_monto').textContent = (rec.tipo_retiro === 'Retiro' && (!rec.monto_solicitado || Number(rec.monto_solicitado) === 0)) ? 'Total disponible en el fondo' : '$ ' + Number(rec.monto_solicitado || 0).toLocaleString('es-CO');
         document.getElementById('ces_tr_fondo').textContent = rec.fondo_cesantias || '—';
       }
     }

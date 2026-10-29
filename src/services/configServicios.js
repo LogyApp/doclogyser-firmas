@@ -123,6 +123,7 @@ async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {
       habilitados: campo.tipo === 'lista' ? lista(f.datos_habilitados) : [],
       defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',
       paraRol,
+      orden: f.orden == null ? null : Number(f.orden), // posición en el formulario (1 = primero)
       tipo: campo.tipo,
       bodyKey: campo.bodyKey,
     };

@@ -75,17 +75,9 @@ async function verificarYEnviarEmailConcluido(idVinculacion) {
   // CT es obligatorio para considerar el proceso completo
   if (!docsMap['CT']) return;
 
-  // 4. Enviar email al trabajador con CC a retiros@logyser.com
-  await notificarDocumentosRetiroConcluidos({
-    emailTrabajador:  email,
-    nombreTrabajador: limpiarNombre(vin.Trabajador),
-    urlCT:   docsMap['CT']   || null,
-    urlAR:   docsMap['AR']   || null,
-    urlEMOE: docsMap['EMOE'] || null,
-    urlCRS:  docsMap['CRS']  || null,
-  });
-
-  console.log('[retiro-concluido] Email enviado para vinculación', idVinculacion);
+  // Por solicitud de William, se retira el envío del correo "Sus documentos de retiro están listos"
+  // para centralizar y oficializar todo el proceso en "Documentación de retiro y proceso de liquidación".
+  console.log('[retiro-concluido] Documentos de retiro completados para vinculación', idVinculacion);
 }
 
 module.exports = { verificarYEnviarEmailConcluido };

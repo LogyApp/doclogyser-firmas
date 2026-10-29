@@ -12,7 +12,7 @@ const {
 const { notificarRetiro, notificarInicioLegalizacionSinRetirar, notificarDocumentoRetiroTrabajador } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
-const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenEVR, reconstruirToken } = require('../services/token');
+const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenAutCesantias, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas, notificarAreasPendientesPazYSalvo } = require('../services/pazYSalvoService');
 const { obtenerPermisosActivos } = require('../services/configActivos');
 const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, obtenerPermisosRetiro, nominaDebeMarcarRetirado, obtenerResponsablesConfirmarRetiro } = require('../services/configRetiro');
@@ -272,8 +272,8 @@ router.get('/api/pz-status/:idPz', async (req, res) => {
 router.post('/api/enviar-trabajador', async (req, res) => {
   try {
     const { emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, urlTCR, urlED,
-            motivoRetiro, tipoRenuncia, usuario } = req.body;
+            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlAutCesantias, urlEVR, urlTCR, urlED,
+            motivoRetiro, tipoRenuncia, usuario, idVinculacion } = req.body;
     if (!emailTrabajador) return res.status(400).json({ ok: false, error: 'Email requerido' });
 
     let emailUsuario = null;
@@ -284,9 +284,26 @@ router.post('/api/enviar-trabajador', async (req, res) => {
       emailUsuario = uRows[0]?.Email || null;
     }
 
+    let urlAutFinal = urlAutCesantias || null;
+    if (!urlAutFinal && idVinculacion) {
+      try {
+        const [vRows] = await pool.execute(
+          'SELECT token_aut_cesantias, token_aut_cesantias_expira FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+          [idVinculacion]
+        );
+        if (vRows.length && vRows[0].token_aut_cesantias) {
+          const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+          const t = reconstruirToken(vRows[0].token_aut_cesantias, idVinculacion, vRows[0].token_aut_cesantias_expira);
+          if (t) urlAutFinal = `${baseUrl}/autorizar-cesantias/${encodeURIComponent(idVinculacion)}?token=${encodeURIComponent(t)}`;
+        }
+      } catch (errAut) {
+        console.warn('[enviar-trabajador-tokenAut]', errAut.message);
+      }
+    }
+
     await notificarDocumentoRetiroTrabajador({
       emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, urlTCR, urlED,
+      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlAutCesantias: urlAutFinal, urlEVR, urlTCR, urlED,
       motivoRetiro, tipoRenuncia, emailUsuario,
     });
     res.json({ ok: true });
@@ -547,6 +564,7 @@ router.post('/api/confirmar-responsable', async (req, res) => {
 
     // Token CRS (si año ingreso < año actual)
     let crsData = null;
+    let urlAutCesantias = null;
     const anioIngreso = vin['Fecha de Ingreso'] ? new Date(vin['Fecha de Ingreso']).getFullYear() : null;
     if (anioIngreso && anioIngreso < new Date().getFullYear()) {
       try {
@@ -556,6 +574,12 @@ router.post('/api/confirmar-responsable', async (req, res) => {
           crsData = { urlFirma: `${baseUrl}/firmar-cesantias/${encodeURIComponent(idVin)}?token=${encodeURIComponent(tokenCRS)}` };
         }
       } catch {}
+      try {
+        const tokenAut = await generarTokenAutCesantias(idVin);
+        urlAutCesantias = `${baseUrl}/autorizar-cesantias/${encodeURIComponent(idVin)}?token=${encodeURIComponent(tokenAut)}`;
+      } catch (errAut) {
+        console.warn('[generarTokenAutCesantias]', errAut.message);
+      }
     }
 
     // Crear o actualizar Paz y Salvo
@@ -622,6 +646,7 @@ router.post('/api/confirmar-responsable', async (req, res) => {
       firmaRenuncia: firmaRenunciaData,
       emoe:         emoeData,
       cesantias:    crsData,
+      urlAutCesantias,
       idPz,
       urlEVR,
       email:        ctFinal.Email || null,

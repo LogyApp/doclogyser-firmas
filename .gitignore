@@ -4,3 +4,4 @@ env.yaml
 google-auth.json
 .claude/worktrees/
 scratch/
+deepseekcode-reasonix-vscode/

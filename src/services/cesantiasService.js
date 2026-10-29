@@ -267,7 +267,8 @@ async function verificarSolicitudActivaTrabajador(identificacion) {
 }
 
 // ── Buscar Datos del Trabajador ──────────────────────────────────────────────
-async function buscarTrabajadorCesantias(identificacion) {
+async function buscarTrabajadorCesantias(identificacion, options = {}) {
+  const { permitirRetirado = false } = options;
   if (!identificacion) return null;
 
   const [vinRows] = await pool.execute(
@@ -289,8 +290,8 @@ async function buscarTrabajadorCesantias(identificacion) {
   if (!vinRows.length) return null;
   const vin = vinRows[0];
 
-  // Req 2: Validar que el registro más reciente tenga Estado = 'Activo'
-  if (vin.Estado !== 'Activo') {
+  // Req 2: Validar que el registro más reciente tenga Estado = 'Activo' (salvo si se consulta detalle con permitirRetirado)
+  if (!permitirRetirado && vin.Estado !== 'Activo') {
     const errorMsg = `El colaborador ${limpiarNombre(vin.Trabajador)} (${vin.Identificacion}) no se encuentra activo (Estado actual: "${vin.Estado}"). Solo se permite radicar cesantías a colaboradores con estado Activo.`;
     const err = new Error(errorMsg);
     err.status = 400;
@@ -844,19 +845,68 @@ async function obtenerDetalleCesantia(idCesantia) {
   if (!rows.length) return null;
   const sol = rows[0];
 
-  const worker = await buscarTrabajadorCesantias(sol.identificacion);
+  const worker = await buscarTrabajadorCesantias(sol.identificacion, { permitirRetirado: true });
 
-  // Documentos en Maestro_docTrabajador asociados a esta solicitud
+  // Documentos en Maestro_docTrabajador asociados a esta solicitud (soporte 46, cédula 11, retiro CRS 60)
   const [docs] = await pool.execute(
     `SELECT 
        id, \`Validación\` AS validacion, Regional, \`Operación\` AS operacion,
        \`Identificación\` AS identificacion, Estado, Fecha_Ingreso, TipoDocumento,
        Prefijo, Doc, Observaciones, Url, FechaRegistro, Usuario, recurso
      FROM Maestro_docTrabajador
-     WHERE recurso = ? AND TipoDocumento IN ('46', '11')
+     WHERE recurso = ? AND TipoDocumento IN ('46', '11', '60')
      ORDER BY FechaRegistro DESC`,
     [idCesantia]
   );
+
+  // Asegurar que se incluya la cédula de ciudadanía (TipoDocumento 11) si no estaba ligada por recurso
+  const tieneCedula = docs.some(d => String(d.TipoDocumento) === '11');
+  if (!tieneCedula && sol.identificacion) {
+    const [cedRows] = await pool.execute(
+      `SELECT 
+         id, \`Validación\` AS validacion, Regional, \`Operación\` AS operacion,
+         \`Identificación\` AS identificacion, Estado, Fecha_Ingreso, TipoDocumento,
+         Prefijo, Doc, Observaciones, Url, FechaRegistro, Usuario, recurso
+       FROM Maestro_docTrabajador
+       WHERE \`Identificación\` = ? AND TipoDocumento = '11'
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [sol.identificacion]
+    );
+    if (cedRows.length) {
+      const ced = cedRows[0];
+      if (!ced.Observaciones) ced.Observaciones = 'Cédula de ciudadanía';
+      docs.push(ced);
+    }
+  }
+
+  // Asegurar que se incluya la Autorización de Retiro de Cesantías (TipoDocumento 60) si no estaba ligada por recurso
+  const tieneCRS = docs.some(d => String(d.TipoDocumento) === '60');
+  if (!tieneCRS && sol.identificacion) {
+    const [crsRows] = await pool.execute(
+      `SELECT 
+         id, \`Validación\` AS validacion, Regional, \`Operación\` AS operacion,
+         \`Identificación\` AS identificacion, Estado, Fecha_Ingreso, TipoDocumento,
+         Prefijo, Doc, Observaciones, Url, FechaRegistro, Usuario, recurso
+       FROM Maestro_docTrabajador
+       WHERE \`Identificación\` = ? AND TipoDocumento = '60'
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [sol.identificacion]
+    );
+    if (crsRows.length) {
+      const crs = crsRows[0];
+      if (!crs.Observaciones) crs.Observaciones = 'Autorización retiro de cesantías';
+      docs.push(crs);
+    }
+  }
+
+  // Normalizar observaciones predeterminadas
+  for (const d of docs) {
+    if (String(d.TipoDocumento) === '60' && !d.Observaciones) {
+      d.Observaciones = 'Autorización retiro de cesantías';
+    } else if (String(d.TipoDocumento) === '11' && !d.Observaciones) {
+      d.Observaciones = 'Cédula de ciudadanía';
+    }
+  }
 
   const docsNormalizados = docs.map(d => ({
     ...d,
@@ -1244,6 +1294,24 @@ async function generarYGuardarPDFCesantias(idCesantia, usuario = 'sistema') {
         <div class="support-list">
           <div class="support-item">✓ Soportes de propiedad / compraventa / liberación de gravamen verificados en el expediente.</div>
           <div class="support-item">✓ Verificación de inversión conforme al Artículo 256 del C.S.T. y Decreto 1072 de 2015.</div>
+        </div>
+      </section>
+    `;
+  } else if (String(sol.tipo_retiro).trim().toLowerCase() === 'retiro') {
+    seccionEspecifica = `
+      <section class="section-block">
+        <div class="section-title">Detalle de la Modalidad — Terminación de Contrato Laboral</div>
+        <table class="data-grid">
+          <tr>
+            <td class="data-label">Motivo de Retiro:</td>
+            <td class="data-val"><strong>Terminación de Contrato Laboral</strong></td>
+            <td class="data-label">Destino:</td>
+            <td class="data-val">Retiro definitivo de saldos acumulados en el fondo de cesantías</td>
+          </tr>
+        </table>
+        <div class="support-list">
+          <div class="support-item">✓ Autorización de retiro de cesantías generada y firmada digitalmente en el proceso de desvinculación laboral (CRS).</div>
+          <div class="support-item">✓ Trámite directo ante el Fondo de Cesantías conforme a la legislación laboral colombiana.</div>
         </div>
       </section>
     `;

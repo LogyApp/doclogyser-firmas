@@ -1557,12 +1557,14 @@
             urlCert: urlCertParaEmail,
             urlEMOE: urlEMOEParaEmail,
             urlCRS:  urlCRSParaEmail,
+            urlAutCesantias: (window.CONFIG && window.CONFIG.urlAutCesantias) || null,
             urlEVR:  urlEVRParaEmail,
             urlTCR:  urlTCRParaEmail,
             urlED:   urlEDParaEmail,
             motivoRetiro,
             tipoRenuncia,
             usuario,
+            idVinculacion,
           }),
         });
         const d = await r.json();

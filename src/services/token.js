@@ -219,6 +219,32 @@ async function validarTokenEVR(token, idEvaluacion) {
   return { valido: true };
 }
 
+// ── Token Autorización de Cesantías por Retiro — 120 horas ───────────────
+async function generarTokenAutCesantias(idVinculacion) {
+  const jti      = crypto.randomBytes(32).toString('hex');
+  const expiraEn = new Date(Date.now() + PZ_HOURS * 3600 * 1000);
+  const token    = jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: `${PZ_HOURS}h` });
+  await pool.execute(
+    'UPDATE `Maestro_Vinculación` SET token_aut_cesantias = ?, token_aut_cesantias_expira = ? WHERE `Id Vinculación` = ?',
+    [jti, expiraEn, idVinculacion]
+  );
+  return token;
+}
+
+async function validarTokenAutCesantias(token, idVinculacion) {
+  let payload;
+  try { payload = jwt.verify(token, SECRET); } catch { return { valido: false, motivo: 'jwt_invalido' }; }
+  const [rows] = await pool.execute(
+    'SELECT token_aut_cesantias, token_aut_cesantias_expira FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ?',
+    [idVinculacion]
+  );
+  if (!rows.length) return { valido: false, motivo: 'no_encontrado' };
+  const fila = rows[0];
+  if (fila.token_aut_cesantias !== payload.jti) return { valido: false, motivo: 'token_no_coincide' };
+  if (new Date(fila.token_aut_cesantias_expira) < new Date()) return { valido: false, motivo: 'expirado' };
+  return { valido: true };
+}
+
 function reconstruirToken(jti, idVinculacion, expira) {
   if (!jti || !expira) return null;
   const msRestante = new Date(expira).getTime() - Date.now();
@@ -226,4 +252,14 @@ function reconstruirToken(jti, idVinculacion, expira) {
   return jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: Math.floor(msRestante / 1000) });
 }
 
-module.exports = { generarToken, validarToken, generarTokenAR, validarTokenAR, generarTokenPZ, validarTokenPZ, generarTokenCT, validarTokenCT, generarTokenEMOE, validarTokenEMOE, generarTokenCRS, validarTokenCRS, generarTokenEVR, validarTokenEVR, reconstruirToken };
+module.exports = {
+  generarToken, validarToken,
+  generarTokenAR, validarTokenAR,
+  generarTokenPZ, validarTokenPZ,
+  generarTokenCT, validarTokenCT,
+  generarTokenEMOE, validarTokenEMOE,
+  generarTokenCRS, validarTokenCRS,
+  generarTokenEVR, validarTokenEVR,
+  generarTokenAutCesantias, validarTokenAutCesantias,
+  reconstruirToken
+};

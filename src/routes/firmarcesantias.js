@@ -215,19 +215,19 @@ router.post('/:idVinculacion', async (req, res) => {
     const pdfBuffer = await generarPDF(htmlFinal);
     const urlPdf    = await subirPDFCesantias(vin['Identificación'], idVinculacion, pdfBuffer);
 
-    // Registrar documento firmado en Maestro_docTrabajador
+    // Registrar documento firmado (carta informativa de cesantías) en Maestro_docTrabajador
     await pool.execute(
       `INSERT INTO Maestro_docTrabajador
        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
         TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
-        Justificacion_Solicitud, FechaRegistro, Usuario)
-       VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, '60', 'CRS', ?, NULL, NULL, NULL, NULL, ?, ?)`,
+        Justificacion_Solicitud, FechaRegistro, Usuario, Url)
+       VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, '60', 'CRS', ?, 'Retiro cesantías', NULL, NULL, NULL, ?, ?, ?)`,
       [uuidv4(), vin.Regional || null, vin['Operación'] || null,
        String(vin['Identificación']), toDateStr(vin['Fecha de Ingreso']),
-       urlPdf, fechaHoraBogota(), vin.Usuario || 'sistema']
+       urlPdf, fechaHoraBogota(), vin.Usuario || 'sistema', urlPdf]
     );
 
-    // Invalidar token
+    // Invalidar token de firma de la carta informativa
     await pool.execute(
       'UPDATE `Maestro_Vinculación` SET token_firma_crs = NULL, token_firma_crs_expira = NULL WHERE `Id Vinculación` = ?',
       [idVinculacion]
@@ -235,7 +235,7 @@ router.post('/:idVinculacion', async (req, res) => {
 
     res.json({ ok: true, urlPdf });
 
-    // Verificar si todos los docs están firmados → enviar email automático al trabajador
+    // Verificación de cierre
     verificarYEnviarEmailConcluido(idVinculacion).catch(e => console.error('[auto-email CRS]', e.message));
   } catch (err) {
     console.error('[firmarcesantias POST]', err);
