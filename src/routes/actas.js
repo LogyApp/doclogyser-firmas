@@ -348,11 +348,25 @@ router.get('/api/trabajadores-buscar', async (req, res) => {
          FROM \`Maestro_Vinculación\`
          GROUP BY Identificación
        ) ult ON v.Identificación = ult.Identificación AND v.\`Fecha de Ingreso\` = ult.MaxFecha
-       WHERE (v.Identificación LIKE ? OR v.Trabajador LIKE ?)
+       WHERE (CAST(v.Identificación AS CHAR) LIKE ? OR v.Trabajador COLLATE utf8mb4_general_ci LIKE ?)
          ${estadoCond}
        ORDER BY v.Trabajador LIMIT 15`,
       [term, term]
     );
+
+    if (rows.length === 0) {
+      const estadoCondSeg = puedeRetirados ? "AND s.Estado IN ('Activo', 'Retirado')" : "AND s.Estado = 'Activo'";
+      const [segRows] = await pool.execute(
+        `SELECT s.Identificación, s.Trabajador, '' AS Regional, s.\`Operación\`, s.Estado
+         FROM \`Maestro_Segmentación\` s
+         WHERE (CAST(s.Identificación AS CHAR) LIKE ? OR s.Trabajador COLLATE utf8mb4_general_ci LIKE ?)
+           ${estadoCondSeg}
+         ORDER BY s.Trabajador LIMIT 15`,
+        [term, term]
+      );
+      return res.json(segRows);
+    }
+
     res.json(rows);
   } catch (err) {
     console.error('[actas] GET /api/trabajadores-buscar:', err);

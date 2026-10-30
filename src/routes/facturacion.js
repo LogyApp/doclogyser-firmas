@@ -3780,6 +3780,12 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
           });
         }
       }
+      // Un recibo RECAUDO nuevo se crea siempre con cliente (Nit), igual que en el formulario
+      if (modalidadPrimera === 'RECAUDO' && !filasGrupo.some(x => x.idNit)) {
+        return res.status(400).json({
+          error: `El Recibo Nuevo #${grupo} es RECAUDO y ninguna de sus filas (desde la Fila ${primera.numFila}) tiene Nit. El Nit del cliente es obligatorio para crear recibos RECAUDO.`
+        });
+      }
     }
 
     // Periodo (periodoServicios.js): una sola quincena por recibo (existente o nuevo) y bloqueos de
@@ -5199,8 +5205,14 @@ router.post('/api/recibos', async (req, res) => {
       clienteAFacturar = null;
       categoria = null;
     }
-    // Cliente (Nit): solo RECAUDO; el formulario lo envía cuando el recibo nuevo ya trae servicios.
-    nit = (modalidad === 'RECAUDO' && nit) ? (parseInt(nit, 10) || null) : null;
+    // Cliente (Nit): solo RECAUDO, y ahí es obligatorio para todas las operaciones. El formulario
+    // lo pide una vez el recibo nuevo trae servicios.
+    nit = (modalidad === 'RECAUDO' && nit) ? (parseInt(String(nit).replace(/[^0-9]/g, ''), 10) || null) : null;
+    if (modalidad === 'RECAUDO') {
+      if (!nit) return res.status(400).json({ error: 'El Cliente (Nit) es obligatorio para crear recibos RECAUDO.' });
+      const [mc] = await pool.execute('SELECT `Código` FROM Maestro_Clientes WHERE `Código` = ? LIMIT 1', [nit]);
+      if (!mc.length) return res.status(400).json({ error: `El Nit ${nit} no existe en Maestro_Clientes.` });
+    }
 
     // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
     // Cada modalidad revisa solo sus campos; Categoría depende del cliente y la maneja el formulario.

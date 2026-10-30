@@ -19544,9 +19544,12 @@
       const match = trimmed.match(/^(\d+)/);
       const iden = match ? parseInt(match[1], 10) : parseInt(trimmed, 10);
 
+      const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const searchNorm = norm(trimmed);
+
       const found = (gridActasLookups.trabajadores || []).find(t =>
-        t.identificacion === iden ||
-        t.trabajador.toLowerCase().includes(trimmed.toLowerCase())
+        (!isNaN(iden) && t.identificacion === iden) ||
+        (searchNorm && norm(t.trabajador).includes(searchNorm))
       );
 
       if (found) {
@@ -19811,9 +19814,11 @@
             matchTra = (gridActasLookups.trabajadores || []).find(t => t.identificacion === iden);
           }
           if (!matchTra) {
-            matchTra = (gridActasLookups.trabajadores || []).find(t =>
-              t.trabajador.toLowerCase().includes(rawTra.toLowerCase())
-            );
+            const normTra = String(rawTra || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            matchTra = (gridActasLookups.trabajadores || []).find(t => {
+              const normT = String(t.trabajador || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+              return normT.includes(normTra);
+            });
           }
         }
 

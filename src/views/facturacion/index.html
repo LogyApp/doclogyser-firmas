@@ -3813,7 +3813,7 @@
           <!-- Bloque RECAUDO -->
           <div id="mr-bloque-recaudo" style="display: none;">
             <div id="mr-cliente-sin-servicios" style="display:none; padding: 12px 14px; background: var(--warning-soft); border: 1px solid var(--warning-soft); border-radius: 8px; color: var(--warning-dark); font-size: 0.85rem; margin-bottom: 16px;">
-              ℹ️ El cliente podrá seleccionarse una vez el recibo tenga servicios registrados.
+              ℹ️ El cliente (obligatorio en RECAUDO) podrá seleccionarse una vez el recibo tenga servicios registrados.
             </div>
             <div id="mr-cliente-con-servicios" style="display:none;">
               <div id="mr-clientes-sugeridos-wrap" style="display:none; margin-bottom: 12px;">
@@ -3821,7 +3821,7 @@
                 <div id="mr-clientes-sugeridos" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
               </div>
               <div class="form-group autocomplete-wrapper">
-                <label>Cliente</label>
+                <label>Cliente <span style="color: var(--danger, #DC2626);">*</span></label>
                 <input type="text" id="mr-nit" placeholder="Buscar por nombre o NIT..." autocomplete="off" oninput="buscarClienteNitRecibo(this.value)">
                 <div class="autocomplete-list" id="mr-nit-autocomplete-list"></div>
                 <small id="mr-nit-razon-social" style="color: var(--text-muted); font-size: 0.78rem;"></small>
@@ -10614,6 +10614,13 @@
           // El Nit solo se envía (y solo es editable) si el recibo tiene servicios (guardados o
           // agregados en el formulario del recibo nuevo).
           payload.nit = document.getElementById('mr-nit').value || null;
+        }
+        // El Cliente (Nit) es obligatorio al crear recibos RECAUDO, en todas las operaciones
+        if (modalRecibo.modo === 'crear' && !mrServiciosPendientes.length) {
+          return alert('Para crear un recibo RECAUDO agregue primero los servicios y luego escoja el Cliente.');
+        }
+        if (modalRecibo.modo === 'crear' && !String(payload.nit || '').trim()) {
+          return alert('Debe escoger el Cliente (Nit) del recibo RECAUDO.');
         }
       }
 
