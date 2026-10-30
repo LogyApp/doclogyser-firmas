@@ -1579,8 +1579,14 @@
               </div>
               <div class="filtro-field filtro-field-quincena-highlight">
                 <label>Quincena</label>
-                <select id="serv-filtro-quincena" onchange="onServicioFilterChange()">
+                <select id="serv-filtro-quincena" onchange="onQuincenaFiltroChange('serv')">
                   <option value="">Todas las quincenas</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Día</label>
+                <select id="serv-filtro-dia" onchange="onServicioFilterChange()" disabled title="Escoja primero una quincena">
+                  <option value="">Todos los días</option>
                 </select>
               </div>
               <div class="filtro-field">
@@ -1854,8 +1860,14 @@
               </div>
               <div class="filtro-field filtro-field-quincena-highlight">
                 <label>Quincena</label>
-                <select id="recib-filtro-quincena" onchange="onReciboFilterChange()">
+                <select id="recib-filtro-quincena" onchange="onQuincenaFiltroChange('recib')">
                   <option value="">Todas las quincenas</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Día</label>
+                <select id="recib-filtro-dia" onchange="onReciboFilterChange()" disabled title="Escoja primero una quincena">
+                  <option value="">Todos los días</option>
                 </select>
               </div>
               <div class="filtro-field">
@@ -8475,6 +8487,35 @@
       }, 350);
     }
 
+    // Filtro Día (Servicios y Recibos): solo con una quincena escogida, y muestra los días de esa
+    // quincena con su cantidad y suma, como los demás filtros.
+    function onQuincenaFiltroChange(pre) {
+      const diaSel = document.getElementById(`${pre}-filtro-dia`);
+      diaSel.value = '';
+      diaSel.disabled = !document.getElementById(`${pre}-filtro-quincena`).value;
+      if (pre === 'serv') onServicioFilterChange(); else onReciboFilterChange();
+    }
+
+    function pintarFiltroDia(pre, dias, sumaDe) {
+      const diaSel = document.getElementById(`${pre}-filtro-dia`);
+      if (!diaSel) return;
+      const hayQuincena = !!document.getElementById(`${pre}-filtro-quincena`).value;
+      const cur = hayQuincena ? diaSel.value : '';
+      const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      let opts = '<option value="">Todos los días</option>';
+      const lista = hayQuincena ? (dias || []) : [];
+      lista.forEach(d => {
+        const f = new Date(`${d.dia}T12:00:00`);
+        const nombre = isNaN(f) ? d.dia : `${DIAS_SEMANA[f.getDay()]} ${f.getDate()} ${MESES_CORTOS[f.getMonth()]}`;
+        opts += `<option value="${esc(d.dia)}" ${cur === d.dia ? 'selected' : ''}>${nombre} (${formatMiles(d.totalCount)}) ($ ${formatMiles(Number(sumaDe(d) || 0))})</option>`;
+      });
+      if (cur && !lista.some(d => d.dia === cur)) opts += `<option value="${esc(cur)}" selected>${esc(cur)} (0) ($ 0)</option>`;
+      diaSel.innerHTML = opts;
+      diaSel.disabled = !hayQuincena;
+      diaSel.title = hayQuincena ? '' : 'Escoja primero una quincena';
+    }
+
     function onServicioFilterChange() {
       cargarServicios();
       cargarMetricasServicios();
@@ -8502,6 +8543,7 @@
       document.getElementById('serv-filtro-anio').value = '2026';
       document.getElementById('serv-filtro-mes').value = '';
       document.getElementById('serv-filtro-quincena').value = CONFIG.quincenaActual || '';
+      document.getElementById('serv-filtro-dia').value = '';
       document.getElementById('serv-filtro-regional').value = '';
       document.getElementById('serv-filtro-operacion').value = '';
       document.getElementById('serv-filtro-usuario').value = '';
@@ -8523,6 +8565,7 @@
           anio: document.getElementById('serv-filtro-anio')?.value || '2026',
           mes: document.getElementById('serv-filtro-mes')?.value || '',
           quincena: document.getElementById('serv-filtro-quincena')?.value || '',
+          dia: document.getElementById('serv-filtro-quincena')?.value ? (document.getElementById('serv-filtro-dia')?.value || '') : '',
           regional: document.getElementById('serv-filtro-regional')?.value || '',
           operacion: document.getElementById('serv-filtro-operacion')?.value || '',
           usuarioServicio: document.getElementById('serv-filtro-usuario')?.value || '',
@@ -8649,6 +8692,7 @@
           anio: document.getElementById('serv-filtro-anio')?.value || '2026',
           mes: document.getElementById('serv-filtro-mes')?.value || '',
           quincena: document.getElementById('serv-filtro-quincena')?.value || '',
+          dia: document.getElementById('serv-filtro-quincena')?.value ? (document.getElementById('serv-filtro-dia')?.value || '') : '',
           regional: document.getElementById('serv-filtro-regional')?.value || '',
           operacion: document.getElementById('serv-filtro-operacion')?.value || '',
           usuarioServicio: document.getElementById('serv-filtro-usuario')?.value || '',
@@ -8783,6 +8827,7 @@
         qOpts += `<option value="${esc(curQ)}" selected>${esc(curQ)} (0) ($ 0)</option>`;
       }
       qSel.innerHTML = qOpts;
+      pintarFiltroDia('serv', metricasServicios.dias, d => modoSumas === 'total' ? d.sumTotalPago : d.sumValorBase);
 
       // 5. Clientes a Facturar (Ascendente A-Z)
       const cliSel = document.getElementById('serv-filtro-cliente');
@@ -9063,7 +9108,7 @@
 
     function aplicarBusquedaServicios(q) {
       document.getElementById('serv-filtro-q').value = q;
-      ['serv-filtro-desde', 'serv-filtro-hasta', 'serv-filtro-mes', 'serv-filtro-quincena', 'serv-filtro-regional',
+      ['serv-filtro-desde', 'serv-filtro-hasta', 'serv-filtro-mes', 'serv-filtro-quincena', 'serv-filtro-dia', 'serv-filtro-regional',
        'serv-filtro-operacion', 'serv-filtro-usuario', 'serv-filtro-cliente'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -9270,6 +9315,7 @@
       document.getElementById('recib-filtro-anio').value = '2026';
       document.getElementById('recib-filtro-mes').value = '';
       document.getElementById('recib-filtro-quincena').value = CONFIG.quincenaActual || '';
+      document.getElementById('recib-filtro-dia').value = '';
       document.getElementById('recib-filtro-regional').value = '';
       document.getElementById('recib-filtro-operacion').value = '';
       document.getElementById('recib-filtro-usuario').value = '';
@@ -9326,6 +9372,7 @@
           anio: document.getElementById('recib-filtro-anio')?.value || '2026',
           mes: document.getElementById('recib-filtro-mes')?.value || '',
           quincena: document.getElementById('recib-filtro-quincena')?.value || '',
+          dia: document.getElementById('recib-filtro-quincena')?.value ? (document.getElementById('recib-filtro-dia')?.value || '') : '',
           regional: document.getElementById('recib-filtro-regional')?.value || '',
           operacion: document.getElementById('recib-filtro-operacion')?.value || '',
           usuarioRecibo: document.getElementById('recib-filtro-usuario')?.value || '',
@@ -9436,6 +9483,7 @@
           anio: document.getElementById('recib-filtro-anio')?.value || '2026',
           mes: document.getElementById('recib-filtro-mes')?.value || '',
           quincena: document.getElementById('recib-filtro-quincena')?.value || '',
+          dia: document.getElementById('recib-filtro-quincena')?.value ? (document.getElementById('recib-filtro-dia')?.value || '') : '',
           regional: document.getElementById('recib-filtro-regional')?.value || '',
           operacion: document.getElementById('recib-filtro-operacion')?.value || '',
           usuarioRecibo: document.getElementById('recib-filtro-usuario')?.value || '',
@@ -9558,6 +9606,7 @@
         qOpts += `<option value="${esc(curQ)}" selected>${esc(curQ)} (0) ($ 0)</option>`;
       }
       qSel.innerHTML = qOpts;
+      pintarFiltroDia('recib', metricasRecibos.dias, d => recibModoSumas === 'total' ? d.sumTotal : d.sumSubtotal);
 
       // 5. Clientes a Facturar (Ascendente)
       const cliSel = document.getElementById('recib-filtro-cliente');

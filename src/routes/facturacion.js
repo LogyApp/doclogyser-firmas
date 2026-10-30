@@ -2177,6 +2177,16 @@ function sqlFiltroMes(col, mes, anioNum, params) {
   return `MONTH(${col}) = ?`;
 }
 
+// Día (YYYY-MM-DD) como rango de fecha; null si no viene o no es una fecha válida.
+function sqlFiltroDia(col, dia, params) {
+  if (!dia || !/^\d{4}-\d{2}-\d{2}$/.test(String(dia))) return null;
+  const siguiente = new Date(`${dia}T00:00:00Z`);
+  if (isNaN(siguiente)) return null;
+  siguiente.setUTCDate(siguiente.getUTCDate() + 1);
+  params.push(`${dia} 00:00:00`, `${siguiente.toISOString().slice(0, 10)} 00:00:00`);
+  return `(${col} >= ? AND ${col} < ?)`;
+}
+
 // NITs con retención obligatoria de Fuente/IVA sin importar el Subtotal ni el flag del cliente
 // (regla heredada de la fórmula AppSheet). Config_Parametros facturacion / Recibos
 // 'NITs con retención obligatoria de Fuente e IVA'; se carga con los impuestos.
@@ -2262,6 +2272,7 @@ router.get('/api/servicios', async (req, res) => {
       anio,
       mes,
       quincena,
+      dia,
       regional,
       operacion,
       usuarioServicio,
@@ -2319,6 +2330,10 @@ router.get('/api/servicios', async (req, res) => {
     if (quincena && quincena !== 'todas') {
       whereClauses.push(sqlRangosFecha('s.`Hora Inicio`', await rangosQuincena(quincena, anioNum), params));
     }
+
+    // Día (se escoge dentro de la quincena)
+    const filtroDia = sqlFiltroDia('s.`Hora Inicio`', dia, params);
+    if (filtroDia) whereClauses.push(filtroDia);
 
     // Regional
     if (regional && regional !== 'todas') {
@@ -2466,6 +2481,7 @@ router.get('/api/servicios/metricas', async (req, res) => {
       operacion,
       mes,
       quincena,
+      dia,
       usuarioServicio,
       clienteAFacturar,
       q
@@ -2558,6 +2574,8 @@ router.get('/api/servicios/metricas', async (req, res) => {
     if (rangosQ) {
       fpWhere.push(sqlRangosFecha('s.`Hora Inicio`', rangosQ, fpParams));
     }
+    const diaFp = sqlFiltroDia('s.`Hora Inicio`', dia, fpParams);
+    if (diaFp) fpWhere.push(diaFp);
     const whereSqlFP = fpWhere.length ? `WHERE ${fpWhere.join(' AND ')}` : '';
     const q_fpRows = pool.query(`
       SELECT 
@@ -2578,6 +2596,8 @@ router.get('/api/servicios/metricas', async (req, res) => {
     if (rangosQ) {
       dropdownWhere.push(sqlRangosFecha('s.`Hora Inicio`', rangosQ, dropdownParams));
     }
+    const diaDropdown = sqlFiltroDia('s.`Hora Inicio`', dia, dropdownParams);
+    if (diaDropdown) dropdownWhere.push(diaDropdown);
     if (typeof formaDePago !== 'undefined' && formaDePago !== '' && formaDePago !== 'todas') {
       dropdownWhere.push('s.`Forma De Pago` = ?');
       dropdownParams.push(parseInt(formaDePago, 10));
@@ -2633,6 +2653,27 @@ router.get('/api/servicios/metricas', async (req, res) => {
       GROUP BY MONTH(t.dia), mf.Quincena
     `, fechasParams);
 
+    // Días de la quincena escogida (filtro Día): todos los filtros menos el propio Día
+    const diasWhere = [...fechasWhere];
+    const diasParams = [...fechasParams];
+    if (rangosQ) diasWhere.push(sqlRangosFecha('s.`Hora Inicio`', rangosQ, diasParams));
+    const q_diasRows = rangosQ ? pool.query(`
+      SELECT DATE_FORMAT(t.dia, '%Y-%m-%d') as dia, t.totalCount, ROUND(t.sumValorBase) as sumValorBase, ROUND(t.sumTotalPago) as sumTotalPago
+      FROM (
+        SELECT
+          DATE(s.\`Hora Inicio\`) as dia,
+          COUNT(*) as totalCount,
+          SUM(${vBaseSql}) as sumValorBase,
+          SUM(${totalPagoSql}) as sumTotalPago
+        FROM Dynamic_Servicios s
+        LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+        LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
+        WHERE ${diasWhere.join(' AND ')}
+        GROUP BY DATE(s.\`Hora Inicio\`)
+      ) t
+      ORDER BY t.dia
+    `, diasParams) : Promise.resolve([[]]);
+
     // Clientes a Facturar (orden ascendente)
     const q_cliRows = pool.query(`
       SELECT 
@@ -2665,14 +2706,15 @@ router.get('/api/servicios/metricas', async (req, res) => {
     `, dropdownParams);
 
     // Las cinco agrupaciones se consultan en paralelo
-    const [[fpRows], [opsRows], [fechasRows], [cliRows], [userRows]] = await Promise.all([
-      q_fpRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows
+    const [[fpRows], [opsRows], [fechasRows], [cliRows], [userRows], [diasRows]] = await Promise.all([
+      q_fpRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows, q_diasRows
     ]);
 
     res.json({
       formasDePago: fpRows,
       regionalesOps: opsRows,
       fechas: fechasRows,
+      dias: diasRows,
       clientes: cliRows,
       usuarios: userRows
     });
@@ -4366,6 +4408,7 @@ router.get('/api/recibos', async (req, res) => {
       anio,
       mes,
       quincena,
+      dia,
       regional,
       operacion,
       usuarioRecibo,
@@ -4423,6 +4466,10 @@ router.get('/api/recibos', async (req, res) => {
     if (quincena && quincena !== 'todas') {
       whereClauses.push(sqlRangosFecha('dr.Fecha', await rangosQuincena(quincena, anioNum), params));
     }
+
+    // Día (se escoge dentro de la quincena)
+    const filtroDia = sqlFiltroDia('dr.Fecha', dia, params);
+    if (filtroDia) whereClauses.push(filtroDia);
 
     // Regional
     if (regional && regional !== 'todas') {
@@ -4644,6 +4691,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
       operacion,
       mes,
       quincena,
+      dia,
       usuarioRecibo,
       clienteAFacturar,
       q
@@ -4733,6 +4781,8 @@ router.get('/api/recibos/metricas', async (req, res) => {
     if (rangosQ) {
       modWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, modParams));
     }
+    const diaMod = sqlFiltroDia('dr.Fecha', dia, modParams);
+    if (diaMod) modWhere.push(diaMod);
     const whereSqlMod = modWhere.length ? `WHERE ${modWhere.join(' AND ')}` : '';
     const q_modRows = pool.query(`
       SELECT 
@@ -4753,6 +4803,8 @@ router.get('/api/recibos/metricas', async (req, res) => {
     if (rangosQ) {
       dropdownWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, dropdownParams));
     }
+    const diaDropdown = sqlFiltroDia('dr.Fecha', dia, dropdownParams);
+    if (diaDropdown) dropdownWhere.push(diaDropdown);
     if (modalidad && modalidad !== 'todas') {
       dropdownWhere.push('dr.Modalidad = ?');
       dropdownParams.push(modalidad);
@@ -4807,6 +4859,27 @@ router.get('/api/recibos/metricas', async (req, res) => {
       GROUP BY MONTH(t.dia), mf.Quincena
     `, fechasParams);
 
+    // Días de la quincena escogida (filtro Día): todos los filtros menos el propio Día
+    const diasWhere = [...fechasWhere];
+    const diasParams = [...fechasParams];
+    if (rangosQ) diasWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, diasParams));
+    const q_diasRows = rangosQ ? pool.query(`
+      SELECT DATE_FORMAT(t.dia, '%Y-%m-%d') as dia, t.totalCount, ROUND(t.sumSubtotal) as sumSubtotal, ROUND(t.sumTotal) as sumTotal
+      FROM (
+        SELECT
+          DATE(dr.Fecha) as dia,
+          COUNT(DISTINCT dr.IdRecibo) as totalCount,
+          SUM(${subtotalExpr}) as sumSubtotal,
+          SUM(${totalExpr}) as sumTotal
+        FROM Dynamic_Recibos dr
+        LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
+        LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
+        WHERE ${diasWhere.join(' AND ')}
+        GROUP BY DATE(dr.Fecha)
+      ) t
+      ORDER BY t.dia
+    `, diasParams) : Promise.resolve([[]]);
+
     const q_cliRows = pool.query(`
       SELECT 
         dr.\`Cliente a Facturar\` as cliente,
@@ -4837,14 +4910,15 @@ router.get('/api/recibos/metricas', async (req, res) => {
     `, dropdownParams);
 
     // Las cinco agrupaciones se consultan en paralelo
-    const [[modRows], [opsRows], [fechasRows], [cliRows], [userRows]] = await Promise.all([
-      q_modRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows
+    const [[modRows], [opsRows], [fechasRows], [cliRows], [userRows], [diasRows]] = await Promise.all([
+      q_modRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows, q_diasRows
     ]);
 
     res.json({
       modalidades: modRows,
       regionalesOps: opsRows,
       fechas: fechasRows,
+      dias: diasRows,
       clientes: cliRows,
       usuarios: userRows
     });
