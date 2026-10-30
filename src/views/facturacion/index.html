@@ -388,6 +388,9 @@
       font-weight: 600 !important;
       color: var(--accent-dark) !important;
     }
+    /* En oscuro el azul oscuro no se lee: texto como los demás filtros */
+    :root[data-theme="oscuro"] .filtro-field-quincena-highlight label { color: var(--text) !important; }
+    :root[data-theme="oscuro"] .filtro-field-quincena-highlight select { color: var(--text) !important; }
 
     .btn-reset {
       margin-top: 14px;
@@ -798,7 +801,17 @@
       gap: 6px;
       letter-spacing: .2px;
     }
-    .mobile-header-right { display: flex; align-items: center; }
+    .mobile-header-right { display: flex; align-items: center; gap: 10px; }
+    /* Sincronizar (como en AppSheet): recarga los datos de la pestaña o del detalle abierto */
+    .btn-sync {
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+      width: 38px; height: 38px; padding: 0; border-radius: 8px;
+      border: 1.5px solid var(--border); background: var(--card-bg); color: var(--accent);
+    }
+    .btn-sync:disabled { opacity: .7; cursor: default; }
+    .mobile-sync-btn { width: 34px; height: 34px; border: none; background: transparent; color: var(--text-inverse); border-radius: 50%; }
+    .btn-sync.girando .icono-sync { animation: giro-sync .8s linear infinite; }
+    @keyframes giro-sync { to { transform: rotate(360deg); } }
     .mobile-profile-btn {
       background: transparent; border: none; padding: 0; margin: 0; cursor: pointer;
       display: flex; align-items: center; border-radius: 50%; outline: none;
@@ -965,6 +978,7 @@
     @media (max-width: 900px) {
       body { flex-direction: column; overflow: visible; height: auto; }
       .mobile-header { display: flex; }
+      .btn-sync-escritorio { display: none; }
       .sidebar { transform: translateX(-100%); transition: transform .25s ease; z-index: 200; }
       .sidebar.open { transform: translateX(0); }
       .wrapper { margin-left: 0; padding: 14px 12px; height: auto; min-height: calc(100vh - 48px); overflow-y: visible; }
@@ -1409,6 +1423,7 @@
     </div>
     <div class="mobile-title"><span id="mobileHeaderTitle">Facturación</span></div>
     <div class="mobile-header-right">
+      <button type="button" class="btn-sync mobile-sync-btn" onclick="sincronizarFacturacion(this)" title="Sincronizar" aria-label="Sincronizar"><svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg></button>
       <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
         <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
       </button>
@@ -1483,6 +1498,7 @@
             <div class="page-sub">Historial operativo de servicios prestados, liquidación de tarifas e impuestos</div>
           </div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-sync btn-sync-escritorio" onclick="sincronizarFacturacion(this)" title="Sincronizar" aria-label="Sincronizar"><svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg></button>
             <button type="button" class="btn-secondary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
             </button>
@@ -1757,6 +1773,7 @@
             <div class="page-sub">Consulta de recibos consolidados, desglose de impuestos y validación operativa</div>
           </div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-sync btn-sync-escritorio" onclick="sincronizarFacturacion(this)" title="Sincronizar" aria-label="Sincronizar"><svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg></button>
             <button type="button" class="btn-secondary" id="btn-carga-masiva-recibos" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
             </button>
@@ -9260,6 +9277,41 @@
       activeModalidadRecibo = '';
       cargarRecibos();
       cargarMetricasRecibos();
+    }
+
+    // Sincronizar: vuelve a traer los datos de la pestaña abierta (y del recibo o servicio que se
+    // esté viendo), para ver lo que otros usuarios registraron sin recargar la página.
+    async function sincronizarFacturacion(btn) {
+      const botones = document.querySelectorAll('.btn-sync');
+      if (btn && btn.disabled) return;
+      botones.forEach(b => { b.disabled = true; b.classList.add('girando'); });
+      const visible = id => document.getElementById(id)?.style.display !== 'none';
+      try {
+        if (visible('tab-content-recibos')) {
+          if (visible('recibos-vista-detalle') && reciboDetalleActual?.recibo?.IdRecibo) {
+            await verDetalleRecibo(reciboDetalleActual.recibo.IdRecibo);
+          }
+          await Promise.all([cargarRecibos(), cargarMetricasRecibos()]);
+        } else if (visible('tab-content-servicios')) {
+          if (visible('servicios-vista-detalle') && servicioDetalleActual?.idServicio) {
+            await verDetalleServicio(servicioDetalleActual.idServicio);
+          }
+          await Promise.all([cargarServicios(), cargarMetricasServicios()]);
+        } else if (visible('tab-content-bloqueo')) {
+          await cargarBloqueos();
+        } else if (visible('tab-content-tickets')) {
+          await Promise.all([cargarTickets(), cargarMetricasTickets()]);
+        } else if (visible('tab-content-ajustes')) {
+          await cargarAjustes();
+        } else {
+          window.location.reload();
+          return;
+        }
+      } catch (e) {
+        console.error('[sincronizarFacturacion]', e);
+      } finally {
+        botones.forEach(b => { b.disabled = false; b.classList.remove('girando'); });
+      }
     }
 
     async function cargarRecibos() {
