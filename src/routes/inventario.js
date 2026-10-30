@@ -2050,6 +2050,65 @@ router.post('/api/articulos/elementos/aplicar-sugerencia', async (req, res) => {
   }
 });
 
+// 9. POST /api/articulos/elementos/editar-nombre - Renombra un Elemento en todos los registros de Dynamic_Articulos
+router.post('/api/articulos/elementos/editar-nombre', async (req, res) => {
+  try {
+    const { elementoActual, nuevoElemento, usuario } = req.body;
+
+    const errAcceso = await validarGestorImagenes(usuario);
+    if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
+
+    if (!elementoActual || !String(elementoActual).trim()) {
+      return res.status(400).json({ error: 'El nombre actual del elemento es requerido.' });
+    }
+    if (!nuevoElemento || !String(nuevoElemento).trim()) {
+      return res.status(400).json({ error: 'El nuevo nombre del elemento no puede estar vacío.' });
+    }
+
+    const cleanActual = String(elementoActual).trim();
+    const cleanNuevo = String(nuevoElemento).trim().toUpperCase();
+
+    if (cleanActual.toUpperCase() === cleanNuevo) {
+      return res.json({
+        success: true,
+        message: 'El nombre del elemento no tuvo modificaciones.',
+        nuevoElemento: cleanNuevo,
+        articulosActualizados: 0
+      });
+    }
+
+    // Actualizar todos los artículos en Dynamic_Articulos
+    const [resultArt] = await pool.execute(
+      'UPDATE Dynamic_Articulos SET Elemento = ? WHERE Elemento = ? OR Elemento = ?',
+      [cleanNuevo, cleanActual, cleanActual.toUpperCase()]
+    );
+
+    // Sincronizar en Maestro_Dotacion_Cargos si aplica
+    await pool.execute(
+      'UPDATE Maestro_Dotacion_Cargos SET Elemento = ? WHERE Elemento = ? OR Elemento = ?',
+      [cleanNuevo, cleanActual, cleanActual.toUpperCase()]
+    ).catch(e => console.warn('[inventario] Advertencia sincronizando Maestro_Dotacion_Cargos:', e.message));
+
+    // Sincronizar en Config_DotaciónEPP si aplica
+    await pool.execute(
+      'UPDATE `Config_DotaciónEPP` SET Elemento = ? WHERE Elemento = ? OR Elemento = ?',
+      [cleanNuevo, cleanActual, cleanActual.toUpperCase()]
+    ).catch(e => console.warn('[inventario] Advertencia sincronizando Config_DotaciónEPP:', e.message));
+
+    cachedLookupsBase = null; // invalidar cache de kardex-lookups
+
+    res.json({
+      success: true,
+      message: `Elemento renombrado a "${cleanNuevo}" exitosamente (${resultArt.affectedRows} artículo(s) actualizado(s)).`,
+      nuevoElemento: cleanNuevo,
+      articulosActualizados: resultArt.affectedRows
+    });
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/elementos/editar-nombre error:', err);
+    res.status(500).json({ error: 'Error al actualizar el nombre del elemento: ' + err.message });
+  }
+});
+
 // GET /api/categorias - Obtiene todas las categorías de Config_Categoria_Inventario
 router.get('/api/categorias', async (req, res) => {
   try {

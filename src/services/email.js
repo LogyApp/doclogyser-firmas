@@ -3183,7 +3183,10 @@ async function enviarNotificacionCesantias({
 
     const emailColab = (trabajador.email || solicitud.email || '').trim().toLowerCase();
     const operacionColab = String(trabajador.operacion || solicitud.operacion || '').trim();
-    const montoFmt = solicitud.monto_solicitado ? `$ ${Number(solicitud.monto_solicitado).toLocaleString('es-CO')}` : '—';
+    const esMontoCeroRetiro = solicitud.tipo_retiro === 'Retiro' && (!solicitud.monto_solicitado || Number(solicitud.monto_solicitado) === 0);
+    const montoFmt = esMontoCeroRetiro
+      ? 'Total disponible en el fondo'
+      : (solicitud.monto_solicitado ? `$ ${Number(solicitud.monto_solicitado).toLocaleString('es-CO')}` : '—');
     const fondoFmt = solicitud.fondo_cesantias || '—';
     const motivoFmt = solicitud.motivo_texto || solicitud.motivo_retiro || '—';
 
@@ -3309,22 +3312,35 @@ async function enviarNotificacionCesantias({
           [radicadoId]
         );
         if (docsRows.length) {
-          const links = docsRows.map(d => {
+          // Si el evento es 'tramitado', se muestra exclusivamente el comprobante de autorización (Doc 46)
+          // para que el colaborador se enfoque solo en llevar ese documento al banco o reclamar el cheque.
+          let docsAMostrar = docsRows;
+          if (evento === 'tramitado') {
+            const comprobantes = docsRows.filter(d =>
+              String(d.TipoDocumento) === '46' ||
+              String(d.Observaciones || '').toLowerCase().includes('comprobante')
+            );
+            if (comprobantes.length) {
+              docsAMostrar = comprobantes;
+            }
+          }
+
+          const links = docsAMostrar.map(d => {
             const docUrl = d.Doc.startsWith('http') ? d.Doc : `https://storage.googleapis.com/talenthub_central/${d.Doc.replace(/^\/+/, '')}`;
             const nombre = d.Observaciones || `${d.Prefijo || 'Soporte'} (${d.TipoDocumento})`;
-            const esComprobante = String(d.Observaciones || '').toLowerCase().includes('comprobante');
+            const esComprobante = String(d.Observaciones || '').toLowerCase().includes('comprobante') || String(d.TipoDocumento) === '46';
             const badgeExtra = esComprobante ? ' <span style="background:#059669; color:#fff; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700; margin-left:6px;">Comprobante de Trámite</span>' : '';
             return `<li style="margin-bottom:8px;"><a href="${docUrl}" target="_blank" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">📄 ${nombre}</a>${badgeExtra}</li>`;
-
-
-
-
           }).join('');
+
+          const tituloSeccionDocs = (evento === 'tramitado')
+            ? '📎 Comprobante de Autorización:'
+            : '📎 Documentos y Soportes Adjuntos:';
 
           seccionDocumentosHtml = `
             <div style="margin:20px 0; padding:16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
               <strong style="display:block; color:#0f172a; margin-bottom:10px; font-size:0.9rem;">
-                ${evento === 'tramitado' ? '📎 Documentos de la Solicitud y Comprobante de Autorización:' : '📎 Documentos y Soportes Adjuntos:'}
+                ${tituloSeccionDocs}
               </strong>
               <ul style="margin:0; padding-left:22px; font-size:0.86rem; line-height:1.6;">
                 ${links}

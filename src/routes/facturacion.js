@@ -16,6 +16,7 @@ const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileS
 // Quién gestiona Clientes Crédito: Config_Parametros facturacion / Clientes_credito
 const { puedeGestionarClientesCredito } = require('../services/configBloqueo');
 const configServicios = require('../services/configServicios');
+const periodoServicios = require('../services/periodoServicios');
 const { buscarTarifa } = require('../services/tarifasServicio');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
@@ -3080,11 +3081,11 @@ router.post('/api/servicios/masivo-validar-lote', async (req, res) => {
     recibosRows.forEach(r => {
       const key = String(r.consecutivo || '').trim();
       if (key && !recibosPorConsecutivo[key]) {
-        const totalS = Number(r.totalServicios) || 0;
         const verdesS = Number(r.serviciosVerdes) || 0;
         const amarillosS = Number(r.serviciosAmarillos) || 0;
+        // Recibo en verde: ningún servicio en amarillo y alguno en verde (los rojos/anulados no cuentan).
         // Bloquea agregar servicios solo en RECAUDO: un recibo de CREDITO admite más aunque esté en verde
-        const todosEnVerde = totalS > 0 && verdesS === totalS && (r.modalidad || '').toUpperCase() !== 'CREDITO';
+        const todosEnVerde = verdesS > 0 && amarillosS === 0 && (r.modalidad || '').toUpperCase() !== 'CREDITO';
         recibosPorConsecutivo[key] = {
           idRecibo: r.idRecibo,
           consecutivo: key,
@@ -3268,7 +3269,8 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
                     dr.\`Operación\` as operacion, dr.\`Cliente a Facturar\` as clienteAFacturar,
                     dr.Modalidad as modalidad, dr.Nit as nit,
                     COUNT(ds.IdServicio) as totalServicios,
-                    SUM(CASE WHEN ds.Estado = 'Green' THEN 1 ELSE 0 END) as serviciosVerdes
+                    SUM(CASE WHEN ds.Estado = 'Green' THEN 1 ELSE 0 END) as serviciosVerdes,
+                    SUM(CASE WHEN ds.Estado = 'Yellow' THEN 1 ELSE 0 END) as serviciosAmarillos
              FROM Dynamic_Recibos dr
              LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
              WHERE dr.\`Consecutivo Recibo\` IN (?)
@@ -3335,8 +3337,8 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
     recibosExistRows.forEach(r => {
       const k = String(r.consecutivo || '').trim();
       if (k && !recibosExistentesMap.has(k)) {
-        const totalS = Number(r.totalServicios) || 0;
         const verdesS = Number(r.serviciosVerdes) || 0;
+        const amarillosS = Number(r.serviciosAmarillos) || 0;
         recibosExistentesMap.set(k, {
           idRecibo: r.idRecibo,
           consecutivo: k,
@@ -3344,8 +3346,9 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
           clienteAFacturar: r.clienteAFacturar || '',
           modalidad: (r.modalidad || '').toUpperCase(),
           nit: r.nit || null,
+          // Recibo en verde: ningún servicio en amarillo y alguno en verde (los rojos/anulados no cuentan).
           // Solo RECAUDO: un recibo de CREDITO admite más servicios aunque esté en verde
-          todosEnVerde: totalS > 0 && verdesS === totalS && (r.modalidad || '').toUpperCase() !== 'CREDITO'
+          todosEnVerde: verdesS > 0 && amarillosS === 0 && (r.modalidad || '').toUpperCase() !== 'CREDITO'
         });
       }
     });
@@ -3776,6 +3779,34 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
             error: `El Recibo Nuevo #${grupo} tiene distintos Clientes a Facturar (Fila ${primera.numFila}: "${primera.clienteAFacturar}" vs Fila ${actual.numFila}: "${actual.clienteAFacturar}").`
           });
         }
+      }
+    }
+
+    // Periodo (periodoServicios.js): una sola quincena por recibo (existente o nuevo) y bloqueos de
+    // Facturación, igual que en el formulario
+    const puedePeriodoBloqueado = (await obtenerPermisosRecibos(acceso.rol)).registrarEnPeriodoBloqueado;
+    const quincenaPorRecibo = new Map(); // recibo existente o N° Recibo Nuevo -> quincena de referencia
+    const regionalPorOperacion = new Map();
+    for (const d of datosProcesados) {
+      const prefijo = `Fila ${d.numFila}: `;
+      const claveRecibo = d.idReciboExistente ? `E|${d.idReciboExistente}` : `N|${d.reciboNuevoGrupo}`;
+      if (!quincenaPorRecibo.has(claveRecibo)) {
+        quincenaPorRecibo.set(claveRecibo, d.idReciboExistente ? await periodoServicios.quincenaDeRecibo(d.idReciboExistente) : null);
+      }
+      const referencia = quincenaPorRecibo.get(claveRecibo);
+      if (referencia) {
+        const errorQuincena = await periodoServicios.errorQuincena(d.horaInicioMysql, referencia, prefijo);
+        if (errorQuincena) return res.status(400).json({ error: errorQuincena });
+      } else {
+        quincenaPorRecibo.set(claveRecibo, await periodoServicios.quincenaDeFecha(d.horaInicioMysql));
+      }
+      if (!puedePeriodoBloqueado) {
+        if (!regionalPorOperacion.has(d.operacion)) regionalPorOperacion.set(d.operacion, await obtenerRegionalDeOperacion(d.operacion));
+        const errorBloqueo = await periodoServicios.errorBloqueo({
+          fecha: d.horaInicioMysql, operacion: d.operacion, regional: regionalPorOperacion.get(d.operacion),
+          formaDePago: d.formaDePago, clienteAFacturar: d.clienteAFacturar,
+        }, prefijo);
+        if (errorBloqueo) return res.status(400).json({ error: errorBloqueo });
       }
     }
 
@@ -5047,6 +5078,40 @@ router.get('/api/clientes/buscar', async (req, res) => {
   }
 });
 
+// Clientes (Nit de Maestro_Placas + Razón social de Maestro_Clientes) registrados para la placa
+// cuyo ID llega (Maestro_Placas.ID, el PL1 del servicio); busca todas las filas con esa Placa.
+async function clientesSugeridosPorPlaca(idPlaca) {
+  const [placaRows] = await pool.execute('SELECT Placa FROM Maestro_Placas WHERE ID = ? LIMIT 1', [idPlaca]);
+  if (!placaRows.length || !placaRows[0].Placa) return { placa: null, clientes: [] };
+  const [clientesRows] = await pool.execute(
+    `SELECT DISTINCT mp.Nit as nit, mc.\`Razón social\` as razonSocial
+     FROM Maestro_Placas mp
+     LEFT JOIN Maestro_Clientes mc ON mc.\`Código\` = mp.Nit
+     WHERE mp.Placa = ? AND mp.Nit IS NOT NULL`,
+    [placaRows[0].Placa]
+  );
+  return { placa: placaRows[0].Placa, clientes: clientesRows };
+}
+
+// ── GET /api/clientes-sugeridos?placa=<ID> (recibo aún sin guardar: placa del ──
+// ── servicio más reciente agregado en el formulario) ─────────────────────────
+router.get('/api/clientes-sugeridos', async (req, res) => {
+  try {
+    const { usuario, placa } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Recibos')
+                || await computarAccesoFacturacion(usuario, 'Servicios');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!placa) return res.json({ placa: null, clientes: [] });
+
+    res.json(await clientesSugeridosPorPlaca(placa));
+  } catch (err) {
+    console.error('[facturacion] GET /api/clientes-sugeridos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/recibos/:idRecibo/clientes-sugeridos (clientes sugeridos por la ──
 // ── placa del servicio más reciente del recibo) ──────────────────────────────
 router.get('/api/recibos/:idRecibo/clientes-sugeridos', async (req, res) => {
@@ -5063,19 +5128,9 @@ router.get('/api/recibos/:idRecibo/clientes-sugeridos', async (req, res) => {
       'SELECT PL1 FROM Dynamic_Servicios WHERE IdRecibo = ? AND PL1 IS NOT NULL ORDER BY `Hora Inicio` DESC, IdServicio DESC LIMIT 1',
       [idRecibo]
     );
-    if (!servRows.length) return res.json([]);
+    if (!servRows.length) return res.json({ placa: null, clientes: [] });
 
-    const [placaRows] = await pool.execute('SELECT Placa FROM Maestro_Placas WHERE ID = ? LIMIT 1', [servRows[0].PL1]);
-    if (!placaRows.length || !placaRows[0].Placa) return res.json([]);
-
-    const [clientesRows] = await pool.execute(
-      `SELECT DISTINCT mp.Nit as nit, mc.\`Razón social\` as razonSocial
-       FROM Maestro_Placas mp
-       LEFT JOIN Maestro_Clientes mc ON mc.\`Código\` = mp.Nit
-       WHERE mp.Placa = ? AND mp.Nit IS NOT NULL`,
-      [placaRows[0].Placa]
-    );
-    res.json({ placa: placaRows[0].Placa, clientes: clientesRows });
+    res.json(await clientesSugeridosPorPlaca(servRows[0].PL1));
   } catch (err) {
     console.error('[facturacion] GET /api/recibos/:idRecibo/clientes-sugeridos:', err);
     res.status(500).json({ error: err.message });
@@ -5119,7 +5174,7 @@ router.post('/api/recibos', async (req, res) => {
 
     let {
       operacion, modalidad, clienteAFacturar, categoria,
-      telefono, email, retefuente, reteiva, reteica, observaciones
+      telefono, email, retefuente, reteiva, reteica, observaciones, nit
     } = req.body;
 
     const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
@@ -5144,6 +5199,8 @@ router.post('/api/recibos', async (req, res) => {
       clienteAFacturar = null;
       categoria = null;
     }
+    // Cliente (Nit): solo RECAUDO; el formulario lo envía cuando el recibo nuevo ya trae servicios.
+    nit = (modalidad === 'RECAUDO' && nit) ? (parseInt(nit, 10) || null) : null;
 
     // Ajustes de la operación (Config_Servicios): valores por defecto, obligatorios y habilitados
     // Cada modalidad revisa solo sus campos; Categoría depende del cliente y la maneja el formulario.
@@ -5160,7 +5217,7 @@ router.post('/api/recibos', async (req, res) => {
     const retenciones = await resolverRetenciones({
       rolPrivilegiado: permisosRecibos.modificarRetenciones,
       payload: { retefuente, reteiva, reteica },
-      nit: null, operacion, subtotal: 0
+      nit, operacion, subtotal: 0
     });
 
     const idRecibo = generarPackedUUID();
@@ -5170,9 +5227,9 @@ router.post('/api/recibos', async (req, res) => {
       `INSERT INTO Dynamic_Recibos
         (IdRecibo, \`Operación\`, Usuario, Fecha, \`Cliente a Facturar\`, Categoria, Nit, Telefono, Email,
          Retefuente, ReteIVA, ReteICA, Modalidad, Observaciones)
-       VALUES (?, ?, ?, NOW(), ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        idRecibo, operacion, usuarioVal, clienteAFacturar, categoria,
+        idRecibo, operacion, usuarioVal, clienteAFacturar, categoria, nit,
         (telefono || '').trim() || null, (email || '').trim() || null,
         retenciones.retefuente, retenciones.reteiva, retenciones.reteica, modalidad, (observaciones || '').trim() || null
       ]
@@ -5207,14 +5264,24 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
 
     const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
     if (!permisosRecibos.crear) return res.status(403).json({ error: 'Su rol no tiene permiso para editar recibos.' });
-    if (!permisosRecibos.editarValidados) {
-      const estadoActual = await obtenerEstadoRecibo(idRecibo);
-      if (estadoActual === 'Green') {
-        return res.status(403).json({ error: 'Este recibo ya fue validado (verde) y no puede editarse.' });
-      }
-    }
 
     const body = req.body || {};
+
+    // Recibo validado (verde): quien no edita validados solo cambia los campos marcados "Editable en
+    // verde" en Ajustes Servicios (sección Recibo). El cliente (Nit), la Operación, la Modalidad y
+    // las retenciones quedan como están.
+    if (!permisosRecibos.editarValidados && (await obtenerEstadoRecibo(idRecibo)) === 'Green') {
+      const configRecibo = await configServicios.resolverConfig({
+        seccion: 'Recibo', operacion: existente['Operación'], modalidad: existente.Modalidad, rol: acceso.rol,
+        contexto: { clienteAFacturar: existente['Cliente a Facturar'] },
+      });
+      const editables = new Set(Object.values(configRecibo).filter((c) => c.editableValidado && c.visible).map((c) => c.bodyKey));
+      if (!editables.size) {
+        return res.status(403).json({ error: 'Este recibo ya fue validado (verde) y no puede editarse.' });
+      }
+      configServicios.CAMPOS.Recibo.forEach((c) => { if (!editables.has(c.bodyKey)) delete body[c.bodyKey]; });
+      ['operacion', 'modalidad', 'nit', 'retefuente', 'reteiva', 'reteica'].forEach((k) => { delete body[k]; });
+    }
 
     let operacionFinal = existente['Operación'];
     if (typeof body.operacion !== 'undefined' && body.operacion) {
@@ -5237,7 +5304,17 @@ router.put('/api/recibos/:idRecibo', async (req, res) => {
     let nitFinal = existente.Nit;
 
     if (modalidadFinal === 'CREDITO') {
-      if (typeof body.clienteAFacturar !== 'undefined') clienteAFacturarFinal = body.clienteAFacturar || null;
+      if (typeof body.clienteAFacturar !== 'undefined') {
+        const nuevoCliente = body.clienteAFacturar || null;
+        // Con servicios, solo los roles de Config_Parametros cambian el Cliente a Facturar
+        if (nuevoCliente !== existente['Cliente a Facturar'] && existente['Cliente a Facturar'] && !permisosRecibos.cambiarClienteAFacturar) {
+          const [cntRows] = await pool.execute('SELECT COUNT(*) as total FROM Dynamic_Servicios WHERE IdRecibo = ?', [idRecibo]);
+          if (cntRows[0].total) {
+            return res.status(403).json({ error: 'El recibo ya tiene servicios: su rol no puede cambiar el Cliente a Facturar.' });
+          }
+        }
+        clienteAFacturarFinal = nuevoCliente;
+      }
       if (!clienteAFacturarFinal) return res.status(400).json({ error: 'El Cliente a Facturar es obligatorio para Modalidad CREDITO.' });
       if (typeof body.categoria !== 'undefined') categoriaFinal = body.categoria || null;
       nitFinal = null;
@@ -5358,6 +5435,41 @@ async function obtenerRegionalDeOperacion(operacion) {
   const [rows] = await pool.execute('SELECT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1', [operacion]);
   return rows.length ? rows[0].REGIONAL : null;
 }
+
+// Reglas de periodo de un servicio nuevo (periodoServicios.js): misma quincena que los demás
+// servicios del recibo y bloqueos de Facturación (salvo los roles de Config_Parametros
+// "Roles que pueden registrar servicios en periodos bloqueados"). Devuelve el error o null.
+async function errorPeriodoServicioNuevo({ idRecibo, horaInicio, operacion, formaDePago, clienteAFacturar, rol, prefijo = '' }) {
+  const errorQuincena = idRecibo ? await periodoServicios.errorQuincenaRecibo(idRecibo, horaInicio, null, prefijo) : null;
+  if (errorQuincena) return errorQuincena;
+  if ((await obtenerPermisosRecibos(rol)).registrarEnPeriodoBloqueado) return null;
+  return periodoServicios.errorBloqueo({
+    fecha: horaInicio, operacion, regional: await obtenerRegionalDeOperacion(operacion), formaDePago, clienteAFacturar,
+  }, prefijo);
+}
+
+// ── GET /api/periodo-servicio (formulario del recibo nuevo: revisa un servicio antes de ──
+// ── agregarlo a la lista; horaReferencia = Hora Inicio de otro servicio de esa lista) ──
+router.get('/api/periodo-servicio', async (req, res) => {
+  try {
+    const { usuario, operacion, formaDePago, clienteAFacturar, horaInicio, horaReferencia } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const inicio = datetimeLocalToMySQL(horaInicio);
+    if (!inicio) return res.json({ error: null });
+    if (horaReferencia) {
+      const referencia = await periodoServicios.quincenaDeFecha(datetimeLocalToMySQL(horaReferencia));
+      const errorQuincena = await periodoServicios.errorQuincena(inicio, referencia);
+      if (errorQuincena) return res.json({ error: errorQuincena });
+    }
+    res.json({ error: await errorPeriodoServicioNuevo({ horaInicio: inicio, operacion, formaDePago, clienteAFacturar, rol: acceso.rol }) });
+  } catch (err) {
+    console.error('[facturacion] GET /api/periodo-servicio:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Sube la foto a GCS (talenthub_central/general/{Prefijo}.{IdServicio}.ext) y registra el
 // documento en Maestro_docEmpresa, según la regla exacta dada para Foto Documento/Evidencia/Transferencia.
@@ -5759,6 +5871,19 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       }
     }
 
+    const { horaInicioStr, horaFinalStr, totalHora } = await calcularHorasServicio({
+      horaInicioRaw: body.horaInicio,
+      duracion: body.duracion,
+      horaFinalRaw: body.horaFinal
+    });
+
+    // Misma quincena que los demás servicios del recibo y bloqueos de Facturación
+    const errorPeriodo = await errorPeriodoServicioNuevo({
+      idRecibo, horaInicio: horaInicioStr, operacion: contexto.operacion, formaDePago,
+      clienteAFacturar: contexto.clienteAFacturar, rol: acceso.rol,
+    });
+    if (errorPeriodo) return res.status(400).json({ error: errorPeriodo });
+
     const fotoDocumentoUrl = await procesarFotoServicio(files.fotoDocumento?.[0], TIPO_DOC_FOTO_DOCUMENTO, idServicio, contexto, acceso);
     const fotoEvidenciaUrl = await procesarFotoServicio(files.fotoEvidencia?.[0], TIPO_DOC_FOTO_EVIDENCIA, idServicio, contexto, acceso);
     const fotoTransferenciaUrl = (formaDePago === 2)
@@ -5771,12 +5896,6 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       return res.status(400).json({ error: 'Para marcar el servicio en Verde debe tener Cantidad, Valor Unitario y Forma de Pago; si la Forma de Pago es Transferencia, también la Foto de Transferencia.' });
     }
     const edicion = (estado === 'Green') ? 'Completado' : 'Pendiente';
-
-    const { horaInicioStr, horaFinalStr, totalHora } = await calcularHorasServicio({
-      horaInicioRaw: body.horaInicio,
-      duracion: body.duracion,
-      horaFinalRaw: body.horaFinal
-    });
 
     // Manifiesto y Teléfono son de CREDITO, salvo que la operación los muestre también en RECAUDO
     const manifiesto = (contexto.modalidad === 'CREDITO' || configServicios.visibleEnConfig(configServ, 'Manifiesto')) ? ((body.manifiesto || '').trim() || null) : null;
@@ -5857,16 +5976,23 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       return res.status(403).json({ error: 'No autorizado para editar este servicio' });
     }
 
+    // Servicio validado (verde, o su recibo en verde): quien no edita validados solo puede cambiar
+    // los campos marcados "Editable en verde" en Ajustes Servicios (Config_Servicios.editable_validado).
     const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
+    let soloEditablesValidado = false;
     if (!permisosRecibos.editarValidados) {
       const estadoRecibo = await obtenerEstadoRecibo(existente.IdRecibo);
-      if (estadoRecibo === 'Green') {
-        return res.status(403).json({ error: 'Este recibo ya fue validado (verde) y no puede editarse.' });
-      }
+      soloEditablesValidado = existente.Estado === 'Green' || estadoRecibo === 'Green';
     }
 
     const body = req.body || {};
     const files = req.files || {};
+    if (soloEditablesValidado) {
+      if (typeof body.estado !== 'undefined' && body.estado !== existente.Estado) {
+        return res.status(403).json({ error: 'Este servicio ya fue validado (verde): no se puede cambiar su Estado.' });
+      }
+      delete body.idRecibo; // reasignar a otro recibo no es un campo editable en verde
+    }
 
     // Reasignar a otro Recibo: solo roles autorizados.
     let idReciboFinal = existente.IdRecibo;
@@ -5891,6 +6017,18 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol,
       contexto: { clienteAFacturar: contexto.clienteAFacturar },
     });
+    if (soloEditablesValidado) {
+      const editables = new Set(Object.values(configServ).filter((c) => c.editableValidado).map((c) => c.bodyKey));
+      if (!editables.size) {
+        return res.status(403).json({ error: 'Este servicio ya fue validado (verde) y no puede editarse.' });
+      }
+      // Lo que no es editable en verde conserva lo guardado: se quita del body y de los adjuntos
+      configServicios.CAMPOS.Servicio.forEach((c) => {
+        if (!editables.has(c.bodyKey)) { delete body[c.bodyKey]; delete files[c.bodyKey]; }
+      });
+      ['estado', 'formaDePago', 'fechaTransferencia', 'fotoTransferencia'].forEach((k) => { delete body[k]; delete files[k]; });
+      if (!editables.has('horaInicio') && !editables.has('duracion')) delete body.horaFinal;
+    }
     const errorAjustes = await configServicios.aplicarConfig({
       seccion: 'Servicio', operacion: contexto.operacion, modalidad: contexto.modalidad, rol: acceso.rol, body,
       anteriores: anterioresServ, crear: false, config: configServ,
@@ -5919,6 +6057,23 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       }
     } else {
       formaDePago = existente['Forma De Pago'];
+    }
+
+    // Periodo: solo si cambia la Hora Inicio (quincena y bloqueos) o el recibo (quincena del
+    // recibo destino). Sin esos cambios el servicio se edita, valida o mueve sin revisarlos.
+    const horaInicioNueva = (typeof body.horaInicio !== 'undefined' && body.horaInicio) ? datetimeLocalToMySQL(body.horaInicio) : null;
+    const cambiaHoraInicio = !!horaInicioNueva
+      && horaInicioNueva.slice(0, 16) !== periodoServicios.textoFechaHora(existente['Hora Inicio']).slice(0, 16);
+    if (cambiaHoraInicio || idReciboFinal !== existente.IdRecibo) {
+      const errorQuincena = await periodoServicios.errorQuincenaRecibo(idReciboFinal, horaInicioNueva || existente['Hora Inicio'], idServicio);
+      if (errorQuincena) return res.status(400).json({ error: errorQuincena });
+    }
+    if (cambiaHoraInicio && !permisosRecibos.registrarEnPeriodoBloqueado) {
+      const errorBloqueo = await periodoServicios.errorBloqueo({
+        fecha: horaInicioNueva, operacion: contexto.operacion, regional: await obtenerRegionalDeOperacion(contexto.operacion),
+        formaDePago, clienteAFacturar: contexto.clienteAFacturar,
+      });
+      if (errorBloqueo) return res.status(400).json({ error: errorBloqueo });
     }
 
     const fotoDocumentoUrl = files.fotoDocumento?.[0]
@@ -6401,6 +6556,9 @@ function leerAjusteServicio(body) {
   }
   const orden = String(body.orden ?? '').trim();
   if (orden && !/^-?\d+$/.test(orden)) return { error: 'El Orden debe ser un número entero.' };
+  // Tipo de dato (Etapa y Muelle): Número o Texto; vacío = Texto
+  const tipoDato = campo.tipoDato ? configServicios.TIPOS_DATO.find((t) => configServicios.normalizar(t) === configServicios.normalizar(body.tipo_dato)) || '' : '';
+  if (tipoDato === 'Número' && defecto && !configServicios.esNumero(defecto)) return { error: 'El valor por defecto debe ser un número.' };
   // "Mostrar solo si": dato del recibo y valores con los que el campo aparece
   const condicionCampo = String(body.condicion_campo || '').trim();
   if (condicionCampo && !configServicios.CONDICIONES[condicionCampo]) return { error: 'La condición escogida no se puede usar.' };
@@ -6415,8 +6573,10 @@ function leerAjusteServicio(body) {
       etiqueta_columna: String(body.etiqueta_columna || '').trim().slice(0, 100) || null,
       datos_habilitados: habilitados || null,
       valor_defecto: defecto.slice(0, 255) || null,
+      tipo_dato: tipoDato || null,
       visible: Number(body.visible) === 0 ? 0 : 1,
       obligatorio: Number(body.obligatorio) === 1 ? 1 : 0,
+      editable_validado: Number(body.editable_validado) === 1 ? 1 : 0,
       rol: limpiarLista(body.rol) || null,
       condicion_campo: condicionCampo || null,
       condicion_valores: condicionValores || null,
@@ -6434,8 +6594,8 @@ router.get('/api/ajustes-servicios', async (req, res) => {
   try {
     if (!(await accesoAjustesServicios(req, res))) return;
     const [rows] = await pool.query(
-      `SELECT id, seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados, valor_defecto,
-              visible, obligatorio, rol, condicion_campo, condicion_valores, orden, usuario, DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
+      `SELECT id, seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados, valor_defecto, tipo_dato,
+              visible, obligatorio, editable_validado, rol, condicion_campo, condicion_valores, orden, usuario, DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
        FROM Config_Servicios ORDER BY operacion, seccion, modalidad, COALESCE(orden, 999), columna_origen`
     );
     res.json(rows);
@@ -6475,11 +6635,11 @@ async function guardarAjusteServicio(req, res, id) {
     if (error) return res.status(400).json({ error });
     const usuarioVal = acceso.usuarioId || req.query.usuario;
     const valores = [fila.seccion, fila.operacion, fila.modalidad, fila.columna_origen, fila.etiqueta_columna, fila.datos_habilitados,
-      fila.valor_defecto, fila.visible, fila.obligatorio, fila.rol, fila.condicion_campo, fila.condicion_valores, fila.orden, usuarioVal, formatearAhoraBogota()];
+      fila.valor_defecto, fila.tipo_dato, fila.visible, fila.obligatorio, fila.editable_validado, fila.rol, fila.condicion_campo, fila.condicion_valores, fila.orden, usuarioVal, formatearAhoraBogota()];
     if (id) {
       const [r] = await pool.execute(
         `UPDATE Config_Servicios SET seccion = ?, operacion = ?, modalidad = ?, columna_origen = ?, etiqueta_columna = ?,
-           datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?, rol = ?, condicion_campo = ?, condicion_valores = ?,
+           datos_habilitados = ?, valor_defecto = ?, tipo_dato = ?, visible = ?, obligatorio = ?, editable_validado = ?, rol = ?, condicion_campo = ?, condicion_valores = ?,
            orden = ?, usuario = ?, fecha_registro = ?
          WHERE id = ?`,
         [...valores, id]
@@ -6488,8 +6648,8 @@ async function guardarAjusteServicio(req, res, id) {
     } else {
       const [r] = await pool.execute(
         `INSERT INTO Config_Servicios (seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados,
-           valor_defecto, visible, obligatorio, rol, condicion_campo, condicion_valores, orden, usuario, fecha_registro)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           valor_defecto, tipo_dato, visible, obligatorio, editable_validado, rol, condicion_campo, condicion_valores, orden, usuario, fecha_registro)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         valores
       );
       id = r.insertId;
@@ -6549,7 +6709,7 @@ router.post('/api/ajustes-servicios/copiar', async (req, res) => {
       const campo = configServicios.campoDe(f.seccion, f.columna_origen);
       const propioDeOperacion = campo && ['area', 'actividad'].includes(campo.catalogo);
       const datos = [f.etiqueta_columna, propioDeOperacion ? null : f.datos_habilitados, propioDeOperacion ? null : f.valor_defecto,
-        f.visible, f.obligatorio, f.rol, f.condicion_campo, f.condicion_valores, f.orden, usuarioVal, ahora];
+        f.tipo_dato || null, f.visible, f.obligatorio, f.editable_validado || 0, f.rol, f.condicion_campo, f.condicion_valores, f.orden, usuarioVal, ahora];
       const [existe] = await conn.execute(
         'SELECT id FROM Config_Servicios WHERE seccion = ? AND operacion = ? AND modalidad = ? AND columna_origen = ?',
         [f.seccion, hacia, f.modalidad, f.columna_origen]
@@ -6557,15 +6717,15 @@ router.post('/api/ajustes-servicios/copiar', async (req, res) => {
       if (existe.length && !sobrescribir) { omitidos++; continue; }
       if (existe.length) {
         await conn.execute(
-          `UPDATE Config_Servicios SET etiqueta_columna = ?, datos_habilitados = ?, valor_defecto = ?, visible = ?, obligatorio = ?,
+          `UPDATE Config_Servicios SET etiqueta_columna = ?, datos_habilitados = ?, valor_defecto = ?, tipo_dato = ?, visible = ?, obligatorio = ?, editable_validado = ?,
              rol = ?, condicion_campo = ?, condicion_valores = ?, orden = ?, usuario = ?, fecha_registro = ? WHERE id = ?`,
           [...datos, existe[0].id]
         );
       } else {
         await conn.execute(
           `INSERT INTO Config_Servicios (seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados,
-             valor_defecto, visible, obligatorio, rol, condicion_campo, condicion_valores, orden, usuario, fecha_registro)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             valor_defecto, tipo_dato, visible, obligatorio, editable_validado, rol, condicion_campo, condicion_valores, orden, usuario, fecha_registro)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [f.seccion, hacia, f.modalidad, f.columna_origen, ...datos]
         );
       }

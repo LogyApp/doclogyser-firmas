@@ -549,6 +549,26 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.12);
     }
 
+    /* Fotos del servicio: botón para tomar la foto con la cámara (solo en pantallas táctiles) */
+    .btn-foto-camara {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 6px 0 2px;
+      padding: 7px 12px;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-foto-camara { display: none; }
+    }
+
     /* ══════════════════════════════════════════════════════════
        MODALES FLOTANTES
     ══════════════════════════════════════════════════════════ */
@@ -1626,6 +1646,7 @@
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
             <span id="det-estado-badge" role="img" style="display:inline-block; width:16px; height:16px; border-radius:50%; flex:none;"></span>
+            <button type="button" id="btn-servicio-a-verde" onclick="pasarServicioAVerde()" title="Cambiar el Estado del servicio a Verde (validado)" style="display:none; align-items:center; gap:6px; padding: 7px 12px; font-weight:700; cursor:pointer; border-radius:8px; border:1.5px solid var(--success); background:transparent; color:var(--success-dark); font-family:inherit;">🟢 Pasar a verde</button>
             <button type="button" id="btn-editar-servicio-detalle" onclick="editarServicioDesdeDetalle()" title="Editar este servicio" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 12px; font-weight:600; cursor:pointer; border-radius:8px; border:1px solid var(--border); background:var(--card-bg); color:var(--text);">✏️ Editar</button>
             <button type="button" id="det-consecutivo-badge" onclick="abrirReciboDesdeServicio()" title="Abrir el detalle del recibo" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 3px;">-</button>
           </div>
@@ -1899,11 +1920,11 @@
           <div style="display: flex; align-items: center; gap: 10px;">
             <span id="det-recib-estado-badge" role="img" style="display:inline-block; width:16px; height:16px; border-radius:50%; flex:none;"></span>
             <span id="det-recib-consecutivo-badge" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
-            <button type="button" id="btn-editar-recibo" class="btn-secondary" onclick="abrirModalRecibo('editar')" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);" title="Editar este recibo">
-              ✏️ Editar
+            <button type="button" id="btn-editar-recibo" class="btn-secondary" onclick="abrirModalRecibo('editar')" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);" title="Editar este recibo" aria-label="Editar este recibo">
+              ✏️
             </button>
-            <button type="button" id="btn-eliminar-recibo" onclick="eliminarRecibo()" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; border-radius: 8px; border: 1.5px solid var(--danger-soft); color: var(--danger); background: var(--danger-soft);" title="Eliminar este recibo (solo rol Sistema)">
-              🗑️ Eliminar
+            <button type="button" id="btn-eliminar-recibo" onclick="eliminarRecibo()" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; border-radius: 8px; border: 1.5px solid var(--danger-soft); color: var(--danger); background: var(--danger-soft);" title="Eliminar este recibo" aria-label="Eliminar este recibo">
+              🗑️
             </button>
           </div>
         </div>
@@ -1922,13 +1943,11 @@
           </div>
 
           <div id="det-recib-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid #2563eb; background:rgba(37, 99, 235, 0.12); color:#2563eb; text-decoration:none;">
+            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" title="Ver Recibo del Cliente" aria-label="Ver Recibo del Cliente" style="display:none; align-items:center; justify-content:center; gap:8px; padding: 9px 12px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid #2563eb; background:rgba(37, 99, 235, 0.12); color:#2563eb; text-decoration:none;">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-              Ver Recibo del Cliente
             </a>
-            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:#ffffff; text-decoration:none;">
+            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" title="Enviar por WhatsApp" aria-label="Enviar por WhatsApp" style="display:none; align-items:center; justify-content:center; gap:8px; padding: 9px 12px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:#ffffff; text-decoration:none;">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.43 9.43 0 0 1-4.8-1.32l-.35-.2-3.57.94.95-3.48-.22-.36a9.4 9.4 0 0 1-1.44-5.02c0-5.2 4.24-9.43 9.45-9.43 2.52 0 4.89.98 6.67 2.77a9.37 9.37 0 0 1 2.76 6.67c0 5.2-4.24 9.43-9.44 9.43zm8.03-17.47A11.3 11.3 0 0 0 12.05.7C5.79.7.7 5.79.7 12.04c0 2 .52 3.95 1.51 5.67L.6 23.3l5.73-1.5a11.3 11.3 0 0 0 5.71 1.46h.01c6.25 0 11.34-5.09 11.35-11.34a11.27 11.27 0 0 0-3.32-8.02z"/></svg>
-              Enviar por WhatsApp
             </a>
           </div>
 
@@ -1972,12 +1991,11 @@
             <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
               <span><span>📦</span> Servicios (<span id="det-recib-servicios-count">0</span>)</span>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-                <a id="btn-expandir-recibo" href="#" onclick="return expandirServiciosRecibo(event)" title="Ver los servicios de este recibo en la pestaña Servicios" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 14px; font-weight:700; font-size:0.82rem; border-radius:8px; border:1.5px solid var(--border-strong); background:var(--card-bg); color:var(--text); text-decoration:none; text-transform:none;">
+                <a id="btn-expandir-recibo" href="#" onclick="return expandirServiciosRecibo(event)" title="Ver los servicios de este recibo en la pestaña Servicios" aria-label="Expandir servicios" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 10px; font-weight:700; font-size:0.82rem; border-radius:8px; border:1.5px solid var(--border-strong); background:var(--card-bg); color:var(--text); text-decoration:none; text-transform:none;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-                  Expandir
                 </a>
-                <button type="button" id="btn-agregar-servicio" class="btn-primary" style="display:none; padding: 7px 14px; font-size: 0.82rem; text-transform:none;" onclick="abrirModalServicio('crear')">
-                  ➕ Adicionar
+                <button type="button" id="btn-agregar-servicio" class="btn-primary" title="Adicionar servicio" aria-label="Adicionar servicio" style="display:none; padding: 7px 10px; font-size: 0.82rem; text-transform:none;" onclick="abrirModalServicio('crear')">
+                  ➕
                 </button>
               </div>
             </div>
@@ -3750,6 +3768,8 @@
       <div class="modal-body">
         <form id="form-recibo" onsubmit="event.preventDefault(); guardarRecibo();">
 
+          <div id="mr-aviso-verde" style="display:none; padding: 10px 12px; margin-bottom: 14px; border-radius: 8px; background: var(--success-soft, rgba(16,185,129,0.12)); color: var(--success-dark); font-size: 0.84rem; font-weight: 600;"></div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
               <label>Regional *</label>
@@ -3841,14 +3861,16 @@
             <textarea id="mr-observaciones" rows="2" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
           </div>
 
+          <!-- Valores del recibo nuevo (base, IVA, retenciones y total de los servicios agregados) -->
+          <div id="mr-servicios-totales" style="display:none; margin-bottom:16px; padding:10px 12px; border-radius:8px; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.84rem;"></div>
+
           <!-- Servicios del recibo nuevo: se guardan junto con el recibo al presionar Crear Recibo -->
           <div id="mr-servicios-wrap" style="display:none; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; background: var(--bg-elevated);">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
               <label style="font-size: 0.78rem; font-weight:700; color:var(--text); text-transform:uppercase; margin:0;">Servicios del recibo</label>
-              <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="agregarServicioPendienteRecibo()">➕ Agregar Servicio</button>
+              <button type="button" class="btn-primary" id="mr-btn-agregar-servicio" style="padding: 6px 12px; font-size: 0.8rem;" onclick="agregarServicioPendienteRecibo()">➕ Agregar Servicio</button>
             </div>
             <div id="mr-servicios-lista"></div>
-            <div id="mr-servicios-totales" style="display:none; margin-top:10px; padding:10px 12px; border-radius:8px; background:var(--card-bg); border:1px solid var(--border); font-size:0.84rem;"></div>
             <small id="mr-servicios-nota" style="color: var(--text-muted); font-size: 0.76rem; display:block; margin-top:6px;"></small>
           </div>
 
@@ -3919,6 +3941,14 @@
             </div>
           </div>
         </div>
+        <div class="form-group" id="aj-editable-wrap">
+          <label>Editable en verde <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(después de validado)</small></label>
+          <div class="btn-grupo">
+            <button type="button" class="btn-grupo-opt" id="aj-editable-1" onclick="setAjusteBool('editable', 1)">Sí se puede editar</button>
+            <button type="button" class="btn-grupo-opt" id="aj-editable-0" onclick="setAjusteBool('editable', 0)">No</button>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.76rem;">Con el servicio o el recibo en verde, quien no tiene permiso de editar validados solo puede cambiar los campos marcados "Sí".</small>
+        </div>
         <div class="form-group" id="aj-habilitados-wrap">
           <label>Datos habilitados <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(ninguno marcado = todos)</small></label>
           <div id="aj-habilitados" style="display:flex; flex-wrap:wrap; gap:6px; max-height:200px; overflow-y:auto;"></div>
@@ -3928,6 +3958,14 @@
           <label>Valor por defecto</label>
           <select id="aj-defecto-select" style="display:none;"></select>
           <input type="text" id="aj-defecto-texto" maxlength="255" placeholder="Valor que llega escrito al crear">
+        </div>
+        <div class="form-group" id="aj-tipo-dato-wrap" style="display:none;">
+          <label>Tipo de dato</label>
+          <div class="btn-grupo">
+            <button type="button" class="btn-grupo-opt" id="aj-tipo-dato-texto" onclick="setTipoDatoAjuste('Texto')">Texto</button>
+            <button type="button" class="btn-grupo-opt" id="aj-tipo-dato-numero" onclick="setTipoDatoAjuste('Número')">Número</button>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.76rem;">Número: el formulario de servicio muestra teclado numérico y solo acepta números.</small>
         </div>
         <div class="form-group">
           <label>Rol <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(ninguno marcado = todos los que entran a Recibos o Servicios)</small></label>
@@ -3996,6 +4034,8 @@
 
       <div class="modal-body">
         <form id="form-servicio" novalidate onsubmit="event.preventDefault(); guardarServicio();">
+
+          <div id="ms-aviso-verde" style="display:none; padding: 10px 12px; margin-bottom: 14px; border-radius: 8px; background: var(--success-soft, rgba(16,185,129,0.12)); color: var(--success-dark); font-size: 0.84rem; font-weight: 600;"></div>
 
           <div class="form-group" id="ms-idrecibo-wrap">
             <label>Recibo</label>
@@ -4150,6 +4190,7 @@
               <div class="form-group">
                 <label>Foto Transferencia *</label>
                 <input type="file" id="ms-foto-transferencia" accept="image/*,application/pdf">
+                <button type="button" class="btn-foto-camara" onclick="tomarFotoServicio('ms-foto-transferencia')">📷 Tomar foto</button>
                 <small id="ms-foto-transferencia-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
               </div>
               <div class="form-group">
@@ -4163,14 +4204,18 @@
             <div class="form-group">
               <label>Foto Documento</label>
               <input type="file" id="ms-foto-documento" accept="image/*,application/pdf">
+              <button type="button" class="btn-foto-camara" onclick="tomarFotoServicio('ms-foto-documento')">📷 Tomar foto</button>
               <small id="ms-foto-documento-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
             </div>
             <div class="form-group">
               <label>Foto Evidencia</label>
               <input type="file" id="ms-foto-evidencia" accept="image/*,application/pdf">
+              <button type="button" class="btn-foto-camara" onclick="tomarFotoServicio('ms-foto-evidencia')">📷 Tomar foto</button>
               <small id="ms-foto-evidencia-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
             </div>
           </div>
+          <!-- Cámara del celular: la foto tomada pasa al campo de archivo que la pidió -->
+          <input type="file" id="ms-foto-camara" accept="image/*" capture="environment" style="display:none;" onchange="onFotoCamaraServicio(this)">
 
           <div class="form-group" id="ms-telefono-wrap" style="display:none;">
             <label>Teléfono</label>
@@ -8789,7 +8834,9 @@
         estadoBadge.setAttribute('aria-label', 'Estado: ' + estadoPunto[1]);
 
         document.getElementById('det-consecutivo-badge').textContent = 'Recibo: ' + (s.consecutivoRecibo || 'Sin Consecutivo');
-        servicioDetalleActual = { idServicio, idRecibo: s.IdRecibo, consecutivoRecibo: s.consecutivoRecibo, operacion: s.operacion };
+        servicioDetalleActual = { idServicio, idRecibo: s.IdRecibo, consecutivoRecibo: s.consecutivoRecibo, operacion: s.operacion, datos: s };
+        // Estado: mientras no esté en verde se puede pasar a verde desde aquí (solo a verde)
+        document.getElementById('btn-servicio-a-verde').style.display = (s.Estado !== 'Green' && PERMISOS_RECIBOS.crear) ? 'inline-flex' : 'none';
         document.getElementById('det-total-pago-header').textContent = '$ ' + formatMiles(s.totalPago);
         document.getElementById('det-total-pago-box').textContent = '$ ' + formatMiles(s.totalPago);
 
@@ -9045,6 +9092,39 @@
       }
       msEditandoDesdeDetalle = true;
       abrirModalServicio('editar', idServicio);
+    }
+
+    // Detalle del servicio: pasa el Estado a Verde si cumple las condiciones (las mismas del
+    // formulario: Cantidad, Valor Unitario, Forma de Pago y, con Transferencia, su foto; el
+    // servidor revisa además los campos obligatorios de la operación).
+    async function pasarServicioAVerde() {
+      const s = servicioDetalleActual?.datos;
+      if (!s || s.Estado === 'Green') return;
+      const vacio = (v) => v === null || v === undefined || String(v).trim() === '';
+      const faltan = [];
+      if (vacio(s.Cantidad)) faltan.push('Cantidad');
+      if (vacio(s['Valor Unitario'])) faltan.push('Valor Unitario');
+      if (vacio(s['Forma De Pago'])) faltan.push('Forma de Pago');
+      else if (Number(s['Forma De Pago']) === 2 && vacio(s['Foto Transferencia'])) faltan.push('Foto de Transferencia');
+      if (faltan.length) {
+        return alert('Para pasar el servicio a Verde falta:\n\n• ' + faltan.join('\n• ') + '\n\nComplételo con ✏️ Editar.');
+      }
+      if (!confirm('¿Pasar este servicio a Verde (validado)?')) return;
+      const btn = document.getElementById('btn-servicio-a-verde');
+      btn.disabled = true;
+      try {
+        const fd = new FormData();
+        fd.append('estado', 'Green');
+        const resp = await fetch(`/facturacion/api/servicios/${encodeURIComponent(servicioDetalleActual.idServicio)}?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'PUT', body: fd });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok) return alert('No se pudo pasar a Verde: ' + (data.error || 'error desconocido.'));
+        document.getElementById('det-recib-id').textContent = ''; // el detalle del recibo se recarga al volver
+        await sinHistorial(() => verDetalleServicio(servicioDetalleActual.idServicio));
+      } catch (e) {
+        alert('Error de conexión al cambiar el Estado del servicio.');
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     function volverAReciboOrigen() {
@@ -9497,12 +9577,10 @@
         document.getElementById('btn-expandir-recibo').href =
           `/facturacion?tab=servicios&usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(r.IdRecibo)}`;
 
-        // Gating de Editar/Eliminar: Facturación y Sistema editan siempre;
-        // los demás roles solo si el recibo no está validado (Green).
-        const rolPrivilegiado = !!PERMISOS_RECIBOS.editarValidados;
+        // Editar/Eliminar: Facturación y Sistema editan todo siempre; los demás, con el recibo en
+        // verde, solo los campos marcados "Editable en verde" (el formulario bloquea el resto).
         const btnEditar = document.getElementById('btn-editar-recibo');
-        const puedeEditar = !!PERMISOS_RECIBOS.crear && (rolPrivilegiado || estadoColor !== 'Green');
-        btnEditar.style.display = puedeEditar ? 'inline-flex' : 'none';
+        btnEditar.style.display = PERMISOS_RECIBOS.crear ? 'inline-flex' : 'none';
 
         const btnEliminar = document.getElementById('btn-eliminar-recibo');
         btnEliminar.style.display = PERMISOS_RECIBOS.eliminarRecibos ? 'inline-flex' : 'none';
@@ -10139,12 +10217,31 @@
     function agregarServicioPendienteRecibo() {
       if (!document.getElementById('mr-operacion').value) return alert('Seleccione primero la Operación del recibo.');
       if (!modalRecibo.modoActual) return alert('Seleccione primero la Modalidad del recibo (RECAUDO o CREDITO).');
+      if (faltaClienteAFacturarRecibo()) return alert('Seleccione primero el Cliente a Facturar del recibo.');
       abrirModalServicio('pendiente');
     }
 
+    function editarServicioPendienteRecibo(indice) {
+      abrirModalServicio('pendiente', null, indice);
+    }
+
     function quitarServicioPendienteRecibo(indice) {
+      const s = mrServiciosPendientes[indice];
+      if (!s || !confirm(`¿Quitar el servicio "${s.resumen.descripcion}" del recibo?`)) return;
       mrServiciosPendientes.splice(indice, 1);
       renderServiciosPendientesRecibo();
+    }
+
+    // CREDITO sin Cliente a Facturar: no se pueden agregar servicios
+    function faltaClienteAFacturarRecibo() {
+      return modalRecibo.modoActual === 'CREDITO' && !document.getElementById('mr-cliente-facturar').value;
+    }
+    function actualizarBotonAgregarServicioRecibo() {
+      const btn = document.getElementById('mr-btn-agregar-servicio');
+      const falta = faltaClienteAFacturarRecibo();
+      btn.disabled = falta;
+      btn.style.opacity = falta ? '0.5' : '';
+      btn.title = falta ? 'Seleccione primero el Cliente a Facturar' : '';
     }
 
     // ── Valores informativos (mismos cálculos que el servidor: calcularTotalesServicio) ──
@@ -10197,6 +10294,7 @@
       });
       const fila = (txt, valor, color) => `<div style="display:flex; justify-content:space-between; gap:12px; padding:2px 0;"><span style="color:var(--text-muted);">${txt}</span><span style="${color ? 'color:' + color + ';' : ''}">${valor}</span></div>`;
       caja.innerHTML =
+        '<div style="font-size:0.78rem; font-weight:700; color:var(--text); text-transform:uppercase; margin-bottom:6px;">Valores del recibo</div>' +
         fila(`Valor base (${mrServiciosPendientes.length} servicio${mrServiciosPendientes.length === 1 ? '' : 's'})`, pesos(t.base)) +
         fila(`IVA (${pct(IMPUESTOS.iva)})`, pesos(t.iva)) +
         (recaudo ? fila(`ReteFuente (${pct(IMPUESTOS.reteFuente)})`, (t.reteFuente ? '- ' : '') + pesos(t.reteFuente), 'var(--danger)') +
@@ -10214,21 +10312,27 @@
       const emoji = { Green: '🟢', Yellow: '🟡', Red: '🔴' };
       lista.innerHTML = hay
         ? mrServiciosPendientes.map((s, i) => `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--border); border-radius:6px; margin-bottom:6px; background:var(--card-bg); font-size:0.84rem;">
+          <div onclick="editarServicioPendienteRecibo(${i})" title="Clic para editar" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--border); border-radius:6px; margin-bottom:6px; background:var(--card-bg); font-size:0.84rem; cursor:pointer;">
             <span>${emoji[s.resumen.estado] || ''} ${esc(s.resumen.descripcion)}${s.resumen.valor ? ` — <strong>$${formatMiles(s.resumen.valor)}</strong>` : ''}</span>
-            <button type="button" onclick="quitarServicioPendienteRecibo(${i})" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Quitar">🗑️</button>
+            <span style="display:flex; gap:2px; flex:none;">
+              <button type="button" onclick="event.stopPropagation(); editarServicioPendienteRecibo(${i})" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Editar">✏️</button>
+              <button type="button" onclick="event.stopPropagation(); quitarServicioPendienteRecibo(${i})" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Quitar">🗑️</button>
+            </span>
           </div>`).join('')
         : '<div style="color:var(--text-muted); font-size:0.82rem;">Sin servicios. Puede agregarlos ahora o después de crear el recibo.</div>';
       nota.textContent = hay
-        ? 'Se guardarán junto con el recibo al presionar Crear Recibo. Para cambiar Regional, Operación o Modalidad, quite primero los servicios.'
+        ? 'Se guardarán junto con el recibo al presionar Crear Recibo. Toque un servicio para corregirlo. Para cambiar Regional, Operación o Modalidad, quite primero los servicios.'
         : '';
 
       // Los servicios se armaron para esta Operación y Modalidad: no se cambian mientras haya servicios
       ['mr-regional', 'mr-operacion', 'btn-mr-modalidad-recaudo', 'btn-mr-modalidad-credito']
         .forEach(id => { document.getElementById(id).disabled = hay; });
+      // Cliente a Facturar con servicios: solo los roles de Config_Parametros (facturacion / Recibos)
+      document.getElementById('mr-cliente-facturar').disabled = (hay || mrServiciosCount > 0) && !PERMISOS_RECIBOS.cambiarClienteAFacturar;
       mostrarCamposReciboSegunServicios();
       actualizarTotalesRecibo();
       if (hay) recalcularSugerenciaRetenciones(); // con el subtotal de los servicios agregados
+      if (modalRecibo.modo === 'crear' && modalRecibo.modoActual === 'RECAUDO') cargarClientesSugeridosModalRecibo();
     }
 
     function cerrarModalRecibo() {
@@ -10271,17 +10375,18 @@
       if (!silencioso) aplicarAjustesRecibo();
     }
 
-    // RECAUDO: Retenciones, Teléfono y Email solo se muestran cuando el recibo tiene servicios
-    // (guardados o agregados en el formulario); el Cliente solo con servicios ya guardados.
+    // RECAUDO: Retenciones, Teléfono, Email y Cliente solo se muestran cuando el recibo tiene
+    // servicios (guardados o agregados en el formulario). Retenciones, además, solo para los roles
+    // de Config_Parametros (facturacion / Recibos: "Roles que pueden aplicar retenciones...").
     function mostrarCamposReciboSegunServicios() {
       const recaudo = modalRecibo.modoActual === 'RECAUDO';
-      const hayGuardados = mrServiciosCount > 0;
-      const hayServicios = hayGuardados || mrServiciosPendientes.length > 0;
-      document.getElementById('mr-retenciones-wrap').style.display = (recaudo && hayServicios) ? 'block' : 'none';
+      const hayServicios = mrServiciosCount > 0 || mrServiciosPendientes.length > 0;
+      document.getElementById('mr-retenciones-wrap').style.display = (recaudo && hayServicios && PERMISOS_RECIBOS.aplicarRetenciones) ? 'block' : 'none';
       const contactoObligatorio = ['Telefono', 'Email'].some(c => mrAjustes[c] && mrAjustes[c].visible && mrAjustes[c].obligatorio);
       document.getElementById('mr-contacto-wrap').style.display = (hayServicios || contactoObligatorio) ? 'grid' : 'none';
-      document.getElementById('mr-cliente-sin-servicios').style.display = hayGuardados ? 'none' : 'block';
-      document.getElementById('mr-cliente-con-servicios').style.display = hayGuardados ? 'block' : 'none';
+      document.getElementById('mr-cliente-sin-servicios').style.display = hayServicios ? 'none' : 'block';
+      document.getElementById('mr-cliente-con-servicios').style.display = hayServicios ? 'block' : 'none';
+      actualizarBotonAgregarServicioRecibo();
     }
 
     // Categoría en botones: escriben en el <select id="mr-categoria"> oculto, que es el que se guarda
@@ -10297,6 +10402,7 @@
     }
 
     function onModalRecioClienteFacturarChange() {
+      actualizarBotonAgregarServicioRecibo();
       cargarCategoriasModalRecibo();
       aplicarAjustesRecibo(); // campos que dependen del Cliente a Facturar
     }
@@ -10333,24 +10439,44 @@
       }
     }
 
-    // Clientes sugeridos según la placa del servicio más reciente del recibo (punto 5)
+    // Placa (ID de Maestro_Placas) del servicio más reciente agregado al recibo nuevo:
+    // el de Hora Inicio más reciente; si empatan, el último agregado.
+    function placaServicioPendienteMasReciente() {
+      const conPlaca = mrServiciosPendientes.filter(sp => sp.fd.get('pl1'));
+      if (!conPlaca.length) return null;
+      const masReciente = conPlaca.reduce((a, b) => String(b.fd.get('horaInicio') || '') >= String(a.fd.get('horaInicio') || '') ? b : a);
+      return masReciente.fd.get('pl1');
+    }
+
+    // Clientes sugeridos según la placa del servicio más reciente del recibo: Nit de Maestro_Placas
+    // y Razón social de Maestro_Clientes. Recibo nuevo: con los servicios agregados en el formulario.
     async function cargarClientesSugeridosModalRecibo() {
-      if (!reciboDetalleActual) return;
       const wrap = document.getElementById('mr-clientes-sugeridos-wrap');
       const cont = document.getElementById('mr-clientes-sugeridos');
+      let url;
+      if (modalRecibo.modo === 'crear') {
+        const placa = placaServicioPendienteMasReciente();
+        if (!placa) { cont.innerHTML = ''; wrap.style.display = 'none'; return; }
+        url = `/facturacion/api/clientes-sugeridos?usuario=${encodeURIComponent(CONFIG.usuario)}&placa=${encodeURIComponent(placa)}`;
+      } else {
+        if (!reciboDetalleActual) return;
+        url = `/facturacion/api/recibos/${encodeURIComponent(reciboDetalleActual.recibo.IdRecibo)}/clientes-sugeridos?usuario=${encodeURIComponent(CONFIG.usuario)}`;
+      }
       try {
-        const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(reciboDetalleActual.recibo.IdRecibo)}/clientes-sugeridos?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const resp = await fetch(url);
         if (!resp.ok) return;
         const data = await resp.json();
         const clientes = data.clientes || [];
         if (!clientes.length) {
+          cont.innerHTML = '';
           wrap.style.display = 'none';
           return;
         }
         cont.innerHTML = clientes.map(c => `
-          <button type="button" class="category-chip" style="min-width:auto; padding:6px 12px;" onclick="seleccionarClienteSugeridoRecibo(${c.nit}, '${esc((c.razonSocial || '').replace(/'/g, "\\'"))}')">
-            <span class="chip-title" style="font-size:0.78rem;">${esc(c.nit)}</span>
-            <span class="chip-sub">${esc(c.razonSocial || 'Sin nombre registrado')}</span>
+          <button type="button" class="category-chip" style="min-width:auto; padding:6px 12px;" data-nit="${esc(c.nit)}" data-razon="${esc(c.razonSocial || '')}"
+            onclick="seleccionarClienteSugeridoRecibo(this.dataset.nit, this.dataset.razon)">
+            <span class="chip-title" style="font-size:0.78rem;">${esc(c.razonSocial || 'Sin nombre registrado')}</span>
+            <span class="chip-sub">NIT ${esc(c.nit)}</span>
           </button>
         `).join('');
         wrap.style.display = 'block';
@@ -10484,8 +10610,9 @@
         // Teléfono y Email solo aplican para RECAUDO.
         payload.telefono = document.getElementById('mr-telefono').value;
         payload.email = document.getElementById('mr-email').value;
-        if (mrServiciosCount > 0) {
-          // El Nit solo se envía (y solo es editable) si el recibo ya tiene servicios registrados.
+        if (mrServiciosCount > 0 || mrServiciosPendientes.length > 0) {
+          // El Nit solo se envía (y solo es editable) si el recibo tiene servicios (guardados o
+          // agregados en el formulario del recibo nuevo).
           payload.nit = document.getElementById('mr-nit').value || null;
         }
       }
@@ -10573,7 +10700,7 @@
     let allAjustes = [];
     let ajOpciones = null; // { operaciones, roles }
     let ajEditando = null; // fila en edición o null al crear
-    let ajBool = { visible: 1, obligatorio: 0 };
+    let ajBool = { visible: 1, obligatorio: 0, editable: 0 };
     let ajHabSel = new Set();
     let ajRolesSel = new Set();
     let ajCatalogo = []; // [{ valor, texto }] del campo escogido
@@ -10624,7 +10751,7 @@
           <td>${a.operacion ? esc(a.operacion) : '<em style="color:var(--text-muted);">Todas</em>'}</td>
           <td>${esc(a.seccion)}</td>
           <td>${a.modalidad ? esc(a.modalidad) : '<span style="color:var(--text-muted);">Ambas</span>'}</td>
-          <td><strong>${esc(a.columna_origen)}</strong></td>
+          <td><strong>${esc(a.columna_origen)}</strong>${a.tipo_dato === 'Número' ? ' <small style="color:var(--text-muted);">(Número)</small>' : ''}${Number(a.editable_validado) === 1 ? '<br><small style="color:var(--success-dark); font-weight:700;">✓ Editable en verde</small>' : ''}</td>
           <td>${esc(a.etiqueta_columna || '')}</td>
           <td style="text-align:center">${si(a.visible, 'Sí')}</td>
           <td style="text-align:center">${si(a.obligatorio, 'Sí')}</td>
@@ -10642,6 +10769,14 @@
       const seccion = document.getElementById('aj-seccion').value;
       document.getElementById('aj-columna').innerHTML = ((CONFIG.camposServicios || {})[seccion] || [])
         .map(c => `<option value="${esc(c.columna)}">${esc(c.etiqueta)}${c.etiqueta !== c.columna ? ` (${esc(c.columna)})` : ''}</option>`).join('');
+    }
+
+    // Tipo de dato de Etapa y Muelle (Config_Servicios.tipo_dato): 'Texto' o 'Número'
+    let ajTipoDato = 'Texto';
+    function setTipoDatoAjuste(valor) {
+      ajTipoDato = valor === 'Número' ? 'Número' : 'Texto';
+      document.getElementById('aj-tipo-dato-texto').classList.toggle('sel', ajTipoDato === 'Texto');
+      document.getElementById('aj-tipo-dato-numero').classList.toggle('sel', ajTipoDato === 'Número');
     }
 
     function setAjusteBool(nombre, valor) {
@@ -10671,6 +10806,8 @@
       document.getElementById('aj-orden').value = a.orden ?? '';
       setAjusteBool('visible', ajEditando ? Number(a.visible) : 1);
       setAjusteBool('obligatorio', ajEditando ? Number(a.obligatorio) : 0);
+      setAjusteBool('editable', ajEditando ? Number(a.editable_validado) || 0 : 0);
+      setTipoDatoAjuste(a.tipo_dato);
       ajHabSel = new Set(String(a.datos_habilitados || '').split(',').map(s => s.trim()).filter(Boolean));
       ajRolesSel = new Set(String(a.rol || '').split(',').map(s => s.trim()).filter(Boolean));
       ajCondSel = new Set(String(a.condicion_valores || '').split(',').map(s => s.trim()).filter(Boolean));
@@ -10763,6 +10900,7 @@
       if (esModalidad) selModalidad.value = '';
       selModalidad.disabled = esModalidad || !ajPuede('editar');
 
+      document.getElementById('aj-tipo-dato-wrap').style.display = campo.tipoDato ? '' : 'none';
       habWrap.style.display = campo.tipo === 'lista' ? '' : 'none';
       defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto') ? '' : 'none';
       defSel.style.display = campo.tipo === 'lista' ? '' : 'none';
@@ -10819,9 +10957,11 @@
         etiqueta_columna: document.getElementById('aj-etiqueta').value,
         visible: ajBool.visible,
         obligatorio: ajBool.obligatorio,
+        editable_validado: ajBool.editable,
         datos_habilitados: campo.tipo === 'lista' ? habilitados.join(', ') : '',
         valor_defecto: campo.tipo === 'lista' ? document.getElementById('aj-defecto-select').value
           : campo.tipo === 'texto' ? document.getElementById('aj-defecto-texto').value : '',
+        tipo_dato: campo.tipoDato ? ajTipoDato : '',
         rol: [...ajRolesSel].join(', '),
         condicion_campo: document.getElementById('aj-condicion-campo').value,
         condicion_valores: document.getElementById('aj-condicion-campo').value ? [...ajCondSel].join(', ') : '',
@@ -10981,6 +11121,18 @@
         wrap.style.display = (a[col] ? a[col].visible : msContexto.modalidad === 'CREDITO') ? 'block' : 'none';
       });
 
+      // Etapa y Muelle: número o texto según la operación (tipo_dato). Un texto que el servicio ya
+      // tenía guardado se respeta para no perderlo.
+      ['Etapa', 'Muelle'].forEach(col => {
+        const el = document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]);
+        const valor = el.value;
+        const numero = !!(a[col] && a[col].numerico) && (valor === '' || /^-?\d+([.,]\d+)?$/.test(valor.trim()));
+        el.type = numero ? 'number' : 'text';
+        el.inputMode = numero ? 'decimal' : 'text';
+        if (numero) el.step = 'any'; else el.removeAttribute('step');
+        el.value = numero ? valor.trim().replace(',', '.') : valor;
+      });
+
       // Área y Actividad: solo los botones habilitados (y el valor que ya tenía)
       [['Area', '.ms-area-btn', () => msAreaSeleccionada, seleccionarAreaServicio],
        ['Actividad', '.ms-actividad-btn', () => msActividadSeleccionada, seleccionarActividadServicio]].forEach(([col, selector, actual, seleccionar]) => {
@@ -11127,6 +11279,33 @@
         });
       }
       mostrarCamposReciboSegunServicios();
+      bloquearCamposReciboValidado(modalRecibo.modo === 'editar' && !PERMISOS_RECIBOS.editarValidados
+        && reciboDetalleActual?.estadoColor === 'Green');
+    }
+
+    // Recibo validado (verde) para quien no edita validados: solo quedan habilitados los campos
+    // marcados "Editable en verde" en Ajustes Servicios (sección Recibo); el cliente, la Operación,
+    // la Modalidad y las retenciones quedan fijos.
+    function bloquearCamposReciboValidado(bloquear) {
+      const form = document.getElementById('form-recibo');
+      form.querySelectorAll('[data-bloqueo-verde]').forEach(el => { el.disabled = false; delete el.dataset.bloqueoVerde; });
+      const aviso = document.getElementById('mr-aviso-verde');
+      const btnGuardar = document.getElementById('btn-guardar-recibo');
+      aviso.style.display = bloquear ? 'block' : 'none';
+      btnGuardar.disabled = false;
+      if (!bloquear) return;
+      const permitidos = Object.entries(mrAjustes)
+        .filter(([col, c]) => c.editableValidado && c.visible && col !== 'Modalidad')
+        .map(([col]) => grupoCampoFormulario(document.getElementById(CAMPOS_FORM_AJUSTES.Recibo[col]))).filter(Boolean);
+      form.querySelectorAll('input, select, textarea, button').forEach(el => {
+        if (el.disabled || permitidos.some(g => g.contains(el))) return;
+        el.disabled = true;
+        el.dataset.bloqueoVerde = '1';
+      });
+      aviso.textContent = permitidos.length
+        ? '🟢 Recibo validado (verde): solo puede cambiar los campos habilitados para editar en verde.'
+        : '🟢 Recibo validado (verde): no tiene campos habilitados para editar.';
+      btnGuardar.disabled = !permitidos.length;
     }
 
     // Lista de Cliente a Facturar del formulario de recibo (Maestro_Clientes_Credito)
@@ -11189,12 +11368,15 @@
     }
 
     // modo 'pendiente': servicio de un recibo que aún no se ha guardado (formulario Agregar Recibo)
-    async function abrirModalServicio(modo, idServicio) {
+    // indicePendiente: servicio de la lista del recibo nuevo (sin guardar) que se va a corregir
+    async function abrirModalServicio(modo, idServicio, indicePendiente) {
       const pendiente = modo === 'pendiente';
       if (!pendiente && !reciboDetalleActual) return;
+      const editandoPendiente = pendiente && Number.isInteger(indicePendiente) && !!mrServiciosPendientes[indicePendiente];
       modalServicio.modo = modo;
       modalServicio.idRecibo = pendiente ? null : reciboDetalleActual.recibo.IdRecibo;
       modalServicio.idServicio = idServicio || null;
+      modalServicio.indicePendiente = editandoPendiente ? indicePendiente : null;
       msContexto = pendiente ? {
         operacion: document.getElementById('mr-operacion').value,
         modalidad: modalRecibo.modoActual,
@@ -11207,11 +11389,17 @@
         nit: reciboDetalleActual.recibo.Nit
       };
 
-      const existente = (modo === 'editar') ? (reciboDetalleActual.servicios || []).find(s => s.IdServicio === idServicio) : null;
+      // Servicio pendiente: sus datos se guardaron con la misma forma de un servicio guardado
+      // (fechas ya en formato del formulario y archivos como File)
+      const existente = (modo === 'editar') ? (reciboDetalleActual.servicios || []).find(s => s.IdServicio === idServicio)
+        : editandoPendiente ? mrServiciosPendientes[indicePendiente].datos : null;
       msServicioExistente = existente || null;
+      const fechaForm = (valor) => editandoPendiente ? valor : toDatetimeLocalBogota(valor);
 
-      document.getElementById('ms-titulo').textContent = (modo === 'editar') ? `✏️ Editar Servicio — ${idServicio}` : '➕ Agregar Servicio';
-      document.getElementById('btn-guardar-servicio').textContent = { crear: 'Crear Servicio', pendiente: 'Agregar al Recibo' }[modo] || 'Guardar Cambios';
+      document.getElementById('ms-titulo').textContent = (modo === 'editar') ? `✏️ Editar Servicio — ${idServicio}`
+        : editandoPendiente ? '✏️ Editar Servicio (sin guardar)' : '➕ Agregar Servicio';
+      document.getElementById('btn-guardar-servicio').textContent = editandoPendiente ? 'Guardar Cambios'
+        : ({ crear: 'Crear Servicio', pendiente: 'Agregar al Recibo' }[modo] || 'Guardar Cambios');
 
       msTransportadoraId = existente ? existente.Transportadora : null;
       msProveedorSeleccionados = [];
@@ -11219,9 +11407,11 @@
       msAuxiliaresSeleccionados = existente && existente.Auxiliares ? existente.Auxiliares.split(',').map(s => s.trim()).filter(Boolean) : [];
       msAreaSeleccionada = existente ? existente.Area : null;
       msActividadSeleccionada = existente ? existente.Actividad : null;
-      msUnidadManual = modo === 'editar'; // en un servicio guardado no se cambia la Unidad que ya tiene
-      msValorManual = modo === 'editar'; // ni el Valor Unitario: la tarifa solo se busca al crear
+      msUnidadManual = !!existente; // en un servicio ya registrado no se cambia la Unidad que ya tiene
+      msValorManual = !!existente; // ni el Valor Unitario: la tarifa solo se busca al crear
       document.getElementById('ms-tarifa-info').textContent = '';
+      // Etapa y Muelle vuelven a texto; los ajustes de la operación los pasan a número si aplica
+      ['ms-etapa', 'ms-muelle'].forEach(id => { document.getElementById(id).type = 'text'; });
 
       document.getElementById('ms-transportadora-input').value = existente?.transportadoraNombre || '';
       document.getElementById('ms-pl1-input').value = existente?.placaNombre || '';
@@ -11240,12 +11430,15 @@
       document.getElementById('ms-foto-documento').value = '';
       document.getElementById('ms-foto-evidencia').value = '';
       document.getElementById('ms-foto-transferencia').value = '';
-      document.getElementById('ms-foto-documento-actual').innerHTML = archivoActualServicio(existente?.['Foto Documento']);
-      document.getElementById('ms-foto-evidencia-actual').innerHTML = archivoActualServicio(existente?.['Foto Evidencia']);
-      document.getElementById('ms-foto-transferencia-actual').innerHTML = archivoActualServicio(existente?.['Foto Transferencia']);
+      const archivoActual = (columna) => editandoPendiente
+        ? (existente[columna] ? `Adjunto: ${esc(existente[columna])} (se conserva si no escoge otro)` : 'Sin archivo')
+        : archivoActualServicio(existente?.[columna]);
+      document.getElementById('ms-foto-documento-actual').innerHTML = archivoActual('Foto Documento');
+      document.getElementById('ms-foto-evidencia-actual').innerHTML = archivoActual('Foto Evidencia');
+      document.getElementById('ms-foto-transferencia-actual').innerHTML = archivoActual('Foto Transferencia');
 
-      document.getElementById('ms-hora-inicio').value = existente?.['Hora Inicio'] ? toDatetimeLocalBogota(existente['Hora Inicio']) : ahoraDatetimeLocalBogota();
-      document.getElementById('ms-fecha-transferencia').value = existente?.['Fecha Transferencia'] ? toDatetimeLocalBogota(existente['Fecha Transferencia']) : ahoraDatetimeLocalBogota();
+      document.getElementById('ms-hora-inicio').value = existente?.['Hora Inicio'] ? fechaForm(existente['Hora Inicio']) : ahoraDatetimeLocalBogota();
+      document.getElementById('ms-fecha-transferencia').value = existente?.['Fecha Transferencia'] ? fechaForm(existente['Fecha Transferencia']) : ahoraDatetimeLocalBogota();
 
       document.getElementById('ms-idrecibo-info').textContent = (pendiente ? 'Recibo nuevo (sin guardar)' : (reciboDetalleActual.recibo['Consecutivo Recibo'] || modalServicio.idRecibo)) + ' — ' + (msContexto.operacion || '');
       const puedeReasignar = modo === 'editar' && !!PERMISOS_RECIBOS.reasignarServicios;
@@ -11291,18 +11484,66 @@
       }
       renderProveedorChips();
 
-      document.getElementById('ms-hora-final').value = existente?.['Hora Final'] ? toDatetimeLocalBogota(existente['Hora Final']) : '';
+      document.getElementById('ms-hora-final').value = existente?.['Hora Final'] ? fechaForm(existente['Hora Final']) : '';
       onDuracionServicioChange();
       if (existente?.['Total Hora']) document.getElementById('ms-total-hora').value = existente['Total Hora'];
 
       // Ajustes de la operación (Config_Servicios): etiquetas, campos, datos habilitados y valores por defecto
-      await aplicarAjustesServicio(modo !== 'editar');
+      await aplicarAjustesServicio(!existente);
+      bloquearCamposServicioValidado(modo === 'editar' && !PERMISOS_RECIBOS.editarValidados
+        && (existente?.Estado === 'Green' || reciboDetalleActual?.estadoColor === 'Green'));
       recalcularTarifaServicio();
       actualizarValoresServicio(); // valores informativos de lo que ya trae (edición o valores por defecto)
 
       const overlayServicio = document.getElementById('modal-servicio-overlay');
       overlayServicio.classList.add('open');
       overlayServicio._backEntry = registrarModalBack(() => cerrarModalServicio());
+    }
+
+    // Servicio validado (verde, o su recibo en verde) para quien no edita validados: solo quedan
+    // habilitados los campos marcados "Editable en verde" en Ajustes Servicios; el resto se bloquea.
+    function bloquearCamposServicioValidado(bloquear) {
+      const form = document.getElementById('form-servicio');
+      form.querySelectorAll('[data-bloqueo-verde]').forEach(el => { el.disabled = false; delete el.dataset.bloqueoVerde; });
+      const aviso = document.getElementById('ms-aviso-verde');
+      const btnGuardar = document.getElementById('btn-guardar-servicio');
+      aviso.style.display = bloquear ? 'block' : 'none';
+      btnGuardar.disabled = false;
+      if (!bloquear) return;
+      const permitidos = Object.entries(msAjustes).filter(([, c]) => c.editableValidado && c.visible)
+        .map(([col]) => grupoCampoFormulario(document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]))).filter(Boolean);
+      form.querySelectorAll('input, select, textarea, button').forEach(el => {
+        if (el.disabled || el.id === 'ms-foto-camara' || permitidos.some(g => g.contains(el))) return;
+        el.disabled = true;
+        el.dataset.bloqueoVerde = '1';
+      });
+      aviso.textContent = permitidos.length
+        ? '🟢 Servicio validado (verde): solo puede cambiar los campos habilitados para editar en verde.'
+        : '🟢 Servicio validado (verde): no tiene campos habilitados para editar.';
+      btnGuardar.disabled = !permitidos.length;
+    }
+
+    // Fotos del servicio desde el celular: abre la cámara y deja la foto en el campo de archivo
+    // que la pidió (Documento, Evidencia o Transferencia), como si se hubiera adjuntado.
+    function tomarFotoServicio(idDestino) {
+      const camara = document.getElementById('ms-foto-camara');
+      camara.dataset.destino = idDestino;
+      camara.value = '';
+      camara.click();
+    }
+    function onFotoCamaraServicio(camara) {
+      const foto = camara.files && camara.files[0];
+      const destino = document.getElementById(camara.dataset.destino || '');
+      if (!foto || !destino) return;
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(foto);
+        destino.files = dt.files;
+        destino.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (e) {
+        alert('Este navegador no permite pasar la foto al formulario. Use "Elegir archivo" y escoja Cámara.');
+      }
+      camara.value = '';
     }
 
     function cerrarModalServicio() {
@@ -11808,22 +12049,68 @@
 
       // Recibo aún sin guardar: el servicio queda en la lista del formulario del recibo
       if (modalServicio.modo === 'pendiente') {
+        const valorEl = (id) => document.getElementById(id).value;
         const textoSel = (selector) => (document.querySelector(selector)?.textContent || '').trim();
-        const cantidad = parseFloat(document.getElementById('ms-cantidad').value);
-        const valorUnitario = parseFloat(document.getElementById('ms-valor-unitario').value);
-        const descripcion = [textoSel('.ms-area-btn.sel'), textoSel('.ms-actividad-btn.sel'), document.getElementById('ms-pl1-input').value.trim()]
+        const cantidadTxt = valorEl('ms-cantidad');
+        const cantidad = parseFloat(cantidadTxt);
+        const valorUnitario = parseFloat(valorEl('ms-valor-unitario'));
+        const unidadSel = document.getElementById('ms-unidad');
+        const unidad = unidadSel.value ? (unidadSel.selectedOptions[0]?.textContent || unidadSel.value).trim() : '';
+        const placa = valorEl('ms-pl1-input').trim();
+        const descripcion = [textoSel('.ms-actividad-btn.sel'), placa, unidad, cantidadTxt !== '' ? `Cant. ${cantidadTxt}` : '']
           .filter(Boolean).join(' · ') || 'Servicio';
         if (!isNaN(cantidad) && !isNaN(valorUnitario) && cantidad * valorUnitario > TOPE_VALOR_BASE_SERVICIO) {
           return alert(`El Valor Base (Cantidad x Valor Unitario) no puede superar $${TOPE_VALOR_BASE_SERVICIO.toLocaleString('es-CO')}.`);
         }
-        mrServiciosPendientes.push({
+        const indice = modalServicio.indicePendiente;
+        // Misma quincena que los demás servicios de la lista y bloqueos de Facturación
+        const otro = mrServiciosPendientes.find((_, i) => i !== indice);
+        try {
+          const params = new URLSearchParams({
+            usuario: CONFIG.usuario, operacion: msContexto.operacion || '', formaDePago: formaDePago || '',
+            clienteAFacturar: msContexto.clienteAFacturar || '', horaInicio: valorEl('ms-hora-inicio'),
+            horaReferencia: otro ? (otro.fd.get('horaInicio') || '') : '',
+          });
+          const r = await fetch(`/facturacion/api/periodo-servicio?${params}`);
+          const d = await r.json();
+          if (d.error) return alert(d.error);
+        } catch (e) { /* el servidor lo vuelve a revisar al crear el recibo */ }
+        // Al corregir un servicio pendiente, los archivos que ya tenía se conservan si no se escoge otro
+        const previos = (indice !== null && mrServiciosPendientes[indice]) ? mrServiciosPendientes[indice].archivos : {};
+        const archivos = {
+          fotoDocumento: fileDoc || previos.fotoDocumento || null,
+          fotoEvidencia: fileEvi || previos.fotoEvidencia || null,
+          fotoTransferencia: fileTrans || previos.fotoTransferencia || null,
+        };
+        Object.entries(archivos).forEach(([campo, archivo]) => { if (archivo && !fd.has(campo)) fd.append(campo, archivo); });
+        // Datos con la forma de un servicio guardado, para volver a abrir el formulario
+        const datos = {
+          Estado: msEstadoActual, Area: msAreaSeleccionada, Actividad: msActividadSeleccionada,
+          Transportadora: msTransportadoraId, transportadoraNombre: valorEl('ms-transportadora-input'),
+          Proveedor: msProveedorSeleccionados.map(p => p.id).join(','), proveedorNombres: msProveedorSeleccionados.map(p => p.proveedor).join(','),
+          PL1: msPl1Id, placaNombre: placa, Vehiculo: valorEl('ms-vehiculo'), Remolque: valorEl('ms-remolque'),
+          Unidad: unidadSel.value, Cantidad: cantidadTxt, 'Valor Unitario': valorEl('ms-valor-unitario'),
+          Origen: valorEl('ms-origen'), Destino: valorEl('ms-destino'), Manifiesto: valorEl('ms-manifiesto'),
+          Etapa: valorEl('ms-etapa'), Muelle: valorEl('ms-muelle'),
+          'Hora Inicio': valorEl('ms-hora-inicio'), 'Duración': valorEl('ms-duracion'), 'Hora Final': valorEl('ms-hora-final'),
+          'Total Hora': valorEl('ms-total-hora'), 'Grupo Dtjo': msGrupoDtjoActual, Auxiliares: msAuxiliaresSeleccionados.join(', '),
+          Notas: valorEl('ms-notas'), 'Forma De Pago': formaDePago, 'Fecha Transferencia': valorEl('ms-fecha-transferencia'),
+          Observaciones: valorEl('ms-observaciones'), Telefono: valorEl('ms-telefono'),
+          'Foto Documento': archivos.fotoDocumento?.name || '', 'Foto Evidencia': archivos.fotoEvidencia?.name || '',
+          'Foto Transferencia': archivos.fotoTransferencia?.name || '',
+        };
+        const servicio = {
           fd,
+          datos,
+          archivos,
           resumen: {
             estado: msEstadoActual,
             descripcion,
             valor: (!isNaN(cantidad) && !isNaN(valorUnitario)) ? cantidad * valorUnitario : 0,
           },
-        });
+        };
+        if (indice !== null && mrServiciosPendientes[indice]) mrServiciosPendientes[indice] = servicio;
+        else mrServiciosPendientes.push(servicio);
         cerrarModalServicio();
         renderServiciosPendientesRecibo();
         return;

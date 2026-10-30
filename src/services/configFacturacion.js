@@ -98,9 +98,12 @@ const PR = {
   CREAR:          'Roles que pueden crear y editar recibos',
   EDITAR_VERDE:   'Roles que pueden editar recibos validados',
   RETENCIONES:    'Roles que pueden modificar retenciones de recibos',
+  APLICAR_RETENCIONES: 'Roles que pueden aplicar retenciones en el formulario del recibo',
   ELIMINAR:       'Roles que pueden eliminar recibos',
   ELIMINAR_SERV:  'Roles que pueden eliminar servicios',
   REASIGNAR:      'Roles que pueden reasignar servicios a otro recibo',
+  CAMBIAR_CLIENTE_FACTURAR: 'Roles que pueden cambiar el Cliente a Facturar de un recibo con servicios',
+  PERIODO_BLOQUEADO: 'Roles que pueden registrar servicios en periodos bloqueados',
   NITS_RETENCION: 'NITs con retención obligatoria de Fuente e IVA',
   VER_RECIBO_ESTADO:     'Roles que ven el Recibo del Cliente en cualquier estado',
   VER_RECIBO_MODALIDAD:  'Roles que ven el Recibo del Cliente en cualquier modalidad',
@@ -111,9 +114,12 @@ const DEFAULTS_RECIBOS = {
   [PR.CREAR]:          'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR, Lider',
   [PR.EDITAR_VERDE]:   'Facturación, Sistema',
   [PR.RETENCIONES]:    'Facturación, Sistema',
+  [PR.APLICAR_RETENCIONES]: 'Facturación, Sistema',
   [PR.ELIMINAR]:       'Sistema',
   [PR.ELIMINAR_SERV]:  'Sistema',
   [PR.REASIGNAR]:      'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
+  [PR.CAMBIAR_CLIENTE_FACTURAR]: 'Facturación, Sistema',
+  [PR.PERIODO_BLOQUEADO]: '',
   [PR.NITS_RETENCION]: '860350940, 890204199',
   [PR.VER_RECIBO_ESTADO]:    'Facturación, Sistema',
   [PR.VER_RECIBO_MODALIDAD]: '',
@@ -140,8 +146,8 @@ function valorRecibos(params, concepto) {
   return Object.prototype.hasOwnProperty.call(params || {}, concepto) ? params[concepto] : DEFAULTS_RECIBOS[concepto];
 }
 
-// Permisos del rol en Recibos: { crear, editarValidados, modificarRetenciones,
-// eliminarRecibos, eliminarServicios, reasignarServicios }
+// Permisos del rol en Recibos: { crear, editarValidados, modificarRetenciones, aplicarRetenciones,
+// eliminarRecibos, eliminarServicios, reasignarServicios, cambiarClienteAFacturar, registrarEnPeriodoBloqueado }
 async function obtenerPermisosRecibos(rol) {
   const p = await obtenerParametrosRecibos();
   const tiene = concepto => enLista(valorRecibos(p, concepto), rol);
@@ -149,9 +155,12 @@ async function obtenerPermisosRecibos(rol) {
     crear:                tiene(PR.CREAR),
     editarValidados:      tiene(PR.EDITAR_VERDE),
     modificarRetenciones: tiene(PR.RETENCIONES),
+    aplicarRetenciones:   tiene(PR.APLICAR_RETENCIONES), // sección Retenciones del formulario del recibo
     eliminarRecibos:      tiene(PR.ELIMINAR),
     eliminarServicios:    tiene(PR.ELIMINAR_SERV),
     reasignarServicios:   tiene(PR.REASIGNAR),
+    cambiarClienteAFacturar:     tiene(PR.CAMBIAR_CLIENTE_FACTURAR), // recibo CREDITO que ya tiene servicios
+    registrarEnPeriodoBloqueado: tiene(PR.PERIODO_BLOQUEADO),        // ignora Bloqueo_Nomina (Facturación)
     // Botones "Ver Recibo del Cliente" y "Ver Servicio / Firma del Cliente"
     verReciboCualquierEstado:      tiene(PR.VER_RECIBO_ESTADO),
     verReciboCualquierModalidad:   tiene(PR.VER_RECIBO_MODALIDAD),

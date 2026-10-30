@@ -4475,7 +4475,7 @@
     </div>
 
     <!-- Overlay de espera al guardar/procesar una Acta de Entrega -->
-    <div id="acta-loading-overlay" style="display:none; position:fixed; inset:0; background:var(--overlay); z-index:5000; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+    <div id="acta-loading-overlay" style="display:none; position:fixed; inset:0; background:var(--overlay); z-index:30000; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
       <div style="background:var(--card-bg); border-radius:16px; padding:32px 40px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.35); max-width:320px;">
         <div class="loader" style="margin:0 auto 18px;"></div>
         <div id="acta-loading-title" style="font-weight:700; font-size:0.95rem; color:var(--text); margin-bottom:4px;">Estamos preparando el acta...</div>
@@ -5911,7 +5911,7 @@
       <!-- Scrollable content area -->
       <div style="flex-grow: 1; overflow-y: auto; padding: 24px; min-height: 350px;">
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
-          Gestiona las imágenes para cada <strong>Elemento único</strong> registrado en el inventario. Al subir una imagen, esta se asociará a todos los registros del mismo elemento en el sistema.
+          Gestiona los nombres e imágenes para cada <strong>Elemento único</strong> registrado en el inventario. Al modificar el nombre o subir una imagen, el cambio se aplicará a todos los artículos asociados a dicho elemento en el sistema.
         </p>
 
         <!-- Filters for elements -->
@@ -5922,11 +5922,17 @@
               <!-- Dynamic category chips -->
             </div>
           </div>
-          <div style="margin-top: 4px; max-width: 300px;">
-            <label style="display: block; font-weight: 700; font-size: 0.75rem; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Filtrar por Clasificación</label>
-            <select id="elementos-filter-clase-select" style="width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: var(--card-bg); font-weight: 500; color: var(--text-dark);">
-              <!-- Dynamic classification options -->
-            </select>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex: 1; min-width: 200px; max-width: 300px;">
+              <label style="display: block; font-weight: 700; font-size: 0.75rem; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Filtrar por Clasificación</label>
+              <select id="elementos-filter-clase-select" style="width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: var(--card-bg); font-weight: 500; color: var(--text-dark);">
+                <!-- Dynamic classification options -->
+              </select>
+            </div>
+            <div style="flex: 1; min-width: 220px;">
+              <label style="display: block; font-weight: 700; font-size: 0.75rem; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Buscar por Elemento</label>
+              <input type="text" id="elementos-filter-search" placeholder="Escribe para buscar..." style="width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: var(--card-bg); color: var(--text-dark); outline: none;">
+            </div>
           </div>
         </div>
 
@@ -5940,9 +5946,9 @@
               <thead>
                 <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
                   <th style="padding: 10px; font-weight: 600; width: 70px; text-align: center;">Imagen</th>
-                  <th style="padding: 10px; font-weight: 600;">Elemento</th>
-                  <th style="padding: 10px; font-weight: 600; width: 100px; text-align: center;">Artículos</th>
-                  <th style="padding: 10px; font-weight: 600; width: 350px;">Gestión de Imagen (GCS)</th>
+                  <th style="padding: 10px; font-weight: 600; min-width: 240px;">Elemento (Editable ✏️)</th>
+                  <th style="padding: 10px; font-weight: 600; width: 90px; text-align: center;">Artículos</th>
+                  <th style="padding: 10px; font-weight: 600; width: 330px;">Gestión de Imagen (GCS)</th>
                 </tr>
               </thead>
               <tbody id="elementos-grid-body">
@@ -15900,11 +15906,12 @@
     }
 
     // ==========================================
-    // ADMINISTRADOR DE ELEMENTOS (IMAGENES GCS)
+    // ADMINISTRADOR DE ELEMENTOS (IMAGENES GCS Y EDICIÓN)
     // ==========================================
     let allElementosList = [];
     let activeElementosCategory = '';
     let activeElementosClase = '';
+    let activeElementosSearch = '';
 
     async function openElementosManagerModal() {
       const modal = document.getElementById('elementos-manager-modal');
@@ -15913,6 +15920,9 @@
         modal._backEntry = registrarModalBack(() => closeActiveModals());
         activeElementosCategory = '';
         activeElementosClase = '';
+        activeElementosSearch = '';
+        const searchInput = document.getElementById('elementos-filter-search');
+        if (searchInput) searchInput.value = '';
         fetchAndRenderElementos();
       }
     }
@@ -15947,8 +15957,18 @@
     function renderElementosChips() {
       const catContainer = document.getElementById('elementos-filter-categoria-chips');
       const claseSelect = document.getElementById('elementos-filter-clase-select');
+      const searchInput = document.getElementById('elementos-filter-search');
 
       if (!catContainer || !claseSelect) return;
+
+      // Vincular buscador por elemento (solo una vez)
+      if (searchInput && !searchInput._bound) {
+        searchInput._bound = true;
+        searchInput.addEventListener('input', (e) => {
+          activeElementosSearch = e.target.value.trim().toLowerCase();
+          applyElementosLocalFiltersAndRender();
+        });
+      }
 
       // Calculate categories counts based on all elements list
       const catCounts = { 'TODOS': allElementosList.length };
@@ -16040,6 +16060,9 @@
       const filtered = allElementosList.filter(el => {
         if (activeElementosCategory && el.categoria !== activeElementosCategory) return false;
         if (activeElementosClase && el.claseArticulo !== activeElementosClase) return false;
+        if (activeElementosSearch) {
+          if (!String(el.elemento || '').toLowerCase().includes(activeElementosSearch)) return false;
+        }
         return true;
       });
 
@@ -16052,17 +16075,20 @@
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
 
+        const elemEsc = (window.escapeHtml || escapeHtml)(el.elemento || '');
+        const elemEnc = encodeURIComponent(el.elemento || '');
+
         let imgHtml = '<span style="font-size:1.5rem; opacity:0.6; cursor: default;">👔</span>';
         if (el.imagen) {
-          imgHtml = `<img src="${el.imagen}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: zoom-in;" onclick="window.openImageZoom('${el.imagen}', '${el.elemento}')" title="Ver imagen actual"><span style="display:none; font-size:1.5rem;">👔</span>`;
+          imgHtml = `<img src="${el.imagen}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: zoom-in;" onclick="window.openImageZoom('${el.imagen}', decodeURIComponent('${elemEnc}'))" title="Ver imagen actual"><span style="display:none; font-size:1.5rem;">👔</span>`;
         }
 
         let sugerenciaSection = '';
         if (el.tieneMultiplesUrls && el.sugerencia) {
           sugerenciaSection = `
             <div style="display: flex; align-items: center; gap: 8px;">
-              <img src="${el.sugerencia}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1.5px solid var(--warning-soft); cursor: zoom-in;" onclick="window.openImageZoom('${el.sugerencia}', 'Sugerencia: ${el.elemento}')" title="Ver imagen sugerida">
-              <button type="button" class="btn" style="background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); padding: 5px 10px; font-size: 0.7rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;" onclick="applyElementoSugerencia('${encodeURIComponent(el.elemento)}')">
+              <img src="${el.sugerencia}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1.5px solid var(--warning-soft); cursor: zoom-in;" onclick="window.openImageZoom('${el.sugerencia}', 'Sugerencia: ' + decodeURIComponent('${elemEnc}'))" title="Ver imagen sugerida">
+              <button type="button" class="btn" style="background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); padding: 5px 10px; font-size: 0.7rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;" onclick="applyElementoSugerencia('${elemEnc}')">
                 <span>💡</span> Replicar Sugerida (${el.distinctCount} urls)
               </button>
             </div>
@@ -16073,13 +16099,25 @@
           <td style="padding: 10px; text-align: center; vertical-align: middle;">
             ${imgHtml}
           </td>
-          <td style="padding: 10px; font-weight: 600; font-size: 0.8rem; color: var(--text-dark);">${el.elemento}</td>
-          <td style="padding: 10px; text-align: center; font-weight: 500; font-size: 0.8rem; color: var(--text-muted);">${el.total}</td>
+          <td class="col-elemento-td" style="padding: 10px; font-weight: 600; font-size: 0.8rem; color: var(--text-dark); vertical-align: middle;">
+            <div class="elem-view" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span class="elem-label" style="word-break: break-word;">${elemEsc}</span>
+              <button type="button" class="btn-elem-edit" style="background: none; border: 1px solid transparent; cursor: pointer; padding: 2px 6px; font-size: 0.85rem; border-radius: 4px; color: var(--text-muted); flex-shrink: 0;" title="Editar nombre del elemento" onclick="startEditElemento(this, '${elemEnc}', ${el.total})">
+                ✏️
+              </button>
+            </div>
+            <div class="elem-form" style="display: none; align-items: center; gap: 6px;">
+              <input type="text" class="elem-input" value="${elemEsc}" style="flex: 1; min-width: 160px; padding: 5px 8px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid var(--primary); border-radius: 4px; background: var(--card-bg); color: var(--text); text-transform: uppercase;" onkeydown="handleElementoKeydown(event, this, '${elemEnc}', ${el.total})">
+              <button type="button" class="btn btn-save-elem" style="background: var(--primary); color: #fff; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;" title="Guardar cambios" onclick="saveEditElemento(this, '${elemEnc}', ${el.total})">✓</button>
+              <button type="button" class="btn btn-cancel-elem" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; cursor: pointer; font-size: 0.75rem; flex-shrink: 0;" title="Cancelar" onclick="cancelEditElemento(this, '${elemEnc}')">✕</button>
+            </div>
+          </td>
+          <td style="padding: 10px; text-align: center; font-weight: 500; font-size: 0.8rem; color: var(--text-muted); vertical-align: middle;">${el.total}</td>
           <td style="padding: 10px; vertical-align: middle;">
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
               <label class="btn-primary" style="padding: 5px 12px; font-size: 0.72rem; border-radius: 6px; cursor: pointer; background: var(--primary); color: var(--text-inverse); display: inline-flex; align-items: center; gap: 4px; font-weight: 600; border: none; transition: background 0.2s;">
                 <span>📤</span> Subir Imagen
-                <input type="file" accept="image/*" class="elemento-file-input" data-elemento="${encodeURIComponent(el.elemento)}" style="background: var(--card-bg); display: none;" onchange="handleElementoImageUpload(this)">
+                <input type="file" accept="image/*" class="elemento-file-input" data-elemento="${elemEnc}" style="background: var(--card-bg); display: none;" onchange="handleElementoImageUpload(this)">
               </label>
               ${sugerenciaSection}
             </div>
@@ -16102,6 +16140,130 @@
       }
     };
     window.openImageModal = window.openImageZoom;
+
+    // Edición de Elemento en el Modal de Elementos
+    window.startEditElemento = function(btn, encodedElemento, total) {
+      const td = btn.closest('.col-elemento-td');
+      if (!td) return;
+
+      // Cerrar cualquier otra fila en edición
+      document.querySelectorAll('#elementos-grid-body .elem-form').forEach(f => {
+        if (f !== td.querySelector('.elem-form')) {
+          f.style.display = 'none';
+          const pTd = f.closest('.col-elemento-td');
+          if (pTd) {
+            const v = pTd.querySelector('.elem-view');
+            if (v) v.style.display = 'flex';
+          }
+        }
+      });
+
+      const view = td.querySelector('.elem-view');
+      const form = td.querySelector('.elem-form');
+      const input = td.querySelector('.elem-input');
+
+      if (view && form && input) {
+        view.style.display = 'none';
+        form.style.display = 'flex';
+        input.focus();
+        input.select();
+      }
+    };
+
+    window.cancelEditElemento = function(btnOrInput, encodedElemento) {
+      const td = btnOrInput.closest('.col-elemento-td');
+      if (!td) return;
+      const view = td.querySelector('.elem-view');
+      const form = td.querySelector('.elem-form');
+      const input = td.querySelector('.elem-input');
+      if (input) {
+        input.value = decodeURIComponent(encodedElemento);
+      }
+      if (view && form) {
+        form.style.display = 'none';
+        view.style.display = 'flex';
+      }
+    };
+
+    window.handleElementoKeydown = function(e, input, encodedElemento, total) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        window.saveEditElemento(input, encodedElemento, total);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        window.cancelEditElemento(input, encodedElemento);
+      }
+    };
+
+    window.saveEditElemento = async function(btnOrInput, encodedElemento, total) {
+      const td = btnOrInput.closest('.col-elemento-td');
+      if (!td) return;
+
+      const elementoActual = decodeURIComponent(encodedElemento).trim();
+      const input = td.querySelector('.elem-input');
+      const btnSave = td.querySelector('.btn-save-elem');
+      const btnCancel = td.querySelector('.btn-cancel-elem');
+
+      if (!input) return;
+      const nuevoElemento = input.value.trim().toUpperCase();
+
+      if (!nuevoElemento) {
+        alert('El nombre del elemento no puede estar vacío.');
+        input.focus();
+        return;
+      }
+
+      if (nuevoElemento === elementoActual.toUpperCase()) {
+        window.cancelEditElemento(btnOrInput, encodedElemento);
+        return;
+      }
+
+      const confirmMsg = `¿Estás seguro de que deseas renombrar el elemento:\n"${elementoActual}"\npor:\n"${nuevoElemento}"?\n\nEsta acción actualizará ${total} artículo(s) asociados en el inventario.`;
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+
+      input.disabled = true;
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.textContent = '⏳';
+      }
+      if (btnCancel) btnCancel.disabled = true;
+
+      try {
+        const res = await fetch('/inventario/api/articulos/elementos/editar-nombre', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            elementoActual,
+            nuevoElemento,
+            usuario: CONFIG.usuarioId
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al actualizar el nombre del elemento');
+
+        alert(data.message || 'Elemento actualizado exitosamente.');
+
+        // Recargar vista de elementos y catálogo de artículos
+        await fetchAndRenderElementos();
+        if (typeof fetchArticlesData === 'function') {
+          fetchArticlesData();
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert('Error: ' + err.message);
+        input.disabled = false;
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.textContent = '✓';
+        }
+        if (btnCancel) btnCancel.disabled = false;
+        input.focus();
+      }
+    };
 
     window.handleElementoImageUpload = async function(input) {
       const file = input.files[0];
@@ -19733,8 +19895,13 @@
       });
     }
 
+    let isSavingGridActas = false;
+
     async function saveGridActasBatch() {
+      if (isSavingGridActas) return;
+
       const btnGuardar = document.getElementById('gridactas-btn-guardar');
+      const btnCancel = document.getElementById('gridactas-btn-cancel');
       if (btnGuardar && btnGuardar.disabled) return;
 
       const validItems = gridActasList.filter(r => r.identificacion && r.categoria && r.idArticulo && r.cantidad > 0);
@@ -19760,7 +19927,23 @@
       const confirmMsg = `¿Confirma generar ${numActas} acta(s) de entrega para ${uniqueWorkers} colaborador(es) con ${totalItems} artículo(s) en total?\n\nEsta acción registrará las actas en estado Pendiente y descontará el inventario en Kardex.`;
       if (!confirm(confirmMsg)) return;
 
-      mostrarActaLoading('Generando actas de entrega...', `Creando ${numActas} actas y actualizando Kardex`);
+      // Bloquear botón inmediatamente para evitar doble clic o múltiples peticiones concurrentes
+      isSavingGridActas = true;
+      let originalBtnHtml = '';
+      if (btnGuardar) {
+        originalBtnHtml = btnGuardar.innerHTML;
+        btnGuardar.disabled = true;
+        btnGuardar.style.opacity = '0.75';
+        btnGuardar.style.cursor = 'not-allowed';
+        btnGuardar.innerHTML = '<span style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; vertical-align:middle; margin-right:6px; animation:spin 0.8s linear infinite;"></span> Procesando actas...';
+      }
+      if (btnCancel) {
+        btnCancel.disabled = true;
+        btnCancel.style.opacity = '0.6';
+        btnCancel.style.cursor = 'not-allowed';
+      }
+
+      mostrarActaLoading('Generando actas de entrega...', `Procesando ${numActas} acta(s) y actualizando Kardex. Por favor no cierres la ventana...`);
       try {
         const resp = await fetch(`/actas/api/guardar-masivo?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
@@ -19784,7 +19967,19 @@
         console.error('Error al guardar actas masivas:', err);
         alert('❌ Error al guardar: ' + err.message);
       } finally {
+        isSavingGridActas = false;
         ocultarActaLoading();
+        if (btnGuardar) {
+          btnGuardar.disabled = false;
+          btnGuardar.style.opacity = '1';
+          btnGuardar.style.cursor = 'pointer';
+          if (originalBtnHtml) btnGuardar.innerHTML = originalBtnHtml;
+        }
+        if (btnCancel) {
+          btnCancel.disabled = false;
+          btnCancel.style.opacity = '1';
+          btnCancel.style.cursor = 'pointer';
+        }
       }
     }
 

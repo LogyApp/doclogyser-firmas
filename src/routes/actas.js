@@ -1377,12 +1377,18 @@ router.get('/api/grid-lookups', async (req, res) => {
 });
 
 // ═════ API: POST /api/guardar-masivo (Crear múltiples actas agrupadas desde el Editor de Grid) ═════
+const usuariosGuardandoMasivo = new Set();
 router.post('/api/guardar-masivo', async (req, res) => {
+  const usuario = req.query.usuario || (req.body && req.body.usuario);
+  if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+  if (usuariosGuardandoMasivo.has(usuario)) {
+    return res.status(429).json({ error: 'Ya hay un proceso de carga masiva en curso para este usuario. Por favor espera a que finalice.' });
+  }
+  usuariosGuardandoMasivo.add(usuario);
+
   const conn = await pool.getConnection();
   try {
-    const usuario = req.query.usuario || (req.body && req.body.usuario);
-    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
-
     const acceso = await computarAccesoActas(usuario);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
@@ -1574,6 +1580,7 @@ router.post('/api/guardar-masivo', async (req, res) => {
     console.error('[actas] POST /api/guardar-masivo error:', err);
     res.status(500).json({ error: err.message || 'Error al guardar las actas' });
   } finally {
+    usuariosGuardandoMasivo.delete(usuario);
     conn.release();
   }
 });

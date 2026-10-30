@@ -8,6 +8,7 @@ const pool = require('./db');
 // Campos que se pueden ajustar. tipo 'lista' = se escoge de un catálogo (datos_habilitados);
 // 'busqueda' = se busca en un maestro grande (sin datos_habilitados ni valor por defecto);
 // 'archivo' = adjunto; 'texto' = valor libre. bodyKey = nombre del campo en el formulario/API.
+// tipoDato: el campo de texto puede ser Número o Texto según la operación (Config_Servicios.tipo_dato).
 const CAMPOS = {
   Recibo: [
     // Modalidad: modalidades permitidas en la operación y la que llega escogida (fila sin modalidad)
@@ -32,8 +33,8 @@ const CAMPOS = {
     { columna: 'Origen', etiqueta: 'Origen', tipo: 'texto', bodyKey: 'origen' },
     { columna: 'Destino', etiqueta: 'Destino', tipo: 'texto', bodyKey: 'destino' },
     { columna: 'Manifiesto', etiqueta: 'Manifiesto', tipo: 'texto', bodyKey: 'manifiesto' },
-    { columna: 'Etapa', etiqueta: 'Etapa', tipo: 'texto', bodyKey: 'etapa' },
-    { columna: 'Muelle', etiqueta: 'Muelle', tipo: 'texto', bodyKey: 'muelle' },
+    { columna: 'Etapa', etiqueta: 'Etapa', tipo: 'texto', tipoDato: true, bodyKey: 'etapa' },
+    { columna: 'Muelle', etiqueta: 'Muelle', tipo: 'texto', tipoDato: true, bodyKey: 'muelle' },
     { columna: 'Hora Inicio', etiqueta: 'Hora Inicio', tipo: 'texto', bodyKey: 'horaInicio' },
     { columna: 'Duración', etiqueta: 'Duración', tipo: 'lista', catalogo: 'duracion', bodyKey: 'duracion' },
     { columna: 'Grupo Dtjo', etiqueta: 'Grupo Dtjo', tipo: 'lista', catalogo: 'grupoDtjo', bodyKey: 'grupoDtjo' },
@@ -48,6 +49,7 @@ const CAMPOS = {
 
 const SECCIONES = Object.keys(CAMPOS);
 const MODALIDADES = ['RECAUDO', 'CREDITO'];
+const TIPOS_DATO = ['Texto', 'Número'];
 
 function normalizar(valor) {
   return String(valor == null ? '' : valor).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -63,6 +65,10 @@ function campoDe(seccion, columna) {
 
 function vacio(valor) {
   return valor === undefined || valor === null || String(valor).trim() === '';
+}
+
+function esNumero(valor) {
+  return /^-?\d+([.,]\d+)?$/.test(String(valor).trim());
 }
 
 // Datos del recibo por los que se puede condicionar un campo ("mostrar solo si"), como el Show_If
@@ -82,7 +88,7 @@ function cumpleCondicion(fila, contexto) {
 }
 
 // Reglas de cada campo para una Operación y Modalidad, según el rol de quien llena el formulario:
-// { [columna]: { etiqueta, visible, obligatorio, habilitados: [], defecto, paraRol } }
+// { [columna]: { etiqueta, visible, obligatorio, habilitados: [], defecto, paraRol, numerico, editableValidado } }
 // visible ya considera el rol (si el campo es para otros roles, no aparece) y la condición
 // ("mostrar solo si"): si el recibo no la cumple, el campo no aparece, no es obligatorio y no toma
 // valor por defecto. contexto: datos del recibo, ej. { clienteAFacturar }.
@@ -124,6 +130,8 @@ async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {
       defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',
       paraRol,
       orden: f.orden == null ? null : Number(f.orden), // posición en el formulario (1 = primero)
+      numerico: !!campo.tipoDato && normalizar(f.tipo_dato) === 'numero', // Etapa y Muelle: solo números
+      editableValidado: Number(f.editable_validado) === 1, // se puede cambiar con el servicio en verde
       tipo: campo.tipo,
       bodyKey: campo.bodyKey,
     };
@@ -158,6 +166,9 @@ async function aplicarConfig({ seccion, operacion, modalidad, rol, body, anterio
     const valor = (body[key] !== undefined) ? body[key] : anterior;
     if (c.visible && c.obligatorio && vacio(valor)) {
       return `${prefijo}"${c.etiqueta}" es obligatorio en la operación ${operacion}.`;
+    }
+    if (c.numerico && !vacio(body[key]) && !esNumero(body[key]) && normalizar(body[key]) !== normalizar(anterior)) {
+      return `${prefijo}"${c.etiqueta}" debe ser un número en la operación ${operacion}.`;
     }
     if (c.habilitados.length && !vacio(valor)) {
       const permitido = c.habilitados.some((h) => normalizar(h) === normalizar(valor));
@@ -241,7 +252,7 @@ async function permisosAjustesServicios(rol) {
 }
 
 module.exports = {
-  CAMPOS, SECCIONES, MODALIDADES,
-  CONDICIONES, campoDe, resolverConfig, aplicarConfig, visibleEnConfig, opcionesCatalogo, normalizar, lista,
+  CAMPOS, SECCIONES, MODALIDADES, TIPOS_DATO,
+  CONDICIONES, campoDe, esNumero, resolverConfig, aplicarConfig, visibleEnConfig, opcionesCatalogo, normalizar, lista,
   permisosAjustesServicios,
 };
