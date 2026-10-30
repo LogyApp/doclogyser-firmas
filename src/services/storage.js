@@ -70,10 +70,15 @@ async function subirPDFRetiro(identificacion, tipo, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+// Documentos de retiro que se regeneran en el mismo archivo (al corregir la Fecha de Retiro
+// o con el botón "Regenerar documentos"): sin caché, para que la URL pública muestre de
+// inmediato la versión nueva y no la anterior durante una hora.
+const CACHE_DOC_REGENERABLE = 'no-cache, max-age=0';
+
 async function subirPDFAceptacionRenuncia(identificacion, idVinculacion, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.AR.${idVinculacion}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
@@ -113,21 +118,21 @@ async function subirPDFCesantias(identificacion, idVinculacion, bufferPdf) {
 async function subirPDFPazYSalvo(identificacion, idVinculacion, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.PZ.${idVinculacion}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
 async function subirPDFCertificadoRetiro(identificacion, idVinculacion, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.CT.${idVinculacion}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
 async function subirPDFEvaluacionRetiro(identificacion, idVinculacion, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.EVR.${idVinculacion}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 

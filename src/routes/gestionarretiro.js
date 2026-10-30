@@ -9,6 +9,7 @@ const { subirDocumentoRetiro } = require('../services/storage');
 const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
 const { regenerarAceptacionRenuncia } = require('./firmarenuncia');
 const { regenerarPazYSalvoFinal } = require('./pazysalvoarea');
+const { regenerarEvaluacionRetiro } = require('./evaluacionretiro');
 
 const router   = express.Router();
 const DASHBOARD_HTML = path.join(__dirname, '../views/gestionarretiro/index.html');
@@ -661,31 +662,15 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
       [nuevaFecha, usuario, fechaHoraBogota(), idVinculacion]
     );
 
+    const { regenerados, errores } = await regenerarDocumentosRetiro(idVinculacion, identificacion, fechaIngreso);
+
     const [docRows] = await pool.execute(
-      `SELECT id, Prefijo, FechaRegistro FROM Maestro_docTrabajador
+      `SELECT id, Prefijo FROM Maestro_docTrabajador
        WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?)
-         AND Prefijo IN ('CT','AR','CR','TCR','TCRP')`,
+         AND Prefijo IN ('CR','TCR','TCRP')`,
       [String(identificacion), fechaIngreso]
     );
-    const docCT = docRows.find(d => d.Prefijo === 'CT');
-    const docAR = docRows.find(d => d.Prefijo === 'AR');
-    const docsManuales = docRows.filter(d => ['CR', 'TCR', 'TCRP'].includes(d.Prefijo));
-
-    const regenerados = [];
-    const errores = [];
-
-    if (docCT) {
-      try { await regenerarCertificadoRetiro(idVinculacion, docCT); regenerados.push('Certificado Laboral de Retiro'); }
-      catch (e) { console.error('[actualizar-fecha-retiro CT]', e.message); errores.push('Certificado Laboral de Retiro'); }
-    }
-    if (docAR) {
-      try { await regenerarAceptacionRenuncia(idVinculacion, docAR); regenerados.push('Aceptación de Renuncia'); }
-      catch (e) { console.error('[actualizar-fecha-retiro AR]', e.message); errores.push('Aceptación de Renuncia'); }
-    }
-    try {
-      const urlPz = await regenerarPazYSalvoFinal(idVinculacion);
-      if (urlPz) regenerados.push('Paz y Salvo');
-    } catch (e) { console.error('[actualizar-fecha-retiro PZ]', e.message); errores.push('Paz y Salvo'); }
+    const docsManuales = docRows;
 
     if (docsManuales.length) {
       const ph = docsManuales.map(() => '?').join(',');
@@ -703,6 +688,64 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
     });
   } catch (err) {
     console.error('[actualizar-fecha-retiro]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Regenera con los datos actuales de la vinculación (Fecha de Retiro incluida) los documentos
+// que generamos nosotros: Certificado de Retiro, Aceptación de Renuncia, Paz y Salvo final y
+// Evaluación de Retiro. Solo los que ya existen; reutiliza las firmas y respuestas capturadas.
+async function regenerarDocumentosRetiro(idVinculacion, identificacion, fechaIngreso) {
+  const [docRows] = await pool.execute(
+    `SELECT id, Prefijo, FechaRegistro FROM Maestro_docTrabajador
+     WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?) AND Prefijo IN ('CT','AR')
+     ORDER BY FechaRegistro DESC`,
+    [String(identificacion), fechaIngreso]
+  );
+  const docCT = docRows.find(d => d.Prefijo === 'CT');
+  const docAR = docRows.find(d => d.Prefijo === 'AR');
+
+  const regenerados = [];
+  const errores = [];
+  const intentar = async (nombre, fn) => {
+    try { if (await fn()) regenerados.push(nombre); }
+    catch (e) { console.error(`[regenerar documentos retiro] ${nombre}:`, e.message); errores.push(nombre); }
+  };
+
+  if (docCT) await intentar('Certificado Laboral de Retiro', () => regenerarCertificadoRetiro(idVinculacion, docCT));
+  if (docAR) await intentar('Aceptación de Renuncia', () => regenerarAceptacionRenuncia(idVinculacion, docAR));
+  await intentar('Paz y Salvo', () => regenerarPazYSalvoFinal(idVinculacion));
+  await intentar('Evaluación de Retiro', () => regenerarEvaluacionRetiro(idVinculacion));
+  return { regenerados, errores };
+}
+
+// ── POST /api/regenerar-documentos-retiro ──────────────────────────────────
+// Botón "Regenerar documentos": mismos roles que editan la Fecha de Retiro. No cambia
+// ningún dato; vuelve a generar los PDF (p. ej. si la fecha se corrigió antes de que
+// existiera la regeneración de algún documento).
+router.post('/api/regenerar-documentos-retiro', async (req, res) => {
+  try {
+    const { idVinculacion, usuario } = req.body;
+    if (!idVinculacion || !usuario) return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+
+    const [uRows] = await pool.execute('SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const permisos = uRows.length ? await obtenerPermisosRetiro(uRows[0].Rol, uRows[0].Regional) : null;
+    if (!permisos || !permisos.puedeEditarFechaRetiro) {
+      return res.status(403).json({ ok: false, error: 'Su rol no puede regenerar los documentos de retiro' });
+    }
+
+    const [vinRows] = await pool.execute(
+      'SELECT `Identificación`, `Fecha de Ingreso` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+
+    const resultado = await regenerarDocumentosRetiro(
+      idVinculacion, vinRows[0]['Identificación'], toDateStr(vinRows[0]['Fecha de Ingreso'])
+    );
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[regenerar-documentos-retiro]', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

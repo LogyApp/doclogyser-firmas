@@ -55,6 +55,18 @@ async function nuevaPagina() {
   return browser.newPage();
 }
 
+// `networkidle2` deja seguir con hasta 2 descargas pendientes, así que una imagen lenta
+// (logo, firma) podía quedar por fuera del PDF. Espera a que cada <img> termine de cargar
+// o falle, con un tope para no colgar la generación.
+async function esperarImagenes(page, topeMs = 15000) {
+  await page.evaluate((tope) => Promise.race([
+    Promise.all([...document.images].map(img => (img.complete
+      ? null
+      : new Promise(resolve => { img.addEventListener('load', resolve); img.addEventListener('error', resolve); })))),
+    new Promise(resolve => setTimeout(resolve, tope)),
+  ]), topeMs).catch(() => {});
+}
+
 async function generarPDF(htmlContenido, options = {}) {
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -65,6 +77,7 @@ async function generarPDF(htmlContenido, options = {}) {
   const page = await nuevaPagina();
   try {
     await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
+    await esperarImagenes(page);
     const buffer = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -81,6 +94,7 @@ async function generarPDFDesdeHTML(htmlCompleto, options = {}) {
   const page = await nuevaPagina();
   try {
     await page.setContent(htmlCompleto, { waitUntil: 'networkidle2', timeout: 30000 });
+    await esperarImagenes(page);
     const buffer = await page.pdf({
       format: 'A4',
       printBackground: true,

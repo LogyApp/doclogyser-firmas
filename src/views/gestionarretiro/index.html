@@ -347,6 +347,7 @@
       <div class="page-sub" id="headerSub"></div>
       <div class="page-sub" id="fechaRetiroEditRow" style="display:none;margin-top:2px">
         <button type="button" class="btn-ver-doc" style="padding:2px 10px;font-size:.74rem" onclick="abrirModalFecha()">&#9998; Editar Fecha de Retiro</button>
+        <button type="button" class="btn-ver-doc" id="btnRegenerarDocs" style="padding:2px 10px;font-size:.74rem" onclick="regenerarDocumentosRetiro()" title="Vuelve a generar el Certificado de Retiro, la Aceptación de Renuncia, el Paz y Salvo final y la Evaluación de Retiro con los datos actuales">&#8635; Regenerar documentos</button>
       </div>
       <div class="badge-row">
         <span class="badge badge-user" id="badgeUsuario"></span>
@@ -572,8 +573,8 @@
     <h3>Editar Fecha de Retiro</h3>
     <p>
       Solo Nómina o Sistema pueden corregir esta fecha. Al guardar, se <strong>regenerarán automáticamente</strong>
-      el Certificado de Retiro, la Aceptación de Renuncia y el Paz y Salvo final (si ya existen), reutilizando la
-      firma ya capturada. Otros documentos ya cargados (Carta de Renuncia, Terminación de Contrato) no se pueden
+      el Certificado de Retiro, la Aceptación de Renuncia, el Paz y Salvo final y la Evaluación de Retiro (si ya
+      existen), reutilizando las firmas y respuestas ya capturadas. Otros documentos ya cargados (Carta de Renuncia, Terminación de Contrato) no se pueden
       regenerar solos y quedarán marcados para volver a tramitarlos manualmente.
     </p>
     <input type="date" id="inpNuevaFecha" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:6px;font-size:.9rem">
@@ -1104,6 +1105,30 @@
     } catch {
       alert('Error de conexión.');
       btn.disabled = false; btn.textContent = 'Guardar y regenerar';
+    }
+  }
+
+  // ── Regenerar documentos (mismos roles que editan la Fecha de Retiro) ─────
+  async function regenerarDocumentosRetiro() {
+    if (!confirm('¿Regenerar con los datos actuales (Fecha de Retiro incluida) el Certificado de Retiro, la Aceptación de Renuncia, el Paz y Salvo final y la Evaluación de Retiro? Solo se regeneran los que ya existen.')) return;
+    const btn = document.getElementById('btnRegenerarDocs');
+    const texto = btn.innerHTML;
+    btn.disabled = true; btn.textContent = 'Regenerando…';
+    try {
+      const r = await fetch('/gestionar-retiro/api/regenerar-documentos-retiro', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idVinculacion, usuario }),
+      });
+      const d = await r.json();
+      if (!d.ok) { alert('Error: ' + (d.error || 'No se pudieron regenerar los documentos')); return; }
+      let msg = d.regenerados?.length ? 'Documentos regenerados: ' + d.regenerados.join(', ') + '.' : 'No había documentos para regenerar.';
+      if (d.errores?.length) msg += '\nNo se pudieron regenerar (revisar manualmente): ' + d.errores.join(', ') + '.';
+      alert(msg);
+      if (d.regenerados?.length) location.reload();
+    } catch {
+      alert('Error de conexión.');
+    } finally {
+      btn.disabled = false; btn.innerHTML = texto;
     }
   }
 
