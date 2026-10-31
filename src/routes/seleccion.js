@@ -1280,7 +1280,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
             \`Radicacion CCF\`, \`ARL\`, \`Riesgo ARL\`, \`Nombre Contacto de Emergencia\`, \`Telefono Contacto de Emergencia\`,
             \`Banco\`, \`N° Cuenta Bancaria\`, \`Chaqueta\`, \`Camiseta\`, \`Numero\`, \`Pantalon\`, \`Botas\`,
             \`Fecha_Ultima_Entrega\`, \`Observaciones dotacion\`, \`Estado\`, \`Centro de costos\`, \`Operación\`,
-            \`Usuario\`, \`Fecha de Actualización\`
+            \`Usuario\`, \`usuarioactualiza\`, \`Fecha de Actualización\`
         ) VALUES (
             ?, ?, ?, ?, ?, 
             ?, ?, ?, ?, ?,
@@ -1292,14 +1292,14 @@ router.post('/finalizar-contratacion', async (req, res) => {
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?
+            ?, ?, ?, ?
         ) ON DUPLICATE KEY UPDATE 
             \`Trabajador\` = VALUES(\`Trabajador\`),
             \`Estado\` = VALUES(\`Estado\`),
             \`Operación\` = VALUES(\`Operación\`),
             \`Centro de costos\` = VALUES(\`Centro de costos\`),
             \`Fecha de Actualización\` = VALUES(\`Fecha de Actualización\`),
-            \`Usuario\` = VALUES(\`Usuario\`)
+            \`Usuario\` = VALUES(\`Usuario\`), \`usuarioactualiza\` = VALUES(\`usuarioactualiza\`)
     `;
 
     const valuesSegmentacion = [
@@ -1313,7 +1313,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
         null, 'Bolivar', null, nombreEmergencia, teleEmergencia,
         null, null, a.camisa_talla, a.camisa_talla, null, a.talla_pantalon, a.zapatos_talla,
         null, null, 'Activo', operacion, operacion,
-        nombreUsuario, fechaActualizacion
+        nombreUsuario, nombreUsuario, fechaActualizacion
     ];
 
     await connection.query(sqlInsertSegmentacion, valuesSegmentacion);
@@ -1322,16 +1322,16 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const idVinculacionNueva = crypto.randomUUID();
     await connection.query(`
         INSERT INTO Maestro_Vinculación 
-        (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Estado, \`Fecha Actualización\`, Usuario)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?)
-    `, [idVinculacionNueva, nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, nombreUsuario]);
+        (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Estado, \`Fecha Actualización\`, Usuario, usuarioactualiza)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?, ?)
+    `, [idVinculacionNueva, nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, nombreUsuario, nombreUsuario]);
 
     // 6. Maestro_Examenes
     await connection.query(`
         INSERT INTO Maestro_Examenes 
-        (\`Id Vinculación\`, Trabajador, Identificación, Operación, Estado, \`Fecha Actualización\`, Usuario)
-        VALUES (UUID(), ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?)
-    `, [nombreTrabajador, a.identificacion, operacion, nombreUsuario]);
+        (\`Id Vinculación\`, Trabajador, Identificación, Operación, Estado, \`Fecha Actualización\`, Usuario, usuarioactualiza)
+        VALUES (UUID(), ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?, ?)
+    `, [nombreTrabajador, a.identificacion, operacion, nombreUsuario, nombreUsuario]);
 
     // 7. Traslado de Archivos
     const [docs] = await connection.query(`

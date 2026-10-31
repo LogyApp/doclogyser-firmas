@@ -2162,18 +2162,220 @@
 
     </div>
 
-    <!-- ── SECCIÓN PLACEHOLDER: SOCIODEMOGRÁFICA ─────────────────────────────── -->
+    <!-- ── SECCIÓN: SOCIODEMOGRÁFICA ─────────────────────────────────────────── -->
     <div id="tabContentSociodemografica" style="display: none;">
-      <div class="tab-placeholder-card">
-        <div class="tab-placeholder-icon">📊</div>
-        <div class="tab-placeholder-title">Sociodemográfica &amp; Vinculación</div>
-        <div class="tab-placeholder-desc">
-          Este submódulo consolidará la información de <strong>Maestro_Segmentación</strong> combinada con <strong>Maestro_Vinculación</strong>, utilizada por Contratación tras el envío de candidatos aprobados.
+      <style>
+        .socio-switch-wrap {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 5px 14px;
+          border-radius: 22px;
+          border: 1.5px solid rgba(22, 163, 74, 0.35);
+          background: rgba(22, 163, 74, 0.08);
+          transition: all 0.25s ease;
+          user-select: none;
+        }
+        .socio-switch-wrap.modo-retirados {
+          border-color: rgba(220, 38, 38, 0.38);
+          background: rgba(220, 38, 38, 0.08);
+        }
+        .socio-switch-label {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: color 0.2s ease;
+          letter-spacing: 0.2px;
+        }
+        .socio-switch-label.activo-rojo {
+          color: #dc2626;
+        }
+        .socio-switch-label.activo-verde {
+          color: #16a34a;
+        }
+        .socio-switch {
+          position: relative;
+          display: inline-block;
+          width: 40px;
+          height: 21px;
+          margin: 0;
+          flex-shrink: 0;
+        }
+        .socio-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+        .socio-slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: #dc2626;
+          transition: 0.28s;
+          border-radius: 21px;
+        }
+        .socio-slider:before {
+          position: absolute;
+          content: "";
+          height: 15px;
+          width: 15px;
+          left: 3px;
+          bottom: 3px;
+          background-color: #ffffff;
+          transition: 0.28s;
+          border-radius: 50%;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+        .socio-switch input:checked + .socio-slider {
+          background-color: #16a34a;
+        }
+        .socio-switch input:checked + .socio-slider:before {
+          transform: translateX(19px);
+        }
+        .socio-switch input:disabled + .socio-slider {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+        .socio-opciones-bar {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          align-items: center;
+        }
+        .socio-opcion-btn {
+          padding: 7px 14px;
+          border-radius: 8px;
+          border: 1.5px solid var(--border);
+          background: var(--card-bg);
+          color: var(--text-muted);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.18s ease;
+          white-space: nowrap;
+        }
+        .socio-opcion-btn:hover {
+          border-color: var(--accent-light);
+          color: var(--accent);
+          background: var(--accent-soft);
+        }
+        .socio-opcion-btn.active {
+          background: var(--primary);
+          color: var(--text-inverse);
+          border-color: var(--primary);
+          box-shadow: var(--shadow-sm);
+        }
+        .socio-doc-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 9px;
+          border-radius: 6px;
+          background: var(--accent-soft);
+          color: var(--accent);
+          font-weight: 600;
+          font-size: 0.75rem;
+          text-decoration: none;
+          border: 1px solid rgba(59, 130, 246, 0.25);
+          transition: all 0.15s ease;
+        }
+        .socio-doc-link:hover {
+          background: var(--accent);
+          color: #ffffff;
+        }
+      </style>
+
+      <!-- Card Filtros Plegables (como en Requisiciones y Aspirantes) -->
+      <div class="filter-panel" id="panelFiltrosSociodemografica">
+        <div class="filter-panel-header" onclick="toggleFiltrosSociodemografica()">
+          <div class="filter-panel-title">
+            <span>🔍</span> Filtros y Búsqueda de Sociodemografica
+            <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCountSocio" style="margin-left:8px; font-size:0.72rem;">Sin filtros</span>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltrosSocio" onclick="event.stopPropagation(); toggleFiltrosSociodemografica()">
+            <span id="iconToggleFiltrosSocio">▲ Mostrar</span>
+          </button>
         </div>
-        <div style="margin-top: 20px;">
-          <span class="module-badge-tag" style="background:var(--accent-soft); color:var(--accent-dark); border-color:var(--border);">
-            Próximamente Disponible
-          </span>
+        <div class="filter-panel-body" id="bodyFiltrosSociodemografica" style="display:none;">
+          <div class="filter-grid">
+            <div class="filter-group" style="grid-column: span 2;">
+              <label>Buscador (Cédula / Nombre / Cargo)</label>
+              <input type="text" id="filtroSocioQ" placeholder="Escribe cédula, nombre, cargo, correo o celular..." oninput="onFiltroSocioInput()" onkeydown="if(event.key==='Enter') cargarDatosSociodemografica()">
+            </div>
+            <div class="filter-group">
+              <label>Regional</label>
+              <select id="filtroSocioRegional" onchange="onFiltroSocioChange('regional')">
+                <option value="">Todas las Regionales</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Operación</label>
+              <select id="filtroSocioOperacion" onchange="onFiltroSocioChange('operacion')">
+                <option value="">Todas las Operaciones</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Cargo</label>
+              <select id="filtroSocioCargo" onchange="onFiltroSocioChange('cargo')">
+                <option value="">Todos los Cargos</option>
+              </select>
+            </div>
+            <div class="filter-group" id="grupoFiltroSocioArea" style="display: none;">
+              <label>Área</label>
+              <select id="filtroSocioArea" onchange="onFiltroSocioChange('area')">
+                <option value="">Todas las Áreas</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="btn btn-primary" onclick="cargarDatosSociodemografica()" style="flex:1;">
+                <span>Filtrar</span>
+              </button>
+              <button type="button" class="btn btn-outline" onclick="limpiarFiltrosSociodemografica()" title="Limpiar filtros">
+                <span>Limpiar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Tabla Maestra Sociodemográfica (Columnas redimensionables y ordenables como en las demás pestañas) -->
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
+            <!-- Switch Retirados (rojo) / Activos (verde) -->
+            <div id="socioSwitchWrap" class="socio-switch-wrap" title="Alternar entre colaboradores Retirados y Activos">
+              <span id="lblSocioRetirados" class="socio-switch-label" onclick="intentarCambiarEstadoSocio(false)">Retirados</span>
+              <label class="socio-switch">
+                <input type="checkbox" id="toggleEstadoSocio" checked onchange="onToggleEstadoSocioChange(this.checked)">
+                <span class="socio-slider"></span>
+              </label>
+              <span id="lblSocioActivos" class="socio-switch-label activo-verde" onclick="intentarCambiarEstadoSocio(true)">Activos</span>
+            </div>
+
+            <!-- Selector de las 7 opciones de vista por columnas -->
+            <div id="socioOpcionesBar" class="socio-opciones-bar"></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="socioTotalBadge" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">(0 registros)</span>
+            <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarDatosSociodemografica()">
+              <span>↻ Actualizar</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="req-table-wrapper">
+          <table id="tablaSociodemografica" class="resizable-table">
+            <thead id="theadSociodemografica"></thead>
+            <tbody id="tbodySociodemografica">
+              <tr>
+                <td colspan="12" style="text-align: center; padding: 36px; color: var(--text-muted);">
+                  Cargando información sociodemográfica...
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -2984,6 +3186,27 @@
     </div>
   </div>
 
+  <!-- ── MODAL: EDITAR REGISTRO SOCIODEMOGRÁFICA ───────────────────────────── -->
+  <div class="modal-backdrop" id="modalEditarSociodemografica">
+    <div class="modal-box" style="max-width: 680px; width: 95%;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div class="modal-title" id="modalSocioTitulo">✏️ Editar Registro</div>
+          <div id="modalSocioSubtitulo" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;"></div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="cerrarModales()">✕</button>
+      </div>
+      <form id="formEditarSociodemografica" onsubmit="guardarEdicionSociodemografica(event)">
+        <div class="modal-body" id="cuerpoFormSociodemografica" style="max-height: 68vh; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; padding: 16px 4px;">
+        </div>
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnGuardarSocioModal">💾 Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ── TOAST NOTIFICATIONS ───────────────────────────────────────────────── -->
   <div class="toast-box" id="toastContainer"></div>
 
@@ -2995,7 +3218,7 @@
     const TAB_META = {
       Requisiciones:    { icon: '📋', title: 'Requisiciones de Personal', subtitle: 'Solicitudes y seguimiento de vacantes laborales' },
       Aspirantes:       { icon: '👥', title: 'Aspirantes & Hojas de Vida', subtitle: 'Catálogo de aspirantes, fases y pruebas de selección' },
-      Sociodemografica: { icon: '📊', title: 'Sociodemográfica y Vinculación', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
+      Sociodemografica: { icon: '📊', title: 'Sociodemografica', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
       Integridad:       { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
       Parametros:       { icon: '⚙️', title: 'Parámetros del Módulo', subtitle: 'Reglas de negocio y configuración de TalentHub (tabla Config_Parametros)' }
     };
@@ -3056,7 +3279,7 @@
     const TITULOS_TALENTHUB = {
       Requisiciones: 'Requisiciones',
       Aspirantes: 'Aspirantes & Hojas de Vida',
-      Sociodemografica: 'Sociodemográfica',
+      Sociodemografica: 'Sociodemografica',
       Integridad: 'Integridad',
       Parametros: 'Parámetros'
     };
@@ -3196,6 +3419,8 @@
         inicializarRequisiciones();
       } else if (tabName === 'Aspirantes') {
         inicializarAspirantes();
+      } else if (tabName === 'Sociodemografica') {
+        inicializarSociodemografica();
       } else if (tabName === 'Parametros') {
         cargarParametrosTalenthubTabla();
       }
@@ -7164,6 +7389,990 @@
       }
     }
 
+    // =========================================================================
+    // ── SOCIODEMOGRÁFICA (Activos / Retirados + 7 Vistas de Columnas) ────────
+    // =========================================================================
+    let _socioCatalogosCargados = false;
+    let _socioCatalogos = null;
+    let _socioPermisos = null;
+    let _socioOpciones = [
+      { key: 'colaboradores',    label: 'Colaboradores' },
+      { key: 'datos_generales',  label: 'Datos Generales' },
+      { key: 'info_personal',    label: 'Información Personal' },
+      { key: 'dotacion',         label: 'Dotación' },
+      { key: 'info_bancaria',    label: 'Información Bancaria' },
+      { key: 'seguridad_social', label: 'Seguridad Social' },
+      { key: 'examenes',         label: 'Examenes' }
+    ];
+    let _socioEstadoVista = 'Activo'; // 'Activo' (verde, por defecto) | 'Retirado' (rojo)
+    let _socioOpcionActiva = 'colaboradores'; // Por defecto Colaboradores
+    let _socioRegistros = [];
+    let _socioPuedeEditarActual = false;
+    let _socioSortCol = 'fecha_ingreso';
+    let _socioSortDir = 'desc';
+    let _socioSearchTimer = null;
+    let _socioRegistroEditando = null;
+
+    // Definición exacta de columnas por cada opción
+    const COLUMNAS_SOCIODEMOGRAFICA = {
+      colaboradores: [
+        { key: 'regional',            label: 'Regional',               width: '130px' },
+        { key: 'operacion',           label: 'Operación',              width: '160px' },
+        { key: 'trabajador',          label: 'Trabajador',             width: '280px', bold: true },
+        { key: 'estado',              label: 'Estado',                 width: '110px', type: 'estado' },
+        { key: 'cargo',               label: 'Cargo',                  width: '210px' },
+        { key: 'area',                label: 'Area',                   width: '160px' },
+        { key: 'fecha_ingreso',       label: 'Fecha de Ingreso',       width: '135px' },
+        { key: 'fecha_retiro',        label: 'Fecha de Retiro',        width: '135px' },
+        { key: 'usuario_actualiza',   label: 'Usuario actualiza',      width: '180px' },
+        { key: 'fecha_actualizacion', label: 'Fecha de actualización', width: '165px', type: 'datetime' }
+      ],
+      datos_generales: [
+        { key: 'regional',            label: 'Regional',               width: '130px' },
+        { key: 'operacion',           label: 'Operación',              width: '160px' },
+        { key: 'trabajador',          label: 'Trabajador',             width: '270px', bold: true },
+        { key: 'tipo_documento',      label: 'Tipo de Documento',      width: '200px' },
+        { key: 'primer_nombre',       label: 'Primer Nombre',          width: '135px' },
+        { key: 'segundo_nombre',      label: 'Segundo Nombre',         width: '135px' },
+        { key: 'primer_apellido',     label: 'Primer Apellido',        width: '140px' },
+        { key: 'segundo_apellido',    label: 'Segundo Apellido',       width: '140px' },
+        { key: 'genero',              label: 'Género',                 width: '90px' },
+        { key: 'fecha_nacimiento',    label: 'Fecha Nacimiento',       width: '140px' },
+        { key: 'edad',                label: 'Edad',                   width: '80px', type: 'edad' },
+        { key: 'usuario_actualiza',   label: 'Usuario actualiza',      width: '180px' },
+        { key: 'fecha_actualizacion', label: 'Fecha de Actualización', width: '165px', type: 'datetime' }
+      ],
+      info_personal: [
+        { key: 'regional',             label: 'Regional',                width: '130px' },
+        { key: 'operacion',            label: 'Operación',               width: '160px' },
+        { key: 'trabajador',           label: 'Trabajador',              width: '270px', bold: true },
+        { key: 'estado_civil',         label: 'Estado Civil',            width: '130px' },
+        { key: 'celular',              label: 'Celular',                 width: '130px' },
+        { key: 'email',                label: 'Email',                   width: '220px' },
+        { key: 'ciudad_residencia',    label: 'Ciudad de Residencia',    width: '160px' },
+        { key: 'direccion_residencia', label: 'Dirección de Residencia', width: '240px' },
+        { key: 'usuario_actualiza',    label: 'Usuario Actualiza',       width: '180px' },
+        { key: 'fecha_actualizacion',  label: 'Fecha de Actualización',  width: '165px', type: 'datetime' }
+      ],
+      dotacion: [
+        { key: 'regional',               label: 'Regional',               width: '130px' },
+        { key: 'operacion',              label: 'Operación',              width: '160px' },
+        { key: 'trabajador',             label: 'Trabajador',             width: '270px', bold: true },
+        { key: 'cargo',                  label: 'Cargo',                  width: '200px' },
+        { key: 'fecha_ingreso',          label: 'Fecha de Ingreso',       width: '135px' },
+        { key: 'fecha_retiro',           label: 'Fecha de Retiro',        width: '135px' },
+        { key: 'camiseta',               label: 'Camiseta',               width: '100px' },
+        { key: 'numero_buzo',            label: 'Numero Buzo',            width: '115px' },
+        { key: 'pantalon',               label: 'Pantalon',               width: '100px' },
+        { key: 'botas',                  label: 'Botas',                  width: '95px' },
+        { key: 'fecha_ultima_entrega',   label: 'Fecha Ultima Entrega',   width: '155px' },
+        { key: 'observaciones_dotacion', label: 'Observaciones dotacion', width: '260px' },
+        { key: 'usuario_actualiza',      label: 'Usuario Actualiza',      width: '180px' },
+        { key: 'fecha_actualizacion',    label: 'Fecha de Actualización', width: '165px', type: 'datetime' }
+      ],
+      info_bancaria: [
+        { key: 'regional',            label: 'Regional',               width: '130px' },
+        { key: 'operacion',           label: 'Operación',              width: '160px' },
+        { key: 'trabajador',          label: 'Trabajador',             width: '270px', bold: true },
+        { key: 'cargo',               label: 'Cargo',                  width: '200px' },
+        { key: 'fecha_ingreso',       label: 'Fecha de Ingreso',       width: '135px' },
+        { key: 'fecha_retiro',        label: 'Fecha de Retiro',        width: '135px' },
+        { key: 'banco',               label: 'Banco',                  width: '170px' },
+        { key: 'cuenta_bancaria',     label: 'N° Cuenta Bancaria',     width: '165px' },
+        { key: 'doc_banco',           label: 'Doc Banco',              width: '135px', type: 'doc_url' },
+        { key: 'usuario_actualiza',   label: 'Usuario Actualiza',      width: '180px' },
+        { key: 'fecha_actualizacion', label: 'Fecha de Actualización', width: '165px', type: 'datetime' }
+      ],
+      seguridad_social: [
+        { key: 'regional',            label: 'Regional',               width: '130px' },
+        { key: 'operacion',           label: 'Operación',              width: '160px' },
+        { key: 'trabajador',          label: 'Trabajador',             width: '270px', bold: true },
+        { key: 'cargo',               label: 'Cargo',                  width: '200px' },
+        { key: 'fecha_ingreso',       label: 'Fecha de Ingreso',       width: '135px' },
+        { key: 'fecha_retiro',        label: 'Fecha de Retiro',        width: '135px' },
+        { key: 'eps',                 label: 'EPS',                    width: '150px' },
+        { key: 'radicacion_eps',      label: 'Radicacion EPS',         width: '130px' },
+        { key: 'doc_eps',             label: 'Doc EPS',                width: '125px', type: 'doc_url' },
+        { key: 'pension',             label: 'Pensión',                width: '150px' },
+        { key: 'radicacion_afp',      label: 'Radicacion AFP',         width: '130px' },
+        { key: 'doc_afp',             label: 'Doc AFP',                width: '125px', type: 'doc_url' },
+        { key: 'cesantias',           label: 'Cesantías',              width: '150px' },
+        { key: 'caja_compensacion',   label: 'Caja de Compensación',   width: '175px' },
+        { key: 'radicacion_ccf',      label: 'Radicacion CCF',         width: '130px' },
+        { key: 'doc_ccf',             label: 'Doc CCF',                width: '125px', type: 'doc_url' },
+        { key: 'arl',                 label: 'ARL',                    width: '120px' },
+        { key: 'riesgo_arl',          label: 'Riesgo ARL',             width: '105px' },
+        { key: 'doc_arl',             label: 'Doc ARL',                width: '125px', type: 'doc_url' },
+        { key: 'usuario_actualiza',   label: 'Usuario Actualiza',      width: '180px' },
+        { key: 'fecha_actualizacion', label: 'Fecha de Actualización', width: '165px', type: 'datetime' }
+      ],
+      examenes: [
+        { key: 'regional',                label: 'Regional',                    width: '130px' },
+        { key: 'operacion',               label: 'Operación',                   width: '160px' },
+        { key: 'trabajador',              label: 'Trabajador',                  width: '270px', bold: true },
+        { key: 'cargo',                   label: 'Cargo',                       width: '200px' },
+        { key: 'fecha_ingreso',           label: 'Fecha de Ingreso',            width: '135px' },
+        { key: 'fecha_retiro',            label: 'Fecha de Retiro',             width: '135px' },
+        { key: 'fecha_examen_ingreso',    label: 'Fecha Examen Medico Ingreso', width: '195px' },
+        { key: 'fecha_examen_periodico',  label: 'Fecha Examen Medico Periodico', width: '205px' },
+        { key: 'recomendaciones_medicas', label: 'Recomendaciones Medicas',     width: '230px' },
+        { key: 'fecha_examen_bpm',        label: 'Fecha Examen BPM',            width: '145px' },
+        { key: 'fecha_carnet_bpm',        label: 'Fecha Carnet BPM',            width: '145px' },
+        { key: 'trabajo_alturas',         label: 'Trabajo en Alturas',          width: '145px' },
+        { key: 'fecha_curso_alturas',     label: 'Fecha Curso de Alturas',      width: '165px' },
+        { key: 'fecha_psicosensometrico', label: 'Fecha Psicosesometrico',      width: '170px' },
+        { key: 'estudio_seguridad',       label: 'Estudio de Seguridad',        width: '160px' },
+        { key: 'observaciones_examenes',  label: 'Observaciones Examenes',      width: '230px' },
+        { key: 'usuario_actualiza',       label: 'Usuario actualiza',           width: '180px' },
+        { key: 'fecha_actualizacion',     label: 'Fecha de Actualización',      width: '165px', type: 'datetime' }
+      ]
+    };
+
+    async function inicializarSociodemografica() {
+      try {
+        if (!_socioCatalogosCargados) {
+          const res = await fetch(`/talenthub/api/sociodemografica/catalogos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            showToast(data.error || 'Error cargando permisos de Sociodemográfica', 'error');
+            return;
+          }
+          _socioCatalogos = data.catalogos || {};
+          _socioPermisos = data.permisos || {};
+          if (Array.isArray(data.opciones) && data.opciones.length) {
+            _socioOpciones = data.opciones;
+          }
+          _socioCatalogosCargados = true;
+        }
+        sincronizarControlesEstadoYOpcionesSocio();
+        await cargarDatosSociodemografica();
+      } catch (err) {
+        console.error('[Sociodemografica] Error inicializando:', err);
+        showToast('No fue posible inicializar Sociodemográfica', 'error');
+      }
+    }
+
+    function obtenerOrdenPorDefectoSocio(opcionKey) {
+      const cols = COLUMNAS_SOCIODEMOGRAFICA[opcionKey] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+      const tieneFechaIngreso = cols.some(c => c.key === 'fecha_ingreso');
+      return {
+        col: tieneFechaIngreso ? 'fecha_ingreso' : 'fecha_actualizacion',
+        dir: 'desc'
+      };
+    }
+
+    function sincronizarControlesEstadoYOpcionesSocio() {
+      const chk = document.getElementById('toggleEstadoSocio');
+      const wrap = document.getElementById('socioSwitchWrap');
+      const lblRet = document.getElementById('lblSocioRetirados');
+      const lblAct = document.getElementById('lblSocioActivos');
+
+      const puedeRetirados = !!(_socioPermisos && _socioPermisos.puedeVerRetirados);
+      if (!puedeRetirados && _socioEstadoVista === 'Retirado') {
+        _socioEstadoVista = 'Activo';
+      }
+
+      const esActivo = (_socioEstadoVista === 'Activo');
+      if (chk) {
+        chk.checked = esActivo;
+        chk.disabled = !puedeRetirados;
+      }
+      if (wrap) {
+        wrap.classList.toggle('modo-retirados', !esActivo);
+        wrap.title = puedeRetirados
+          ? 'Alternar entre colaboradores Retirados (rojo) y Activos (verde)'
+          : 'Vista Activos (su rol no tiene habilitado el cambio a Retirados)';
+      }
+      if (lblRet) lblRet.classList.toggle('activo-rojo', !esActivo);
+      if (lblAct) lblAct.classList.toggle('activo-verde', esActivo);
+
+      // Renderizar botones de las 7 opciones según permisos en el estado actual
+      const mapaVer = esActivo
+        ? (_socioPermisos?.verActivo || { colaboradores: true })
+        : (_socioPermisos?.verRetirado || {});
+
+      const opcionesVisibles = _socioOpciones.filter(o => !!mapaVer[o.key]);
+      if (opcionesVisibles.length && !opcionesVisibles.some(o => o.key === _socioOpcionActiva)) {
+        _socioOpcionActiva = opcionesVisibles[0].key;
+      }
+
+      const colsActivas = COLUMNAS_SOCIODEMOGRAFICA[_socioOpcionActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+      if (!_socioSortCol || !colsActivas.some(c => c.key === _socioSortCol)) {
+        const def = obtenerOrdenPorDefectoSocio(_socioOpcionActiva);
+        _socioSortCol = def.col;
+        _socioSortDir = def.dir;
+      }
+
+      const bar = document.getElementById('socioOpcionesBar');
+      if (bar) {
+        bar.innerHTML = opcionesVisibles.map(o => `
+          <button type="button"
+                  class="socio-opcion-btn ${o.key === _socioOpcionActiva ? 'active' : ''}"
+                  onclick="seleccionarOpcionSociodemografica('${o.key}')">
+            ${esc(o.label)}
+          </button>
+        `).join('');
+      }
+
+      const grpArea = document.getElementById('grupoFiltroSocioArea');
+      if (grpArea) {
+        grpArea.style.display = (_socioOpcionActiva === 'colaboradores') ? 'flex' : 'none';
+      }
+    }
+
+    function intentarCambiarEstadoSocio(haciaActivo) {
+      const puedeRetirados = !!(_socioPermisos && _socioPermisos.puedeVerRetirados);
+      if (!haciaActivo && !puedeRetirados) {
+        showToast('Su rol no tiene permiso para cambiar a la vista de Retirados.', 'info');
+        return;
+      }
+      const chk = document.getElementById('toggleEstadoSocio');
+      if (chk && chk.checked !== haciaActivo) {
+        chk.checked = haciaActivo;
+        onToggleEstadoSocioChange(haciaActivo);
+      }
+    }
+
+    function onToggleEstadoSocioChange(checked) {
+      const puedeRetirados = !!(_socioPermisos && _socioPermisos.puedeVerRetirados);
+      if (!checked && !puedeRetirados) {
+        const chk = document.getElementById('toggleEstadoSocio');
+        if (chk) chk.checked = true;
+        showToast('Su rol no tiene permiso para ver Retirados.', 'info');
+        return;
+      }
+      _socioEstadoVista = checked ? 'Activo' : 'Retirado';
+      sincronizarControlesEstadoYOpcionesSocio();
+      cargarDatosSociodemografica();
+    }
+
+    function seleccionarOpcionSociodemografica(opcionKey) {
+      if (_socioOpcionActiva === opcionKey) return;
+      _socioOpcionActiva = opcionKey;
+      const def = obtenerOrdenPorDefectoSocio(opcionKey);
+      _socioSortCol = def.col;
+      _socioSortDir = def.dir;
+      if (opcionKey !== 'colaboradores') {
+        const selArea = document.getElementById('filtroSocioArea');
+        if (selArea) selArea.value = '';
+      }
+      sincronizarControlesEstadoYOpcionesSocio();
+      cargarDatosSociodemografica();
+    }
+
+    function toggleFiltrosSociodemografica() {
+      const body = document.getElementById('bodyFiltrosSociodemografica');
+      const icon = document.getElementById('iconToggleFiltrosSocio');
+      if (!body) return;
+      const isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? 'block' : 'none';
+      if (icon) icon.textContent = isHidden ? '▼ Ocultar' : '▲ Mostrar';
+    }
+
+    function onFiltroSocioInput() {
+      clearTimeout(_socioSearchTimer);
+      _socioSearchTimer = setTimeout(() => {
+        cargarDatosSociodemografica();
+      }, 260);
+    }
+
+    function onFiltroSocioChange(campo) {
+      if (campo === 'regional') {
+        const selOp = document.getElementById('filtroSocioOperacion');
+        if (selOp) selOp.value = '';
+      }
+      cargarDatosSociodemografica();
+    }
+
+    function limpiarFiltrosSociodemografica() {
+      const ids = ['filtroSocioQ', 'filtroSocioRegional', 'filtroSocioOperacion', 'filtroSocioCargo', 'filtroSocioArea'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      cargarDatosSociodemografica();
+    }
+
+    function actualizarConteoFiltrosActivosSocio() {
+      const vals = [
+        document.getElementById('filtroSocioQ')?.value?.trim(),
+        document.getElementById('filtroSocioRegional')?.value,
+        document.getElementById('filtroSocioOperacion')?.value,
+        document.getElementById('filtroSocioCargo')?.value,
+        _socioOpcionActiva === 'colaboradores' ? document.getElementById('filtroSocioArea')?.value : ''
+      ].filter(Boolean);
+      const badge = document.getElementById('lblFiltrosActivosCountSocio');
+      if (badge) {
+        badge.textContent = vals.length > 0 ? `${vals.length} filtro(s) activo(s)` : 'Sin filtros';
+      }
+    }
+
+    async function cargarDatosSociodemografica() {
+      const tbody = document.getElementById('tbodySociodemografica');
+      const cols = COLUMNAS_SOCIODEMOGRAFICA[_socioOpcionActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+      renderEncabezadoTablaSocio(cols);
+
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${cols.length + 1}" style="text-align:center; padding:32px; color:var(--text-muted);">
+              ⏳ Cargando registros de <strong>${esc(_socioEstadoVista)}s</strong>...
+            </td>
+          </tr>
+        `;
+      }
+
+      actualizarConteoFiltrosActivosSocio();
+
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        estado: _socioEstadoVista,
+        opcion: _socioOpcionActiva,
+        q: document.getElementById('filtroSocioQ')?.value?.trim() || '',
+        regional: document.getElementById('filtroSocioRegional')?.value || '',
+        operacion: document.getElementById('filtroSocioOperacion')?.value || '',
+        cargo: document.getElementById('filtroSocioCargo')?.value || '',
+        area: _socioOpcionActiva === 'colaboradores' ? (document.getElementById('filtroSocioArea')?.value || '') : ''
+      });
+
+      try {
+        const res = await fetch(`/talenthub/api/sociodemografica?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:32px; color:var(--danger);">${esc(data.error || 'Error al consultar')}</td></tr>`;
+          }
+          return;
+        }
+
+        _socioRegistros = data.registros || [];
+        _socioPuedeEditarActual = !!data.puedeEditar;
+
+        poblarSelectoresFacetasSocio(data.counts || {});
+        renderEncabezadoTablaSocio(cols);
+        renderFilasTablaSocio();
+      } catch (err) {
+        console.error('[Sociodemografica] Error cargando datos:', err);
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:32px; color:var(--danger);">Error de conexión al cargar Sociodemográfica.</td></tr>`;
+        }
+      }
+    }
+
+    function poblarSelectoresFacetasSocio(counts) {
+      const poblarSelect = (selectId, mapaConteos, placeholder) => {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const valActual = sel.value;
+        const entradas = Object.entries(mapaConteos || {}).sort((a, b) => a[0].localeCompare(b[0], 'es'));
+        let html = `<option value="">${placeholder}</option>`;
+        entradas.forEach(([nombre, cnt]) => {
+          const selected = (nombre === valActual) ? 'selected' : '';
+          html += `<option value="${esc(nombre)}" ${selected}>${esc(nombre)} (${cnt})</option>`;
+        });
+        if (valActual && !mapaConteos?.[valActual]) {
+          html += `<option value="${esc(valActual)}" selected>${esc(valActual)} (0)</option>`;
+        }
+        sel.innerHTML = html;
+      };
+
+      poblarSelect('filtroSocioRegional', counts.regionales, 'Todas las Regionales');
+      poblarSelect('filtroSocioOperacion', counts.operaciones, 'Todas las Operaciones');
+      poblarSelect('filtroSocioCargo', counts.cargos, 'Todos los Cargos');
+      if (_socioOpcionActiva === 'colaboradores') {
+        poblarSelect('filtroSocioArea', counts.areas, 'Todas las Áreas');
+      }
+    }
+
+    function renderEncabezadoTablaSocio(cols) {
+      const thead = document.getElementById('theadSociodemografica');
+      if (!thead) return;
+      let html = '<tr>';
+      cols.forEach(c => {
+        const isSorted = (_socioSortCol === c.key);
+        const arrow = isSorted ? (_socioSortDir === 'asc' ? '▲' : '▼') : '▲';
+        const w = c.width || '140px';
+        html += `
+          <th style="width:${w}; min-width:90px;" class="sortable ${isSorted ? 'active sorted' : ''}" onclick="ordenarTablaSocio('${c.key}')">
+            <div class="th-content">
+              <span>${esc(c.label)}</span>
+              <span class="sort-icon">${arrow}</span>
+            </div>
+            <div class="col-resizer"></div>
+          </th>
+        `;
+      });
+      if (_socioPuedeEditarActual) {
+        html += `
+          <th style="width:95px; min-width:85px; text-align:center;">
+            <div class="th-content" style="justify-content:center;">
+              <span>Acción</span>
+            </div>
+          </th>
+        `;
+      }
+      html += '</tr>';
+      thead.innerHTML = html;
+      inicializarRedimensionColumnasSociodemografica();
+    }
+
+    function inicializarRedimensionColumnasSociodemografica() {
+      const resizers = document.querySelectorAll('#tablaSociodemografica .col-resizer');
+      resizers.forEach(resizer => {
+        if (resizer._hasResizerHandler) return;
+        resizer._hasResizerHandler = true;
+
+        resizer.addEventListener('click', function (e) {
+          e.stopPropagation();
+        });
+
+        resizer.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const th = this.parentElement;
+          const startX = e.pageX;
+          const startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          function onMouseMove(ev) {
+            const diffX = ev.pageX - startX;
+            const newWidth = Math.max(55, startWidth + diffX);
+            th.style.width = newWidth + 'px';
+            th.style.minWidth = newWidth + 'px';
+          }
+
+          function onMouseUp() {
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+          }
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
+    function ordenarTablaSocio(colKey) {
+      if (_socioSortCol === colKey) {
+        _socioSortDir = (_socioSortDir === 'asc') ? 'desc' : 'asc';
+      } else {
+        _socioSortCol = colKey;
+        _socioSortDir = 'asc';
+      }
+      const cols = COLUMNAS_SOCIODEMOGRAFICA[_socioOpcionActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+      renderEncabezadoTablaSocio(cols);
+      renderFilasTablaSocio();
+    }
+
+    function formatearFechaHoraSocio(val) {
+      if (!val) return '—';
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return esc(String(val));
+      return d.toLocaleString('es-CO', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
+    }
+
+    function renderCeldaSocio(row, col) {
+      const val = row[col.key];
+      if (col.type === 'estado') {
+        const esAct = String(val || '').toLowerCase() === 'activo';
+        const bg = esAct ? 'rgba(22, 163, 74, 0.14)' : 'rgba(220, 38, 38, 0.14)';
+        const fg = esAct ? '#15803d' : '#b91c1c';
+        return `<span style="display:inline-block; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.74rem; background:${bg}; color:${fg};">${esc(val || '—')}</span>`;
+      }
+      if (col.type === 'doc_url') {
+        if (!val) return '<span style="color:var(--text-muted);">—</span>';
+        return `<a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="socio-doc-link" onclick="event.stopPropagation();" title="Abrir soporte en pestaña nueva">📄 Ver Doc</a>`;
+      }
+      if (col.type === 'edad') {
+        if (val === null || val === undefined || val === '') return '<span style="color:var(--text-muted);">—</span>';
+        return `<span style="font-weight:600;">${esc(String(val))} años</span>`;
+      }
+      if (col.type === 'datetime') {
+        return `<span style="font-size:0.78rem; color:var(--text-muted);">${formatearFechaHoraSocio(val)}</span>`;
+      }
+      if (val === null || val === undefined || String(val).trim() === '') {
+        return '<span style="color:var(--text-muted);">—</span>';
+      }
+      if (col.bold) {
+        return `<strong style="color:var(--text);" title="${esc(String(val))}">${esc(String(val))}</strong>`;
+      }
+      return `<span title="${esc(String(val))}">${esc(String(val))}</span>`;
+    }
+
+    function renderFilasTablaSocio() {
+      const tbody = document.getElementById('tbodySociodemografica');
+      const badgeTotal = document.getElementById('socioTotalBadge');
+      const cols = COLUMNAS_SOCIODEMOGRAFICA[_socioOpcionActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+
+      let lista = [..._socioRegistros];
+      if (_socioSortCol) {
+        const mult = _socioSortDir === 'asc' ? 1 : -1;
+        lista.sort((a, b) => {
+          const va = a[_socioSortCol];
+          const vb = b[_socioSortCol];
+          if (va == null && vb == null) return 0;
+          if (va == null || va === '') return 1;
+          if (vb == null || vb === '') return -1;
+          if (_socioSortCol === 'fecha_actualizacion') {
+            const ta = new Date(va).getTime() || 0;
+            const tb = new Date(vb).getTime() || 0;
+            if (ta !== tb) return (ta - tb) * mult;
+          }
+          if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mult;
+          return String(va).localeCompare(String(vb), 'es', { numeric: true }) * mult;
+        });
+      }
+
+      if (badgeTotal) {
+        badgeTotal.textContent = `(${lista.length.toLocaleString('es-CO')} ${lista.length === 1 ? 'registro' : 'registros'})`;
+      }
+
+      if (!tbody) return;
+      if (!lista.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${cols.length + (_socioPuedeEditarActual ? 1 : 0)}" style="text-align:center; padding:36px; color:var(--text-muted);">
+              No se encontraron registros para los filtros seleccionados.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = lista.map((row, idx) => {
+        const celdas = cols.map(c => `<td>${renderCeldaSocio(row, c)}</td>`).join('');
+        const celdaAccion = _socioPuedeEditarActual
+          ? `<td style="text-align:center;">
+               <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:0.74rem;" onclick="event.stopPropagation(); abrirModalEditarSocioPorIndice(${idx})">
+                 ✏️ Editar
+               </button>
+             </td>`
+          : '';
+        const cursorStyle = _socioPuedeEditarActual ? 'cursor:pointer;' : '';
+        const rowClick = _socioPuedeEditarActual ? `onclick="abrirModalEditarSocioPorIndice(${idx})"` : '';
+        return `<tr style="${cursorStyle}" ${rowClick}>${celdas}${celdaAccion}</tr>`;
+      }).join('');
+
+      // Guardar referencia ordenada para abrir por índice
+      window._socioListaOrdenadaActual = lista;
+    }
+
+    function abrirModalEditarSocioPorIndice(idx) {
+      const lista = window._socioListaOrdenadaActual || _socioRegistros;
+      const row = lista[idx];
+      if (!row || !_socioPuedeEditarActual) return;
+      _socioRegistroEditando = row;
+
+      const optObj = _socioOpciones.find(o => o.key === _socioOpcionActiva);
+      const optLabel = optObj ? optObj.label : _socioOpcionActiva;
+
+      const titulo = document.getElementById('modalSocioTitulo');
+      const subtitulo = document.getElementById('modalSocioSubtitulo');
+      const cuerpo = document.getElementById('cuerpoFormSociodemografica');
+
+      if (titulo) titulo.textContent = `✏️ Editar ${optLabel} (${_socioEstadoVista})`;
+      if (subtitulo) subtitulo.textContent = `${row.trabajador || row.identificacion || ''} — Operación: ${row.operacion || '—'}`;
+
+      const buildOptions = (items, currentVal, placeholder = 'Seleccione...') => {
+        const cur = String(currentVal || '');
+        const list = Array.isArray(items) ? [...items] : [];
+        if (cur && !list.includes(cur)) list.unshift(cur);
+        return `<option value="">${placeholder}</option>` +
+          list.map(it => `<option value="${esc(it)}" ${it === cur ? 'selected' : ''}>${esc(it)}</option>`).join('');
+      };
+
+      let html = '';
+      if (_socioOpcionActiva === 'colaboradores') {
+        const todasOps = _socioCatalogos?.todasOperaciones || [];
+        const regsUnicas = Array.from(new Set(todasOps.map(o => o.regional).filter(Boolean))).sort();
+        const opsDeRegional = todasOps.filter(o => !row.regional || o.regional === row.regional).map(o => o.operacion);
+        const areasCat = _socioCatalogos?.areas || [];
+        const areasHtml = `<option value="">Sin área asignada</option>` +
+          areasCat.map(a => `<option value="${a.ID}" ${String(a.ID) === String(row.area_id || '') ? 'selected' : ''}>${esc(a.AREA)} (${esc(a.operacion)})</option>`).join('');
+
+        html = `
+          <div class="req-field">
+            <label>Regional</label>
+            <select id="editSocio_regional" class="req-input" onchange="onChangeRegionalModalSocio(this.value)">
+              ${buildOptions(regsUnicas, row.regional, 'Seleccione regional...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Operación</label>
+            <select id="editSocio_operacion" class="req-input">
+              ${buildOptions(opsDeRegional, row.operacion, 'Seleccione operación...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Estado</label>
+            <select id="editSocio_estado" class="req-input">
+              <option value="Activo" ${row.estado === 'Activo' ? 'selected' : ''}>Activo</option>
+              <option value="Retirado" ${row.estado === 'Retirado' ? 'selected' : ''}>Retirado</option>
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Cargo</label>
+            <select id="editSocio_cargo" class="req-input">
+              ${buildOptions(_socioCatalogos?.cargos || [], row.cargo, 'Seleccione cargo...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Área</label>
+            <select id="editSocio_area_id" class="req-input">
+              ${areasHtml}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Fecha de Ingreso</label>
+            <input type="date" id="editSocio_fecha_ingreso" class="req-input" value="${esc(row.fecha_ingreso || '')}">
+          </div>
+          <div class="req-field">
+            <label>Fecha de Retiro</label>
+            <input type="date" id="editSocio_fecha_retiro" class="req-input" value="${esc(row.fecha_retiro || '')}">
+          </div>
+        `;
+      } else if (_socioOpcionActiva === 'datos_generales') {
+        const tiposDoc = (_socioCatalogos?.tiposDocumento || []).map(t => t.descripcion);
+        html = `
+          <div class="req-field" style="grid-column: 1 / -1;">
+            <label>Tipo de Documento</label>
+            <select id="editSocio_tipo_documento" class="req-input">
+              ${buildOptions(tiposDoc, row.tipo_documento, 'Seleccione tipo de documento...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Primer Nombre *</label>
+            <input type="text" id="editSocio_primer_nombre" class="req-input" value="${esc(row.primer_nombre || '')}" required>
+          </div>
+          <div class="req-field">
+            <label>Segundo Nombre</label>
+            <input type="text" id="editSocio_segundo_nombre" class="req-input" value="${esc(row.segundo_nombre || '')}">
+          </div>
+          <div class="req-field">
+            <label>Primer Apellido *</label>
+            <input type="text" id="editSocio_primer_apellido" class="req-input" value="${esc(row.primer_apellido || '')}" required>
+          </div>
+          <div class="req-field">
+            <label>Segundo Apellido</label>
+            <input type="text" id="editSocio_segundo_apellido" class="req-input" value="${esc(row.segundo_apellido || '')}">
+          </div>
+          <div class="req-field">
+            <label>Género</label>
+            <select id="editSocio_genero" class="req-input">
+              ${buildOptions(['M', 'F', 'Otro'], row.genero, 'Seleccione...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Fecha Nacimiento</label>
+            <input type="date" id="editSocio_fecha_nacimiento" class="req-input" value="${esc(row.fecha_nacimiento || '')}">
+          </div>
+        `;
+      } else if (_socioOpcionActiva === 'info_personal') {
+        html = `
+          <div class="req-field">
+            <label>Estado Civil</label>
+            <select id="editSocio_estado_civil" class="req-input">
+              ${buildOptions(_socioCatalogos?.estadosCiviles || [], row.estado_civil, 'Seleccione estado civil...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Celular</label>
+            <input type="text" id="editSocio_celular" class="req-input" value="${esc(row.celular || '')}">
+          </div>
+          <div class="req-field" style="grid-column: 1 / -1;">
+            <label>Email</label>
+            <input type="email" id="editSocio_email" class="req-input" value="${esc(row.email || '')}">
+          </div>
+          <div class="req-field">
+            <label>Ciudad de Residencia</label>
+            <select id="editSocio_ciudad_residencia" class="req-input">
+              ${buildOptions(_socioCatalogos?.ciudades || [], row.ciudad_residencia, 'Seleccione ciudad...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Dirección de Residencia</label>
+            <input type="text" id="editSocio_direccion_residencia" class="req-input" value="${esc(row.direccion_residencia || '')}">
+          </div>
+        `;
+      } else if (_socioOpcionActiva === 'dotacion') {
+        html = `
+          <div class="req-field">
+            <label>Camiseta</label>
+            <input type="text" id="editSocio_camiseta" class="req-input" value="${esc(row.camiseta || '')}" placeholder="Ej: S, M, L, XL">
+          </div>
+          <div class="req-field">
+            <label>Numero Buzo</label>
+            <input type="text" id="editSocio_numero_buzo" class="req-input" value="${esc(row.numero_buzo || '')}">
+          </div>
+          <div class="req-field">
+            <label>Pantalon</label>
+            <input type="text" id="editSocio_pantalon" class="req-input" value="${esc(row.pantalon || '')}" placeholder="Ej: 30, 32, 34">
+          </div>
+          <div class="req-field">
+            <label>Botas</label>
+            <input type="text" id="editSocio_botas" class="req-input" value="${esc(row.botas || '')}" placeholder="Ej: 38, 40, 42">
+          </div>
+          <div class="req-field">
+            <label>Fecha Ultima Entrega</label>
+            <input type="date" id="editSocio_fecha_ultima_entrega" class="req-input" value="${esc(row.fecha_ultima_entrega || '')}">
+          </div>
+          <div class="req-field" style="grid-column: 1 / -1;">
+            <label>Observaciones dotacion</label>
+            <textarea id="editSocio_observaciones_dotacion" class="req-input" rows="3">${esc(row.observaciones_dotacion || '')}</textarea>
+          </div>
+        `;
+      } else if (_socioOpcionActiva === 'info_bancaria') {
+        html = `
+          <div class="req-field">
+            <label>Banco</label>
+            <select id="editSocio_banco" class="req-input">
+              ${buildOptions(_socioCatalogos?.bancos || [], row.banco, 'Seleccione banco...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>N° Cuenta Bancaria</label>
+            <input type="text" id="editSocio_cuenta_bancaria" class="req-input" value="${esc(row.cuenta_bancaria || '')}">
+          </div>
+        `;
+      } else if (_socioOpcionActiva === 'seguridad_social') {
+        html = `
+          <div class="req-field">
+            <label>EPS</label>
+            <select id="editSocio_eps" class="req-input">
+              ${buildOptions(_socioCatalogos?.eps || [], row.eps, 'Seleccione EPS...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Radicación EPS</label>
+            <input type="date" id="editSocio_radicacion_eps" class="req-input" value="${esc(row.radicacion_eps || '')}">
+          </div>
+          <div class="req-field">
+            <label>Pensión</label>
+            <select id="editSocio_pension" class="req-input">
+              ${buildOptions(_socioCatalogos?.pensiones || [], row.pension, 'Seleccione Fondo Pensión...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Radicación AFP</label>
+            <input type="date" id="editSocio_radicacion_afp" class="req-input" value="${esc(row.radicacion_afp || '')}">
+          </div>
+          <div class="req-field">
+            <label>Cesantías</label>
+            <select id="editSocio_cesantias" class="req-input">
+              ${buildOptions(_socioCatalogos?.cesantias || [], row.cesantias, 'Seleccione Fondo Cesantías...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Caja de Compensación</label>
+            <select id="editSocio_caja_compensacion" class="req-input">
+              ${buildOptions(_socioCatalogos?.cajasCompensacion || [], row.caja_compensacion, 'Seleccione Caja...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Radicación CCF</label>
+            <input type="date" id="editSocio_radicacion_ccf" class="req-input" value="${esc(row.radicacion_ccf || '')}">
+          </div>
+          <div class="req-field">
+            <label>ARL</label>
+            <input type="text" id="editSocio_arl" class="req-input" value="${esc(row.arl || '')}" placeholder="Ej: Bolivar">
+          </div>
+          <div class="req-field">
+            <label>Riesgo ARL</label>
+            <select id="editSocio_riesgo_arl" class="req-input">
+              ${buildOptions(['1', '2', '3', '4', '5'], row.riesgo_arl, 'Seleccione nivel...')}
+            </select>
+          </div>
+        `;
+      } else if (_socioOpcionActiva === 'examenes') {
+        html = `
+          <div class="req-field">
+            <label>Fecha Examen Médico Ingreso</label>
+            <input type="date" id="editSocio_fecha_examen_ingreso" class="req-input" value="${esc(row.fecha_examen_ingreso || '')}">
+          </div>
+          <div class="req-field">
+            <label>Fecha Examen Médico Periódico</label>
+            <input type="date" id="editSocio_fecha_examen_periodico" class="req-input" value="${esc(row.fecha_examen_periodico || '')}">
+          </div>
+          <div class="req-field" style="grid-column: 1 / -1;">
+            <label>Recomendaciones Médicas</label>
+            <textarea id="editSocio_recomendaciones_medicas" class="req-input" rows="2">${esc(row.recomendaciones_medicas || '')}</textarea>
+          </div>
+          <div class="req-field">
+            <label>Fecha Examen BPM</label>
+            <input type="date" id="editSocio_fecha_examen_bpm" class="req-input" value="${esc(row.fecha_examen_bpm || '')}">
+          </div>
+          <div class="req-field">
+            <label>Fecha Carnet BPM</label>
+            <input type="date" id="editSocio_fecha_carnet_bpm" class="req-input" value="${esc(row.fecha_carnet_bpm || '')}">
+          </div>
+          <div class="req-field">
+            <label>Trabajo en Alturas</label>
+            <select id="editSocio_trabajo_alturas" class="req-input">
+              ${buildOptions(['SI', 'NO'], row.trabajo_alturas, 'Seleccione...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Fecha Curso de Alturas</label>
+            <input type="date" id="editSocio_fecha_curso_alturas" class="req-input" value="${esc(row.fecha_curso_alturas || '')}">
+          </div>
+          <div class="req-field">
+            <label>Fecha Psicosensométrico</label>
+            <input type="date" id="editSocio_fecha_psicosensometrico" class="req-input" value="${esc(row.fecha_psicosensometrico || '')}">
+          </div>
+          <div class="req-field">
+            <label>Estudio de Seguridad</label>
+            <input type="text" id="editSocio_estudio_seguridad" class="req-input" value="${esc(row.estudio_seguridad || '')}" placeholder="Ej: SI / NO / APROBADO">
+          </div>
+          <div class="req-field" style="grid-column: 1 / -1;">
+            <label>Observaciones Exámenes</label>
+            <textarea id="editSocio_observaciones_examenes" class="req-input" rows="2">${esc(row.observaciones_examenes || '')}</textarea>
+          </div>
+        `;
+      }
+
+      if (cuerpo) cuerpo.innerHTML = html;
+
+      const modal = document.getElementById('modalEditarSociodemografica');
+      if (modal) {
+        modal.style.display = 'flex';
+        if (typeof abrirModalBack === 'function') {
+          modal._backEntry = abrirModalBack(() => { modal.style.display = 'none'; modal._backEntry = null; });
+        }
+      }
+    }
+
+    function onChangeRegionalModalSocio(nuevaRegional) {
+      const selOp = document.getElementById('editSocio_operacion');
+      if (!selOp) return;
+      const todasOps = _socioCatalogos?.todasOperaciones || [];
+      const ops = todasOps.filter(o => !nuevaRegional || o.regional === nuevaRegional).map(o => o.operacion);
+      selOp.innerHTML = `<option value="">Seleccione operación...</option>` +
+        ops.map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('');
+    }
+
+    async function guardarEdicionSociodemografica(e) {
+      e.preventDefault();
+      if (!_socioRegistroEditando) return;
+
+      const btn = document.getElementById('btnGuardarSocioModal');
+      const val = (id) => {
+        const el = document.getElementById(`editSocio_${id}`);
+        return el ? el.value : undefined;
+      };
+
+      const datos = {};
+      if (_socioOpcionActiva === 'colaboradores') {
+        Object.assign(datos, {
+          regional: val('regional'),
+          operacion: val('operacion'),
+          estado: val('estado'),
+          cargo: val('cargo'),
+          area_id: val('area_id'),
+          fecha_ingreso: val('fecha_ingreso'),
+          fecha_retiro: val('fecha_retiro')
+        });
+      } else if (_socioOpcionActiva === 'datos_generales') {
+        Object.assign(datos, {
+          tipo_documento: val('tipo_documento'),
+          primer_nombre: val('primer_nombre'),
+          segundo_nombre: val('segundo_nombre'),
+          primer_apellido: val('primer_apellido'),
+          segundo_apellido: val('segundo_apellido'),
+          genero: val('genero'),
+          fecha_nacimiento: val('fecha_nacimiento')
+        });
+      } else if (_socioOpcionActiva === 'info_personal') {
+        Object.assign(datos, {
+          estado_civil: val('estado_civil'),
+          celular: val('celular'),
+          email: val('email'),
+          ciudad_residencia: val('ciudad_residencia'),
+          direccion_residencia: val('direccion_residencia')
+        });
+      } else if (_socioOpcionActiva === 'dotacion') {
+        Object.assign(datos, {
+          camiseta: val('camiseta'),
+          numero_buzo: val('numero_buzo'),
+          pantalon: val('pantalon'),
+          botas: val('botas'),
+          fecha_ultima_entrega: val('fecha_ultima_entrega'),
+          observaciones_dotacion: val('observaciones_dotacion')
+        });
+      } else if (_socioOpcionActiva === 'info_bancaria') {
+        Object.assign(datos, {
+          banco: val('banco'),
+          cuenta_bancaria: val('cuenta_bancaria')
+        });
+      } else if (_socioOpcionActiva === 'seguridad_social') {
+        Object.assign(datos, {
+          eps: val('eps'),
+          radicacion_eps: val('radicacion_eps'),
+          pension: val('pension'),
+          radicacion_afp: val('radicacion_afp'),
+          cesantias: val('cesantias'),
+          caja_compensacion: val('caja_compensacion'),
+          radicacion_ccf: val('radicacion_ccf'),
+          arl: val('arl'),
+          riesgo_arl: val('riesgo_arl')
+        });
+      } else if (_socioOpcionActiva === 'examenes') {
+        Object.assign(datos, {
+          fecha_examen_ingreso: val('fecha_examen_ingreso'),
+          fecha_examen_periodico: val('fecha_examen_periodico'),
+          recomendaciones_medicas: val('recomendaciones_medicas'),
+          fecha_examen_bpm: val('fecha_examen_bpm'),
+          fecha_carnet_bpm: val('fecha_carnet_bpm'),
+          trabajo_alturas: val('trabajo_alturas'),
+          fecha_curso_alturas: val('fecha_curso_alturas'),
+          fecha_psicosensometrico: val('fecha_psicosensometrico'),
+          estudio_seguridad: val('estudio_seguridad'),
+          observaciones_examenes: val('observaciones_examenes')
+        });
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Guardando...';
+      }
+
+      try {
+        const res = await fetch(`/talenthub/api/sociodemografica/${encodeURIComponent(_socioOpcionActiva)}/${encodeURIComponent(_socioRegistroEditando.id_registro)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            estadoVista: _socioEstadoVista,
+            datos
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo actualizar el registro', 'error');
+          return;
+        }
+        showToast(data.mensaje || 'Registro actualizado con éxito', 'success');
+        cerrarModales();
+        await cargarDatosSociodemografica();
+      } catch (err) {
+        console.error('[Sociodemografica] Error guardando edición:', err);
+        showToast('Error de red al guardar los cambios', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '💾 Guardar Cambios';
+        }
+      }
+    }
+
     // ── UTILITARIOS ─────────────────────────────────────────────────────────
     // Cierra el modal `el` y, si tenía una entrada de historial pendiente
     // (ver modal-back.js), la consume — así el botón "Atrás" del navegador
@@ -7187,6 +8396,7 @@
       cerrarModalConBack(document.getElementById('modalEditarParametroReq'));
       cerrarModalConBack(document.getElementById('modalReporteRequisiciones'));
       cerrarModalConBack(document.getElementById('modalFichaAspirante'));
+      cerrarModalConBack(document.getElementById('modalEditarSociodemografica'));
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {

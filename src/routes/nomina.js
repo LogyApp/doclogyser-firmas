@@ -1007,7 +1007,7 @@ router.post('/api/tomo-cargo', async (req, res) => {
     const fechaActualizacion = fechaHoraBogota();
     await pool.execute(
       `UPDATE \`Maestro_Vinculación\`
-       SET \`Motivo del Retiro\` = 'SI', Usuario = ?, \`Fecha Actualización\` = ?
+       SET \`Motivo del Retiro\` = 'SI', usuarioactualiza = ?, \`Fecha Actualización\` = ?
        WHERE \`Id Vinculación\` = ?`,
       [usuario, fechaActualizacion, idVinculacion]
     );
@@ -1080,7 +1080,7 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
     }
 
     await pool.execute(
-      `UPDATE \`Maestro_Vinculación\` SET Estado = 'Retirado', Usuario = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
+      `UPDATE \`Maestro_Vinculación\` SET Estado = 'Retirado', usuarioactualiza = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
       [usuario, fechaHoraBogota(), idVinculacion]
     );
 
@@ -1258,7 +1258,7 @@ router.post('/api/vinculacion/:id', async (req, res) => {
 
     if (!campos.length) return res.json({ ok: true, sinCambios: true });
 
-    campos.push('Usuario = ?', '`Fecha Actualización` = ?');
+    campos.push('usuarioactualiza = ?', '`Fecha Actualización` = ?');
     valores.push(usuario, fechaHoraBogota(), idVinculacion);
 
     await pool.execute(
