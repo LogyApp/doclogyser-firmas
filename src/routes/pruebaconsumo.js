@@ -19,7 +19,8 @@ const {
   marcarTodasLeidas
 } = require('../services/notificacionesService');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
-const { generarPDF } = require('../services/renderer');
+const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
+const { LOGO_BASE64 } = require('../services/assets');
 const { computarAccesoSst } = require('../services/accesoSst');
 const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
 
@@ -39,6 +40,89 @@ function formatTimestamp() {
   const hh = String(date.getHours()).padStart(2, '0');
   const ss = String(date.getSeconds()).padStart(2, '0');
   return `${yy}${mm}${dd}${hh}${ss}`;
+}
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fechaHoraBogotaTexto(d = new Date()) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+const TEXTO_FIRMA_ADMINISTRATIVA = 'Documento generado administrativamente sin firma física';
+
+// Arma el PDF del consentimiento con la plantilla 'pruebaconsumo' (Maestro_Plantillas) y lo sube.
+// Lo usan la firma del trabajador, la generación administrativa y la regeneración.
+// firmaSrc: URL o imagen base64 de la firma; null = generado sin firma.
+// La plantilla moderna es un documento HTML completo (como Capacitación SST); la anterior era un
+// fragmento que se envuelve con generarPDF. Se llenan las variables de las dos.
+async function armarPdfPrueba(c, firmaSrc) {
+  const fechaFmt = c.fecha
+    ? new Date(c.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' })
+    : '';
+  const plantilla = await obtenerPlantilla('pruebaconsumo');
+  const html = String(plantilla.contenido_html || '');
+  const documentoCompleto = /^\s*(<!DOCTYPE|<html)/i.test(html);
+
+  let nombreRegistra = c.usuario || '';
+  if (c.usuario) {
+    const [uRows] = await pool.execute('SELECT Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]).catch(() => [[]]);
+    if (uRows.length && uRows[0].Nombre) nombreRegistra = uRows[0].Nombre;
+  }
+
+  const datos = {
+    // Diseño moderno
+    logo_src:              LOGO_BASE64,
+    id_prueba:             esc(c.idprueba || '—'),
+    nombre_registra:       esc(nombreRegistra) || '—',
+    fecha_generacion:      fechaHoraBogotaTexto(),
+    firma_trabajador_html: firmaSrc
+      ? `<img src="${esc(firmaSrc)}" class="sig-img" alt="Firma">`
+      : `<span class="firma-nota">${TEXTO_FIRMA_ADMINISTRATIVA}</span>`,
+    // Diseño anterior
+    firma_trabajador: firmaSrc
+      ? `<img src="${firmaSrc}" style="height:80px;display:block;margin-bottom:4px">`
+      : `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">${TEXTO_FIRMA_ADMINISTRATIVA}</div>`,
+    // Comunes
+    ciudad:            esc(c.ciudad) || '—',
+    fecha:             esc(fechaFmt) || '—',
+    nombre_trabajador: esc(String(c.nombre_trabajador || '').toUpperCase()),
+    identificacion:    esc(c.identificacion),
+    cliente:           esc(c.cliente) || '—',
+    cargo:             esc(c.cargo) || '—',
+  };
+
+  const htmlFinal = reemplazarVariables(html, datos);
+  const pdfBuffer = documentoCompleto
+    ? await generarPDFDesdeHTML(htmlFinal, { margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } })
+    : await generarPDF(htmlFinal);
+  return subirPDFPruebaConsumo(c.identificacion, formatTimestamp(), pdfBuffer);
+}
+
+// Regenera el PDF de una prueba ya generada con sus datos actuales y la plantilla vigente,
+// conservando la firma con la que se generó (si no tenía, la nota de generación administrativa).
+// Reemplaza el documento en Maestro_docTrabajador.
+async function regenerarPdfPrueba(c) {
+  const urlDoc = await armarPdfPrueba(c, c.url_firma || null);
+  await pool.execute('UPDATE Dynamic_pruebaconsumo SET url_doc = ? WHERE idprueba = ?', [urlDoc, c.idprueba]);
+  let reemplazado = 0;
+  if (c.url_doc) {
+    const [upd] = await pool.execute(
+      "UPDATE Maestro_docTrabajador SET Doc = ? WHERE Identificación = ? AND Prefijo = 'CPC' AND Doc = ?",
+      [urlDoc, String(c.identificacion), c.url_doc]
+    );
+    reemplazado = upd.affectedRows;
+  }
+  if (!reemplazado) await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC');
+  return urlDoc;
+}
+
+function hoyBogotaStr() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
 }
 
 async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, tipoDocumento, prefijo) {
@@ -503,33 +587,49 @@ router.put('/api/prueba/:id', async (req, res) => {
     const { id } = req.params;
     const { ciudad, fecha, cliente, observaciones } = req.body;
     const accesoAccion = await computarAccesoCPC(req.body.usuario || req.query.usuario);
-    if (!accesoAccion || !(await rolPuedeSst(accesoAccion.rol, SECCION_MENU_SST, 'crear'))) {
+    if (!accesoAccion) {
       return res.status(403).json({ error: 'No autorizado para editar la prueba de consumo.' });
     }
 
     if (!ciudad || !fecha || !cliente) {
       return res.status(400).json({ error: 'Ciudad, fecha y cliente son obligatorios.' });
     }
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de la prueba no puede ser superior a hoy.' });
+    }
 
     const [[prueba]] = await pool.execute(
-      'SELECT url_doc FROM Dynamic_pruebaconsumo WHERE idprueba = ?',
+      'SELECT * FROM Dynamic_pruebaconsumo WHERE idprueba = ?',
       [id]
     );
     if (!prueba) {
       return res.status(404).json({ error: 'Registro no encontrado' });
     }
-    if (prueba.url_doc) {
-      return res.status(400).json({ error: 'No se puede editar un registro con documento PDF ya generado.' });
+    // Con PDF ya generado: solo los roles de Config_Parametros (sst / Prueba de Consumo), y se regenera
+    const estaGenerado = !!prueba.url_doc;
+    if (!(await rolPuedeSst(accesoAccion.rol, SECCION_MENU_SST, estaGenerado ? 'editarFirmado' : 'crear'))) {
+      return res.status(403).json({
+        error: estaGenerado
+          ? 'Tu rol no tiene permiso para editar y regenerar el PDF de una prueba de consumo ya firmada.'
+          : 'No autorizado para editar la prueba de consumo.',
+      });
     }
 
+    const nuevaFecha = String(fecha).slice(0, 10);
+    const nuevasObs = observaciones === undefined ? prueba.observaciones : (observaciones || '');
     await pool.execute(
-      `UPDATE Dynamic_pruebaconsumo 
-       SET ciudad = ?, fecha = ?, cliente = ?, observaciones = ? 
+      `UPDATE Dynamic_pruebaconsumo
+       SET ciudad = ?, fecha = ?, cliente = ?, observaciones = ?
        WHERE idprueba = ?`,
-      [ciudad, fecha, cliente, observaciones || '', id]
+      [ciudad, nuevaFecha, cliente, nuevasObs, id]
     );
 
-    res.json({ ok: true });
+    let urlDoc = prueba.url_doc;
+    if (estaGenerado) {
+      urlDoc = await regenerarPdfPrueba({ ...prueba, ciudad, fecha: nuevaFecha, cliente, observaciones: nuevasObs });
+    }
+
+    res.json({ ok: true, url_doc: urlDoc });
   } catch (err) {
     console.error('[pruebaconsumo] PUT /api/prueba/:id:', err);
     res.status(500).json({ error: err.message });
@@ -758,29 +858,8 @@ router.post('/api/firmar-asistente', async (req, res) => {
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const urlFirma = await subirFirma(c.identificacion, buffer);
 
-    // Formatear fecha para el PDF
-    const fechaFmt = c.fecha
-      ? new Date(c.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' })
-      : '';
-
-    // Renderizar PDF
-    const plantilla = await obtenerPlantilla('pruebaconsumo');
-    const datos = {
-      ciudad:            c.ciudad || '',
-      fecha:             fechaFmt,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
-      identificacion:    String(c.identificacion),
-      cliente:           c.cliente || '',
-      cargo:             c.cargo || '',
-      firma_trabajador:  `<img src="${urlFirma}" style="height:80px;display:block;margin-bottom:4px">`
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal);
-
-    // Guardar PDF en el bucket
-    const timestamp = formatTimestamp();
-    const urlDoc = await subirPDFPruebaConsumo(c.identificacion, timestamp, pdfBuffer);
+    // Renderizar y guardar el PDF
+    const urlDoc = await armarPdfPrueba(c, urlFirma);
 
     // Actualizar base de datos
     await pool.execute(
@@ -827,32 +906,9 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
     }
 
     // Usar firma GCS prellenada o poner texto explicativo de que no firmó
-    let firmaHtml = `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">Documento generado administrativamente sin firma física</div>`;
+    // Firma prellenada (GCS) o, si no hay, nota de que se generó sin firma
     const firmaGcs = await obtenerFirmaBase64Reciente(c.identificacion).catch(() => null);
-    if (firmaGcs) {
-      firmaHtml = `<img src="${firmaGcs}" style="height:80px;display:block;margin-bottom:4px">`;
-    }
-
-    const fechaFmt = c.fecha
-      ? new Date(c.fecha).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' })
-      : '';
-
-    const plantilla = await obtenerPlantilla('pruebaconsumo');
-    const datos = {
-      ciudad:            c.ciudad || '',
-      fecha:             fechaFmt,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
-      identificacion:    String(c.identificacion),
-      cliente:           c.cliente || '',
-      cargo:             c.cargo || '',
-      firma_trabajador:  firmaHtml
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal);
-
-    const timestamp = formatTimestamp();
-    const urlDoc = await subirPDFPruebaConsumo(c.identificacion, timestamp, pdfBuffer);
+    const urlDoc = await armarPdfPrueba(c, firmaGcs || null);
 
     await pool.execute(
       `UPDATE Dynamic_pruebaconsumo 
@@ -867,6 +923,28 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
     res.json({ ok: true, urlDoc });
   } catch (err) {
     console.error('[pruebaconsumo] POST /api/prueba/:id/generar-pdf:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/prueba/:id/regenerar-pdf ═════
+// Rehace el PDF ya generado con la plantilla vigente (Maestro_Plantillas) y la misma firma.
+router.post('/api/prueba/:id/regenerar-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const acceso = await computarAccesoCPC(req.body.usuario || req.query.usuario);
+    if (!acceso || !(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'editarFirmado'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para regenerar el PDF de una prueba de consumo firmada.' });
+    }
+
+    const [rows] = await pool.execute('SELECT * FROM Dynamic_pruebaconsumo WHERE idprueba = ?', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Consentimiento no encontrado' });
+    if (!rows[0].url_doc) return res.status(400).json({ error: 'Esta prueba aún no tiene el PDF generado.' });
+
+    const urlDoc = await regenerarPdfPrueba(rows[0]);
+    res.json({ ok: true, idprueba: id, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[pruebaconsumo] POST /api/prueba/:id/regenerar-pdf:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -996,7 +1074,7 @@ router.delete('/api/prueba/:id', async (req, res) => {
 
     // 1. Verificar si existe la prueba y su estado de firma
     const [rows] = await pool.execute(
-      'SELECT usuario, url_doc, firma_trabajador FROM Dynamic_pruebaconsumo WHERE idprueba = ? LIMIT 1',
+      'SELECT usuario, identificacion, url_doc, firma_trabajador FROM Dynamic_pruebaconsumo WHERE idprueba = ? LIMIT 1',
       [id]
     );
     if (!rows.length) {
@@ -1004,9 +1082,20 @@ router.delete('/api/prueba/:id', async (req, res) => {
     }
     const pc = rows[0];
 
-    // 2. Solo se puede eliminar si NO está firmado
+    // 2. Firmado o con PDF: solo los roles de Config_Parametros (sst / Prueba de Consumo); se quita
+    //    también su documento de Maestro_docTrabajador
     if (pc.url_doc || pc.firma_trabajador) {
-      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminarFirmado'))) {
+        return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar una prueba de consumo ya firmada.' });
+      }
+      if (pc.url_doc) {
+        await pool.execute(
+          "DELETE FROM Maestro_docTrabajador WHERE Identificación = ? AND Prefijo = 'CPC' AND Doc = ?",
+          [String(pc.identificacion), pc.url_doc]
+        );
+      }
+      await pool.execute('DELETE FROM Dynamic_pruebaconsumo WHERE idprueba = ?', [id]);
+      return res.json({ ok: true, idprueba: id });
     }
 
     // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario

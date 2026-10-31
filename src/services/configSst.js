@@ -29,6 +29,8 @@ const PERMISOS_SST = {
     clave: 'pc',
     crear: 'Roles que pueden crear pruebas de consumo',
     eliminar: 'Roles que pueden eliminar pruebas de consumo',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de pruebas de consumo firmadas',
+    eliminarFirmado: 'Roles que pueden eliminar pruebas de consumo firmadas',
   },
   'Compromiso SST': {
     clave: 'csst',

@@ -23,6 +23,7 @@ const {
   notificacionesHabilitadas,
   datosFormato,
 } = require('../services/configParticipacion');
+const { formatoDePlantilla } = require('../services/plantilla');
 
 const router = express.Router();
 const HTML_FORM_PATH = path.join(__dirname, '../views/formparticipacion/form.html');
@@ -314,6 +315,11 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
 
   const params = await obtenerParametrosParticipacion();
   const formato = datosFormato(params);
+  // Lo de Maestro_Plantillas (codigo_formato, version_formato, fecha_version) tiene prioridad
+  const dePlantilla = await formatoDePlantilla(NOMBRE_PLANTILLA);
+  if (dePlantilla.codigo) formato.codigo = dePlantilla.codigo;
+  if (dePlantilla.version) formato.version = dePlantilla.version;
+  if (dePlantilla.fecha) formato.fecha = dePlantilla.fecha;
 
   let firmados = 0;
   let porCorreo = 0;

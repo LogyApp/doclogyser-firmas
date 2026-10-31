@@ -151,7 +151,7 @@
         const fHasta = it.vigencia_hasta ? it.vigencia_hasta.slice(0, 10).split('-').reverse().join('/') : '—';
 
         return `
-          <tr onclick="abrirDetalleAts(${it.id_ats})" id="row-ats-${it.id_ats}" class="${isSelected ? 'selected' : ''}" style="cursor: pointer;">
+          <tr onclick="abrirDetalleAts(${it.id_ats})" onmouseenter="precargarDetalleSst('ats', '${it.id_ats}')" ontouchstart="precargarDetalleSst('ats', '${it.id_ats}')" id="row-ats-${it.id_ats}" class="${isSelected ? 'selected' : ''}" style="cursor: pointer;">
             <td style="text-align:center;">${docBtn}</td>
             <td title="ATS #${it.id_ats}"><strong>${it.fecha_registro ? it.fecha_registro.slice(0, 10).split('-').reverse().join('/') + ' ' + it.fecha_registro.slice(11, 16) : '—'}</strong></td>
             <td>${it.regional}</td>
@@ -183,7 +183,7 @@
       if (body) body.innerHTML = '<div style="padding: 20px; text-align:center; color: var(--text-muted);">Cargando detalle del ATS...</div>';
 
       try {
-        const res = await fetch(`/ats/api/registro/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const res = await pedirDetalleSst('ats', id);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo cargar el detalle');
 
@@ -3652,8 +3652,8 @@
             <div class="form-group"><label class="form-label">Trabajador o Cédula</label><input type="text" class="form-control" id="filtro-inc-trabajador" placeholder="Nombre o cédula..." oninput="filtrarDebounce('inc')"></div>
             <div class="form-group"><label class="form-label">Regional</label><select class="form-control" id="filtro-inc-regional" onchange="onRegionalChange('inc')"><option value="">Todas</option></select></div>
             <div class="form-group"><label class="form-label">Operación</label><select class="form-control" id="filtro-inc-operacion" onchange="filtrarAutomatico('inc')"><option value="">Todas</option></select></div>
-            <div class="form-group"><label class="form-label">Fecha Desde</label><input type="date" class="form-control" id="filtro-inc-desde" onchange="filtrarAutomatico('inc')"></div>
-            <div class="form-group"><label class="form-label">Fecha Hasta</label><input type="date" class="form-control" id="filtro-inc-hasta" onchange="filtrarAutomatico('inc')"></div>
+            <div class="form-group"><label class="form-label">Fecha Desde</label><input type="date" class="form-control" id="filtro-inc-desde" onchange="actualizarBadgeFiltros('inc'); cargarDatos('inc')"></div>
+            <div class="form-group"><label class="form-label">Fecha Hasta</label><input type="date" class="form-control" id="filtro-inc-hasta" onchange="actualizarBadgeFiltros('inc'); cargarDatos('inc')"></div>
             <div class="form-group"><button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('inc')" style="height: 38px;">Limpiar</button></div>
           </div>
         </div>
@@ -4319,6 +4319,40 @@
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalEditarCapacitacion()">Cancelar</button>
           <button type="submit" class="btn btn-primary btn-sm">💾 Guardar y Regenerar PDF</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-editar-pc" onclick="if(event.target === this) cerrarModalEditarPrueba();">
+    <div class="modal-content" style="max-width: 460px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text);">✏️ Editar Prueba de Consumo</div>
+        <button type="button" class="modal-close" onclick="cerrarModalEditarPrueba()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-editar-pc" onsubmit="guardarEdicionPrueba(event)">
+        <input type="hidden" id="modal-editar-pc-id">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Trabajador</label>
+          <input type="text" id="modal-editar-pc-trabajador" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Fecha *</label>
+          <input type="date" id="modal-editar-pc-fecha" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Ciudad *</label>
+          <input type="text" id="modal-editar-pc-ciudad" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Cliente *</label>
+          <input type="text" id="modal-editar-pc-cliente" list="lista-clientes-pc" required autocomplete="off" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+          <datalist id="lista-clientes-pc"></datalist>
+        </div>
+        <div id="modal-editar-pc-aviso" style="display:none; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px;">Al guardar se regenera el PDF con la misma firma.</div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalEditarPrueba()">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="modal-editar-pc-guardar">💾 Guardar</button>
         </div>
       </form>
     </div>
@@ -5060,7 +5094,23 @@
       });
     }
 
+    // Capacitación e Incapacidades abren con el mes actual (Fecha Desde / Hasta); para encontrar
+    // otros registros se usan los filtros. Así no se descargan miles de filas al entrar.
+    function aplicarMesActualFiltrosSst(modKey) {
+      const hoy = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+      const p = n => String(n).padStart(2, '0');
+      const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+      const desde = document.getElementById(`filtro-${modKey}-desde`);
+      const hasta = document.getElementById(`filtro-${modKey}-hasta`);
+      if (desde) desde.value = `${hoy.getFullYear()}-${p(hoy.getMonth() + 1)}-01`;
+      if (hasta) hasta.value = `${hoy.getFullYear()}-${p(hoy.getMonth() + 1)}-${p(ultimoDia)}`;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      aplicarMesActualFiltrosSst('cap');
+      aplicarMesActualFiltrosSst('inc');
+      actualizarBadgeFiltros('cap');
+      actualizarBadgeFiltros('inc');
       initSidebarUser();
       aplicarPermisosMenuSst();
       initLinks();
@@ -5770,6 +5820,9 @@
       if (modulo === 'part' && item.url_doc) {
         return permisoSst('part', 'eliminarFirmado');
       }
+      if (modulo === 'pc' && (item.url_doc || item.firma_trabajador)) {
+        return permisoSst('pc', 'eliminarFirmado');
+      }
       // Solo se puede eliminar si NO está firmado
       if (item.url_doc) return false;
       if (modulo !== 'part' && item.firma_trabajador) return false;
@@ -6304,6 +6357,8 @@
         if (fd) fd.value = '';
         if (fh) fh.value = '';
       }
+
+      if (modKey === 'cap' || modKey === 'inc') aplicarMesActualFiltrosSst(modKey);
 
       actualizarBadgeFiltros(modKey);
       cargarDatos(modKey);
@@ -7136,6 +7191,11 @@
             <button class="btn btn-primary btn-sm" onclick="enviarEnlacePrueba('${item.idprueba}')">
               ✉️ Enviar Notificación por Correo
             </button>
+            ${permisoSst('pc', 'crear') ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarPrueba('${item.idprueba}')">
+                ✏️ Editar Prueba
+              </button>
+            ` : ''}
             ${puedeEliminarRegistro(item, 'pc') ? `
               <button class="btn btn-sm" onclick="confirmarEliminarRegistro('pc', '${item.idprueba}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
                 🗑️ Eliminar Registro
@@ -7149,6 +7209,19 @@
             <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
               📄 Abrir Consentimiento Firmado (PDF)
             </a>
+            ${permisoSst('pc', 'editarFirmado') ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarPrueba('${item.idprueba}')">
+                ✏️ Editar Prueba
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="regenerarPDFPrueba('${item.idprueba}')">
+                🔄 Regenerar PDF
+              </button>
+            ` : ''}
+            ${puedeEliminarRegistro(item, 'pc') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('pc', '${item.idprueba}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
           </div>
         `;
       }
@@ -7180,6 +7253,105 @@
       document.getElementById('layout-pc').classList.add('detail-active');
       document.getElementById('detail-pc').style.display = 'block';
       sincronizarUrlPestana('pruebaconsumo', null, { id: item.idprueba, push: true });
+    }
+
+    // ── Editar / regenerar PDF de una prueba de consumo (como en Capacitación SST) ──
+    let clientesPruebaCargados = false;
+    async function cargarClientesPrueba() {
+      if (clientesPruebaCargados) return;
+      try {
+        const res = await fetch('/pruebaconsumo/api/clientes');
+        const clientes = await res.json();
+        document.getElementById('lista-clientes-pc').innerHTML = (Array.isArray(clientes) ? clientes : [])
+          .map(c => `<option value="${String(c).replace(/"/g, '&quot;')}">`).join('');
+        clientesPruebaCargados = true;
+      } catch (e) { /* el cliente se puede escribir a mano */ }
+    }
+
+    function abrirModalEditarPrueba(id) {
+      const item = (dataStore.pc || []).find(x => String(x.idprueba) === String(id));
+      if (!item) return;
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      document.getElementById('modal-editar-pc-id').value = item.idprueba;
+      document.getElementById('modal-editar-pc-trabajador').value = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const fechaInput = document.getElementById('modal-editar-pc-fecha');
+      fechaInput.max = hoyStr;
+      fechaInput.value = item.fecha ? String(item.fecha).slice(0, 10) : hoyStr;
+      document.getElementById('modal-editar-pc-ciudad').value = item.ciudad || '';
+      document.getElementById('modal-editar-pc-cliente').value = item.cliente || '';
+      const firmada = !!item.url_doc;
+      document.getElementById('modal-editar-pc-aviso').style.display = firmada ? 'block' : 'none';
+      document.getElementById('modal-editar-pc-guardar').textContent = firmada ? '💾 Guardar y Regenerar PDF' : '💾 Guardar';
+      cargarClientesPrueba();
+      const modalEl = document.getElementById('modal-editar-pc');
+      modalEl.style.display = 'flex';
+      modalEl._backEntry = registrarModalBack(() => cerrarModalEditarPrueba());
+    }
+
+    function cerrarModalEditarPrueba() {
+      const modalEl = document.getElementById('modal-editar-pc');
+      if (!modalEl) return;
+      modalEl.style.display = 'none';
+      cerrarModalBack(modalEl._backEntry);
+      modalEl._backEntry = null;
+    }
+
+    async function guardarEdicionPrueba(e) {
+      e.preventDefault();
+      const id = document.getElementById('modal-editar-pc-id').value;
+      const fecha = document.getElementById('modal-editar-pc-fecha').value;
+      const ciudad = document.getElementById('modal-editar-pc-ciudad').value.trim();
+      const cliente = document.getElementById('modal-editar-pc-cliente').value.trim();
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      if (fecha > hoyStr) {
+        showToast('La fecha de la prueba no puede ser superior a hoy', 'error');
+        return;
+      }
+      showLoading('Guardando cambios...');
+      try {
+        const res = await fetch(`/pruebaconsumo/api/prueba/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fecha, ciudad, cliente, usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          cerrarModalEditarPrueba();
+          showToast('Prueba de consumo actualizada', 'success');
+          await cargarPruebas();
+          abrirDetallePrueba(id);
+        } else {
+          showToast(data.error || 'Error al actualizar la prueba de consumo', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al actualizar la prueba de consumo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarPDFPrueba(id) {
+      if (!confirm('¿Desea regenerar el PDF de esta prueba de consumo? Se actualizará el documento con la plantilla vigente manteniendo la firma.')) return;
+      showLoading('Regenerando documento PDF...');
+      try {
+        const res = await fetch(`/pruebaconsumo/api/prueba/${encodeURIComponent(id)}/regenerar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('PDF regenerado exitosamente', 'success');
+          await cargarPruebas();
+          abrirDetallePrueba(id);
+        } else {
+          showToast(data.error || 'No se pudo regenerar el PDF', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     async function enviarEnlacePrueba(id) {
@@ -7290,7 +7462,7 @@
         const totalAsistentes = Number(it.total_asistentes || 0);
 
         return `
-          <tr onclick="abrirDetalleParticipacion('${it.id_asistencia}')" id="row-part-${it.id_asistencia}">
+          <tr onclick="abrirDetalleParticipacion('${it.id_asistencia}')" onmouseenter="precargarDetalleSst('part', '${it.id_asistencia}')" ontouchstart="precargarDetalleSst('part', '${it.id_asistencia}')" id="row-part-${it.id_asistencia}">
             <td style="text-align:center;">${btnPdf}</td>
             <td style="text-align:center;">
               <span style="display:inline-block; padding: 2px 8px; border-radius: 10px; font-weight:700; font-size:12px; background: rgba(33, 150, 243, 0.12); color: #1976d2;">
@@ -7309,11 +7481,66 @@
       inicializarRedimensionColumnasSst();
     }
 
+    // ── Detalles: precarga al pasar el mouse o tocar la fila ──────────────────
+    // El pedido sale antes del clic y, al abrir, se usa esa respuesta (una sola vez y si tiene
+    // menos de 30 s). Después de editar o firmar, abrir el detalle vuelve a consultar.
+    const precargasDetalleSst = new Map();
+    function urlDetalleSst(mod, id) {
+      const u = `?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      const e = encodeURIComponent(id);
+      return {
+        part: `/participacion/api/asistencia/${e}${u}`,
+        csst: `/compromisosst/api/compromiso/${e}${u}`,
+        ins: `/sst/api/inspecciones/detalle/${e}${u}`,
+        ats: `/ats/api/registro/${e}${u}`,
+      }[mod];
+    }
+    function consultarDetalleSst(mod, id) {
+      // Respuesta con la misma forma que fetch (ok, json()) para no cambiar a quien la usa
+      return fetch(urlDetalleSst(mod, id)).then(async r => {
+        const data = await r.json();
+        return { ok: r.ok, status: r.status, json: async () => data };
+      });
+    }
+    function precargarDetalleSst(mod, id) {
+      const clave = `${mod}|${id}`;
+      const previa = precargasDetalleSst.get(clave);
+      if (previa && Date.now() - previa.t < 30000) return;
+      const p = consultarDetalleSst(mod, id);
+      p.catch(() => precargasDetalleSst.delete(clave));
+      precargasDetalleSst.set(clave, { t: Date.now(), p });
+    }
+    function pedirDetalleSst(mod, id) {
+      const clave = `${mod}|${id}`;
+      const previa = precargasDetalleSst.get(clave);
+      precargasDetalleSst.delete(clave);
+      if (previa && Date.now() - previa.t < 30000) return previa.p.catch(() => consultarDetalleSst(mod, id));
+      return consultarDetalleSst(mod, id);
+    }
+
     async function abrirDetalleParticipacion(id) {
       selectedAsistenciaId = id;
-      showLoading('Cargando detalle de asistencia...');
+      // Abre el panel de una vez con lo que ya trae el listado; los asistentes llegan enseguida
+      const filaLista = (dataStore.part || []).find(x => String(x.id_asistencia) === String(id));
+      const yaAbierto = document.getElementById('detail-part').style.display === 'block'
+        && document.getElementById('detail-part-title').innerText === `Asistencia #${id}`;
+      if (filaLista && !yaAbierto) {
+        const fechaLista = filaLista.fecha ? String(filaLista.fecha).slice(0, 10).split('-').reverse().join('/') : '—';
+        document.getElementById('detail-part-title').innerText = `Asistencia #${id}`;
+        document.getElementById('detail-part-body').innerHTML = `
+          <div class="detail-section">
+            <div class="detail-section-title">Datos de la Actividad</div>
+            <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--text);">${filaLista.tema || '—'}</span></div>
+            <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaLista}</span></div>
+          </div>
+          <div style="padding: 16px; text-align: center; color: var(--text-muted);">Cargando asistentes y evidencias...</div>`;
+        document.getElementById('layout-part').classList.add('detail-active');
+        document.getElementById('detail-part').style.display = 'block';
+      } else if (!filaLista) {
+        showLoading('Cargando detalle de asistencia...');
+      }
       try {
-        const res = await fetch(`/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const res = await pedirDetalleSst('part', id);
         const data = await res.json();
         selectedItems.part = data;
 
@@ -7816,7 +8043,7 @@
           : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
 
         return `
-          <tr onclick="abrirDetalleCompromiso('${it.idcsst}')" id="row-csst-${it.idcsst}">
+          <tr onclick="abrirDetalleCompromiso('${it.idcsst}')" onmouseenter="precargarDetalleSst('csst', '${it.idcsst}')" ontouchstart="precargarDetalleSst('csst', '${it.idcsst}')" id="row-csst-${it.idcsst}">
             <td><div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">${pdfLink}${waBtn !== '—' ? waBtn : ''}</div></td>
             <td><strong>${fechaFmt}</strong></td>
             <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
@@ -7847,7 +8074,7 @@
 
       // Cargar información completa del registro y firma precargada desde GCS
       try {
-        const res = await fetch(`/compromisosst/api/compromiso/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const res = await pedirDetalleSst('csst', id);
         if (res.ok) {
           const freshItem = await res.json();
           if (freshItem && freshItem.idcsst) {
@@ -8284,7 +8511,12 @@
     }
 
     async function cargarIncapacidades() {
-      const params = new URLSearchParams({ usuario: CONFIG.usuarioId });
+      // Las fechas se filtran en el servidor; trabajador, regional y operación, sobre lo cargado
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        fechaDesde: document.getElementById('filtro-inc-desde').value,
+        fechaHasta: document.getElementById('filtro-inc-hasta').value,
+      });
       const response = await fetch(`/casosmedicos/api/incapacidades?${params.toString()}`);
       const rows = await response.json();
       if (!response.ok) throw new Error(rows.error || 'No fue posible cargar las incapacidades');
@@ -9952,7 +10184,7 @@
           : '<span style="color:var(--text-muted); font-style:italic;">Sin PDF</span>';
 
         return `
-          <tr onclick="abrirDetalleInspeccionSST('${it.id}')" id="row-ins-${it.id}" class="${isSelected ? 'selected' : ''}">
+          <tr onclick="abrirDetalleInspeccionSST('${it.id}')" onmouseenter="precargarDetalleSst('ins', '${it.id}')" ontouchstart="precargarDetalleSst('ins', '${it.id}')" id="row-ins-${it.id}" class="${isSelected ? 'selected' : ''}">
             <td style="text-align:center;">${pdfBtn}</td>
             <td><strong>${fechaFmt}</strong></td>
             <td><strong>${trabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cc}</small></td>
@@ -9988,7 +10220,7 @@
       sincronizarUrlPestana('inspecciones', null, { id, push: true });
 
       try {
-        const res = await fetch(`/sst/api/inspecciones/detalle/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const res = await pedirDetalleSst('ins', id);
         const it = await res.json();
         if (!res.ok || !it || it.error) {
           body.innerHTML = `<div style="padding: 20px; color: var(--danger);">${(it && it.error) || 'No se pudo cargar el detalle.'}</div>`;

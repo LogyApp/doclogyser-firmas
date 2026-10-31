@@ -437,6 +437,11 @@ router.get('/api/conteos-filtros', async (req, res) => {
 });
 
 // ═════ API: GET /api/capacitaciones (Historial) ═════
+// Tope del listado (por encima del mes con más registros, ~3.100): la pestaña abre con el mes
+// actual y para encontrar más se usan los filtros
+// (como en Facturación). Evita mandar las 10 mil capacitaciones de una vez.
+const LIMITE_LISTADO_CAPACITACIONES = 5000;
+
 router.get('/api/capacitaciones', async (req, res) => {
   try {
     const { usuario, trabajador, fechaDesde, fechaHasta, regional, operacion } = req.query;
@@ -487,16 +492,10 @@ router.get('/api/capacitaciones', async (req, res) => {
     const query = `
       SELECT c.id_capacitacion, c.fecha, c.identificacion, c.usuario, c.tema, c.url_doc, 
              c.token_firma, c.token_expira, c.puntaje, c.resultado, c.fecha_registro,
-             COALESCE(item_cnt.total_preguntas, 0) AS total_preguntas,
              vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,
              usu.Nombre AS nombre_evaluador
       FROM Maestro_capacitacionsst c
-      LEFT JOIN (
-        SELECT id_capacitacion, COUNT(DISTINCT pregunta) AS total_preguntas
-        FROM Maestro_capacitacionsst_items
-        GROUP BY id_capacitacion
-      ) item_cnt ON item_cnt.id_capacitacion = c.id_capacitacion
       LEFT JOIN (
         SELECT t1.Identificación, t1.Trabajador, t1.Cargo, t1.Regional, t1.\`Operación\`
         FROM Maestro_Vinculación t1
@@ -510,10 +509,26 @@ router.get('/api/capacitaciones', async (req, res) => {
       LEFT JOIN Maestro_Usuarios usu ON c.usuario = usu.ID
       ${whereClause}
       ORDER BY c.fecha_registro DESC
+      LIMIT ${LIMITE_LISTADO_CAPACITACIONES}
     `;
 
     const [rows] = await pool.execute(query, params);
+
+    // Preguntas por capacitación: solo de las filas que se devuelven (antes se contaban las
+    // 200 mil respuestas en cada carga)
+    const totales = new Map();
+    if (rows.length) {
+      const ids = rows.map(r => r.id_capacitacion);
+      const [cnt] = await pool.query(
+        `SELECT id_capacitacion, COUNT(DISTINCT pregunta) AS total
+         FROM Maestro_capacitacionsst_items WHERE id_capacitacion IN (?) GROUP BY id_capacitacion`,
+        [ids]
+      );
+      cnt.forEach(c => totales.set(c.id_capacitacion, Number(c.total) || 0));
+    }
+
     const cleanedRows = rows.map(r => {
+      r.total_preguntas = totales.get(r.id_capacitacion) || 0;
       if (r.nombre_trabajador && r.nombre_trabajador.includes('**')) {
         r.nombre_trabajador = r.nombre_trabajador.split('**').pop().trim();
       }

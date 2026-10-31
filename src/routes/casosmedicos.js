@@ -17,15 +17,37 @@ function citarIdentificador(nombre) {
   return `\`${String(nombre).replace(/`/g, '``')}\``;
 }
 
+// Columnas de Dynamic_Asistencia (cambian muy rara vez): en caché 10 minutos en vez de
+// preguntarlas en cada carga.
+let cacheColumnasAsistencia = null;
+async function columnasAsistencia() {
+  if (cacheColumnasAsistencia && Date.now() - cacheColumnasAsistencia.t < 10 * 60 * 1000) return cacheColumnasAsistencia.columnas;
+  const [columnas] = await pool.query('SHOW COLUMNS FROM Dynamic_Asistencia');
+  cacheColumnasAsistencia = { t: Date.now(), columnas };
+  return columnas;
+}
+
+// Novedades de incapacidad (valores exactos: con LIKE '%Incapacidad%' se recorría toda la tabla)
+const NOVEDADES_INCAPACIDAD = ['Incapacidad', 'Ausentismo Pendiente Incapacidad'];
+// Margen de días alrededor del rango pedido, para que los periodos continuos que empiezan
+// antes o terminan después del rango se vean completos (el listado agrupa por periodo).
+const MARGEN_DIAS_INCAPACIDAD = 31;
+
+function sumarDias(fechaISO, dias) {
+  const d = new Date(`${fechaISO}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
 router.get('/api/incapacidades', async (req, res) => {
   try {
-    const { usuario } = req.query;
+    const { usuario, fechaDesde, fechaHasta } = req.query;
     if (!usuario) return res.status(400).json({ error: 'Parámetro ?usuario requerido' });
 
     const acceso = await computarAccesoSST(usuario);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado para el módulo SST' });
 
-    const [columnas] = await pool.query('SHOW COLUMNS FROM Dynamic_Asistencia');
+    const columnas = await columnasAsistencia();
     const encontrarColumna = (...nombres) => {
       const buscados = nombres.map(normalizarNombreColumna);
       const columna = columnas.find(c => buscados.includes(normalizarNombreColumna(c.Field)));
@@ -53,8 +75,19 @@ router.get('/api/incapacidades', async (req, res) => {
     const joins = operacionCol
       ? `LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = da.${citarIdentificador(operacionCol)}`
       : '';
-    const where = [`da.${citarIdentificador(eventoCol)} LIKE ?`];
-    const params = ['%Incapacidad%'];
+    const where = [`da.${citarIdentificador(eventoCol)} IN (${NOVEDADES_INCAPACIDAD.map(() => '?').join(',')})`];
+    const params = [...NOVEDADES_INCAPACIDAD];
+
+    // Rango de fechas (la pestaña abre con el mes actual), con margen para ver periodos completos
+    const esFecha = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+    if (fechaCol && esFecha(fechaDesde)) {
+      where.push(`da.${citarIdentificador(fechaCol)} >= ?`);
+      params.push(sumarDias(fechaDesde, -MARGEN_DIAS_INCAPACIDAD));
+    }
+    if (fechaCol && esFecha(fechaHasta)) {
+      where.push(`da.${citarIdentificador(fechaCol)} < ?`);
+      params.push(sumarDias(fechaHasta, MARGEN_DIAS_INCAPACIDAD + 1));
+    }
 
     if (!acceso.sinFiltro) {
       where.push(`da.${citarIdentificador(operacionCol)} IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);

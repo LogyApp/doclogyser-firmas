@@ -1,5 +1,6 @@
 const pool = require('./db');
 const { generarPDF, generarPDFDesdeHTML } = require('./renderer');
+const { formatoDePlantilla } = require('./plantilla');
 const { LOGO_BASE64, ACTO_INSEGURO_1_BASE64, ACTO_INSEGURO_2_BASE64 } = require('./assets');
 
 const NOMBRE_PLANTILLA = 'evaluacion_sst';
@@ -57,6 +58,11 @@ async function obtenerFormatoEvaluacion() {
   } catch (err) {
     console.warn('[evsstPdfGenerator] No se pudieron leer parámetros de formato, se usan valores por defecto:', err.message);
   }
+  // Lo de Maestro_Plantillas (codigo_formato, version_formato, fecha_version) tiene prioridad
+  const dePlantilla = await formatoDePlantilla('evaluacion_sst');
+  if (dePlantilla.codigo) formato.codigo = dePlantilla.codigo;
+  if (dePlantilla.version) formato.version = dePlantilla.version;
+  if (dePlantilla.fecha) formato.fecha = dePlantilla.fecha;
   return formato;
 }
 
