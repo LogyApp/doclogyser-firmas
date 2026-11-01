@@ -9165,23 +9165,30 @@
   }
 
   // Aplicar filtros en la pestaña correspondiente
+  const mantenerFiltrosPlegados = paramsUrl.get('plegable') === '1' || paramsUrl.get('filtrosPlegados') === '1';
+  const retirarUrlParam = (paramsUrl.get('retirar') || '').trim();
   if (tabDestino === 'activos' && tabs.activo) {
     const termino = busquedaParam || idVinculacionParam;
     if (termino) actFilterIdentificacion.value = termino;
     if (regionalParam) actFilterRegional.value = regionalParam;
     if (operacionParam) actFilterOperacion.value = operacionParam;
 
-    if (termino || regionalParam || operacionParam) {
+    if ((termino || regionalParam || operacionParam) && !mantenerFiltrosPlegados) {
       abrirFiltrosSiCerrado('act');
     }
     switchTab('activos');
+    if (retirarUrlParam) {
+      setTimeout(() => {
+        abrirModal('/formretiro/' + encodeURIComponent(retirarUrlParam) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+      }, 150);
+    }
   } else if (tabDestino === 'retiros' && tabs.retiro) {
     const termino = idVinculacionParam || busquedaParam;
     if (termino) retFilterIdentificacion.value = termino;
     if (regionalParam) retFilterRegional.value = regionalParam;
     if (operacionParam) retFilterOperacion.value = operacionParam;
 
-    if (termino || regionalParam || operacionParam) {
+    if ((termino || regionalParam || operacionParam) && !mantenerFiltrosPlegados) {
       abrirFiltrosSiCerrado('ret');
     }
     switchTab('retiros');

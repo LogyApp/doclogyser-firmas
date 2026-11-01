@@ -9,6 +9,7 @@ const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { notificarCreacionRequisicion } = require('../services/email');
 const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
+const { obtenerPermisosActivos } = require('../services/configActivos');
 
 const router = express.Router();
 const uploadFotoPerfil = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -3198,6 +3199,269 @@ router.get('/api/sociodemografica', async (req, res) => {
   }
 });
 
+// 6.2.1 GET /api/sociodemografica/detalle/:identificacion
+// Devuelve el consolidado completo del trabajador (Vinculación, Segmentación, Exámenes, Documentos,
+// historial de Maestro_Vinculación y Actas de Entrega de Dotación) para el panel de Detalle del Trabajador.
+router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => {
+  try {
+    const identificacion = String(req.params.identificacion || '').trim();
+    const { usuario, estado = 'Activo', id_vinculacion = '', id_examen = '' } = req.query;
+
+    if (!identificacion) {
+      return res.status(400).json({ error: 'Identificación requerida.' });
+    }
+
+    const acceso = await computarAccesoTalenthub(usuario, 'Sociodemografica');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No tiene acceso a la pestaña Sociodemográfica.' });
+    }
+
+    const [permisos, permisosNominaActivos] = await Promise.all([
+      obtenerPermisosSociodemografica(acceso.rol),
+      obtenerPermisosActivos(acceso.rol)
+    ]);
+    const estadoNorm = (String(estado).toLowerCase() === 'retirado' && permisos.puedeVerRetirados)
+      ? 'Retirado'
+      : 'Activo';
+
+    const [allVincRows, segRows, examRows, docRows, actasDotRows] = await Promise.all([
+      pool.execute(
+        `SELECT v.\`Id Vinculación\` AS id_vinculacion, v.\`Identificación\` AS identificacion,
+                v.Regional AS regional, v.\`Operación\` AS operacion, v.Trabajador AS trabajador_vinc,
+                v.Estado AS estado, v.Cargo AS cargo, v.Area AS area_id, ca.AREA AS area,
+                v.\`Fecha de Ingreso\` AS fecha_ingreso, v.\`Fecha de Retiro\` AS fecha_retiro,
+                v.\`Motivo del Retiro\` AS motivo_retiro,
+                COALESCE(v.usuarioactualiza, v.Usuario) AS usuario_actualiza_vinc,
+                v.\`Fecha Actualización\` AS fecha_actualizacion_vinc
+         FROM \`Maestro_Vinculación\` v
+         LEFT JOIN Config_Area ca ON ca.ID = v.Area
+         WHERE v.\`Identificación\` = ?
+         ORDER BY v.\`Fecha de Ingreso\` DESC, v.\`Fecha Actualización\` DESC, v.\`Id Vinculación\` DESC`,
+        [identificacion]
+      ).then(r => r[0]),
+
+      pool.execute(
+        `SELECT s.*,
+                mo.REGIONAL AS regional_op,
+                COALESCE(s.usuarioactualiza, s.Usuario) AS usuario_actualiza_seg
+         FROM \`Maestro_Segmentación\` s
+         LEFT JOIN Maestro_Operaciones mo ON mo.\`OPERACIÓN\` = s.\`Operación\`
+         WHERE s.\`Identificación\` = ?
+         LIMIT 1`,
+        [identificacion]
+      ).then(r => r[0]),
+
+      id_examen
+        ? pool.execute(
+            `SELECT me.*,
+                    COALESCE(me.usuarioactualiza, me.Usuario) AS usuario_actualiza_exam
+             FROM \`Maestro_Examenes\` me
+             WHERE me.\`Id Vinculación\` = ?
+             LIMIT 1`,
+            [id_examen]
+          ).then(r => r[0])
+        : pool.execute(
+            `SELECT me.*,
+                    COALESCE(me.usuarioactualiza, me.Usuario) AS usuario_actualiza_exam
+             FROM \`Maestro_Examenes\` me
+             WHERE me.\`Identificación\` = ? AND me.Estado = ?
+             ORDER BY me.\`Fecha Actualización\` DESC, me.\`Id Vinculación\` DESC
+             LIMIT 1`,
+            [identificacion, estadoNorm]
+          ).then(r => r[0]),
+
+      pool.execute(
+        `SELECT TipoDocumento AS tipo_doc, Url AS url
+         FROM Maestro_docTrabajador
+         WHERE \`Identificación\` = ?
+           AND TipoDocumento IN ('10', '15', '14', '12', '6')
+           AND Url IS NOT NULL AND Url != ''
+         ORDER BY FechaRegistro DESC, id DESC`,
+        [identificacion]
+      ).then(r => r[0]),
+
+      pool.execute(
+        `SELECT da.IdActa AS id_acta,
+                da.operacion AS operacion,
+                da.Fecha_Entrega AS fecha_entrega,
+                da.Categoria AS categoria,
+                da.Estado AS estado,
+                da.Observaciones AS observaciones,
+                da.Usuario AS usuario,
+                da.Fecha_Registro AS fecha_registro,
+                da.Url_Acta AS url_acta,
+                (SELECT GROUP_CONCAT(CONCAT(COALESCE(a.Articulo, CONCAT('Art. #', i.IdArticulo)), ' (x', i.Cantidad, ')') ORDER BY i.IdElemento SEPARATOR ', ')
+                 FROM Dynamic_Actas_Items i
+                 LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+                 WHERE i.IdActa = da.IdActa) AS elementos_resumen
+         FROM Dynamic_Actas da
+         WHERE da.identificacion = ?
+           AND da.Categoria = 'DOTACIÓN'
+         ORDER BY da.Fecha_Entrega DESC, da.IdActa DESC`,
+        [identificacion]
+      ).then(r => r[0])
+    ]);
+
+    const v = (id_vinculacion && allVincRows.find(r => String(r.id_vinculacion) === String(id_vinculacion)))
+      || allVincRows.find(r => String(r.estado || '').toLowerCase() === estadoNorm.toLowerCase())
+      || allVincRows[0]
+      || {};
+    const s = segRows[0] || {};
+    const me = examRows[0] || {};
+
+    const docsMap = {};
+    for (const d of docRows) {
+      if (!docsMap[d.tipo_doc]) {
+        docsMap[d.tipo_doc] = d.url;
+      }
+    }
+
+    const fnac = formatearFechaYMD(s['Fecha Nacimiento']);
+    const regionalConsolidada = v.regional || s.regional_op || '';
+    const operacionConsolidada = v.operacion || s['Operación'] || me['Operación'] || '';
+    const trabajadorConsolidado = s.Trabajador || v.trabajador_vinc || me.Trabajador || identificacion;
+
+    const extraerNombreLimpio = (rawTexto) => {
+      const porNombres = [s['Primer Nombre'], s['Segundo Nombre'], s['Primer Apellido'], s['Segundo Apellido']]
+        .map(x => String(x || '').trim()).filter(Boolean).join(' ');
+      if (porNombres) return porNombres;
+      const raw = String(rawTexto || s.Trabajador || '').trim();
+      return raw.includes('**') ? raw.split('**').slice(1).join('**').trim() : raw;
+    };
+
+    const vinculaciones = allVincRows.map(r => ({
+      id_vinculacion: r.id_vinculacion || '',
+      estado: r.estado || '',
+      identificacion: String(r.identificacion || identificacion),
+      nombre_trabajador: extraerNombreLimpio(r.trabajador_vinc),
+      cargo: r.cargo || '',
+      operacion: r.operacion || '',
+      fecha_ingreso: formatearFechaYMD(r.fecha_ingreso),
+      fecha_retiro: formatearFechaYMD(r.fecha_retiro),
+      motivo_retiro: r.motivo_retiro || ''
+    }));
+
+    const actas_dotacion = actasDotRows.map(a => ({
+      id_acta: a.id_acta,
+      operacion: a.operacion || '',
+      fecha_entrega: formatearFechaYMD(a.fecha_entrega),
+      categoria: a.categoria || 'DOTACIÓN',
+      estado: a.estado || '',
+      elementos_resumen: a.elementos_resumen || '',
+      observaciones: a.observaciones || '',
+      usuario: a.usuario || '',
+      fecha_registro: a.fecha_registro || null,
+      url_acta: a.url_acta || ''
+    }));
+
+    const detalle = {
+      identificacion,
+      id_vinculacion: v.id_vinculacion || id_vinculacion || '',
+      id_examen: me['Id Vinculación'] || id_examen || '',
+      regional: regionalConsolidada,
+      operacion: operacionConsolidada,
+      trabajador: trabajadorConsolidado,
+      estado: v.estado || s.Estado || me.Estado || estadoNorm,
+      cargo: v.cargo || '',
+      area_id: v.area_id || '',
+      area: v.area || '',
+      fecha_ingreso: formatearFechaYMD(v.fecha_ingreso),
+      fecha_retiro: formatearFechaYMD(v.fecha_retiro),
+      motivo_retiro: v.motivo_retiro || '',
+
+      // Datos Generales
+      tipo_documento: s['Tipo de Documento'] || '',
+      primer_nombre: s['Primer Nombre'] || '',
+      segundo_nombre: s['Segundo Nombre'] || '',
+      primer_apellido: s['Primer Apellido'] || '',
+      segundo_apellido: s['Segundo Apellido'] || '',
+      genero: s['Género'] || '',
+      fecha_nacimiento: fnac,
+      edad: calcularEdadAnios(fnac),
+
+      // Información Personal
+      estado_civil: s['Estado Civil'] || '',
+      celular: s.Celular || '',
+      email: s.Email || '',
+      ciudad_residencia: s['Ciudad de Residencia'] || '',
+      direccion_residencia: s['Dirección de Residencia'] || '',
+
+      // Dotación
+      camiseta: s.Camiseta || '',
+      numero_buzo: s.Numero || '',
+      pantalon: s.Pantalon || '',
+      botas: s.Botas || '',
+      fecha_ultima_entrega: formatearFechaYMD(s.Fecha_Ultima_Entrega),
+      observaciones_dotacion: s['Observaciones dotacion'] || '',
+
+      // Información Bancaria
+      banco: s.Banco || '',
+      cuenta_bancaria: s['N° Cuenta Bancaria'] || '',
+      doc_banco: docsMap['10'] || '',
+
+      // Seguridad Social
+      eps: s.EPS || '',
+      radicacion_eps: formatearFechaYMD(s['Radicacion EPS']),
+      doc_eps: docsMap['15'] || '',
+      pension: s['Pensión'] || '',
+      radicacion_afp: formatearFechaYMD(s['Radicacion AFP']),
+      doc_afp: docsMap['14'] || '',
+      cesantias: s['Cesantías'] || '',
+      caja_compensacion: s['Caja de Compensación'] || '',
+      radicacion_ccf: formatearFechaYMD(s['Radicacion CCF']),
+      doc_ccf: docsMap['12'] || '',
+      arl: s.ARL || '',
+      riesgo_arl: s['Riesgo ARL'] || '',
+      doc_arl: docsMap['6'] || '',
+
+      // Exámenes
+      fecha_examen_ingreso: formatearFechaYMD(me['Fecha Examen Medico Ingreso']),
+      fecha_examen_periodico: formatearFechaYMD(me['Fecha Examen Medico Periodico']),
+      recomendaciones_medicas: me['Recomendaciones Medicas'] || '',
+      fecha_examen_bpm: formatearFechaYMD(me['Fecha Examen BPM']),
+      fecha_carnet_bpm: formatearFechaYMD(me['Fecha Carnet BPM']),
+      trabajo_alturas: me['Trabajo en Alturas'] || '',
+      fecha_curso_alturas: formatearFechaYMD(me['Fecha Curso de Alturas']),
+      fecha_psicosensometrico: formatearFechaYMD(me['Fecha Psicosesometrico']),
+      estudio_seguridad: me['Estudio de Seguridad'] || '',
+      observaciones_examenes: me['Observaciones Examenes'] || '',
+
+      // Auditoría por tabla
+      auditoria: {
+        colaboradores: {
+          usuario_actualiza: v.usuario_actualiza_vinc || '',
+          fecha_actualizacion: v.fecha_actualizacion_vinc || null
+        },
+        segmentacion: {
+          usuario_actualiza: s.usuario_actualiza_seg || '',
+          fecha_actualizacion: s['Fecha de Actualización'] || null
+        },
+        examenes: {
+          usuario_actualiza: me.usuario_actualiza_exam || '',
+          fecha_actualizacion: me['Fecha Actualización'] || null
+        }
+      }
+    };
+
+    const mapaVer = estadoNorm === 'Retirado' ? permisos.verRetirado : permisos.verActivo;
+    const mapaEditar = estadoNorm === 'Retirado' ? permisos.editarRetirado : permisos.editarActivo;
+
+    res.json({
+      ok: true,
+      estado: estadoNorm,
+      detalle,
+      vinculaciones,
+      actas_dotacion,
+      permisosVer: mapaVer,
+      permisosEditar: mapaEditar,
+      permisosNominaActivos
+    });
+  } catch (err) {
+    console.error('[talenthub] GET /api/sociodemografica/detalle/:identificacion:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 6.3 PUT /api/sociodemografica/:opcion/:id
 router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
   try {
@@ -3227,8 +3491,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
 
     if (opcionKey === 'colaboradores') {
       const [exist] = await pool.execute(
-        'SELECT `Id Vinculación`, `Identificación`, `Operación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
-        [id]
+        'SELECT `Id Vinculación`, `Identificación`, `Operación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? OR (`Identificación` = ? AND Estado = ?) ORDER BY `Fecha de Ingreso` DESC, `Fecha Actualización` DESC LIMIT 1', [id, id, estadoNorm]
       );
       if (!exist.length) return res.status(404).json({ error: 'Registro de vinculación no encontrado.' });
       if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(exist[0]['Operación'])) {
@@ -3255,7 +3518,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
              usuarioactualiza = ?,
              \`Fecha Actualización\` = CONVERT_TZ(NOW(), 'SYSTEM', '-05:00')
          WHERE \`Id Vinculación\` = ?`,
-        [nuevaRegional, nuevaOperacion, nuevoEstado, nuevoCargo, nuevaArea, nuevaFechaIngreso, nuevaFechaRetiro, usuarioAuditoria, id]
+        [nuevaRegional, nuevaOperacion, nuevoEstado, nuevoCargo, nuevaArea, nuevaFechaIngreso, nuevaFechaRetiro, usuarioAuditoria, exist[0]['Id Vinculación']]
       );
 
       return res.json({ ok: true, mensaje: 'Registro de Colaboradores actualizado correctamente.' });
@@ -3263,8 +3526,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
 
     if (opcionKey === 'examenes') {
       const [exist] = await pool.execute(
-        'SELECT `Id Vinculación`, `Identificación`, `Operación` FROM `Maestro_Examenes` WHERE `Id Vinculación` = ? LIMIT 1',
-        [id]
+        'SELECT `Id Vinculación`, `Identificación`, `Operación` FROM `Maestro_Examenes` WHERE `Id Vinculación` = ? OR (`Identificación` = ? AND Estado = ?) ORDER BY `Fecha Actualización` DESC LIMIT 1', [id, id, estadoNorm]
       );
       if (!exist.length) return res.status(404).json({ error: 'Registro de exámenes no encontrado.' });
 
@@ -3293,9 +3555,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
           limpiarFecha(datos.fecha_curso_alturas),
           limpiarFecha(datos.fecha_psicosensometrico),
           limpiarTexto(datos.estudio_seguridad),
-          limpiarTexto(datos.observaciones_examenes),
-          usuarioAuditoria,
-          id
+          limpiarTexto(datos.observaciones_examenes), usuarioAuditoria, exist[0]['Id Vinculación']
         ]
       );
 

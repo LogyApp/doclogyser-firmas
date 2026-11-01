@@ -2189,10 +2189,10 @@
           letter-spacing: 0.2px;
         }
         .socio-switch-label.activo-rojo {
-          color: #dc2626;
+          color: #ef4444;
         }
         .socio-switch-label.activo-verde {
-          color: #16a34a;
+          color: #22c55e;
         }
         .socio-switch {
           position: relative;
@@ -2244,26 +2244,26 @@
           align-items: center;
         }
         .socio-opcion-btn {
-          padding: 7px 14px;
+          padding: 7px 13px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--card-bg);
           color: var(--text-muted);
-          font-size: 0.8rem;
+          font-size: 0.78rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.18s ease;
           white-space: nowrap;
         }
         .socio-opcion-btn:hover {
-          border-color: var(--accent-light);
+          border-color: var(--accent);
           color: var(--accent);
           background: var(--accent-soft);
         }
         .socio-opcion-btn.active {
-          background: var(--primary);
-          color: var(--text-inverse);
-          border-color: var(--primary);
+          background: var(--accent);
+          color: var(--accent-contrast, #ffffff);
+          border-color: var(--accent);
           box-shadow: var(--shadow-sm);
         }
         .socio-doc-link {
@@ -2277,12 +2277,213 @@
           font-weight: 600;
           font-size: 0.75rem;
           text-decoration: none;
-          border: 1px solid rgba(59, 130, 246, 0.25);
+          border: 1px solid var(--border);
           transition: all 0.15s ease;
         }
         .socio-doc-link:hover {
           background: var(--accent);
+          color: var(--accent-contrast, #ffffff);
+        }
+
+        /* ── Layout Split-View Estilo SST (Escritorio derecha / Móvil pantalla completa) ── */
+        .socio-view-layout {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 18px;
+          align-items: start;
+        }
+        .socio-view-layout.detail-active {
+          grid-template-columns: minmax(0, 1.15fr) minmax(420px, 1fr);
+        }
+        .socio-table-card {
+          min-width: 0;
+          margin-bottom: 0;
+        }
+        #tbodySociodemografica tr.socio-row-selected td {
+          background: var(--accent-soft) !important;
+        }
+        #tbodySociodemografica tr.socio-row-selected td:first-child {
+          box-shadow: inset 4px 0 0 var(--accent);
+        }
+        .socio-detail-card {
+          position: sticky;
+          top: 16px;
+          max-height: calc(100vh - 40px);
+          display: none;
+          flex-direction: column;
+          overflow: hidden;
+          padding: 0 !important;
+          margin-bottom: 0 !important;
+          border-top: 4px solid var(--accent) !important;
+          background: var(--card-bg);
+          color: var(--text);
+          box-shadow: var(--shadow-md);
+        }
+        .socio-detail-card.open {
+          display: flex;
+        }
+        .socio-detail-mobile-bar {
+          display: none;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px;
+          background: var(--bg-elevated);
+          border-bottom: 1px solid var(--border);
+          flex-shrink: 0;
+        }
+        .socio-detail-hdr {
+          padding: 14px 18px 10px;
+          background: var(--card-bg);
+          border-bottom: 1.5px solid var(--border);
+          flex-shrink: 0;
+        }
+        .socio-detail-actions-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+          margin-top: 10px;
+        }
+        .socio-action-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 11px;
+          border-radius: 7px;
+          font-size: 0.76rem;
+          font-weight: 700;
+          border: 1.5px solid var(--border);
+          background: var(--bg-elevated);
+          color: var(--text);
+          cursor: pointer;
+          transition: all 0.16s ease;
+          white-space: nowrap;
+        }
+        .socio-action-chip:hover:not(:disabled) {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--accent-soft);
+        }
+        .socio-action-chip.chip-edit {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--accent-soft);
+        }
+        .socio-action-chip.chip-edit:hover {
+          background: var(--accent);
+          color: var(--accent-contrast, #ffffff);
+        }
+        .socio-action-chip.chip-tomo-ok {
+          background: rgba(22, 163, 74, 0.14);
+          border-color: rgba(22, 163, 74, 0.4);
+          color: #22c55e;
+          cursor: default;
+        }
+        .socio-action-chip.chip-tomo-btn {
+          background: rgba(22, 163, 74, 0.12);
+          border-color: rgba(22, 163, 74, 0.45);
+          color: #16a34a;
+        }
+        .socio-action-chip.chip-tomo-btn:hover:not(:disabled) {
+          background: #16a34a;
           color: #ffffff;
+          border-color: #16a34a;
+        }
+        .socio-action-chip.chip-retirar {
+          background: rgba(220, 38, 38, 0.1);
+          border-color: rgba(220, 38, 38, 0.38);
+          color: #ef4444;
+        }
+        .socio-action-chip.chip-retirar:hover:not(:disabled) {
+          background: #dc2626;
+          color: #ffffff;
+          border-color: #dc2626;
+        }
+        .socio-subtable-wrap {
+          width: 100%;
+          overflow-x: auto;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: var(--card-bg);
+          margin-top: 8px;
+        }
+        .socio-subtable {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.78rem;
+          min-width: 560px;
+        }
+        .socio-subtable th {
+          background: var(--bg-elevated);
+          color: var(--text-muted);
+          font-weight: 700;
+          text-transform: uppercase;
+          font-size: 0.68rem;
+          letter-spacing: 0.03em;
+          padding: 8px 10px;
+          border-bottom: 1.5px solid var(--border);
+          text-align: left;
+          white-space: nowrap;
+        }
+        .socio-subtable td {
+          padding: 8px 10px;
+          border-bottom: 1px solid var(--border);
+          color: var(--text);
+          vertical-align: middle;
+        }
+        .socio-subtable tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .socio-subtable tbody tr.clickable-vinc {
+          cursor: pointer;
+          transition: background 0.14s ease;
+        }
+        .socio-subtable tbody tr.clickable-vinc:hover td {
+          background: var(--accent-soft);
+        }
+        .socio-pdf-icon-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 7px;
+          background: rgba(220, 38, 38, 0.12);
+          color: #ef4444;
+          border: 1px solid rgba(220, 38, 38, 0.3);
+          text-decoration: none;
+          font-size: 0.95rem;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+        .socio-pdf-icon-btn:hover {
+          background: #dc2626;
+          color: #ffffff;
+          transform: translateY(-1px);
+        }
+
+        @media (max-width: 900px) {
+          .socio-view-layout,
+          .socio-view-layout.detail-active {
+            grid-template-columns: 1fr !important;
+          }
+          .socio-detail-card.open {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            z-index: 1250 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            margin: 0 !important;
+          }
+          .socio-detail-mobile-bar {
+            display: flex;
+          }
+          .socio-detail-hdr {
+            padding: 12px 14px 8px;
+          }
         }
       </style>
 
@@ -2339,43 +2540,129 @@
         </div>
       </div>
 
-      <!-- Card Tabla Maestra Sociodemográfica (Columnas redimensionables y ordenables como en las demás pestañas) -->
-      <div class="card">
-        <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
-            <!-- Switch Retirados (rojo) / Activos (verde) -->
-            <div id="socioSwitchWrap" class="socio-switch-wrap" title="Alternar entre colaboradores Retirados y Activos">
-              <span id="lblSocioRetirados" class="socio-switch-label" onclick="intentarCambiarEstadoSocio(false)">Retirados</span>
-              <label class="socio-switch">
-                <input type="checkbox" id="toggleEstadoSocio" checked onchange="onToggleEstadoSocioChange(this.checked)">
-                <span class="socio-slider"></span>
-              </label>
-              <span id="lblSocioActivos" class="socio-switch-label activo-verde" onclick="intentarCambiarEstadoSocio(true)">Activos</span>
+      <!-- Contenedor Split: Tabla a la izquierda + Detalle a la derecha en Escritorio (Ventana completa en Móvil) -->
+      <div class="socio-view-layout" id="socioViewLayout">
+        <!-- Card Tabla Maestra Sociodemográfica -->
+        <div class="card socio-table-card">
+          <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
+              <!-- Switch Retirados (rojo) / Activos (verde) -->
+              <div id="socioSwitchWrap" class="socio-switch-wrap" title="Alternar entre colaboradores Retirados y Activos">
+                <span id="lblSocioRetirados" class="socio-switch-label" onclick="intentarCambiarEstadoSocio(false)">Retirados</span>
+                <label class="socio-switch">
+                  <input type="checkbox" id="toggleEstadoSocio" checked onchange="onToggleEstadoSocioChange(this.checked)">
+                  <span class="socio-slider"></span>
+                </label>
+                <span id="lblSocioActivos" class="socio-switch-label activo-verde" onclick="intentarCambiarEstadoSocio(true)">Activos</span>
+              </div>
+
+              <!-- Selector de las 7 opciones de vista por columnas -->
+              <div id="socioOpcionesBar" class="socio-opciones-bar"></div>
             </div>
 
-            <!-- Selector de las 7 opciones de vista por columnas -->
-            <div id="socioOpcionesBar" class="socio-opciones-bar"></div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="socioTotalBadge" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">(0 registros)</span>
+              <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarDatosSociodemografica()">
+                <span>↻ Actualizar</span>
+              </button>
+            </div>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span id="socioTotalBadge" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">(0 registros)</span>
-            <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarDatosSociodemografica()">
-              <span>↻ Actualizar</span>
-            </button>
+          <div class="req-table-wrapper">
+            <table id="tablaSociodemografica" class="resizable-table">
+              <thead id="theadSociodemografica"></thead>
+              <tbody id="tbodySociodemografica">
+                <tr>
+                  <td colspan="12" style="text-align: center; padding: 36px; color: var(--text-muted);">
+                    Cargando información sociodemográfica...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div class="req-table-wrapper">
-          <table id="tablaSociodemografica" class="resizable-table">
-            <thead id="theadSociodemografica"></thead>
-            <tbody id="tbodySociodemografica">
-              <tr>
-                <td colspan="12" style="text-align: center; padding: 36px; color: var(--text-muted);">
-                  Cargando información sociodemográfica...
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Panel Derecho (Escritorio) / Ventana Completa (Móvil): Detalle del Trabajador -->
+        <div class="card socio-detail-card" id="socioDetailCard">
+          <!-- Barra superior exclusiva para móvil (estilo ventana nueva) -->
+          <div class="socio-detail-mobile-bar">
+            <button type="button" class="btn btn-outline" style="padding: 5px 12px; font-size: 0.78rem; font-weight: 700;" onclick="cerrarDetalleSocio()">
+              ← Volver a la lista
+            </button>
+            <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Ficha del Colaborador</span>
+            <button type="button" class="btn btn-outline" style="padding: 4px 9px; font-size: 0.8rem;" onclick="cerrarDetalleSocio()" aria-label="Cerrar">✕</button>
+          </div>
+
+          <!-- Encabezado Fijo con Datos del Trabajador, Acciones y Pestañas -->
+          <div class="socio-detail-hdr">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                <div id="modalSocioAvatar" style="width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.05rem; border: 2px solid var(--accent); flex-shrink: 0;">
+                  👤
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <h3 id="modalSocioTitulo" style="font-size: 1rem; font-weight: 800; color: var(--text); margin: 0; line-height: 1.25;">Detalle del Trabajador</h3>
+                    <span id="modalSocioEstadoBadge" style="display: inline-block; padding: 2px 9px; border-radius: 12px; font-weight: 700; font-size: 0.7rem;">Activo</span>
+                  </div>
+                  <div id="modalSocioSubtitulo" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-outline" style="padding: 4px 9px; font-size: 0.8rem; flex-shrink: 0;" onclick="cerrarDetalleSocio()" title="Cerrar panel de detalle">✕</button>
+            </div>
+
+            <!-- Barra de Acciones del Trabajador: Editar, Documentos, Tomó Cargo, Retirar -->
+            <div class="socio-detail-actions-row">
+              <button type="button"
+                      class="socio-action-chip chip-edit"
+                      id="btnLapizSocioDetalle"
+                      onclick="activarEdicionEnDetalleSocio()"
+                      title="Editar los campos de esta pestaña"
+                      style="display: none;">
+                <span>✏️</span>
+                <span>Editar</span>
+              </button>
+              <button type="button"
+                      class="socio-action-chip"
+                      id="btnDocumentosSocioDetalle"
+                      onclick="irADocTrabajadoresSocio()"
+                      title="Ver documentos del trabajador en Doc Trabajadores">
+                <span>📁</span>
+                <span>Documentos</span>
+              </button>
+              <button type="button"
+                      class="socio-action-chip chip-tomo-btn"
+                      id="btnTomoCargoSocioDetalle"
+                      onclick="confirmarTomoCargoSocio()"
+                      title="Confirmar que el trabajador tomó el cargo"
+                      style="display: none;">
+                <span>Tomó Cargo</span>
+              </button>
+              <button type="button"
+                      class="socio-action-chip chip-retirar"
+                      id="btnRetirarSocioDetalle"
+                      onclick="irARetirarEnNominaSocio()"
+                      title="Ir a Activos en Nómina y abrir el formulario de retiro"
+                      style="display: none;">
+                <span>🚪</span>
+                <span>Retirar</span>
+              </button>
+            </div>
+
+            <!-- Pestañas Internas del Detalle (Colaborador, Datos Generales, etc.) -->
+            <div id="modalSocioTabsBar" style="display: flex; gap: 5px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;">
+            </div>
+          </div>
+
+          <!-- Cuerpo del Detalle / Formulario de Edición -->
+          <form id="formEditarSociodemografica" onsubmit="guardarEdicionSociodemografica(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
+            <div id="cuerpoFormSociodemografica" style="padding: 16px 18px; overflow-y: auto; flex: 1; margin-bottom: 0;">
+            </div>
+            <div id="accionesFormSociodemografica" style="display: none; padding: 12px 18px; border-top: 1px solid var(--border); background: var(--bg-elevated); margin-top: 0; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
+              <button type="button" class="btn btn-outline" onclick="cancelarEdicionEnDetalleSocio()">Cancelar</button>
+              <button type="submit" class="btn btn-primary" id="btnGuardarSocioModal">💾 Guardar Cambios</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -3183,27 +3470,6 @@
       <div class="modal-body" style="padding:18px 22px; overflow-y:auto; flex:1; margin-bottom:0;" id="cuerpoFichaAspirante">
         <!-- Contenido dinámico renderizado según sub-pestaña activa -->
       </div>
-    </div>
-  </div>
-
-  <!-- ── MODAL: EDITAR REGISTRO SOCIODEMOGRÁFICA ───────────────────────────── -->
-  <div class="modal-backdrop" id="modalEditarSociodemografica">
-    <div class="modal-box" style="max-width: 680px; width: 95%;">
-      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <div class="modal-title" id="modalSocioTitulo">✏️ Editar Registro</div>
-          <div id="modalSocioSubtitulo" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;"></div>
-        </div>
-        <button type="button" class="btn btn-outline btn-sm" onclick="cerrarModales()">✕</button>
-      </div>
-      <form id="formEditarSociodemografica" onsubmit="guardarEdicionSociodemografica(event)">
-        <div class="modal-body" id="cuerpoFormSociodemografica" style="max-height: 68vh; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; padding: 16px 4px;">
-        </div>
-        <div class="modal-actions" style="margin-top: 14px;">
-          <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="btnGuardarSocioModal">💾 Guardar Cambios</button>
-        </div>
-      </form>
     </div>
   </div>
 
@@ -7642,6 +7908,7 @@
         return;
       }
       _socioEstadoVista = checked ? 'Activo' : 'Retirado';
+      cerrarDetalleSocio();
       sincronizarControlesEstadoYOpcionesSocio();
       cargarDatosSociodemografica();
     }
@@ -7715,7 +7982,7 @@
       if (tbody) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="${cols.length + 1}" style="text-align:center; padding:32px; color:var(--text-muted);">
+            <td colspan="${cols.length}" style="text-align:center; padding:32px; color:var(--text-muted);">
               ⏳ Cargando registros de <strong>${esc(_socioEstadoVista)}s</strong>...
             </td>
           </tr>
@@ -7740,7 +8007,7 @@
         const data = await res.json();
         if (!res.ok || !data.ok) {
           if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:32px; color:var(--danger);">${esc(data.error || 'Error al consultar')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center; padding:32px; color:var(--danger);">${esc(data.error || 'Error al consultar')}</td></tr>`;
           }
           return;
         }
@@ -7754,7 +8021,7 @@
       } catch (err) {
         console.error('[Sociodemografica] Error cargando datos:', err);
         if (tbody) {
-          tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center; padding:32px; color:var(--danger);">Error de conexión al cargar Sociodemográfica.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center; padding:32px; color:var(--danger);">Error de conexión al cargar Sociodemográfica.</td></tr>`;
         }
       }
     }
@@ -7802,15 +8069,6 @@
           </th>
         `;
       });
-      if (_socioPuedeEditarActual) {
-        html += `
-          <th style="width:95px; min-width:85px; text-align:center;">
-            <div class="th-content" style="justify-content:center;">
-              <span>Acción</span>
-            </div>
-          </th>
-        `;
-      }
       html += '</tr>';
       thead.innerHTML = html;
       inicializarRedimensionColumnasSociodemografica();
@@ -7940,7 +8198,7 @@
       if (!lista.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="${cols.length + (_socioPuedeEditarActual ? 1 : 0)}" style="text-align:center; padding:36px; color:var(--text-muted);">
+            <td colspan="${cols.length}" style="text-align:center; padding:36px; color:var(--text-muted);">
               No se encontraron registros para los filtros seleccionados.
             </td>
           </tr>
@@ -7948,39 +8206,532 @@
         return;
       }
 
+      const idSelActual = _socioDetalleConsolidado?.identificacion || _socioRegistroEditando?.identificacion || '';
+      const panelAbierto = document.getElementById('socioDetailCard')?.classList.contains('open');
+
       tbody.innerHTML = lista.map((row, idx) => {
         const celdas = cols.map(c => `<td>${renderCeldaSocio(row, c)}</td>`).join('');
-        const celdaAccion = _socioPuedeEditarActual
-          ? `<td style="text-align:center;">
-               <button type="button" class="btn btn-outline btn-sm" style="padding:3px 9px; font-size:0.74rem;" onclick="event.stopPropagation(); abrirModalEditarSocioPorIndice(${idx})">
-                 ✏️ Editar
-               </button>
-             </td>`
-          : '';
-        const cursorStyle = _socioPuedeEditarActual ? 'cursor:pointer;' : '';
-        const rowClick = _socioPuedeEditarActual ? `onclick="abrirModalEditarSocioPorIndice(${idx})"` : '';
-        return `<tr style="${cursorStyle}" ${rowClick}>${celdas}${celdaAccion}</tr>`;
+        const isSel = panelAbierto && idSelActual && String(row.identificacion) === String(idSelActual);
+        return `<tr class="${isSel ? 'socio-row-selected' : ''}" data-socio-idx="${idx}" style="cursor:pointer;" onclick="abrirModalEditarSocioPorIndice(${idx})" title="Clic para abrir el detalle del trabajador">${celdas}</tr>`;
       }).join('');
 
       // Guardar referencia ordenada para abrir por índice
       window._socioListaOrdenadaActual = lista;
     }
 
-    function abrirModalEditarSocioPorIndice(idx) {
+    let _socioDetalleTabActiva = 'colaboradores';
+    let _socioDetalleModoEdicion = false;
+    let _socioDetalleConsolidado = null;
+    let _socioVinculacionesDetalle = [];
+    let _socioActasDotacionDetalle = [];
+    let _socioPermisosNominaActivos = { puedeConfirmarTomaCargo: false, puedeRetirar: false };
+
+    function etiquetaTabDetalleSocio(opcionKey, fallbackLabel) {
+      if (opcionKey === 'colaboradores') return 'Colaborador';
+      return fallbackLabel || opcionKey;
+    }
+
+    function cerrarDetalleSocio() {
+      const card = document.getElementById('socioDetailCard');
+      const layout = document.getElementById('socioViewLayout');
+      if (card) {
+        card.classList.remove('open');
+        if (typeof cerrarModalBack === 'function' && card._backEntry) {
+          cerrarModalBack(card._backEntry);
+          card._backEntry = null;
+        }
+      }
+      if (layout) layout.classList.remove('detail-active');
+      _socioDetalleModoEdicion = false;
+      document.querySelectorAll('#tbodySociodemografica tr.socio-row-selected').forEach(tr => tr.classList.remove('socio-row-selected'));
+    }
+
+    async function abrirModalEditarSocioPorIndice(idx) {
       const lista = window._socioListaOrdenadaActual || _socioRegistros;
       const row = lista[idx];
-      if (!row || !_socioPuedeEditarActual) return;
+      if (!row) return;
+
       _socioRegistroEditando = row;
+      // Al abrir el detalle, inicia en la pestaña desde donde el usuario seleccionó el registro
+      _socioDetalleTabActiva = _socioOpcionActiva;
+      _socioDetalleModoEdicion = false;
+      _socioVinculacionesDetalle = [];
+      _socioActasDotacionDetalle = [];
+      _socioDetalleConsolidado = {
+        ...row,
+        id_vinculacion: _socioOpcionActiva === 'colaboradores' ? row.id_registro : (row.id_vinculacion || ''),
+        id_examen: _socioOpcionActiva === 'examenes' ? row.id_registro : (row.id_examen || ''),
+        auditoria: {
+          colaboradores: { usuario_actualiza: row.usuario_actualiza || '', fecha_actualizacion: row.fecha_actualizacion || null },
+          segmentacion: { usuario_actualiza: row.usuario_actualiza || '', fecha_actualizacion: row.fecha_actualizacion || null },
+          examenes: { usuario_actualiza: row.usuario_actualiza || '', fecha_actualizacion: row.fecha_actualizacion || null }
+        }
+      };
 
-      const optObj = _socioOpciones.find(o => o.key === _socioOpcionActiva);
-      const optLabel = optObj ? optObj.label : _socioOpcionActiva;
+      // Resaltar fila activa en la tabla
+      document.querySelectorAll('#tbodySociodemografica tr').forEach(tr => {
+        tr.classList.toggle('socio-row-selected', String(tr.getAttribute('data-socio-idx')) === String(idx));
+      });
 
+      const layout = document.getElementById('socioViewLayout');
+      const card = document.getElementById('socioDetailCard');
+      if (layout) layout.classList.add('detail-active');
+      if (card) {
+        card.classList.add('open');
+        if (window.innerWidth <= 900 && typeof abrirModalBack === 'function' && !card._backEntry) {
+          card._backEntry = abrirModalBack(() => {
+            card.classList.remove('open');
+            if (layout) layout.classList.remove('detail-active');
+            card._backEntry = null;
+          });
+        }
+      }
+
+      actualizarEncabezadoYTabsDetalleSocio();
+      renderContenidoDetalleSocio();
+
+      // Cargar en paralelo el consolidado completo del trabajador para todas las pestañas del detalle
+      await recargarConsolidadoDetalleSocio(row);
+    }
+
+    async function recargarConsolidadoDetalleSocio(rowBase) {
+      const base = rowBase || _socioDetalleConsolidado || _socioRegistroEditando;
+      if (!base || !base.identificacion) return;
+
+      try {
+        const qs = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          estado: _socioEstadoVista,
+          id_vinculacion: base.id_vinculacion || (_socioOpcionActiva === 'colaboradores' ? (base.id_registro || '') : ''),
+          id_examen: base.id_examen || (_socioOpcionActiva === 'examenes' ? (base.id_registro || '') : '')
+        });
+        const res = await fetch(`/talenthub/api/sociodemografica/detalle/${encodeURIComponent(base.identificacion)}?${qs.toString()}`);
+        const data = await res.json();
+        if (res.ok && data.ok && data.detalle) {
+          _socioDetalleConsolidado = data.detalle;
+          _socioVinculacionesDetalle = Array.isArray(data.vinculaciones) ? data.vinculaciones : [];
+          _socioActasDotacionDetalle = Array.isArray(data.actas_dotacion) ? data.actas_dotacion : [];
+          if (data.permisosNominaActivos) {
+            _socioPermisosNominaActivos = data.permisosNominaActivos;
+          }
+          if (!_socioDetalleModoEdicion) {
+            actualizarEncabezadoYTabsDetalleSocio();
+            renderContenidoDetalleSocio();
+          }
+        }
+      } catch (err) {
+        console.warn('[Sociodemografica] No se pudo completar carga de detalle extendido:', err);
+      }
+    }
+
+    function obtenerIdRegistroParaTabSocio(tabKey) {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      if (tabKey === 'colaboradores') return d.id_vinculacion || d.id_registro || d.identificacion;
+      if (tabKey === 'examenes') return d.id_examen || d.id_registro || d.identificacion;
+      return d.identificacion || d.id_registro;
+    }
+
+    function obtenerAuditoriaTabSocio(tabKey) {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      const aud = d.auditoria || {};
+      if (tabKey === 'colaboradores' && aud.colaboradores) return aud.colaboradores;
+      if (tabKey === 'examenes' && aud.examenes) return aud.examenes;
+      if (aud.segmentacion) return aud.segmentacion;
+      return {
+        usuario_actualiza: d.usuario_actualiza || '',
+        fecha_actualizacion: d.fecha_actualizacion || null
+      };
+    }
+
+    function puedeEditarTabDetalleSocio(tabKey) {
+      const esActivo = (_socioEstadoVista === 'Activo');
+      const mapaEditar = esActivo ? (_socioPermisos?.editarActivo || {}) : (_socioPermisos?.editarRetirado || {});
+      return !!mapaEditar[tabKey];
+    }
+
+    function actualizarEncabezadoYTabsDetalleSocio() {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
       const titulo = document.getElementById('modalSocioTitulo');
       const subtitulo = document.getElementById('modalSocioSubtitulo');
-      const cuerpo = document.getElementById('cuerpoFormSociodemografica');
+      const badge = document.getElementById('modalSocioEstadoBadge');
+      const avatar = document.getElementById('modalSocioAvatar');
+      const btnLapiz = document.getElementById('btnLapizSocioDetalle');
+      const btnDocs = document.getElementById('btnDocumentosSocioDetalle');
+      const btnTomoCargo = document.getElementById('btnTomoCargoSocioDetalle');
+      const btnRetirar = document.getElementById('btnRetirarSocioDetalle');
+      const tabsBar = document.getElementById('modalSocioTabsBar');
 
-      if (titulo) titulo.textContent = `✏️ Editar ${optLabel} (${_socioEstadoVista})`;
-      if (subtitulo) subtitulo.textContent = `${row.trabajador || row.identificacion || ''} — Operación: ${row.operacion || '—'}`;
+      const nombreMostrar = d.trabajador || d.identificacion || 'Detalle del Trabajador';
+      if (titulo) titulo.textContent = nombreMostrar;
+
+      const estadoReg = d.estado || _socioEstadoVista;
+      const esAct = String(estadoReg).toLowerCase() === 'activo';
+      if (badge) {
+        badge.textContent = estadoReg;
+        badge.style.background = esAct ? 'rgba(22, 163, 74, 0.16)' : 'rgba(220, 38, 38, 0.16)';
+        badge.style.color = esAct ? '#22c55e' : '#ef4444';
+      }
+      if (avatar) {
+        avatar.style.borderColor = esAct ? '#16a34a' : '#dc2626';
+        avatar.style.background = esAct ? 'rgba(22, 163, 74, 0.12)' : 'rgba(220, 38, 38, 0.12)';
+      }
+
+      if (subtitulo) {
+        const partes = [];
+        if (d.identificacion) partes.push(`<span>🪪 <strong>${esc(d.identificacion)}</strong></span>`);
+        if (d.regional) partes.push(`<span>📍 ${esc(d.regional)}</span>`);
+        if (d.operacion) partes.push(`<span>🏢 ${esc(d.operacion)}</span>`);
+        if (d.cargo) partes.push(`<span>💼 ${esc(d.cargo)}</span>`);
+        subtitulo.innerHTML = partes.join('<span>•</span>');
+      }
+
+      // Pestañas visibles dentro del detalle según permisos del rol en el estado actual
+      const mapaVer = (_socioEstadoVista === 'Activo')
+        ? (_socioPermisos?.verActivo || { colaboradores: true })
+        : (_socioPermisos?.verRetirado || {});
+      const opcionesVisibles = _socioOpciones.filter(o => !!mapaVer[o.key]);
+
+      if (opcionesVisibles.length && !opcionesVisibles.some(o => o.key === _socioDetalleTabActiva)) {
+        _socioDetalleTabActiva = opcionesVisibles[0].key;
+      }
+
+      if (tabsBar) {
+        tabsBar.innerHTML = opcionesVisibles.map(o => `
+          <button type="button"
+                  class="socio-opcion-btn ${o.key === _socioDetalleTabActiva ? 'active' : ''}"
+                  onclick="cambiarTabDetalleSocio('${o.key}')">
+            ${esc(etiquetaTabDetalleSocio(o.key, o.label))}
+          </button>
+        `).join('');
+      }
+
+      // Botón Editar (lápiz) según permiso de edición de la pestaña activa en el detalle
+      const puedeEditarTab = puedeEditarTabDetalleSocio(_socioDetalleTabActiva);
+      if (btnLapiz) {
+        btnLapiz.style.display = (puedeEditarTab && !_socioDetalleModoEdicion) ? 'inline-flex' : 'none';
+      }
+
+      // Botón Documentos (lleva a Doc Trabajadores filtrando por identificación con filtros plegados)
+      if (btnDocs) {
+        btnDocs.style.display = d.identificacion ? 'inline-flex' : 'none';
+      }
+
+      // Botón Tomó Cargo (igual que en la pestaña Activos de Nómina)
+      if (btnTomoCargo) {
+        const yaTomoCargo = String(d.motivo_retiro || '').trim() === 'SI';
+        const puedeConfirmar = !!_socioPermisosNominaActivos?.puedeConfirmarTomaCargo;
+        if (esAct && d.id_vinculacion && (yaTomoCargo || puedeConfirmar)) {
+          btnTomoCargo.style.display = 'inline-flex';
+          if (yaTomoCargo) {
+            btnTomoCargo.className = 'socio-action-chip chip-tomo-ok';
+            btnTomoCargo.innerHTML = '<span>✓ Tomó cargo</span>';
+            btnTomoCargo.disabled = true;
+          } else {
+            btnTomoCargo.className = 'socio-action-chip chip-tomo-btn';
+            btnTomoCargo.innerHTML = '<span>✅</span><span>Tomó Cargo</span>';
+            btnTomoCargo.disabled = false;
+          }
+        } else {
+          btnTomoCargo.style.display = 'none';
+        }
+      }
+
+      // Botón Retirar (lleva a la pestaña Activos de Nómina y abre la ventana emergente de retiro)
+      if (btnRetirar) {
+        const puedeRet = _socioPermisosNominaActivos?.puedeRetirar !== false;
+        btnRetirar.style.display = (esAct && d.id_vinculacion && puedeRet) ? 'inline-flex' : 'none';
+      }
+    }
+
+    function irADocTrabajadoresSocio() {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      if (!d.identificacion) return;
+      const qs = new URLSearchParams({
+        tab: 'trabajador',
+        usuario: CONFIG.usuarioId,
+        identificacion: String(d.identificacion).trim(),
+        plegable: '1'
+      });
+      window.location.href = '/cloud-docs?' + qs.toString();
+    }
+
+    async function confirmarTomoCargoSocio() {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      const idVinc = d.id_vinculacion || (_socioVinculacionesDetalle[0] && _socioVinculacionesDetalle[0].id_vinculacion) || '';
+      if (!idVinc) {
+        showToast('No se encontró un Id de Vinculación activo para este trabajador.', 'error');
+        return;
+      }
+      if (!confirm('¿Confirma que la persona sí tomó el cargo?')) return;
+
+      const btn = document.getElementById('btnTomoCargoSocioDetalle');
+      if (btn) btn.disabled = true;
+      try {
+        const resp = await fetch('/nomina/api/tomo-cargo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idVinculacion: idVinc, usuario: CONFIG.usuarioId })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          showToast(data.error || 'No se pudo confirmar la toma de cargo', 'error');
+          if (btn) btn.disabled = false;
+          return;
+        }
+        showToast('Toma de cargo confirmada correctamente.', 'success');
+        if (_socioDetalleConsolidado) _socioDetalleConsolidado.motivo_retiro = 'SI';
+        actualizarEncabezadoYTabsDetalleSocio();
+        await recargarConsolidadoDetalleSocio();
+      } catch (err) {
+        showToast('Error de conexión al confirmar toma de cargo.', 'error');
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function irARetirarEnNominaSocio() {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      const idVinc = d.id_vinculacion || (_socioVinculacionesDetalle[0] && _socioVinculacionesDetalle[0].id_vinculacion) || '';
+      if (!d.identificacion || !idVinc) {
+        showToast('No se encontró vinculación activa para retirar.', 'error');
+        return;
+      }
+      const qs = new URLSearchParams({
+        tab: 'activos',
+        usuario: CONFIG.usuarioId,
+        identificacion: String(d.identificacion).trim(),
+        plegable: '1',
+        retirar: String(idVinc).trim()
+      });
+      window.location.href = '/nomina?' + qs.toString();
+    }
+
+    function irANominaDesdeVinculacionSocio(identificacion, estadoVinc) {
+      if (!identificacion) return;
+      const esRetirado = String(estadoVinc || '').trim().toLowerCase() === 'retirado';
+      const qs = new URLSearchParams({
+        tab: esRetirado ? 'retiros' : 'activos',
+        usuario: CONFIG.usuarioId,
+        identificacion: String(identificacion).trim(),
+        plegable: '1'
+      });
+      window.location.href = '/nomina?' + qs.toString();
+    }
+
+    function cambiarTabDetalleSocio(opcionKey) {
+      if (_socioDetalleTabActiva === opcionKey && !_socioDetalleModoEdicion) return;
+      _socioDetalleTabActiva = opcionKey;
+      _socioDetalleModoEdicion = false;
+      actualizarEncabezadoYTabsDetalleSocio();
+      renderContenidoDetalleSocio();
+    }
+
+    function activarEdicionEnDetalleSocio() {
+      if (!puedeEditarTabDetalleSocio(_socioDetalleTabActiva)) {
+        showToast('Su rol no tiene permiso para editar esta pestaña.', 'info');
+        return;
+      }
+      _socioDetalleModoEdicion = true;
+      actualizarEncabezadoYTabsDetalleSocio();
+      renderContenidoDetalleSocio();
+    }
+
+    function cancelarEdicionEnDetalleSocio() {
+      _socioDetalleModoEdicion = false;
+      actualizarEncabezadoYTabsDetalleSocio();
+      renderContenidoDetalleSocio();
+    }
+
+    function renderSeccionVinculacionesColaboradorSocio() {
+      const lista = Array.isArray(_socioVinculacionesDetalle) ? _socioVinculacionesDetalle : [];
+      if (!lista.length) {
+        return `
+          <div style="margin-top: 18px;">
+            <div style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
+              🔗 Registros en Maestro_Vinculación (0)
+            </div>
+            <div style="padding: 14px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+              No se encontraron registros en Maestro_Vinculación para este trabajador.
+            </div>
+          </div>
+        `;
+      }
+
+      const filasHtml = lista.map(v => {
+        const esAct = String(v.estado || '').toLowerCase() === 'activo';
+        const badgeEst = `<span style="display:inline-block; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.68rem; background:${esAct ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)'}; color:${esAct ? '#22c55e' : '#ef4444'};">${esc(v.estado || '—')}</span>`;
+        return `
+          <tr class="clickable-vinc"
+              onclick="irANominaDesdeVinculacionSocio('${esc(v.identificacion)}', '${esc(v.estado)}')"
+              title="Clic para abrir en el módulo de Nómina (${esAct ? 'Activos' : 'Retirados'})">
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">${esc(v.id_vinculacion || '—')}</td>
+            <td>${badgeEst}</td>
+            <td style="font-family:'JetBrains Mono',monospace;">${esc(v.identificacion || '—')}</td>
+            <td style="font-weight:600;">${esc(v.nombre_trabajador || '—')}</td>
+            <td>${esc(v.cargo || '—')}</td>
+            <td>${esc(v.operacion || '—')}</td>
+            <td style="white-space:nowrap;">${esc(v.fecha_ingreso || '—')}</td>
+            <td style="white-space:nowrap;">${esc(v.fecha_retiro || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div style="margin-top: 18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom: 6px;">
+            <span style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
+              🔗 Registros en Maestro_Vinculación (${lista.length})
+            </span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">
+              Selecciona un registro para abrirlo en Nómina
+            </span>
+          </div>
+          <div class="socio-subtable-wrap">
+            <table class="socio-subtable">
+              <thead>
+                <tr>
+                  <th>IdVinculación</th>
+                  <th>Estado</th>
+                  <th>Identificación</th>
+                  <th>Nombre del trabajador</th>
+                  <th>Cargo</th>
+                  <th>Operación</th>
+                  <th>Fecha de Ingreso</th>
+                  <th>Fecha de Retiro</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSeccionActasDotacionSocio() {
+      const lista = Array.isArray(_socioActasDotacionDetalle) ? _socioActasDotacionDetalle : [];
+      if (!lista.length) {
+        return `
+          <div style="margin-top: 18px;">
+            <div style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
+              📦 Actas de Entrega — DOTACIÓN (0)
+            </div>
+            <div style="padding: 14px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+              No se encontraron actas de entrega de categoría DOTACIÓN para este trabajador.
+            </div>
+          </div>
+        `;
+      }
+
+      const filasHtml = lista.map(a => {
+        const est = String(a.estado || '').trim();
+        const esFirmada = est.toLowerCase() === 'firmada';
+        const esAnulada = est.toLowerCase() === 'anulada';
+        const bgEst = esFirmada ? 'rgba(22,163,74,0.15)' : (esAnulada ? 'rgba(220,38,38,0.15)' : 'rgba(234,179,8,0.16)');
+        const colEst = esFirmada ? '#22c55e' : (esAnulada ? '#ef4444' : '#eab308');
+        const pdfBtn = a.url_acta
+          ? `<a href="${esc(a.url_acta)}" target="_blank" rel="noopener" class="socio-pdf-icon-btn" title="Abrir PDF del Acta #${esc(a.id_acta)}">📄</a>`
+          : `<span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:7px; background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--border); font-size:0.75rem;" title="Acta sin PDF generado aún">—</span>`;
+
+        return `
+          <tr>
+            <td style="width:42px; text-align:center;">${pdfBtn}</td>
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:700;">#${esc(a.id_acta)}</td>
+            <td style="white-space:nowrap;">${esc(a.fecha_entrega || '—')}</td>
+            <td><span style="display:inline-block; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.68rem; background:${bgEst}; color:${colEst};">${esc(est || '—')}</span></td>
+            <td>${esc(a.operacion || '—')}</td>
+            <td style="min-width:180px;">${esc(a.elementos_resumen || '—')}</td>
+            <td style="color:var(--text-muted);">${esc(a.observaciones || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div style="margin-top: 18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom: 6px;">
+            <span style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
+              📦 Actas de Entrega — Categoría DOTACIÓN (${lista.length})
+            </span>
+          </div>
+          <div class="socio-subtable-wrap">
+            <table class="socio-subtable">
+              <thead>
+                <tr>
+                  <th style="width:42px; text-align:center;">PDF</th>
+                  <th>Acta</th>
+                  <th>Fecha Entrega</th>
+                  <th>Estado</th>
+                  <th>Operación</th>
+                  <th>Elementos Entregados</th>
+                  <th>Observaciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderContenidoDetalleSocio() {
+      const cuerpo = document.getElementById('cuerpoFormSociodemografica');
+      const acciones = document.getElementById('accionesFormSociodemografica');
+      if (!cuerpo) return;
+
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      const aud = obtenerAuditoriaTabSocio(_socioDetalleTabActiva);
+      const rowTab = {
+        ...d,
+        usuario_actualiza: aud.usuario_actualiza || d.usuario_actualiza || '',
+        fecha_actualizacion: aud.fecha_actualizacion || d.fecha_actualizacion || null
+      };
+
+      const optObj = _socioOpciones.find(o => o.key === _socioDetalleTabActiva);
+      const optLabel = etiquetaTabDetalleSocio(_socioDetalleTabActiva, optObj ? optObj.label : _socioDetalleTabActiva);
+
+      if (!_socioDetalleModoEdicion) {
+        if (acciones) acciones.style.display = 'none';
+        const cols = COLUMNAS_SOCIODEMOGRAFICA[_socioDetalleTabActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+
+        const cardsHtml = cols
+          .filter(c => c.key !== 'usuario_actualiza' && c.key !== 'fecha_actualizacion')
+          .map(c => `
+            <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px; display: flex; flex-direction: column; gap: 3px;">
+              <span style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
+                ${esc(c.label)}
+              </span>
+              <div style="font-size: 0.85rem; color: var(--text); word-break: break-word;">
+                ${renderCeldaSocio(rowTab, c)}
+              </div>
+            </div>
+          `).join('');
+
+        const bloqueExtra = _socioDetalleTabActiva === 'colaboradores'
+          ? renderSeccionVinculacionesColaboradorSocio()
+          : (_socioDetalleTabActiva === 'dotacion' ? renderSeccionActasDotacionSocio() : '');
+
+        cuerpo.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 0.8rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
+              📋 Información de ${esc(optLabel)}
+            </span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px;">
+            ${cardsHtml}
+          </div>
+          <div style="margin-top: 14px; padding: 9px 12px; border-radius: 8px; background: var(--bg-elevated); border: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--text-muted);">
+            <span>👤 <strong>Usuario actualiza:</strong> ${esc(rowTab.usuario_actualiza || '—')}</span>
+            <span>🕒 <strong>Fecha de actualización:</strong> ${formatearFechaHoraSocio(rowTab.fecha_actualizacion)}</span>
+          </div>
+          ${bloqueExtra}
+        `;
+        return;
+      }
+
+      // Modo Edición activado con el botón del lápiz ✏️
+      if (acciones) acciones.style.display = 'flex';
 
       const buildOptions = (items, currentVal, placeholder = 'Seleccione...') => {
         const cur = String(currentVal || '');
@@ -7990,8 +8741,9 @@
           list.map(it => `<option value="${esc(it)}" ${it === cur ? 'selected' : ''}>${esc(it)}</option>`).join('');
       };
 
+      const row = rowTab;
       let html = '';
-      if (_socioOpcionActiva === 'colaboradores') {
+      if (_socioDetalleTabActiva === 'colaboradores') {
         const todasOps = _socioCatalogos?.todasOperaciones || [];
         const regsUnicas = Array.from(new Set(todasOps.map(o => o.regional).filter(Boolean))).sort();
         const opsDeRegional = todasOps.filter(o => !row.regional || o.regional === row.regional).map(o => o.operacion);
@@ -8040,7 +8792,7 @@
             <input type="date" id="editSocio_fecha_retiro" class="req-input" value="${esc(row.fecha_retiro || '')}">
           </div>
         `;
-      } else if (_socioOpcionActiva === 'datos_generales') {
+      } else if (_socioDetalleTabActiva === 'datos_generales') {
         const tiposDoc = (_socioCatalogos?.tiposDocumento || []).map(t => t.descripcion);
         html = `
           <div class="req-field" style="grid-column: 1 / -1;">
@@ -8076,7 +8828,7 @@
             <input type="date" id="editSocio_fecha_nacimiento" class="req-input" value="${esc(row.fecha_nacimiento || '')}">
           </div>
         `;
-      } else if (_socioOpcionActiva === 'info_personal') {
+      } else if (_socioDetalleTabActiva === 'info_personal') {
         html = `
           <div class="req-field">
             <label>Estado Civil</label>
@@ -8103,7 +8855,7 @@
             <input type="text" id="editSocio_direccion_residencia" class="req-input" value="${esc(row.direccion_residencia || '')}">
           </div>
         `;
-      } else if (_socioOpcionActiva === 'dotacion') {
+      } else if (_socioDetalleTabActiva === 'dotacion') {
         html = `
           <div class="req-field">
             <label>Camiseta</label>
@@ -8130,7 +8882,7 @@
             <textarea id="editSocio_observaciones_dotacion" class="req-input" rows="3">${esc(row.observaciones_dotacion || '')}</textarea>
           </div>
         `;
-      } else if (_socioOpcionActiva === 'info_bancaria') {
+      } else if (_socioDetalleTabActiva === 'info_bancaria') {
         html = `
           <div class="req-field">
             <label>Banco</label>
@@ -8143,7 +8895,7 @@
             <input type="text" id="editSocio_cuenta_bancaria" class="req-input" value="${esc(row.cuenta_bancaria || '')}">
           </div>
         `;
-      } else if (_socioOpcionActiva === 'seguridad_social') {
+      } else if (_socioDetalleTabActiva === 'seguridad_social') {
         html = `
           <div class="req-field">
             <label>EPS</label>
@@ -8192,7 +8944,7 @@
             </select>
           </div>
         `;
-      } else if (_socioOpcionActiva === 'examenes') {
+      } else if (_socioDetalleTabActiva === 'examenes') {
         html = `
           <div class="req-field">
             <label>Fecha Examen Médico Ingreso</label>
@@ -8239,15 +8991,16 @@
         `;
       }
 
-      if (cuerpo) cuerpo.innerHTML = html;
-
-      const modal = document.getElementById('modalEditarSociodemografica');
-      if (modal) {
-        modal.style.display = 'flex';
-        if (typeof abrirModalBack === 'function') {
-          modal._backEntry = abrirModalBack(() => { modal.style.display = 'none'; modal._backEntry = null; });
-        }
-      }
+      cuerpo.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 0.82rem; font-weight: 800; color: var(--accent); text-transform: uppercase;">
+            ✏️ Editando ${esc(optLabel)} (${esc(_socioEstadoVista)})
+          </span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px;">
+          ${html}
+        </div>
+      `;
     }
 
     function onChangeRegionalModalSocio(nuevaRegional) {
@@ -8261,8 +9014,10 @@
 
     async function guardarEdicionSociodemografica(e) {
       e.preventDefault();
-      if (!_socioRegistroEditando) return;
+      if (!_socioRegistroEditando && !_socioDetalleConsolidado) return;
 
+      const tabEditando = _socioDetalleTabActiva || _socioOpcionActiva;
+      const idReg = obtenerIdRegistroParaTabSocio(tabEditando);
       const btn = document.getElementById('btnGuardarSocioModal');
       const val = (id) => {
         const el = document.getElementById(`editSocio_${id}`);
@@ -8270,7 +9025,7 @@
       };
 
       const datos = {};
-      if (_socioOpcionActiva === 'colaboradores') {
+      if (tabEditando === 'colaboradores') {
         Object.assign(datos, {
           regional: val('regional'),
           operacion: val('operacion'),
@@ -8280,7 +9035,7 @@
           fecha_ingreso: val('fecha_ingreso'),
           fecha_retiro: val('fecha_retiro')
         });
-      } else if (_socioOpcionActiva === 'datos_generales') {
+      } else if (tabEditando === 'datos_generales') {
         Object.assign(datos, {
           tipo_documento: val('tipo_documento'),
           primer_nombre: val('primer_nombre'),
@@ -8290,7 +9045,7 @@
           genero: val('genero'),
           fecha_nacimiento: val('fecha_nacimiento')
         });
-      } else if (_socioOpcionActiva === 'info_personal') {
+      } else if (tabEditando === 'info_personal') {
         Object.assign(datos, {
           estado_civil: val('estado_civil'),
           celular: val('celular'),
@@ -8298,7 +9053,7 @@
           ciudad_residencia: val('ciudad_residencia'),
           direccion_residencia: val('direccion_residencia')
         });
-      } else if (_socioOpcionActiva === 'dotacion') {
+      } else if (tabEditando === 'dotacion') {
         Object.assign(datos, {
           camiseta: val('camiseta'),
           numero_buzo: val('numero_buzo'),
@@ -8307,12 +9062,12 @@
           fecha_ultima_entrega: val('fecha_ultima_entrega'),
           observaciones_dotacion: val('observaciones_dotacion')
         });
-      } else if (_socioOpcionActiva === 'info_bancaria') {
+      } else if (tabEditando === 'info_bancaria') {
         Object.assign(datos, {
           banco: val('banco'),
           cuenta_bancaria: val('cuenta_bancaria')
         });
-      } else if (_socioOpcionActiva === 'seguridad_social') {
+      } else if (tabEditando === 'seguridad_social') {
         Object.assign(datos, {
           eps: val('eps'),
           radicacion_eps: val('radicacion_eps'),
@@ -8324,7 +9079,7 @@
           arl: val('arl'),
           riesgo_arl: val('riesgo_arl')
         });
-      } else if (_socioOpcionActiva === 'examenes') {
+      } else if (tabEditando === 'examenes') {
         Object.assign(datos, {
           fecha_examen_ingreso: val('fecha_examen_ingreso'),
           fecha_examen_periodico: val('fecha_examen_periodico'),
@@ -8345,7 +9100,7 @@
       }
 
       try {
-        const res = await fetch(`/talenthub/api/sociodemografica/${encodeURIComponent(_socioOpcionActiva)}/${encodeURIComponent(_socioRegistroEditando.id_registro)}`, {
+        const res = await fetch(`/talenthub/api/sociodemografica/${encodeURIComponent(tabEditando)}/${encodeURIComponent(idReg)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -8360,7 +9115,10 @@
           return;
         }
         showToast(data.mensaje || 'Registro actualizado con éxito', 'success');
-        cerrarModales();
+        _socioDetalleModoEdicion = false;
+        await recargarConsolidadoDetalleSocio();
+        actualizarEncabezadoYTabsDetalleSocio();
+        renderContenidoDetalleSocio();
         await cargarDatosSociodemografica();
       } catch (err) {
         console.error('[Sociodemografica] Error guardando edición:', err);
@@ -8396,7 +9154,6 @@
       cerrarModalConBack(document.getElementById('modalEditarParametroReq'));
       cerrarModalConBack(document.getElementById('modalReporteRequisiciones'));
       cerrarModalConBack(document.getElementById('modalFichaAspirante'));
-      cerrarModalConBack(document.getElementById('modalEditarSociodemografica'));
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {

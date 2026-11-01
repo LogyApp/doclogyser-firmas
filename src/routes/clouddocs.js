@@ -64,8 +64,8 @@ router.get('/api/trabajadores', async (req, res) => {
 
     // Filtros dinámicos de UI
     if (buscar) {
-      conds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
-      params.push(`%${buscar}%`);
+      conds.push('(s.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR CAST(s.`Identificación` AS CHAR) LIKE ?)');
+      params.push(`%${buscar}%`, `%${buscar}%`);
     }
     if (regional) {
       conds.push('mv.Regional = ?');

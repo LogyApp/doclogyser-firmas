@@ -1991,7 +1991,13 @@
       // Auto-prefill regionals & operations if only 1 is allowed
       prellenoAutomaticoFiltros();
 
-      const tabParam = (new URLSearchParams(window.location.search).get('tab') || '').toLowerCase().trim();
+      const urlParamsInit = new URLSearchParams(window.location.search);
+      const tabParam = (urlParamsInit.get('tab') || '').toLowerCase().trim();
+      const buscarUrlParam = (urlParamsInit.get('identificacion') || urlParamsInit.get('buscar') || urlParamsInit.get('busqueda') || '').trim();
+      if (buscarUrlParam) {
+        const inputBuscarEl = document.getElementById('filter-buscar');
+        if (inputBuscarEl) inputBuscarEl.value = buscarUrlParam;
+      }
       const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : 'trabajador';
       switchTab(tabSolicitada);
 
