@@ -2954,7 +2954,10 @@
   <div class="modal-full">
     <div class="modal-full-header">
       <span id="modalTitulo">Retiro</span>
-      <button type="button" onclick="cerrarModalGestion()">&#10005; Cerrar</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" id="btnSocioGestionModal" onclick="irASociodemograficaDesdeGestion()" style="display:none; border:1px solid rgba(255,255,255,.38); font-weight:700;" title="Abrir detalle del trabajador en Sociodemografica">&#128202; Sociodemografica</button>
+        <button type="button" onclick="cerrarModalGestion()">&#10005; Cerrar</button>
+      </div>
     </div>
     <iframe id="gestionIframe" src="about:blank"></iframe>
   </div>
@@ -2965,7 +2968,10 @@
   <div class="modal-full" style="max-width:640px">
     <div class="modal-full-header">
       <span>Ficha del trabajador</span>
-      <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" onclick="irASociodemograficaDesdeFicha()" style="border:1px solid rgba(255,255,255,.38); font-weight:700;" title="Abrir detalle del trabajador en Sociodemografica">&#128202; Sociodemografica</button>
+        <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
+      </div>
     </div>
     <div class="modal-ficha-body" id="fichaBody">
       <div class="aviso-banner" id="avisoEdicionConcurrente" style="display:none"></div>
@@ -3678,7 +3684,15 @@
       iframeEl.src = url;
     }
   }
-  function abrirModal(url, titulo) {
+  let _gestionSocioCtx = null;
+  let _pendingAbrirRetiroId = '';
+
+  function abrirModal(url, titulo, socioCtx = null) {
+    _gestionSocioCtx = (socioCtx && (socioCtx.identificacion || socioCtx.idVinculacion)) ? socioCtx : null;
+    const btnSocio = document.getElementById('btnSocioGestionModal');
+    if (btnSocio) {
+      btnSocio.style.display = _gestionSocioCtx ? 'inline-flex' : 'none';
+    }
     document.getElementById('modalTitulo').textContent = titulo;
     navegarIframeGestion(document.getElementById('gestionIframe'), url);
     const overlay = document.getElementById('gestionModalOverlay');
@@ -3690,9 +3704,42 @@
     overlay.classList.remove('open');
     cerrarModalBack(overlay._backEntry);
     overlay._backEntry = null;
+    _gestionSocioCtx = null;
+    const btnSocio = document.getElementById('btnSocioGestionModal');
+    if (btnSocio) btnSocio.style.display = 'none';
     navegarIframeGestion(document.getElementById('gestionIframe'), 'about:blank');
     if (_tabActual === 'retiros') fetchDataRetiros();
     else if (_tabActual === 'activos') fetchDataActivos();
+  }
+  function irASociodemograficaDesdeGestion() {
+    if (!_gestionSocioCtx) return;
+    const ident = String(_gestionSocioCtx.identificacion || '').trim();
+    const idVinc = String(_gestionSocioCtx.idVinculacion || '').trim();
+    const estado = String(_gestionSocioCtx.estado || 'Retirado').trim();
+    const qs = new URLSearchParams({
+      tab: 'Sociodemografica',
+      usuario,
+      estado,
+      abrirDetalle: '1'
+    });
+    if (ident) qs.set('identificacion', ident);
+    if (idVinc) qs.set('id_vinculacion', idVinc);
+    window.location.href = '/talenthub?' + qs.toString();
+  }
+  function irASociodemograficaDesdeFicha() {
+    const ident = (document.getElementById('ficha_identificacion')?.value || '').trim();
+    const idVinc = (document.getElementById('ficha_idVinculacion')?.value || _fichaIdActual || '').trim();
+    const estado = (document.getElementById('ficha_estado')?.value || 'Activo').trim();
+    if (!ident && !idVinc) return;
+    const qs = new URLSearchParams({
+      tab: 'Sociodemografica',
+      usuario,
+      estado,
+      abrirDetalle: '1'
+    });
+    if (ident) qs.set('identificacion', ident);
+    if (idVinc) qs.set('id_vinculacion', idVinc);
+    window.location.href = '/talenthub?' + qs.toString();
   }
 
   // ── Cambio de pestaña ────────────────────────────────────────────────────
@@ -4325,6 +4372,20 @@
       _retirosState.cargado = true;
       updateFilterOptionsWithCountsRetiros();
       sortAndRenderRetiros();
+      if (_pendingAbrirRetiroId) {
+        const idTarget = _pendingAbrirRetiroId;
+        _pendingAbrirRetiroId = '';
+        const rowMatch = _retirosState.allData.find(r => String(r.IdVinculacion) === String(idTarget)) || _retirosState.allData[0];
+        if (rowMatch) {
+          abrirFilaRetiro(rowMatch);
+        } else {
+          abrirModal('/formretiro/' + encodeURIComponent(idTarget) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro', {
+            identificacion: retFilterIdentificacion.value.trim(),
+            idVinculacion: idTarget,
+            estado: 'Retirado'
+          });
+        }
+      }
     } catch { alert('Error de conexión al cargar los retiros.'); }
   }
 
@@ -4405,10 +4466,15 @@
   // Y el usuario actual tiene permiso para gestionarlos (ver puedeGenerarDocumentosRetiro
   // en el backend — Coordinador/Auxiliar de ANTIOQUIA no gestionan documentos).
   function abrirFilaRetiro(row) {
+    const socioCtx = {
+      identificacion: row.Identificacion || retFilterIdentificacion.value.trim() || '',
+      idVinculacion: row.IdVinculacion || '',
+      estado: 'Retirado'
+    };
     if (row.tieneDocsGenerados && puedeGenerarDocs) {
-      abrirModal('/gestionar-retiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Gestión de Retiro');
+      abrirModal('/gestionar-retiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Gestión de Retiro', socioCtx);
     } else {
-      abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+      abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro', socioCtx);
     }
   }
 
@@ -4764,7 +4830,11 @@
         btnRetirar.type = 'button'; btnRetirar.className = 'btn-retirar'; btnRetirar.textContent = 'Retirar';
         btnRetirar.onclick = (e) => {
           e.stopPropagation();
-          abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+          abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro', {
+            identificacion: row.Identificacion || actFilterIdentificacion.value.trim() || '',
+            idVinculacion: row.IdVinculacion || '',
+            estado: 'Activo'
+          });
         };
         celdaAcciones.appendChild(btnRetirar);
       }
@@ -9167,6 +9237,7 @@
   // Aplicar filtros en la pestaña correspondiente
   const mantenerFiltrosPlegados = paramsUrl.get('plegable') === '1' || paramsUrl.get('filtrosPlegados') === '1';
   const retirarUrlParam = (paramsUrl.get('retirar') || '').trim();
+  const abrirVinculacionUrlParam = (paramsUrl.get('abrirVinculacion') || '').trim();
   if (tabDestino === 'activos' && tabs.activo) {
     const termino = busquedaParam || idVinculacionParam;
     if (termino) actFilterIdentificacion.value = termino;
@@ -9179,7 +9250,15 @@
     switchTab('activos');
     if (retirarUrlParam) {
       setTimeout(() => {
-        abrirModal('/formretiro/' + encodeURIComponent(retirarUrlParam) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+        abrirModal('/formretiro/' + encodeURIComponent(retirarUrlParam) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro', {
+          identificacion: busquedaParam || '',
+          idVinculacion: retirarUrlParam,
+          estado: 'Activo'
+        });
+      }, 150);
+    } else if (abrirVinculacionUrlParam) {
+      setTimeout(() => {
+        abrirFichaVinculacion(abrirVinculacionUrlParam);
       }, 150);
     }
   } else if (tabDestino === 'retiros' && tabs.retiro) {
@@ -9190,6 +9269,9 @@
 
     if ((termino || regionalParam || operacionParam) && !mantenerFiltrosPlegados) {
       abrirFiltrosSiCerrado('ret');
+    }
+    if (abrirVinculacionUrlParam) {
+      _pendingAbrirRetiroId = abrirVinculacionUrlParam;
     }
     switchTab('retiros');
   } else if (tabDestino === 'bloqueo' && tabs.bloqueo) {

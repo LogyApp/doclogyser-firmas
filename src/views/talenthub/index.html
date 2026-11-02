@@ -2560,8 +2560,11 @@
               <div id="socioOpcionesBar" class="socio-opciones-bar"></div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span id="socioTotalBadge" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">(0 registros)</span>
+              <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="abrirModalReporteSociodemografica()" title="Descargar reporte en Excel (.xlsx) o CSV (.csv)">
+                <span>📥 Descargar Reporte</span>
+              </button>
               <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarDatosSociodemografica()">
                 <span>↻ Actualizar</span>
               </button>
@@ -2630,6 +2633,20 @@
                 <span>📁</span>
                 <span>Documentos</span>
               </button>
+              <button type="button"
+                      class="socio-action-chip"
+                      id="btnHvSeleccionSocioDetalle"
+                      onclick="abrirHojaVidaSeleccionSocio()"
+                      title="Ver la Hoja de Vida de Selección registrada como aspirante"
+                      style="display: none;">
+                <span>🎓</span>
+                <span>Hoja de Vida</span>
+              </button>
+              <input type="file"
+                     id="inputSubirDocSocioDirecto"
+                     style="display: none;"
+                     accept=".pdf,image/*"
+                     onchange="onFileChangeSubirDocSocioDirecto(event)">
               <button type="button"
                       class="socio-action-chip chip-tomo-btn"
                       id="btnTomoCargoSocioDetalle"
@@ -3174,6 +3191,39 @@
         <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
         <button type="button" class="btn btn-outline" id="btnReporteReqCsv" onclick="descargarReporteRequisiciones('csv')" disabled>📄 Descargar CSV</button>
         <button type="button" class="btn btn-primary" id="btnReporteReqExcel" onclick="descargarReporteRequisiciones('xlsx')" disabled>📊 Descargar Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: DESCARGAR REPORTE SOCIODEMOGRÁFICA ─────────────────────────── -->
+  <div class="modal-backdrop" id="modalReporteSociodemografica" style="z-index: 1050;">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-hdr" style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h3 style="font-size:1.1rem; font-weight:800; color:var(--text); display:flex; align-items:center; gap:8px;">
+            <span>📥</span> Descargar Reporte Sociodemográfica
+          </h3>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">
+            Exporta los registros según los filtros y el estado actual (Activos o Retirados).
+          </p>
+        </div>
+        <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="cerrarModales()">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:16px 22px;">
+        <div>
+          <label class="lbl" style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:6px; color:var(--text);">Alcance del reporte</label>
+          <select id="reporteSocioTipo" class="input-field" onchange="actualizarInfoModalReporteSocio()">
+            <option value="vista_actual">Vista actual (columnas de la pestaña activa)</option>
+            <option value="sabana_completa">Sábana Sociodemográfica Completa (todas las pestañas autorizadas)</option>
+          </select>
+        </div>
+        <div id="reporteSocioInfo" style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:0.82rem; color:var(--text-muted); line-height:1.45;">
+        </div>
+      </div>
+      <div class="modal-ftr" style="padding:12px 22px; border-top:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+        <button type="button" class="btn btn-outline" id="btnReporteSocioCsv" onclick="descargarReporteSociodemografica('csv')">📄 Descargar CSV</button>
+        <button type="button" class="btn btn-primary" id="btnReporteSocioExcel" onclick="descargarReporteSociodemografica('xlsx')">📊 Descargar Excel</button>
       </div>
     </div>
   </div>
@@ -7794,6 +7844,9 @@
       ]
     };
 
+    let _socioUrlParamsAplicados = false;
+    let _socioPendingAbrirDetalle = null;
+
     async function inicializarSociodemografica() {
       try {
         if (!_socioCatalogosCargados) {
@@ -7809,6 +7862,34 @@
             _socioOpciones = data.opciones;
           }
           _socioCatalogosCargados = true;
+        }
+        if (!_socioUrlParamsAplicados) {
+          _socioUrlParamsAplicados = true;
+          const urlParams = new URLSearchParams(window.location.search);
+          const identParam = (urlParams.get('identificacion') || '').trim();
+          const estadoParam = (urlParams.get('estado') || '').trim();
+          const idVincParam = (urlParams.get('id_vinculacion') || '').trim();
+          const abrirDetParam = urlParams.get('abrirDetalle') === '1';
+
+          if (identParam) {
+            const inpQ = document.getElementById('filtroSocioQ');
+            if (inpQ) inpQ.value = identParam;
+          }
+          if (estadoParam) {
+            const esRet = estadoParam.toLowerCase() === 'retirado';
+            if (esRet && _socioPermisos?.puedeVerRetirados) {
+              _socioEstadoVista = 'Retirado';
+            } else if (!esRet) {
+              _socioEstadoVista = 'Activo';
+            }
+          }
+          if (abrirDetParam && (identParam || idVincParam)) {
+            _socioPendingAbrirDetalle = {
+              identificacion: identParam,
+              id_vinculacion: idVincParam,
+              estadoSolicitado: estadoParam || ''
+            };
+          }
         }
         sincronizarControlesEstadoYOpcionesSocio();
         await cargarDatosSociodemografica();
@@ -8018,6 +8099,29 @@
         poblarSelectoresFacetasSocio(data.counts || {});
         renderEncabezadoTablaSocio(cols);
         renderFilasTablaSocio();
+
+        if (_socioPendingAbrirDetalle) {
+          const pending = _socioPendingAbrirDetalle;
+          _socioPendingAbrirDetalle = null;
+          const listaOrd = window._socioListaOrdenadaActual || _socioRegistros || [];
+          let idxMatch = -1;
+          if (pending.id_vinculacion && _socioOpcionActiva === 'colaboradores') {
+            idxMatch = listaOrd.findIndex(r => String(r.id_registro) === String(pending.id_vinculacion));
+          }
+          if (idxMatch < 0 && pending.identificacion) {
+            idxMatch = listaOrd.findIndex(r => String(r.identificacion) === String(pending.identificacion));
+          }
+          if (idxMatch >= 0) {
+            await abrirModalEditarSocioPorIndice(idxMatch);
+          } else if (!pending._yaProboCambioEstado && _socioEstadoVista === 'Activo' && _socioPermisos?.puedeVerRetirados) {
+            _socioEstadoVista = 'Retirado';
+            _socioPendingAbrirDetalle = { ...pending, _yaProboCambioEstado: true };
+            sincronizarControlesEstadoYOpcionesSocio();
+            await cargarDatosSociodemografica();
+          } else if (pending.identificacion) {
+            await abrirDetalleSocioDirectoPorIdentificacion(pending.identificacion, pending.id_vinculacion);
+          }
+        }
       } catch (err) {
         console.error('[Sociodemografica] Error cargando datos:', err);
         if (tbody) {
@@ -8138,8 +8242,49 @@
       });
     }
 
-    function renderCeldaSocio(row, col) {
+    const MAPA_DOC_SOCIO_ID = {
+      doc_banco: '10',
+      doc_eps: '15',
+      doc_afp: '14',
+      doc_ccf: '12',
+      doc_arl: '6'
+    };
+
+    const COLUMNAS_SEMAFORO_ANUAL_SOCIO = new Set([
+      'fecha_examen_periodico',
+      'fecha_carnet_bpm',
+      'fecha_curso_alturas',
+      'fecha_psicosensometrico'
+    ]);
+
+    const COLUMNAS_CRITICAS_ALERTA_SOCIO = new Set([
+      'banco',
+      'cuenta_bancaria',
+      'eps',
+      'pension',
+      'caja_compensacion',
+      'arl'
+    ]);
+
+    function calcularBadgeSemaforoAnualSocio(fechaStr) {
+      if (!fechaStr || String(fechaStr).trim() === '') return '';
+      const limpio = String(fechaStr).trim().slice(0, 10);
+      const dt = new Date(limpio + 'T00:00:00');
+      if (isNaN(dt.getTime())) return '';
+      const dias = Math.floor((Date.now() - dt.getTime()) / 86400000);
+      if (dias <= 335) {
+        return `<span style="display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px; border-radius:9px; font-size:0.68rem; font-weight:700; background:rgba(22,163,74,0.14); color:#16a34a;" title="Vigente (${dias} días transcurridos)">🟢 Vigente</span>`;
+      }
+      if (dias <= 365) {
+        return `<span style="display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px; border-radius:9px; font-size:0.68rem; font-weight:700; background:rgba(234,179,8,0.16); color:#d97706;" title="Próximo a cumplir 1 año (${dias} días transcurridos)">🟡 Próx. vencer</span>`;
+      }
+      return `<span style="display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px; border-radius:9px; font-size:0.68rem; font-weight:700; background:rgba(220,38,38,0.14); color:#ef4444;" title="Más de 1 año (${dias} días transcurridos)">🔴 Vencido</span>`;
+    }
+
+    function renderCeldaSocio(row, col, esDetalle = false) {
       const val = row[col.key];
+      const esTrabajadorActivo = String(row.estado || _socioEstadoVista || '').toLowerCase() === 'activo';
+
       if (col.type === 'estado') {
         const esAct = String(val || '').toLowerCase() === 'activo';
         const bg = esAct ? 'rgba(22, 163, 74, 0.14)' : 'rgba(220, 38, 38, 0.14)';
@@ -8147,8 +8292,19 @@
         return `<span style="display:inline-block; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.74rem; background:${bg}; color:${fg};">${esc(val || '—')}</span>`;
       }
       if (col.type === 'doc_url') {
-        if (!val) return '<span style="color:var(--text-muted);">—</span>';
-        return `<a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="socio-doc-link" onclick="event.stopPropagation();" title="Abrir soporte en pestaña nueva">📄 Ver Doc</a>`;
+        const idDoc = MAPA_DOC_SOCIO_ID[col.key] || '';
+        const puedeSubir = esDetalle && idDoc && puedeEditarTabDetalleSocio(_socioDetalleTabActiva);
+        const btnSubirHtml = puedeSubir
+          ? `<button type="button" class="socio-doc-link" style="margin-left:6px; cursor:pointer; background:var(--bg-elevated); color:var(--text); border:1px solid var(--border);" onclick="event.stopPropagation(); iniciarSubidaDocSocioDirecto('${idDoc}', '${esc(col.label)}')" title="${val ? 'Actualizar soporte en Cloud Docs' : 'Subir soporte directamente a Cloud Docs'}">☁ ${val ? 'Actualizar' : 'Subir'}</button>`
+          : '';
+
+        if (!val) {
+          const badgeSinSoporte = esTrabajadorActivo
+            ? `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:8px; font-size:0.68rem; font-weight:700; background:rgba(234,179,8,0.15); color:#d97706;" title="Soporte documental pendiente de cargue">⚠️ Sin soporte</span>`
+            : `<span style="color:var(--text-muted);">—</span>`;
+          return `<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;">${badgeSinSoporte}${btnSubirHtml}</span>`;
+        }
+        return `<span style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px;"><a href="${esc(val)}" target="_blank" rel="noopener noreferrer" class="socio-doc-link" onclick="event.stopPropagation();" title="Abrir soporte en pestaña nueva">📄 Ver Doc</a>${btnSubirHtml}</span>`;
       }
       if (col.type === 'edad') {
         if (val === null || val === undefined || val === '') return '<span style="color:var(--text-muted);">—</span>';
@@ -8157,7 +8313,20 @@
       if (col.type === 'datetime') {
         return `<span style="font-size:0.78rem; color:var(--text-muted);">${formatearFechaHoraSocio(val)}</span>`;
       }
+      if (COLUMNAS_SEMAFORO_ANUAL_SOCIO.has(col.key)) {
+        if (col.key === 'fecha_curso_alturas' && (!val || String(val).trim() === '') && String(row.trabajo_alturas || '').trim().toUpperCase() === 'SI') {
+          return `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9px; font-size:0.7rem; font-weight:700; background:rgba(220,38,38,0.14); color:#ef4444;" title="Trabajo en alturas = SI, pero no registra fecha de curso">🔴 Sin curso</span>`;
+        }
+        if (val === null || val === undefined || String(val).trim() === '') {
+          return '<span style="color:var(--text-muted);">—</span>';
+        }
+        const badgeSem = esTrabajadorActivo ? calcularBadgeSemaforoAnualSocio(val) : '';
+        return `<span style="display:inline-flex; align-items:center; flex-wrap:wrap;"><span>${esc(String(val))}</span>${badgeSem}</span>`;
+      }
       if (val === null || val === undefined || String(val).trim() === '') {
+        if (esTrabajadorActivo && COLUMNAS_CRITICAS_ALERTA_SOCIO.has(col.key)) {
+          return `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:8px; font-size:0.68rem; font-weight:700; background:rgba(234,179,8,0.15); color:#d97706;" title="Dato pendiente por completar">⚠️ Pendiente</span>`;
+        }
         return '<span style="color:var(--text-muted);">—</span>';
       }
       if (col.bold) {
@@ -8223,8 +8392,10 @@
     let _socioDetalleModoEdicion = false;
     let _socioDetalleConsolidado = null;
     let _socioVinculacionesDetalle = [];
+    let _socioExamenesHistorialDetalle = [];
     let _socioActasDotacionDetalle = [];
     let _socioPermisosNominaActivos = { puedeConfirmarTomaCargo: false, puedeRetirar: false };
+    let _socioSubidaDocPendiente = null;
 
     function etiquetaTabDetalleSocio(opcionKey, fallbackLabel) {
       if (opcionKey === 'colaboradores') return 'Colaborador';
@@ -8294,6 +8465,40 @@
       await recargarConsolidadoDetalleSocio(row);
     }
 
+    async function abrirDetalleSocioDirectoPorIdentificacion(identificacion, idVinculacion = '') {
+      if (!identificacion) return;
+      const stub = {
+        identificacion: String(identificacion).trim(),
+        id_vinculacion: String(idVinculacion || '').trim(),
+        id_registro: String(idVinculacion || identificacion).trim(),
+        trabajador: String(identificacion).trim(),
+        estado: _socioEstadoVista
+      };
+      _socioRegistroEditando = stub;
+      _socioDetalleTabActiva = _socioOpcionActiva;
+      _socioDetalleModoEdicion = false;
+      _socioVinculacionesDetalle = [];
+      _socioActasDotacionDetalle = [];
+      _socioDetalleConsolidado = { ...stub };
+
+      const layout = document.getElementById('socioViewLayout');
+      const card = document.getElementById('socioDetailCard');
+      if (layout) layout.classList.add('detail-active');
+      if (card) {
+        card.classList.add('open');
+        if (window.innerWidth <= 900 && typeof abrirModalBack === 'function' && !card._backEntry) {
+          card._backEntry = abrirModalBack(() => {
+            card.classList.remove('open');
+            if (layout) layout.classList.remove('detail-active');
+            card._backEntry = null;
+          });
+        }
+      }
+      actualizarEncabezadoYTabsDetalleSocio();
+      renderContenidoDetalleSocio();
+      await recargarConsolidadoDetalleSocio(stub);
+    }
+
     async function recargarConsolidadoDetalleSocio(rowBase) {
       const base = rowBase || _socioDetalleConsolidado || _socioRegistroEditando;
       if (!base || !base.identificacion) return;
@@ -8310,6 +8515,7 @@
         if (res.ok && data.ok && data.detalle) {
           _socioDetalleConsolidado = data.detalle;
           _socioVinculacionesDetalle = Array.isArray(data.vinculaciones) ? data.vinculaciones : [];
+          _socioExamenesHistorialDetalle = Array.isArray(data.examenes_historial) ? data.examenes_historial : [];
           _socioActasDotacionDetalle = Array.isArray(data.actas_dotacion) ? data.actas_dotacion : [];
           if (data.permisosNominaActivos) {
             _socioPermisosNominaActivos = data.permisosNominaActivos;
@@ -8416,6 +8622,12 @@
         btnDocs.style.display = d.identificacion ? 'inline-flex' : 'none';
       }
 
+      // Botón Hoja de Vida de Selección (cuando el colaborador proviene de un proceso en Selección)
+      const btnHv = document.getElementById('btnHvSeleccionSocioDetalle');
+      if (btnHv) {
+        btnHv.style.display = d.id_aspirante_hv ? 'inline-flex' : 'none';
+      }
+
       // Botón Tomó Cargo (igual que en la pestaña Activos de Nómina)
       if (btnTomoCargo) {
         const yaTomoCargo = String(d.motivo_retiro || '').trim() === 'SI';
@@ -8450,8 +8662,12 @@
         tab: 'trabajador',
         usuario: CONFIG.usuarioId,
         identificacion: String(d.identificacion).trim(),
-        plegable: '1'
+        plegable: '1',
+        abrirModal: '1'
       });
+      if (d.trabajador) {
+        qs.set('nombre', String(d.trabajador).trim());
+      }
       window.location.href = '/cloud-docs?' + qs.toString();
     }
 
@@ -8505,7 +8721,7 @@
       window.location.href = '/nomina?' + qs.toString();
     }
 
-    function irANominaDesdeVinculacionSocio(identificacion, estadoVinc) {
+    function irANominaDesdeVinculacionSocio(identificacion, estadoVinc, idVinculacion) {
       if (!identificacion) return;
       const esRetirado = String(estadoVinc || '').trim().toLowerCase() === 'retirado';
       const qs = new URLSearchParams({
@@ -8514,6 +8730,9 @@
         identificacion: String(identificacion).trim(),
         plegable: '1'
       });
+      if (idVinculacion) {
+        qs.set('abrirVinculacion', String(idVinculacion).trim());
+      }
       window.location.href = '/nomina?' + qs.toString();
     }
 
@@ -8547,10 +8766,10 @@
         return `
           <div style="margin-top: 18px;">
             <div style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
-              🔗 Registros en Maestro_Vinculación (0)
+              🔗 Vinculaciones en Logyser (0)
             </div>
             <div style="padding: 14px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
-              No se encontraron registros en Maestro_Vinculación para este trabajador.
+              No se encontraron vinculaciones en Logyser para este trabajador.
             </div>
           </div>
         `;
@@ -8561,7 +8780,7 @@
         const badgeEst = `<span style="display:inline-block; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.68rem; background:${esAct ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)'}; color:${esAct ? '#22c55e' : '#ef4444'};">${esc(v.estado || '—')}</span>`;
         return `
           <tr class="clickable-vinc"
-              onclick="irANominaDesdeVinculacionSocio('${esc(v.identificacion)}', '${esc(v.estado)}')"
+              onclick="irANominaDesdeVinculacionSocio('${esc(v.identificacion)}', '${esc(v.estado)}', '${esc(v.id_vinculacion || '')}')"
               title="Clic para abrir en el módulo de Nómina (${esAct ? 'Activos' : 'Retirados'})">
             <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">${esc(v.id_vinculacion || '—')}</td>
             <td>${badgeEst}</td>
@@ -8579,7 +8798,7 @@
         <div style="margin-top: 18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom: 6px;">
             <span style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
-              🔗 Registros en Maestro_Vinculación (${lista.length})
+              🔗 Vinculaciones en Logyser (${lista.length})
             </span>
             <span style="font-size: 0.72rem; color: var(--text-muted);">
               Selecciona un registro para abrirlo en Nómina
@@ -8608,8 +8827,70 @@
       `;
     }
 
+    function obtenerUltimaFechaActaDotacionSocio() {
+      const lista = Array.isArray(_socioActasDotacionDetalle) ? _socioActasDotacionDetalle : [];
+      for (const a of lista) {
+        const est = String(a.estado || '').trim().toLowerCase();
+        if (est === 'anulada') continue;
+        if (a.fecha_entrega && String(a.fecha_entrega).trim()) {
+          return String(a.fecha_entrega).trim().slice(0, 10);
+        }
+      }
+      return '';
+    }
+
+    async function sincronizarFechaUltimaActaDotacionSocio(fechaActa) {
+      if (!fechaActa) return;
+      if (_socioDetalleModoEdicion) {
+        const inp = document.getElementById('editSocio_fecha_ultima_entrega');
+        if (inp) {
+          inp.value = fechaActa;
+          showToast(`Fecha de última entrega asignada a ${fechaActa}. Presione Guardar Cambios para confirmar.`, 'info');
+        }
+        return;
+      }
+
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      if (!d.identificacion) return;
+      try {
+        const res = await fetch(`/talenthub/api/sociodemografica/dotacion/${encodeURIComponent(d.identificacion)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            estadoVista: _socioEstadoVista,
+            datos: {
+              camiseta: d.camiseta || '',
+              numero_buzo: d.numero_buzo || '',
+              pantalon: d.pantalon || '',
+              botas: d.botas || '',
+              fecha_ultima_entrega: fechaActa,
+              observaciones_dotacion: d.observaciones_dotacion || ''
+            }
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo actualizar la Fecha Ultima Entrega', 'error');
+          return;
+        }
+        showToast(`Fecha Ultima Entrega actualizada a ${fechaActa}`, 'success');
+        await recargarConsolidadoDetalleSocio();
+        await cargarDatosSociodemografica();
+      } catch (err) {
+        console.error('[Sociodemografica] Error sincronizando fecha de dotación:', err);
+        showToast('Error de red al sincronizar la fecha de dotación', 'error');
+      }
+    }
+
     function renderSeccionActasDotacionSocio() {
       const lista = Array.isArray(_socioActasDotacionDetalle) ? _socioActasDotacionDetalle : [];
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      const ultimaFechaActa = obtenerUltimaFechaActaDotacionSocio();
+      const fechaActualReg = String(d.fecha_ultima_entrega || '').trim().slice(0, 10);
+      const puedeEditarDot = puedeEditarTabDetalleSocio('dotacion');
+      const mostrarBotonSync = ultimaFechaActa && ultimaFechaActa !== fechaActualReg && puedeEditarDot;
+
       if (!lista.length) {
         return `
           <div style="margin-top: 18px;">
@@ -8648,10 +8929,20 @@
 
       return `
         <div style="margin-top: 18px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom: 6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom: 6px;">
             <span style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
               📦 Actas de Entrega — Categoría DOTACIÓN (${lista.length})
             </span>
+            ${mostrarBotonSync ? `
+              <button type="button"
+                      class="socio-action-chip"
+                      style="font-size:0.72rem; padding:4px 10px;"
+                      onclick="sincronizarFechaUltimaActaDotacionSocio('${esc(ultimaFechaActa)}')"
+                      title="Actualizar Fecha Ultima Entrega en Dotación con la fecha de la última acta">
+                <span>🔄</span>
+                <span>Tomar fecha de última acta (${esc(ultimaFechaActa)})</span>
+              </button>
+            ` : ''}
           </div>
           <div class="socio-subtable-wrap">
             <table class="socio-subtable">
@@ -8673,6 +8964,239 @@
           </div>
         </div>
       `;
+    }
+
+    function seleccionarExamenHistorialSocio(idExamen) {
+      if (!idExamen) return;
+      const lista = Array.isArray(_socioExamenesHistorialDetalle) ? _socioExamenesHistorialDetalle : [];
+      const ex = lista.find(item => String(item.id_examen) === String(idExamen));
+      if (!ex || !_socioDetalleConsolidado) return;
+      Object.assign(_socioDetalleConsolidado, {
+        id_examen: ex.id_examen,
+        fecha_examen_ingreso: ex.fecha_examen_ingreso || '',
+        fecha_examen_periodico: ex.fecha_examen_periodico || '',
+        recomendaciones_medicas: ex.recomendaciones_medicas || '',
+        fecha_examen_bpm: ex.fecha_examen_bpm || '',
+        fecha_carnet_bpm: ex.fecha_carnet_bpm || '',
+        trabajo_alturas: ex.trabajo_alturas || '',
+        fecha_curso_alturas: ex.fecha_curso_alturas || '',
+        fecha_psicosensometrico: ex.fecha_psicosensometrico || '',
+        estudio_seguridad: ex.estudio_seguridad || '',
+        observaciones_examenes: ex.observaciones_examenes || ''
+      });
+      if (_socioDetalleConsolidado.auditoria) {
+        _socioDetalleConsolidado.auditoria.examenes = {
+          usuario_actualiza: ex.usuario_actualiza || '',
+          fecha_actualizacion: ex.fecha_actualizacion || null
+        };
+      }
+      renderContenidoDetalleSocio();
+    }
+
+    function renderSeccionExamenesHistorialSocio() {
+      const lista = Array.isArray(_socioExamenesHistorialDetalle) ? _socioExamenesHistorialDetalle : [];
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      const idExamenActual = String(d.id_examen || '');
+
+      if (!lista.length) {
+        return `
+          <div style="margin-top: 18px;">
+            <div style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
+              🩺 Historial de Exámenes en Logyser (0)
+            </div>
+            <div style="padding: 14px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+              Este colaborador aún no registra fila en <strong>Maestro_Examenes</strong>. Si presionas <strong>✏️ Editar</strong> y guardas los datos, el registro se creará automáticamente.
+            </div>
+          </div>
+        `;
+      }
+
+      const filasHtml = lista.map(ex => {
+        const esSel = idExamenActual && String(ex.id_examen) === idExamenActual;
+        return `
+          <tr class="clickable-vinc"
+              style="${esSel ? 'background: var(--accent-soft);' : ''}"
+              onclick="seleccionarExamenHistorialSocio('${esc(ex.id_examen)}')"
+              title="Clic para ver o editar este registro de exámenes">
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">${esc(ex.id_examen || '—')}</td>
+            <td style="font-family:'JetBrains Mono',monospace;">${esc(ex.id_vinculacion || '—')}</td>
+            <td style="white-space:nowrap;">${esc(ex.fecha_examen_ingreso || '—')}</td>
+            <td style="white-space:nowrap;">${esc(ex.fecha_examen_periodico || '—')}</td>
+            <td style="white-space:nowrap;">${esc(ex.fecha_carnet_bpm || '—')}</td>
+            <td>${esc(ex.trabajo_alturas || '—')}</td>
+            <td style="white-space:nowrap;">${esc(ex.fecha_curso_alturas || '—')}</td>
+            <td style="white-space:nowrap;">${esc(ex.fecha_psicosensometrico || '—')}</td>
+            <td>${esc(ex.estudio_seguridad || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div style="margin-top: 18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom: 6px;">
+            <span style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
+              🩺 Historial de Exámenes en Logyser (${lista.length})
+            </span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">
+              Selecciona un registro para consultarlo o editarlo
+            </span>
+          </div>
+          <div class="socio-subtable-wrap">
+            <table class="socio-subtable">
+              <thead>
+                <tr>
+                  <th>IdExamen</th>
+                  <th>IdVinculación</th>
+                  <th>Ex. Ingreso</th>
+                  <th>Ex. Periódico</th>
+                  <th>Carnet BPM</th>
+                  <th>Alturas</th>
+                  <th>Curso Alturas</th>
+                  <th>Psicosensométrico</th>
+                  <th>Estudio Seg.</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function abrirHojaVidaSeleccionSocio() {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      if (!d.id_aspirante_hv) {
+        showToast('Este trabajador no registra Hoja de Vida en el módulo de Selección.', 'info');
+        return;
+      }
+      if (typeof abrirFichaAspirante === 'function') {
+        abrirFichaAspirante(String(d.id_aspirante_hv));
+      }
+    }
+
+    function iniciarSubidaDocSocioDirecto(idDocumento, labelDoc) {
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      if (!d.identificacion) return;
+      _socioSubidaDocPendiente = {
+        idDocumento: String(idDocumento),
+        label: labelDoc || 'Soporte Documental'
+      };
+      const input = document.getElementById('inputSubirDocSocioDirecto');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    async function onFileChangeSubirDocSocioDirecto(ev) {
+      const file = ev.target && ev.target.files && ev.target.files[0];
+      if (!file || !_socioSubidaDocPendiente) return;
+
+      if (file.size > 12 * 1024 * 1024) {
+        showToast('El archivo supera el límite máximo permitido de 12 MB.', 'error');
+        return;
+      }
+
+      const d = _socioDetalleConsolidado || _socioRegistroEditando || {};
+      if (!d.identificacion) return;
+
+      const meta = _socioSubidaDocPendiente;
+      _socioSubidaDocPendiente = null;
+
+      showToast(`Subiendo ${meta.label}...`, 'info');
+      try {
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = (e) => reject(e);
+          reader.readAsDataURL(file);
+        });
+
+        const res = await fetch('/talenthub/api/sociodemografica/subir-documento', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            identificacion: d.identificacion,
+            idVinculacion: d.id_vinculacion || '',
+            estadoVista: _socioEstadoVista,
+            idDocumento: meta.idDocumento,
+            fileBase64: base64Data,
+            fileName: file.name,
+            mimeType: file.type || 'application/pdf'
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo subir el documento', 'error');
+          return;
+        }
+        showToast(data.mensaje || 'Soporte documental subido y vinculado con éxito', 'success');
+        await recargarConsolidadoDetalleSocio();
+        await cargarDatosSociodemografica();
+      } catch (err) {
+        console.error('[Sociodemografica] Error subiendo soporte directo:', err);
+        showToast('Error de red al subir el documento', 'error');
+      }
+    }
+
+    function abrirModalReporteSociodemografica() {
+      const modal = document.getElementById('modalReporteSociodemografica');
+      if (!modal) return;
+      actualizarInfoModalReporteSocio();
+      modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => { modal.style.display = 'none'; modal._backEntry = null; });
+    }
+
+    function actualizarInfoModalReporteSocio() {
+      const infoEl = document.getElementById('reporteSocioInfo');
+      if (!infoEl) return;
+      const tipo = document.getElementById('reporteSocioTipo')?.value || 'vista_actual';
+      const optObj = _socioOpciones.find(o => o.key === _socioOpcionActiva);
+      const nombrePestana = optObj ? optObj.label : _socioOpcionActiva;
+      const totalActual = Array.isArray(_socioRegistros) ? _socioRegistros.length : 0;
+
+      const q = (document.getElementById('filtroSocioQ')?.value || '').trim();
+      const reg = document.getElementById('filtroSocioRegional')?.value || '';
+      const op = document.getElementById('filtroSocioOperacion')?.value || '';
+      const car = document.getElementById('filtroSocioCargo')?.value || '';
+      const ar = document.getElementById('filtroSocioArea')?.value || '';
+
+      const filtrosActivos = [];
+      if (q) filtrosActivos.push(`Búsqueda: "${esc(q)}"`);
+      if (reg) filtrosActivos.push(`Regional: ${esc(reg)}`);
+      if (op) filtrosActivos.push(`Operación: ${esc(op)}`);
+      if (car) filtrosActivos.push(`Cargo: ${esc(car)}`);
+      if (ar) filtrosActivos.push(`Área ID: ${esc(ar)}`);
+
+      infoEl.innerHTML = `
+        <div><strong>Estado seleccionado:</strong> ${esc(_socioEstadoVista)} (${totalActual.toLocaleString('es-CO')} registros en vista)</div>
+        <div style="margin-top:4px;"><strong>Contenido:</strong> ${tipo === 'sabana_completa'
+          ? 'Sábana consolidada con todas las columnas de las pestañas autorizadas para tu rol.'
+          : `Columnas de la pestaña activa: <strong>${esc(nombrePestana)}</strong>.`}</div>
+        <div style="margin-top:4px;"><strong>Filtros aplicados:</strong> ${filtrosActivos.length ? filtrosActivos.join(' · ') : 'Ninguno (todos los registros permitidos)'}</div>
+      `;
+    }
+
+    function descargarReporteSociodemografica(formato = 'xlsx') {
+      const tipo = document.getElementById('reporteSocioTipo')?.value || 'vista_actual';
+      const qs = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        estado: _socioEstadoVista,
+        opcion: _socioOpcionActiva,
+        tipo,
+        formato,
+        q: (document.getElementById('filtroSocioQ')?.value || '').trim(),
+        regional: document.getElementById('filtroSocioRegional')?.value || '',
+        operacion: document.getElementById('filtroSocioOperacion')?.value || '',
+        cargo: document.getElementById('filtroSocioCargo')?.value || '',
+        area: document.getElementById('filtroSocioArea')?.value || ''
+      });
+      cerrarModales();
+      showToast(`Generando reporte en formato ${formato.toUpperCase()}...`, 'info');
+      window.location.href = `/talenthub/api/sociodemografica/reporte?${qs.toString()}`;
     }
 
     function renderContenidoDetalleSocio() {
@@ -8703,14 +9227,19 @@
                 ${esc(c.label)}
               </span>
               <div style="font-size: 0.85rem; color: var(--text); word-break: break-word;">
-                ${renderCeldaSocio(rowTab, c)}
+                ${renderCeldaSocio(rowTab, c, true)}
               </div>
             </div>
           `).join('');
 
-        const bloqueExtra = _socioDetalleTabActiva === 'colaboradores'
-          ? renderSeccionVinculacionesColaboradorSocio()
-          : (_socioDetalleTabActiva === 'dotacion' ? renderSeccionActasDotacionSocio() : '');
+        let bloqueExtra = '';
+        if (_socioDetalleTabActiva === 'colaboradores') {
+          bloqueExtra = renderSeccionVinculacionesColaboradorSocio();
+        } else if (_socioDetalleTabActiva === 'dotacion') {
+          bloqueExtra = renderSeccionActasDotacionSocio();
+        } else if (_socioDetalleTabActiva === 'examenes') {
+          bloqueExtra = renderSeccionExamenesHistorialSocio();
+        }
 
         cuerpo.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -9153,6 +9682,7 @@
       cerrarModalConBack(document.getElementById('modalVincularAspirante'));
       cerrarModalConBack(document.getElementById('modalEditarParametroReq'));
       cerrarModalConBack(document.getElementById('modalReporteRequisiciones'));
+      cerrarModalConBack(document.getElementById('modalReporteSociodemografica'));
       cerrarModalConBack(document.getElementById('modalFichaAspirante'));
     }
 

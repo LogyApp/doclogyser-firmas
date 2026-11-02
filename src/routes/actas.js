@@ -341,16 +341,17 @@ router.get('/api/trabajadores-buscar', async (req, res) => {
     const estadoCond = puedeRetirados ? "AND v.Estado IN ('Activo', 'Retirado')" : "AND v.Estado = 'Activo'";
 
     const [rows] = await pool.execute(
-      `SELECT v.Identificación, v.Trabajador, v.Regional, v.\`Operación\`, v.Estado
+      `SELECT v.Identificación, COALESCE(NULLIF(TRIM(s.Trabajador), ''), v.Trabajador) AS Trabajador, v.Regional, v.\`Operación\`, v.Estado
        FROM \`Maestro_Vinculación\` v
        INNER JOIN (
          SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
          FROM \`Maestro_Vinculación\`
          GROUP BY Identificación
        ) ult ON v.Identificación = ult.Identificación AND v.\`Fecha de Ingreso\` = ult.MaxFecha
-       WHERE (CAST(v.Identificación AS CHAR) LIKE ? OR v.Trabajador COLLATE utf8mb4_general_ci LIKE ?)
+       LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = v.Identificación
+       WHERE (CAST(v.Identificación AS CHAR) LIKE ? OR COALESCE(NULLIF(TRIM(s.Trabajador), ''), v.Trabajador) COLLATE utf8mb4_general_ci LIKE ?)
          ${estadoCond}
-       ORDER BY v.Trabajador LIMIT 15`,
+       ORDER BY Trabajador LIMIT 15`,
       [term, term]
     );
 
@@ -584,8 +585,11 @@ router.get('/api/acta/:id', async (req, res) => {
     const { acta } = r;
 
     const [[vinc]] = await pool.execute(
-      'SELECT Trabajador FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [acta.identificacion]
+      `SELECT COALESCE(
+         (SELECT NULLIF(TRIM(s.Trabajador), '') FROM \`Maestro_Segmentación\` s WHERE s.Identificación = ? LIMIT 1),
+         (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = ? ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1)
+       ) AS Trabajador`,
+      [acta.identificacion, acta.identificacion]
     );
 
     const contacto = await obtenerContactoTrabajador(acta.identificacion);
@@ -709,10 +713,20 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
 
     await conn.commit();
 
-    // Post-commit, en segundo plano: actualiza el contacto, genera el enlace de firma (48h)
-    // y notifica por correo al trabajador si tiene correo registrado y el envío está activo.
+    // Post-commit, en segundo plano: actualiza el contacto, sincroniza Fecha_Ultima_Entrega si es DOTACIÓN,
+    // genera el enlace de firma (48h) y notifica por correo al trabajador si tiene correo registrado y el envío está activo.
     (async () => {
       try {
+        if (normalizarTexto(categoria) === 'dotacion') {
+          const fechaDot = (fechaEntrega && String(fechaEntrega).trim()) ? String(fechaEntrega).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          await pool.execute(
+            `UPDATE \`Maestro_Segmentación\`
+             SET Fecha_Ultima_Entrega = ?
+             WHERE \`Identificación\` = ?
+               AND (Fecha_Ultima_Entrega IS NULL OR Fecha_Ultima_Entrega < ?)`,
+            [fechaDot, String(identificacion).trim(), fechaDot]
+          );
+        }
         if (email || celular) {
           await actualizarContactoTrabajador(parseInt(identificacion), email, celular);
         }

@@ -4,12 +4,17 @@ const path = require('path');
 const multer = require('multer');
 const ExcelJS = require('exceljs');
 const pool = require('../services/db');
-const { storage, obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
+const { storage, obtenerFirmaBase64Reciente, subirFirma, subirArchivoCloudDocs } = require('../services/storage');
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { notificarCreacionRequisicion } = require('../services/email');
 const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
 const { obtenerPermisosActivos } = require('../services/configActivos');
+const {
+  obtenerTipoDocumentoConfig,
+  obtenerVinculacionReciente,
+  registrarDocTrabajador,
+} = require('../services/documentRegistry');
 
 const router = express.Router();
 const uploadFotoPerfil = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -3224,7 +3229,7 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       ? 'Retirado'
       : 'Activo';
 
-    const [allVincRows, segRows, examRows, docRows, actasDotRows] = await Promise.all([
+    const [allVincRows, segRows, allExamRows, docRows, actasDotRows, aspHvRows] = await Promise.all([
       pool.execute(
         `SELECT v.\`Id Vinculación\` AS id_vinculacion, v.\`Identificación\` AS identificacion,
                 v.Regional AS regional, v.\`Operación\` AS operacion, v.Trabajador AS trabajador_vinc,
@@ -3251,24 +3256,14 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
         [identificacion]
       ).then(r => r[0]),
 
-      id_examen
-        ? pool.execute(
-            `SELECT me.*,
-                    COALESCE(me.usuarioactualiza, me.Usuario) AS usuario_actualiza_exam
-             FROM \`Maestro_Examenes\` me
-             WHERE me.\`Id Vinculación\` = ?
-             LIMIT 1`,
-            [id_examen]
-          ).then(r => r[0])
-        : pool.execute(
-            `SELECT me.*,
-                    COALESCE(me.usuarioactualiza, me.Usuario) AS usuario_actualiza_exam
-             FROM \`Maestro_Examenes\` me
-             WHERE me.\`Identificación\` = ? AND me.Estado = ?
-             ORDER BY me.\`Fecha Actualización\` DESC, me.\`Id Vinculación\` DESC
-             LIMIT 1`,
-            [identificacion, estadoNorm]
-          ).then(r => r[0]),
+      pool.execute(
+        `SELECT me.*,
+                COALESCE(me.usuarioactualiza, me.Usuario) AS usuario_actualiza_exam
+         FROM \`Maestro_Examenes\` me
+         WHERE me.\`Identificación\` = ?
+         ORDER BY me.\`Fecha Actualización\` DESC, me.\`Id Vinculación\` DESC`,
+        [identificacion]
+      ).then(r => r[0]),
 
       pool.execute(
         `SELECT TipoDocumento AS tipo_doc, Url AS url
@@ -3299,7 +3294,12 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
            AND da.Categoria = 'DOTACIÓN'
          ORDER BY da.Fecha_Entrega DESC, da.IdActa DESC`,
         [identificacion]
-      ).then(r => r[0])
+      ).then(r => r[0]),
+
+      pool.execute(
+        `SELECT id_aspirante FROM Dynamic_hv_aspirante WHERE identificacion = ? ORDER BY id_aspirante DESC LIMIT 1`,
+        [identificacion]
+      ).then(r => r[0]).catch(() => [])
     ]);
 
     const v = (id_vinculacion && allVincRows.find(r => String(r.id_vinculacion) === String(id_vinculacion)))
@@ -3307,7 +3307,10 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       || allVincRows[0]
       || {};
     const s = segRows[0] || {};
-    const me = examRows[0] || {};
+    const me = (id_examen && allExamRows.find(r => String(r['Id Vinculación']) === String(id_examen)))
+      || allExamRows.find(r => String(r.Estado || '').toLowerCase() === estadoNorm.toLowerCase())
+      || allExamRows[0]
+      || {};
 
     const docsMap = {};
     for (const d of docRows) {
@@ -3354,8 +3357,30 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       url_acta: a.url_acta || ''
     }));
 
+    const examenes_historial = allExamRows.map(ex => ({
+      id_examen: ex['Id Vinculación'] || '',
+      identificacion: String(ex['Identificación'] || identificacion),
+      estado: ex.Estado || '',
+      operacion: ex['Operación'] || '',
+      fecha_examen_ingreso: formatearFechaYMD(ex['Fecha Examen Medico Ingreso']),
+      fecha_examen_periodico: formatearFechaYMD(ex['Fecha Examen Medico Periodico']),
+      recomendaciones_medicas: ex['Recomendaciones Medicas'] || '',
+      fecha_examen_bpm: formatearFechaYMD(ex['Fecha Examen BPM']),
+      fecha_carnet_bpm: formatearFechaYMD(ex['Fecha Carnet BPM']),
+      trabajo_alturas: ex['Trabajo en Alturas'] || '',
+      fecha_curso_alturas: formatearFechaYMD(ex['Fecha Curso de Alturas']),
+      fecha_psicosensometrico: formatearFechaYMD(ex['Fecha Psicosesometrico']),
+      estudio_seguridad: ex['Estudio de Seguridad'] || '',
+      observaciones_examenes: ex['Observaciones Examenes'] || '',
+      usuario_actualiza: ex.usuario_actualiza_exam || '',
+      fecha_actualizacion: ex['Fecha Actualización'] || null
+    }));
+
+    const idAspiranteHv = (aspHvRows && aspHvRows[0] && aspHvRows[0].id_aspirante) ? aspHvRows[0].id_aspirante : null;
+
     const detalle = {
       identificacion,
+      id_aspirante_hv: idAspiranteHv,
       id_vinculacion: v.id_vinculacion || id_vinculacion || '',
       id_examen: me['Id Vinculación'] || id_examen || '',
       regional: regionalConsolidada,
@@ -3452,6 +3477,7 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       detalle,
       vinculaciones,
       actas_dotacion,
+      examenes_historial,
       permisosVer: mapaVer,
       permisosEditar: mapaEditar,
       permisosNominaActivos
@@ -3528,7 +3554,50 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
       const [exist] = await pool.execute(
         'SELECT `Id Vinculación`, `Identificación`, `Operación` FROM `Maestro_Examenes` WHERE `Id Vinculación` = ? OR (`Identificación` = ? AND Estado = ?) ORDER BY `Fecha Actualización` DESC LIMIT 1', [id, id, estadoNorm]
       );
-      if (!exist.length) return res.status(404).json({ error: 'Registro de exámenes no encontrado.' });
+      if (!exist.length) {
+        // Caso reingreso o colaborador sin fila aún en Maestro_Examenes: la creamos automáticamente
+        const [vincBase] = await pool.execute(
+          `SELECT v.\`Id Vinculación\` AS id_vinc, v.\`Identificación\` AS ident,
+                  COALESCE(NULLIF(TRIM(s.Trabajador), ''), v.Trabajador) AS trabajador,
+                  COALESCE(v.\`Operación\`, s.\`Operación\`) AS operacion,
+                  COALESCE(v.Estado, s.Estado, ?) AS estado
+           FROM \`Maestro_Segmentación\` s
+           LEFT JOIN \`Maestro_Vinculación\` v ON v.\`Identificación\` = s.\`Identificación\` AND (v.\`Id Vinculación\` = ? OR v.Estado = ?)
+           WHERE s.\`Identificación\` = ? OR v.\`Id Vinculación\` = ?
+           ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1`,
+          [estadoNorm, id, estadoNorm, id, id]
+        );
+        if (!vincBase.length) return res.status(404).json({ error: 'No se encontró trabajador base para registrar exámenes.' });
+        const vb = vincBase[0];
+        await pool.execute(
+          `INSERT INTO \`Maestro_Examenes\`
+           (\`Id Vinculación\`, Trabajador, \`Identificación\`, \`Operación\`, Estado,
+            \`Fecha Examen Medico Ingreso\`, \`Fecha Examen Medico Periodico\`, \`Recomendaciones Medicas\`,
+            \`Fecha Examen BPM\`, \`Fecha Carnet BPM\`, \`Trabajo en Alturas\`, \`Fecha Curso de Alturas\`,
+            \`Fecha Psicosesometrico\`, \`Estudio de Seguridad\`, \`Observaciones Examenes\`,
+            Usuario, usuarioactualiza, \`Fecha Actualización\`)
+           VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CONVERT_TZ(NOW(), 'SYSTEM', '-05:00'))`,
+          [
+            vb.trabajador || vb.ident,
+            vb.ident,
+            vb.operacion || null,
+            vb.estado || estadoNorm,
+            limpiarFecha(datos.fecha_examen_ingreso),
+            limpiarFecha(datos.fecha_examen_periodico),
+            limpiarTexto(datos.recomendaciones_medicas),
+            limpiarFecha(datos.fecha_examen_bpm),
+            limpiarFecha(datos.fecha_carnet_bpm),
+            limpiarTexto(datos.trabajo_alturas),
+            limpiarFecha(datos.fecha_curso_alturas),
+            limpiarFecha(datos.fecha_psicosensometrico),
+            limpiarTexto(datos.estudio_seguridad),
+            limpiarTexto(datos.observaciones_examenes),
+            usuarioAuditoria,
+            usuarioAuditoria
+          ]
+        );
+        return res.json({ ok: true, mensaje: 'Registro de Exámenes creado y actualizado correctamente.' });
+      }
 
       await pool.execute(
         `UPDATE \`Maestro_Examenes\`
@@ -3607,6 +3676,12 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
          WHERE \`Identificación\` = ?`,
         [tipoDoc, codTipoDoc, pNombre || null, sNombre, pApellido || null, sApellido, trabajadorStr, genero, fechaNac, usuarioAuditoria, id]
       );
+
+      // Sincronizar también en Maestro_Vinculación y Maestro_Examenes mientras persista la columna Trabajador
+      await Promise.all([
+        pool.execute('UPDATE `Maestro_Vinculación` SET Trabajador = ? WHERE `Identificación` = ?', [trabajadorStr, id]).catch(() => {}),
+        pool.execute('UPDATE `Maestro_Examenes` SET Trabajador = ? WHERE `Identificación` = ?', [trabajadorStr, id]).catch(() => {})
+      ]);
 
       return res.json({ ok: true, mensaje: 'Datos Generales actualizados correctamente.' });
     }
@@ -3714,6 +3789,521 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
     return res.status(400).json({ error: 'Opción no soportada.' });
   } catch (err) {
     console.error('[talenthub] PUT /api/sociodemografica/:opcion/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6.4 POST /api/sociodemografica/subir-documento
+// Permite subir directamente un soporte (Doc Banco=10, Doc EPS=15, Doc AFP=14, Doc CCF=12, Doc ARL=6)
+// desde el detalle del trabajador en Sociodemográfica, guardándolo en GCS y Maestro_docTrabajador.
+router.post('/api/sociodemografica/subir-documento', uploadFotoPerfil.single('documento'), async (req, res) => {
+  try {
+    const { usuario, identificacion, tipo_documento_id, estadoVista = 'Activo', observaciones = '' } = req.body;
+    if (!usuario || !identificacion || !tipo_documento_id || !req.file) {
+      return res.status(400).json({ error: 'Faltan parámetros o el archivo del soporte.' });
+    }
+
+    const acceso = await computarAccesoTalenthub(usuario, 'Sociodemografica');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para cargar soportes en Sociodemográfica.' });
+    }
+
+    const tipoIdStr = String(tipo_documento_id).trim();
+    const tabRequerida = tipoIdStr === '10' ? 'info_bancaria' : 'seguridad_social';
+    const estadoNorm = String(estadoVista).toLowerCase() === 'retirado' ? 'Retirado' : 'Activo';
+    const permisos = await obtenerPermisosSociodemografica(acceso.rol);
+    const mapaEditar = estadoNorm === 'Retirado' ? permisos.editarRetirado : permisos.editarActivo;
+    if (!mapaEditar[tabRequerida]) {
+      return res.status(403).json({ error: `Su rol (${acceso.rol}) no tiene permiso para subir soportes en esta sección (${estadoNorm}).` });
+    }
+
+    const docConfig = await obtenerTipoDocumentoConfig(pool, tipoIdStr);
+    if (!docConfig) {
+      return res.status(400).json({ error: 'Tipo de documento no configurado en Config_Doc_Trabajador.' });
+    }
+
+    const vinculacion = await obtenerVinculacionReciente(pool, String(identificacion).trim());
+    if (!vinculacion) {
+      return res.status(400).json({ error: 'El trabajador no tiene vinculación registrada para asociar el soporte.' });
+    }
+
+    const fileUrl = await subirArchivoCloudDocs(
+      String(identificacion).trim(),
+      docConfig.Prefijo,
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
+    await registrarDocTrabajador(pool, {
+      identificacion: String(identificacion).trim(),
+      tipoDocumentoId: tipoIdStr,
+      prefijo: docConfig.Prefijo,
+      regional: vinculacion.Regional,
+      operacion: vinculacion['Operación'] || vinculacion.Operación,
+      estado: vinculacion.Estado || estadoNorm,
+      fechaIngreso: vinculacion.FechaIngreso,
+      usuario: acceso.usuarioNombre,
+      observaciones: observaciones || 'Cargado desde Sociodemográfica',
+      url: fileUrl,
+    });
+
+    res.json({
+      ok: true,
+      url: fileUrl,
+      mensaje: `Soporte (${docConfig.Documento || docConfig.Prefijo}) cargado exitosamente.`
+    });
+  } catch (err) {
+    console.error('[talenthub] POST /api/sociodemografica/subir-documento:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6.5 GET /api/sociodemografica/reporte
+// Descarga en Excel (.xlsx) o CSV (.csv) la vista actual o la Sábana Sociodemográfica Completa
+// respetando los permisos del rol en Config_Parametros y los filtros activos.
+router.get('/api/sociodemografica/reporte', async (req, res) => {
+  try {
+    const {
+      usuario,
+      estado = 'Activo',
+      opcion = 'colaboradores',
+      alcance = 'vista_actual',
+      formato = 'xlsx',
+      q = '',
+      regional = '',
+      operacion = '',
+      cargo = '',
+      area = ''
+    } = req.query;
+
+    const acceso = await computarAccesoTalenthub(usuario, 'Sociodemografica');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para descargar reportes de Sociodemográfica.' });
+    }
+
+    const permisos = await obtenerPermisosSociodemografica(acceso.rol);
+    const estadoNorm = (String(estado).toLowerCase() === 'retirado' && permisos.puedeVerRetirados) ? 'Retirado' : 'Activo';
+    const mapaVer = estadoNorm === 'Retirado' ? permisos.verRetirado : permisos.verActivo;
+
+    if (!acceso.sinFiltro && (!acceso.operacionesFiltro || acceso.operacionesFiltro.length === 0)) {
+      return res.status(400).json({ error: 'Su usuario no tiene operaciones asignadas para generar el reporte.' });
+    }
+
+    const conds = ['s.Estado = ?'];
+    const params = [estadoNorm, estadoNorm, estadoNorm];
+    if (!acceso.sinFiltro) {
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`COALESCE(v.\`Operación\`, s.\`Operación\`) IN (${ph})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    const subqueryVinc = `
+      SELECT id_vinc, \`Identificación\`, Regional, \`Operación\`, Cargo, Area,
+             \`Fecha de Ingreso\`, \`Fecha de Retiro\`, Estado, usuario_actualiza_vinc, fecha_actualizacion_vinc
+      FROM (
+        SELECT \`Id Vinculación\` AS id_vinc, \`Identificación\`, Regional, \`Operación\`, Cargo, Area,
+               \`Fecha de Ingreso\`, \`Fecha de Retiro\`, Estado,
+               COALESCE(usuarioactualiza, Usuario) AS usuario_actualiza_vinc,
+               \`Fecha Actualización\` AS fecha_actualizacion_vinc,
+               ROW_NUMBER() OVER (
+                 PARTITION BY \`Identificación\`
+                 ORDER BY \`Fecha de Ingreso\` DESC, \`Fecha Actualización\` DESC, \`Id Vinculación\` DESC
+               ) AS rn
+        FROM \`Maestro_Vinculación\`
+        WHERE Estado = ?
+      ) t
+      WHERE t.rn = 1
+    `;
+
+    const subqueryExam = `
+      SELECT \`Identificación\`,
+             \`Fecha Examen Medico Ingreso\` AS fecha_examen_ingreso,
+             \`Fecha Examen Medico Periodico\` AS fecha_examen_periodico,
+             \`Recomendaciones Medicas\` AS recomendaciones_medicas,
+             \`Fecha Examen BPM\` AS fecha_examen_bpm,
+             \`Fecha Carnet BPM\` AS fecha_carnet_bpm,
+             \`Trabajo en Alturas\` AS trabajo_alturas,
+             \`Fecha Curso de Alturas\` AS fecha_curso_alturas,
+             \`Fecha Psicosesometrico\` AS fecha_psicosensometrico,
+             \`Estudio de Seguridad\` AS estudio_seguridad,
+             \`Observaciones Examenes\` AS observaciones_examenes,
+             COALESCE(usuarioactualiza, Usuario) AS usuario_actualiza_exam,
+             \`Fecha Actualización\` AS fecha_actualizacion_exam
+      FROM (
+        SELECT me.*,
+               ROW_NUMBER() OVER (
+                 PARTITION BY me.\`Identificación\`
+                 ORDER BY me.\`Fecha Actualización\` DESC, me.\`Id Vinculación\` DESC
+               ) AS rn
+        FROM \`Maestro_Examenes\` me
+        WHERE me.Estado = ?
+      ) te
+      WHERE te.rn = 1
+    `;
+
+    const sql = `
+      SELECT
+        s.\`Identificación\` AS identificacion,
+        COALESCE(v.Regional, mo.REGIONAL) AS regional,
+        COALESCE(v.\`Operación\`, s.\`Operación\`) AS operacion,
+        s.Trabajador AS trabajador,
+        COALESCE(v.Estado, s.Estado) AS estado,
+        v.Cargo AS cargo,
+        ca.AREA AS area,
+        v.\`Fecha de Ingreso\` AS fecha_ingreso,
+        v.\`Fecha de Retiro\` AS fecha_retiro,
+        s.\`Tipo de Documento\` AS tipo_documento,
+        s.\`Primer Nombre\` AS primer_nombre,
+        s.\`Segundo Nombre\` AS segundo_nombre,
+        s.\`Primer Apellido\` AS primer_apellido,
+        s.\`Segundo Apellido\` AS segundo_apellido,
+        s.\`Género\` AS genero,
+        s.\`Fecha Nacimiento\` AS fecha_nacimiento,
+        s.\`Estado Civil\` AS estado_civil,
+        s.Celular AS celular,
+        s.Email AS email,
+        s.\`Ciudad de Residencia\` AS ciudad_residencia,
+        s.\`Dirección de Residencia\` AS direccion_residencia,
+        s.Camiseta AS camiseta,
+        s.Numero AS numero_buzo,
+        s.Pantalon AS pantalon,
+        s.Botas AS botas,
+        s.Fecha_Ultima_Entrega AS fecha_ultima_entrega,
+        s.\`Observaciones dotacion\` AS observaciones_dotacion,
+        s.Banco AS banco,
+        s.\`N° Cuenta Bancaria\` AS cuenta_bancaria,
+        s.EPS AS eps,
+        s.\`Radicacion EPS\` AS radicacion_eps,
+        s.\`Pensión\` AS pension,
+        s.\`Radicacion AFP\` AS radicacion_afp,
+        s.\`Cesantías\` AS cesantias,
+        s.\`Caja de Compensación\` AS caja_compensacion,
+        s.\`Radicacion CCF\` AS radicacion_ccf,
+        s.ARL AS arl,
+        s.\`Riesgo ARL\` AS riesgo_arl,
+        ex.fecha_examen_ingreso,
+        ex.fecha_examen_periodico,
+        ex.recomendaciones_medicas,
+        ex.fecha_examen_bpm,
+        ex.fecha_carnet_bpm,
+        ex.trabajo_alturas,
+        ex.fecha_curso_alturas,
+        ex.fecha_psicosensometrico,
+        ex.estudio_seguridad,
+        ex.observaciones_examenes,
+        COALESCE(s.usuarioactualiza, s.Usuario) AS usuario_actualiza,
+        s.\`Fecha de Actualización\` AS fecha_actualizacion
+      FROM \`Maestro_Segmentación\` s
+      LEFT JOIN (${subqueryVinc}) v ON v.\`Identificación\` = s.\`Identificación\`
+      LEFT JOIN Config_Area ca ON ca.ID = v.Area
+      LEFT JOIN Maestro_Operaciones mo ON mo.\`OPERACIÓN\` = COALESCE(v.\`Operación\`, s.\`Operación\`)
+      LEFT JOIN (${subqueryExam}) ex ON ex.\`Identificación\` = s.\`Identificación\`
+      WHERE ${conds.join(' AND ')}
+      ORDER BY v.\`Fecha de Ingreso\` DESC, s.\`Fecha de Actualización\` DESC
+    `;
+
+    const [rawRows] = await pool.execute(sql, params);
+
+    // Consultar URLs de soportes bancarios y seguridad social
+    const docsPorIdent = new Map();
+    if (rawRows.length > 0 && (mapaVer.info_bancaria || mapaVer.seguridad_social)) {
+      const [docRows] = await pool.execute(
+        `SELECT identificacion, tipo_doc, url
+         FROM (
+           SELECT mdt.\`Identificación\` AS identificacion,
+                  mdt.TipoDocumento AS tipo_doc,
+                  mdt.Url AS url,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY mdt.\`Identificación\`, mdt.TipoDocumento
+                    ORDER BY mdt.FechaRegistro DESC, mdt.id DESC
+                  ) AS rn
+           FROM Maestro_docTrabajador mdt
+           INNER JOIN \`Maestro_Segmentación\` s ON s.\`Identificación\` = mdt.\`Identificación\`
+           WHERE s.Estado = ? AND mdt.TipoDocumento IN ('10', '15', '14', '12', '6')
+             AND mdt.Url IS NOT NULL AND mdt.Url != ''
+         ) dt
+         WHERE dt.rn = 1`,
+        [estadoNorm]
+      );
+      for (const d of docRows) {
+        docsPorIdent.set(`${d.identificacion}_${d.tipo_doc}`, d.url);
+      }
+    }
+
+    const qNorm = normTokenSocio(q);
+    const filasFiltradas = rawRows
+      .map(item => {
+        const fnac = formatearFechaYMD(item.fecha_nacimiento);
+        return {
+          identificacion: item.identificacion || '',
+          regional: item.regional || '',
+          operacion: item.operacion || '',
+          trabajador: item.trabajador || '',
+          estado: item.estado || estadoNorm,
+          cargo: item.cargo || '',
+          area: item.area || '',
+          fecha_ingreso: formatearFechaYMD(item.fecha_ingreso),
+          fecha_retiro: formatearFechaYMD(item.fecha_retiro),
+          tipo_documento: item.tipo_documento || '',
+          primer_nombre: item.primer_nombre || '',
+          segundo_nombre: item.segundo_nombre || '',
+          primer_apellido: item.primer_apellido || '',
+          segundo_apellido: item.segundo_apellido || '',
+          genero: item.genero || '',
+          fecha_nacimiento: fnac,
+          edad: calcularEdadAnios(fnac) ?? '',
+          estado_civil: item.estado_civil || '',
+          celular: item.celular || '',
+          email: item.email || '',
+          ciudad_residencia: item.ciudad_residencia || '',
+          direccion_residencia: item.direccion_residencia || '',
+          camiseta: item.camiseta || '',
+          numero_buzo: item.numero_buzo || '',
+          pantalon: item.pantalon || '',
+          botas: item.botas || '',
+          fecha_ultima_entrega: formatearFechaYMD(item.fecha_ultima_entrega),
+          observaciones_dotacion: item.observaciones_dotacion || '',
+          banco: item.banco || '',
+          cuenta_bancaria: item.cuenta_bancaria || '',
+          doc_banco: docsPorIdent.get(`${item.identificacion}_10`) || '',
+          eps: item.eps || '',
+          radicacion_eps: formatearFechaYMD(item.radicacion_eps),
+          doc_eps: docsPorIdent.get(`${item.identificacion}_15`) || '',
+          pension: item.pension || '',
+          radicacion_afp: formatearFechaYMD(item.radicacion_afp),
+          doc_afp: docsPorIdent.get(`${item.identificacion}_14`) || '',
+          cesantias: item.cesantias || '',
+          caja_compensacion: item.caja_compensacion || '',
+          radicacion_ccf: formatearFechaYMD(item.radicacion_ccf),
+          doc_ccf: docsPorIdent.get(`${item.identificacion}_12`) || '',
+          arl: item.arl || '',
+          riesgo_arl: item.riesgo_arl || '',
+          doc_arl: docsPorIdent.get(`${item.identificacion}_6`) || '',
+          fecha_examen_ingreso: formatearFechaYMD(item.fecha_examen_ingreso),
+          fecha_examen_periodico: formatearFechaYMD(item.fecha_examen_periodico),
+          recomendaciones_medicas: item.recomendaciones_medicas || '',
+          fecha_examen_bpm: formatearFechaYMD(item.fecha_examen_bpm),
+          fecha_carnet_bpm: formatearFechaYMD(item.fecha_carnet_bpm),
+          trabajo_alturas: item.trabajo_alturas || '',
+          fecha_curso_alturas: formatearFechaYMD(item.fecha_curso_alturas),
+          fecha_psicosensometrico: formatearFechaYMD(item.fecha_psicosensometrico),
+          estudio_seguridad: item.estudio_seguridad || '',
+          observaciones_examenes: item.observaciones_examenes || '',
+          usuario_actualiza: item.usuario_actualiza || '',
+          fecha_actualizacion: item.fecha_actualizacion ? new Date(item.fecha_actualizacion).toISOString().replace('T', ' ').slice(0, 16) : ''
+        };
+      })
+      .filter(row => {
+        if (qNorm) {
+          const texto = normTokenSocio(`${row.identificacion} ${row.trabajador} ${row.cargo} ${row.operacion} ${row.regional} ${row.email} ${row.celular}`);
+          if (!texto.includes(qNorm)) return false;
+        }
+        if (regional && row.regional !== regional) return false;
+        if (operacion && row.operacion !== operacion) return false;
+        if (cargo && row.cargo !== cargo) return false;
+        if (area && row.area !== area) return false;
+        return true;
+      });
+
+    const DEFINICION_COLUMNAS_POR_OPCION = {
+      colaboradores: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'estado', header: 'Estado', width: 12 },
+        { key: 'cargo', header: 'Cargo', width: 26 },
+        { key: 'area', header: 'Área', width: 20 },
+        { key: 'fecha_ingreso', header: 'Fecha de Ingreso', width: 16 },
+        { key: 'fecha_retiro', header: 'Fecha de Retiro', width: 16 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ],
+      datos_generales: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'tipo_documento', header: 'Tipo de Documento', width: 22 },
+        { key: 'primer_nombre', header: 'Primer Nombre', width: 18 },
+        { key: 'segundo_nombre', header: 'Segundo Nombre', width: 18 },
+        { key: 'primer_apellido', header: 'Primer Apellido', width: 18 },
+        { key: 'segundo_apellido', header: 'Segundo Apellido', width: 18 },
+        { key: 'genero', header: 'Género', width: 10 },
+        { key: 'fecha_nacimiento', header: 'Fecha Nacimiento', width: 16 },
+        { key: 'edad', header: 'Edad', width: 10 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ],
+      info_personal: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'estado_civil', header: 'Estado Civil', width: 16 },
+        { key: 'celular', header: 'Celular', width: 16 },
+        { key: 'email', header: 'Email', width: 28 },
+        { key: 'ciudad_residencia', header: 'Ciudad de Residencia', width: 22 },
+        { key: 'direccion_residencia', header: 'Dirección de Residencia', width: 32 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ],
+      dotacion: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'cargo', header: 'Cargo', width: 26 },
+        { key: 'fecha_ingreso', header: 'Fecha de Ingreso', width: 16 },
+        { key: 'fecha_retiro', header: 'Fecha de Retiro', width: 16 },
+        { key: 'camiseta', header: 'Camiseta', width: 12 },
+        { key: 'numero_buzo', header: 'Numero Buzo', width: 14 },
+        { key: 'pantalon', header: 'Pantalon', width: 12 },
+        { key: 'botas', header: 'Botas', width: 12 },
+        { key: 'fecha_ultima_entrega', header: 'Fecha Ultima Entrega', width: 18 },
+        { key: 'observaciones_dotacion', header: 'Observaciones Dotación', width: 30 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ],
+      info_bancaria: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'cargo', header: 'Cargo', width: 26 },
+        { key: 'fecha_ingreso', header: 'Fecha de Ingreso', width: 16 },
+        { key: 'fecha_retiro', header: 'Fecha de Retiro', width: 16 },
+        { key: 'banco', header: 'Banco', width: 22 },
+        { key: 'cuenta_bancaria', header: 'N° Cuenta Bancaria', width: 22 },
+        { key: 'doc_banco', header: 'Doc Banco (URL)', width: 36 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ],
+      seguridad_social: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'cargo', header: 'Cargo', width: 26 },
+        { key: 'fecha_ingreso', header: 'Fecha de Ingreso', width: 16 },
+        { key: 'fecha_retiro', header: 'Fecha de Retiro', width: 16 },
+        { key: 'eps', header: 'EPS', width: 20 },
+        { key: 'radicacion_eps', header: 'Radicación EPS', width: 16 },
+        { key: 'doc_eps', header: 'Doc EPS (URL)', width: 34 },
+        { key: 'pension', header: 'Pensión', width: 20 },
+        { key: 'radicacion_afp', header: 'Radicación AFP', width: 16 },
+        { key: 'doc_afp', header: 'Doc AFP (URL)', width: 34 },
+        { key: 'cesantias', header: 'Cesantías', width: 20 },
+        { key: 'caja_compensacion', header: 'Caja de Compensación', width: 22 },
+        { key: 'radicacion_ccf', header: 'Radicación CCF', width: 16 },
+        { key: 'doc_ccf', header: 'Doc CCF (URL)', width: 34 },
+        { key: 'arl', header: 'ARL', width: 18 },
+        { key: 'riesgo_arl', header: 'Riesgo ARL', width: 12 },
+        { key: 'doc_arl', header: 'Doc ARL (URL)', width: 34 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ],
+      examenes: [
+        { key: 'identificacion', header: 'Identificación', width: 16 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
+        { key: 'trabajador', header: 'Trabajador', width: 36 },
+        { key: 'cargo', header: 'Cargo', width: 26 },
+        { key: 'fecha_ingreso', header: 'Fecha de Ingreso', width: 16 },
+        { key: 'fecha_retiro', header: 'Fecha de Retiro', width: 16 },
+        { key: 'fecha_examen_ingreso', header: 'Fecha Examen Médico Ingreso', width: 22 },
+        { key: 'fecha_examen_periodico', header: 'Fecha Examen Médico Periódico', width: 22 },
+        { key: 'recomendaciones_medicas', header: 'Recomendaciones Médicas', width: 30 },
+        { key: 'fecha_examen_bpm', header: 'Fecha Examen BPM', width: 18 },
+        { key: 'fecha_carnet_bpm', header: 'Fecha Carnet BPM', width: 18 },
+        { key: 'trabajo_alturas', header: 'Trabajo en Alturas', width: 16 },
+        { key: 'fecha_curso_alturas', header: 'Fecha Curso de Alturas', width: 20 },
+        { key: 'fecha_psicosensometrico', header: 'Fecha Psicosensométrico', width: 20 },
+        { key: 'estudio_seguridad', header: 'Estudio de Seguridad', width: 20 },
+        { key: 'observaciones_examenes', header: 'Observaciones Exámenes', width: 30 },
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      ]
+    };
+
+    let columnasFinales = [];
+    if (alcance === 'sabana_completa') {
+      const vistasKeys = new Set();
+      const ordenOpciones = ['colaboradores', 'datos_generales', 'info_personal', 'dotacion', 'info_bancaria', 'seguridad_social', 'examenes'];
+      for (const opKey of ordenOpciones) {
+        if (!mapaVer[opKey]) continue;
+        for (const col of (DEFINICION_COLUMNAS_POR_OPCION[opKey] || [])) {
+          if (col.key === 'usuario_actualiza' || col.key === 'fecha_actualizacion') continue;
+          if (!vistasKeys.has(col.key)) {
+            vistasKeys.add(col.key);
+            columnasFinales.push(col);
+          }
+        }
+      }
+      columnasFinales.push(
+        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
+        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+      );
+    } else {
+      const opKey = DEFINICION_COLUMNAS_POR_OPCION[opcion] ? opcion : 'colaboradores';
+      if (!mapaVer[opKey]) {
+        return res.status(403).json({ error: 'Su rol no tiene permiso para exportar esta vista.' });
+      }
+      columnasFinales = DEFINICION_COLUMNAS_POR_OPCION[opKey];
+    }
+
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const sufijoNombre = alcance === 'sabana_completa' ? 'Sabana_Completa' : opcion;
+    const baseFilename = `Sociodemografica_${estadoNorm}_${sufijoNombre}_${fechaHoy}`;
+
+    if (String(formato).toLowerCase() === 'csv') {
+      const escCsv = (val) => {
+        const sVal = val === null || val === undefined ? '' : String(val);
+        if (sVal.includes('"') || sVal.includes(',') || sVal.includes(';') || sVal.includes('\n')) {
+          return `"${sVal.replace(/"/g, '""')}"`;
+        }
+        return sVal;
+      };
+      const headerLine = columnasFinales.map(c => escCsv(c.header)).join(';');
+      const bodyLines = filasFiltradas.map(row => columnasFinales.map(c => escCsv(row[c.key])).join(';'));
+      const csvContent = '\uFEFF' + [headerLine, ...bodyLines].join('\r\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.csv"`);
+      return res.send(csvContent);
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Logyser TalentHub';
+    const sheet = workbook.addWorksheet(`Sociodemografica ${estadoNorm}`);
+    sheet.columns = columnasFinales.map(c => ({ header: c.header, key: c.key, width: c.width || 18 }));
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: estadoNorm === 'Activo' ? 'FF1B2A5E' : 'FF991B1B' }
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 24;
+
+    filasFiltradas.forEach(row => {
+      sheet.addRow(row);
+    });
+
+    sheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: columnasFinales.length }
+    };
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('[talenthub] GET /api/sociodemografica/reporte:', err);
     res.status(500).json({ error: err.message });
   }
 });

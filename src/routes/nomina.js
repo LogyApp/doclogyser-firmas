@@ -512,6 +512,7 @@ router.get('/api/retiros', async (req, res) => {
 
       return {
         IdVinculacion:      r.IdVinculacion,
+        Identificacion:     r.Identificacion,
         Regional:           r.Regional,
         Operacion:          r.Operacion,
         Trabajador:         r.Trabajador,
@@ -704,6 +705,7 @@ router.get('/api/activos', async (req, res) => {
     const listQuery = `
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
+        v.\`Identificación\`     AS Identificacion,
         v.\`Regional\`           AS Regional,
         v.\`Operación\`          AS Operacion,
         v.\`Trabajador\`         AS Trabajador,

@@ -1438,10 +1438,16 @@
             <label for="modal-worker-search">Buscar por Documento o Prefijo</label>
             <input type="text" id="modal-worker-search" placeholder="Ej. Incapacidad, HC..." oninput="onWorkerModalSearch()">
           </div>
-          <button type="button" class="btn-cloud-upload" onclick="openWorkerUploadForm()">
-            <span aria-hidden="true">☁</span>
-            <span>Cargar Doc. Trabajador</span>
-          </button>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-cloud-upload" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.3);" onclick="irASociodemograficaDesdeWorkerModal()" title="Abrir detalle del trabajador en Sociodemografica">
+              <span aria-hidden="true">📊</span>
+              <span>Sociodemografica</span>
+            </button>
+            <button type="button" class="btn-cloud-upload" onclick="openWorkerUploadForm()">
+              <span aria-hidden="true">☁</span>
+              <span>Cargar Doc. Trabajador</span>
+            </button>
+          </div>
         </div>
         <div class="table-container" style="max-height: 50vh; overflow-y: auto;">
           <table id="modal-worker-table">
@@ -1773,6 +1779,25 @@
     let rawWorkerDocs = [];
     let filteredWorkerDocs = [];
     let activeWorkerModal = { identificacion: null, nombre: null };
+    let _pendingOpenWorkerModal = null;
+
+    function irASociodemograficaDesdeWorkerModal() {
+      const ident = String(activeWorkerModal?.identificacion || '').trim();
+      if (!ident) return;
+      const rowMatch = Array.isArray(currentData)
+        ? currentData.find(r => String(r.identificacion) === ident)
+        : null;
+      const qs = new URLSearchParams({
+        tab: 'Sociodemografica',
+        usuario: CONFIG.usuarioId,
+        identificacion: ident,
+        abrirDetalle: '1'
+      });
+      if (rowMatch && rowMatch.estado) {
+        qs.set('estado', String(rowMatch.estado).trim());
+      }
+      window.location.href = '/talenthub?' + qs.toString();
+    }
     
     // Active Doc Modal state
     let activeDocModalId = null;
@@ -1994,9 +2019,14 @@
       const urlParamsInit = new URLSearchParams(window.location.search);
       const tabParam = (urlParamsInit.get('tab') || '').toLowerCase().trim();
       const buscarUrlParam = (urlParamsInit.get('identificacion') || urlParamsInit.get('buscar') || urlParamsInit.get('busqueda') || '').trim();
+      const abrirModalUrlParam = urlParamsInit.get('abrirModal') === '1';
+      const nombreUrlParam = (urlParamsInit.get('nombre') || '').trim();
       if (buscarUrlParam) {
         const inputBuscarEl = document.getElementById('filter-buscar');
         if (inputBuscarEl) inputBuscarEl.value = buscarUrlParam;
+        if (abrirModalUrlParam) {
+          _pendingOpenWorkerModal = { identificacion: buscarUrlParam, nombre: nombreUrlParam };
+        }
       }
       const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : 'trabajador';
       switchTab(tabSolicitada);
@@ -2497,6 +2527,18 @@
           const masterChk = document.getElementById('select-all-retiros');
           if (masterChk) masterChk.checked = false;
           updateSelectedRowsCount();
+          if (_pendingOpenWorkerModal && activeTab === 'trabajador') {
+            const pending = _pendingOpenWorkerModal;
+            _pendingOpenWorkerModal = null;
+            const match = Array.isArray(currentData)
+              ? (currentData.find(r => String(r.identificacion) === String(pending.identificacion)) || currentData[0])
+              : null;
+            if (match && match.identificacion) {
+              openWorkerModal(match.identificacion, match.trabajador || pending.nombre || match.identificacion);
+            } else if (pending.identificacion) {
+              openWorkerModal(pending.identificacion, pending.nombre || pending.identificacion);
+            }
+          }
         } else {
           showToast(data.error || 'Error al obtener datos', 'error');
         }
