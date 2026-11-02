@@ -286,6 +286,9 @@
   .modal-full-header { background: var(--primary); color: var(--text-inverse); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: .92rem; }
   .modal-full-header button { background: rgba(255,255,255,.15); border: none; color: var(--text-inverse); padding: 6px 14px; border-radius: 6px; font-size: .82rem; cursor: pointer; }
   .modal-full-header button:hover { background: rgba(255,255,255,.28); }
+  .modal-header-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .modal-full-header button.btn-socio-link { background: rgba(255,255,255,.92); color: var(--primary); font-weight: 700; }
+  .modal-full-header button.btn-socio-link:hover { background: #fff; }
   .modal-full iframe { flex: 1; border: none; width: 100%; }
   .profile-modal { width: min(100%, 540px); height: auto; max-height: 92vh; }
   .profile-modal-body { overflow-y: auto; padding: 24px; background: var(--card-bg); }
@@ -2954,7 +2957,10 @@
   <div class="modal-full">
     <div class="modal-full-header">
       <span id="modalTitulo">Retiro</span>
-      <button type="button" onclick="cerrarModalGestion()">&#10005; Cerrar</button>
+      <div class="modal-header-acciones">
+        <button type="button" class="btn-socio-link" id="btnSocioGestion" style="display:none" onclick="irASociodemograficaDesdeGestion()" title="Abrir el detalle del trabajador en Sociodemográfica (TalentHub)">&#128100; Sociodemográfica</button>
+        <button type="button" onclick="cerrarModalGestion()">&#10005; Cerrar</button>
+      </div>
     </div>
     <iframe id="gestionIframe" src="about:blank"></iframe>
   </div>
@@ -2965,7 +2971,10 @@
   <div class="modal-full" style="max-width:640px">
     <div class="modal-full-header">
       <span>Ficha del trabajador</span>
-      <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
+      <div class="modal-header-acciones">
+        <button type="button" class="btn-socio-link" id="btnSocioFicha" style="display:none" onclick="irASociodemograficaDesdeFicha()" title="Abrir el detalle del trabajador en Sociodemográfica (TalentHub)">&#128100; Sociodemográfica</button>
+        <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
+      </div>
     </div>
     <div class="modal-ficha-body" id="fichaBody">
       <div class="aviso-banner" id="avisoEdicionConcurrente" style="display:none"></div>
@@ -3678,7 +3687,37 @@
       iframeEl.src = url;
     }
   }
-  function abrirModal(url, titulo) {
+  // Trabajador de la ventana de gestión (Retiro), para el botón "Sociodemográfica".
+  let _gestionTrabajador = null;
+
+  // Lleva al detalle del trabajador en la pestaña Sociodemográfica de TalentHub.
+  function irASociodemografica(identificacion, idVinculacion, estado) {
+    if (!identificacion) return;
+    const qs = new URLSearchParams({
+      usuario,
+      tab: 'Sociodemografica',
+      identificacion: String(identificacion).trim()
+    });
+    if (idVinculacion) qs.set('vinculacion', String(idVinculacion).trim());
+    if (estado) qs.set('estado', String(estado).trim());
+    window.location.href = '/talenthub?' + qs.toString();
+  }
+  function irASociodemograficaDesdeGestion() {
+    if (_gestionTrabajador) irASociodemografica(_gestionTrabajador.identificacion, _gestionTrabajador.idVinculacion, _gestionTrabajador.estado);
+  }
+  function irASociodemograficaDesdeFicha() {
+    irASociodemografica(
+      document.getElementById('ficha_identificacion').value,
+      document.getElementById('ficha_idVinculacion').value,
+      document.getElementById('ficha_estado').value
+    );
+  }
+
+  // trabajador (opcional): { identificacion, idVinculacion, estado } para mostrar el botón Sociodemográfica.
+  function abrirModal(url, titulo, trabajador) {
+    _gestionTrabajador = (trabajador && trabajador.identificacion) ? trabajador : null;
+    const btnSocio = document.getElementById('btnSocioGestion');
+    if (btnSocio) btnSocio.style.display = (_gestionTrabajador && _cfg.puedeVerSociodemografica) ? 'inline-block' : 'none';
     document.getElementById('modalTitulo').textContent = titulo;
     navegarIframeGestion(document.getElementById('gestionIframe'), url);
     const overlay = document.getElementById('gestionModalOverlay');
@@ -4405,10 +4444,11 @@
   // Y el usuario actual tiene permiso para gestionarlos (ver puedeGenerarDocumentosRetiro
   // en el backend — Coordinador/Auxiliar de ANTIOQUIA no gestionan documentos).
   function abrirFilaRetiro(row) {
+    const trabajador = { identificacion: row.Identificacion, idVinculacion: row.IdVinculacion, estado: row.Estado || 'Retirado' };
     if (row.tieneDocsGenerados && puedeGenerarDocs) {
-      abrirModal('/gestionar-retiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Gestión de Retiro');
+      abrirModal('/gestionar-retiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Gestión de Retiro', trabajador);
     } else {
-      abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+      abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro', trabajador);
     }
   }
 
@@ -4764,7 +4804,8 @@
         btnRetirar.type = 'button'; btnRetirar.className = 'btn-retirar'; btnRetirar.textContent = 'Retirar';
         btnRetirar.onclick = (e) => {
           e.stopPropagation();
-          abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+          abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro',
+            { identificacion: row.Identificacion, idVinculacion: row.IdVinculacion, estado: 'Activo' });
         };
         celdaAcciones.appendChild(btnRetirar);
       }
@@ -4960,6 +5001,9 @@
       } else {
         avisoEl.style.display = 'none';
       }
+
+      const btnSocioFicha = document.getElementById('btnSocioFicha');
+      if (btnSocioFicha) btnSocioFicha.style.display = (_cfg.puedeVerSociodemografica && r.identificacion) ? 'inline-block' : 'none';
 
       const fichaOverlay = document.getElementById('fichaModalOverlay');
       fichaOverlay.classList.add('open');
@@ -9167,6 +9211,19 @@
   // Aplicar filtros en la pestaña correspondiente
   const mantenerFiltrosPlegados = paramsUrl.get('plegable') === '1' || paramsUrl.get('filtrosPlegados') === '1';
   const retirarUrlParam = (paramsUrl.get('retirar') || '').trim();
+  // ?abrir=<Id Vinculación>: abre directamente la ventana del registro (Ficha en Activos;
+  // Gestión o Formulario de Retiro en Retiros), p. ej. desde Sociodemográfica de TalentHub.
+  const abrirUrlParam = (paramsUrl.get('abrir') || '').trim();
+  async function abrirRetiroDesdeUrl(idVinc) {
+    for (let i = 0; i < 60 && !_retirosState.cargado; i++) await new Promise(r => setTimeout(r, 200));
+    const fila = (_retirosState.allData || []).find(r => String(r.IdVinculacion) === String(idVinc));
+    if (fila) {
+      abrirFilaRetiro(fila);
+    } else {
+      abrirModal('/formretiro/' + encodeURIComponent(idVinc) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro',
+        busquedaParam ? { identificacion: busquedaParam, idVinculacion: idVinc, estado: 'Retirado' } : null);
+    }
+  }
   if (tabDestino === 'activos' && tabs.activo) {
     const termino = busquedaParam || idVinculacionParam;
     if (termino) actFilterIdentificacion.value = termino;
@@ -9179,8 +9236,11 @@
     switchTab('activos');
     if (retirarUrlParam) {
       setTimeout(() => {
-        abrirModal('/formretiro/' + encodeURIComponent(retirarUrlParam) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+        abrirModal('/formretiro/' + encodeURIComponent(retirarUrlParam) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro',
+          busquedaParam ? { identificacion: busquedaParam, idVinculacion: retirarUrlParam, estado: 'Activo' } : null);
       }, 150);
+    } else if (abrirUrlParam) {
+      setTimeout(() => abrirFichaVinculacion(abrirUrlParam), 150);
     }
   } else if (tabDestino === 'retiros' && tabs.retiro) {
     const termino = idVinculacionParam || busquedaParam;
@@ -9192,6 +9252,7 @@
       abrirFiltrosSiCerrado('ret');
     }
     switchTab('retiros');
+    if (abrirUrlParam) abrirRetiroDesdeUrl(abrirUrlParam);
   } else if (tabDestino === 'bloqueo' && tabs.bloqueo) {
     switchTab('bloqueo');
   } else if (tabDestino === 'biometrico' && tabs.biometrico) {

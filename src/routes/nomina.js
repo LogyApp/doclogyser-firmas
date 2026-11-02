@@ -4,7 +4,7 @@ const path    = require('path');
 const multer  = require('multer');
 const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
-const { seccionesDelRol } = require('../services/maestroMenu');
+const { seccionesDelRol, accesoSeccion } = require('../services/maestroMenu');
 const { obtenerPermisosProduccion } = require('../services/configProduccion');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
@@ -327,12 +327,17 @@ router.get('/', async (req, res) => {
       accesoRetiro, accesoActivo, accesoBloqueo, accesoBiometrico, accesoTraslados, accesoCesantias
     ]);
 
+    // Botón "Sociodemográfica" en las ventanas de Activos y Retiros: solo si el rol tiene
+    // la Sección Sociodemografica del módulo talenthub en Maestro_Menu.
+    const puedeVerSociodemografica = Boolean(await accesoSeccion('talenthub', base.rol, 'Sociodemografica').catch(() => null));
+
     const template = fs.readFileSync(NOMINA_HTML, 'utf8');
     const config = JSON.stringify({
       usuario,
       usuarioNombre: base.usuarioNombre,
       rol:           base.rol,
       puedeGenerarDocs,
+      puedeVerSociodemografica,
       isSstOnly,
       ticket: {
         opsPorRegional:   opsTicket,
@@ -421,6 +426,7 @@ router.get('/api/retiros', async (req, res) => {
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
         v.\`Identificación\`     AS Identificacion,
+        v.Estado                 AS Estado,
         v.\`Regional\`           AS Regional,
         v.\`Operación\`          AS Operacion,
         v.\`Trabajador\`         AS Trabajador,
@@ -704,6 +710,7 @@ router.get('/api/activos', async (req, res) => {
     const listQuery = `
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
+        v.\`Identificación\`     AS Identificacion,
         v.\`Regional\`           AS Regional,
         v.\`Operación\`          AS Operacion,
         v.\`Trabajador\`         AS Trabajador,

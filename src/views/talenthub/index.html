@@ -2626,7 +2626,7 @@
                       class="socio-action-chip"
                       id="btnDocumentosSocioDetalle"
                       onclick="irADocTrabajadoresSocio()"
-                      title="Ver documentos del trabajador en Doc Trabajadores">
+                      title="Abrir los documentos del trabajador (Doc Trabajadores)">
                 <span>📁</span>
                 <span>Documentos</span>
               </button>
@@ -3502,7 +3502,20 @@
       // Cargar catálogos y permisos de Requisiciones desde el inicio
       await cargarCatalogosRequisiciones();
 
-      // 2. Activar pestaña configurada
+      // 2. Si llega desde Nómina o Cloud Docs con un trabajador, se abre su detalle en Sociodemográfica
+      {
+        const pUrl = new URLSearchParams(window.location.search);
+        const identUrl = (pUrl.get('identificacion') || '').trim();
+        if (CONFIG.activeTab === 'Sociodemografica' && identUrl) {
+          _socioAbrirDesdeUrl = { identificacion: identUrl, vinculacion: (pUrl.get('vinculacion') || '').trim() };
+          if ((pUrl.get('estado') || '').trim().toLowerCase() === 'retirado') _socioEstadoVista = 'Retirado';
+          _socioOpcionActiva = 'colaboradores';
+          const q = document.getElementById('filtroSocioQ');
+          if (q) q.value = identUrl;
+        }
+      }
+
+      // 3. Activar pestaña configurada
       switchTab(CONFIG.activeTab || 'Requisiciones');
 
       // 3. Inicializar según pestaña activa
@@ -7672,6 +7685,8 @@
     ];
     let _socioEstadoVista = 'Activo'; // 'Activo' (verde, por defecto) | 'Retirado' (rojo)
     let _socioOpcionActiva = 'colaboradores'; // Por defecto Colaboradores
+    // Detalle a abrir al llegar desde Nómina o Cloud Docs: { identificacion, vinculacion }
+    let _socioAbrirDesdeUrl = null;
     let _socioRegistros = [];
     let _socioPuedeEditarActual = false;
     let _socioSortCol = 'fecha_ingreso';
@@ -8018,6 +8033,7 @@
         poblarSelectoresFacetasSocio(data.counts || {});
         renderEncabezadoTablaSocio(cols);
         renderFilasTablaSocio();
+        abrirDetalleSocioPendienteUrl();
       } catch (err) {
         console.error('[Sociodemografica] Error cargando datos:', err);
         if (tbody) {
@@ -8250,7 +8266,33 @@
       const lista = window._socioListaOrdenadaActual || _socioRegistros;
       const row = lista[idx];
       if (!row) return;
+      await abrirDetalleSocioConFila(row, idx);
+    }
 
+    // Abre el detalle pedido por la URL: la fila de la lista si está (misma identificación y,
+    // si se indicó, misma vinculación); si no, el detalle se arma desde el consolidado del servidor.
+    function abrirDetalleSocioPendienteUrl() {
+      const pend = _socioAbrirDesdeUrl;
+      if (!pend) return;
+      _socioAbrirDesdeUrl = null;
+      const lista = window._socioListaOrdenadaActual || _socioRegistros || [];
+      const mismaIdent = r => String(r.identificacion || '').trim() === pend.identificacion;
+      let idx = pend.vinculacion
+        ? lista.findIndex(r => mismaIdent(r) && String(r.id_registro || r.id_vinculacion || '') === pend.vinculacion)
+        : -1;
+      if (idx < 0) idx = lista.findIndex(mismaIdent);
+      if (idx >= 0) {
+        abrirModalEditarSocioPorIndice(idx);
+      } else {
+        abrirDetalleSocioConFila({
+          identificacion: pend.identificacion,
+          id_registro: pend.vinculacion || '',
+          id_vinculacion: pend.vinculacion || ''
+        }, -1);
+      }
+    }
+
+    async function abrirDetalleSocioConFila(row, idx) {
       _socioRegistroEditando = row;
       // Al abrir el detalle, inicia en la pestaña desde donde el usuario seleccionó el registro
       _socioDetalleTabActiva = _socioOpcionActiva;
@@ -8450,8 +8492,11 @@
         tab: 'trabajador',
         usuario: CONFIG.usuarioId,
         identificacion: String(d.identificacion).trim(),
-        plegable: '1'
+        plegable: '1',
+        abrir: '1'
       });
+      const nombreDoc = d.trabajador || d.nombre_trabajador || '';
+      if (nombreDoc) qs.set('nombre', String(nombreDoc).trim());
       window.location.href = '/cloud-docs?' + qs.toString();
     }
 
@@ -8505,7 +8550,9 @@
       window.location.href = '/nomina?' + qs.toString();
     }
 
-    function irANominaDesdeVinculacionSocio(identificacion, estadoVinc) {
+    // Abre Nómina en Activos o Retiros (según el estado) con la ventana emergente del registro
+    // ya abierta: la Ficha del trabajador en Activos, o la Gestión / Formulario de Retiro en Retiros.
+    function irANominaDesdeVinculacionSocio(identificacion, estadoVinc, idVinculacion) {
       if (!identificacion) return;
       const esRetirado = String(estadoVinc || '').trim().toLowerCase() === 'retirado';
       const qs = new URLSearchParams({
@@ -8514,6 +8561,7 @@
         identificacion: String(identificacion).trim(),
         plegable: '1'
       });
+      if (idVinculacion) qs.set('abrir', String(idVinculacion).trim());
       window.location.href = '/nomina?' + qs.toString();
     }
 
@@ -8547,10 +8595,10 @@
         return `
           <div style="margin-top: 18px;">
             <div style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
-              🔗 Registros en Maestro_Vinculación (0)
+              🔗 Registro de vinculaciones en Logyser (0)
             </div>
             <div style="padding: 14px; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
-              No se encontraron registros en Maestro_Vinculación para este trabajador.
+              No se encontraron vinculaciones en Logyser para este trabajador.
             </div>
           </div>
         `;
@@ -8561,8 +8609,8 @@
         const badgeEst = `<span style="display:inline-block; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.68rem; background:${esAct ? 'rgba(22,163,74,0.15)' : 'rgba(220,38,38,0.15)'}; color:${esAct ? '#22c55e' : '#ef4444'};">${esc(v.estado || '—')}</span>`;
         return `
           <tr class="clickable-vinc"
-              onclick="irANominaDesdeVinculacionSocio('${esc(v.identificacion)}', '${esc(v.estado)}')"
-              title="Clic para abrir en el módulo de Nómina (${esAct ? 'Activos' : 'Retirados'})">
+              onclick="irANominaDesdeVinculacionSocio('${esc(v.identificacion)}', '${esc(v.estado)}', '${esc(v.id_vinculacion)}')"
+              title="Clic para abrir el registro en Nómina (${esAct ? 'Activos' : 'Retiros'})">
             <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">${esc(v.id_vinculacion || '—')}</td>
             <td>${badgeEst}</td>
             <td style="font-family:'JetBrains Mono',monospace;">${esc(v.identificacion || '—')}</td>
@@ -8579,10 +8627,10 @@
         <div style="margin-top: 18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom: 6px;">
             <span style="font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em;">
-              🔗 Registros en Maestro_Vinculación (${lista.length})
+              🔗 Registro de vinculaciones en Logyser (${lista.length})
             </span>
             <span style="font-size: 0.72rem; color: var(--text-muted);">
-              Selecciona un registro para abrirlo en Nómina
+              Selecciona un registro para abrir su ventana en Nómina
             </span>
           </div>
           <div class="socio-subtable-wrap">

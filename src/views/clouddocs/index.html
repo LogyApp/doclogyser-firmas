@@ -1438,10 +1438,16 @@
             <label for="modal-worker-search">Buscar por Documento o Prefijo</label>
             <input type="text" id="modal-worker-search" placeholder="Ej. Incapacidad, HC..." oninput="onWorkerModalSearch()">
           </div>
-          <button type="button" class="btn-cloud-upload" onclick="openWorkerUploadForm()">
-            <span aria-hidden="true">☁</span>
-            <span>Cargar Doc. Trabajador</span>
-          </button>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn-cloud-upload" id="btn-worker-socio" style="display: none;" onclick="irASociodemograficaDesdeDocs()" title="Abrir el detalle del trabajador en Sociodemográfica (TalentHub)">
+              <span aria-hidden="true">👤</span>
+              <span>Sociodemográfica</span>
+            </button>
+            <button type="button" class="btn-cloud-upload" onclick="openWorkerUploadForm()">
+              <span aria-hidden="true">☁</span>
+              <span>Cargar Doc. Trabajador</span>
+            </button>
+          </div>
         </div>
         <div class="table-container" style="max-height: 50vh; overflow-y: auto;">
           <table id="modal-worker-table">
@@ -2000,6 +2006,13 @@
       }
       const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : 'trabajador';
       switchTab(tabSolicitada);
+
+      // ?abrir=1 con identificación: abre de una vez la ventana de documentos del trabajador
+      // (p. ej. desde el detalle del trabajador en Sociodemográfica de TalentHub).
+      if (urlParamsInit.get('abrir') === '1' && buscarUrlParam && tabSolicitada === 'trabajador') {
+        const nombreUrl = (urlParamsInit.get('nombre') || '').trim();
+        openWorkerModal(buscarUrlParam, nombreUrl || buscarUrlParam);
+      }
 
       // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
       if (typeof initBotonTicket === 'function') {
@@ -2719,7 +2732,7 @@
         tr.className = 'clickable-row';
         
         if (activeTab === 'trabajador') {
-          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador);
+          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador, '', row.estado);
           tr.innerHTML = `
             <td style="font-weight: 600; color: var(--text);">${esc(row.trabajador)}</td>
             <td>${esc(row.operacion)}</td>
@@ -2874,9 +2887,21 @@
     }
 
     // Modal: Open Worker Docs
-    async function openWorkerModal(identificacion, nombre, autoSearchDoc) {
+    // Lleva al detalle del trabajador en la pestaña Sociodemográfica de TalentHub.
+    function irASociodemograficaDesdeDocs() {
+      const ident = String(activeWorkerModal.identificacion || '').trim();
+      if (!ident) return;
+      const qs = new URLSearchParams({ usuario: CONFIG.usuarioId, tab: 'Sociodemografica', identificacion: ident });
+      if (activeWorkerModal.estado) qs.set('estado', activeWorkerModal.estado);
+      window.location.href = '/talenthub?' + qs.toString();
+    }
+
+    async function openWorkerModal(identificacion, nombre, autoSearchDoc, estado) {
       activeWorkerModal.identificacion = identificacion;
       activeWorkerModal.nombre = nombre;
+      activeWorkerModal.estado = estado || '';
+      const btnSocio = document.getElementById('btn-worker-socio');
+      if (btnSocio) btnSocio.style.display = (CONFIG.puedeVerSociodemografica && identificacion) ? 'inline-flex' : 'none';
       document.getElementById('modal-worker-title').textContent = `Documentos de: ${nombre}`;
       document.getElementById('modal-worker-search').value = autoSearchDoc || '';
       

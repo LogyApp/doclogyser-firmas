@@ -12,6 +12,8 @@ const {
   gestionarSolicitudAcceso,
 } = require('../services/clouddocsRequests');
 
+const { accesoSeccion } = require('../services/maestroMenu');
+
 const router = express.Router();
 
 const HTML_INDEX_PATH = path.join(__dirname, '../views/clouddocs/index.html');
@@ -30,9 +32,13 @@ router.get('/', async (req, res) => {
     }
 
     const html = fs.readFileSync(HTML_INDEX_PATH, 'utf8');
+    // Botón "Sociodemográfica" en la ventana de documentos del trabajador: solo si el rol
+    // tiene la Sección Sociodemografica del módulo talenthub en Maestro_Menu.
+    const puedeVerSociodemografica = Boolean(await accesoSeccion('talenthub', acceso.rol, 'Sociodemografica').catch(() => null));
     const config = JSON.stringify({
       ...acceso,
-      regionalesFiltro: Object.keys(acceso.opsPorRegional)
+      regionalesFiltro: Object.keys(acceso.opsPorRegional),
+      puedeVerSociodemografica
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
