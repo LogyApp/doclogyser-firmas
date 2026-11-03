@@ -10457,8 +10457,8 @@
       const recaudo = modalRecibo.modoActual === 'RECAUDO';
       const hayServicios = mrServiciosCount > 0 || mrServiciosPendientes.length > 0;
       document.getElementById('mr-retenciones-wrap').style.display = (recaudo && hayServicios && PERMISOS_RECIBOS.aplicarRetenciones) ? 'block' : 'none';
-      const contactoObligatorio = ['Telefono', 'Email'].some(c => mrAjustes[c] && mrAjustes[c].visible && mrAjustes[c].obligatorio);
-      document.getElementById('mr-contacto-wrap').style.display = (hayServicios || contactoObligatorio) ? 'grid' : 'none';
+      // Igual que el Cliente (Nit): aparecen al agregar servicios, aunque sean obligatorios en Ajustes
+      document.getElementById('mr-contacto-wrap').style.display = hayServicios ? 'grid' : 'none';
       document.getElementById('mr-cliente-sin-servicios').style.display = hayServicios ? 'none' : 'block';
       document.getElementById('mr-cliente-con-servicios').style.display = hayServicios ? 'block' : 'none';
       actualizarBotonAgregarServicioRecibo();
@@ -10661,6 +10661,7 @@
         .filter(([col]) => !(col === 'Categoria' && document.getElementById('mr-categoria-wrap').style.display === 'none'))
         .filter(([col]) => !(['Cliente a Facturar', 'Categoria'].includes(col) && modalidad !== 'CREDITO'))
         .filter(([col]) => !(['Telefono', 'Email'].includes(col) && modalidad !== 'RECAUDO'))
+        .filter(([col]) => !(['Telefono', 'Email'].includes(col) && document.getElementById('mr-contacto-wrap').style.display === 'none'))
         .map(([, c]) => c.etiqueta);
       if (faltantesRecibo.length) return alert('Complete los campos obligatorios de esta operación:\n\n• ' + faltantesRecibo.join('\n• '));
 
