@@ -218,18 +218,19 @@
       
       <div class="grid-2">
         <div class="field">
-          <label class="lbl">Regional de los Asistentes</label>
+          <label class="lbl">Regional de los Asistentes <span id="lbl-regional-nota"></span></label>
           <select id="form-asistente-regional">
             <option value="">Seleccione Regional...</option>
           </select>
         </div>
         <div class="field">
-          <label class="lbl">Operación de los Asistentes</label>
+          <label class="lbl">Operación de los Asistentes <span id="lbl-operacion-nota"></span></label>
           <select id="form-asistente-operacion">
             <option value="">Seleccione Operación...</option>
           </select>
         </div>
       </div>
+      <div id="form-nota-acceso" style="display:none; font-size:.8rem; color:#64748b; margin-top:-6px;"></div>
 
       <!-- Scrollable checklist list -->
       <div style="margin-top: 15px; display: none;" id="form-asistentes-checklist-wrap">
@@ -250,6 +251,7 @@
 
       <div style="margin-top: 18px;">
         <label class="lbl">Asistentes Agregados: <span id="form-asistentes-count" style="font-weight: bold;">0</span></label>
+        <div id="form-asistentes-por-op" style="font-size:.8rem; color:#64748b; margin-top:4px;"></div>
       </div>
     </div>
 
@@ -287,6 +289,26 @@
   // DOM Elements
   const loading = document.getElementById('loading');
   const loadingText = document.getElementById('loading-text');
+
+  // Pestaña dueña del formulario: SST > Participación (sst) o TalentHub > Registro Asistencia
+  // (talenthub). En TalentHub se pueden agregar asistentes de varias operaciones y la Regional /
+  // Operación son opcionales u obligatorias según el acceso de Maestro_Menu (1, 2 o 3).
+  const MODULO = CONFIG.modulo || 'sst';
+  const ES_TH = MODULO === 'talenthub';
+  const ACCESO = Number(CONFIG.accesoCodigo) || 3;
+  function apiUrl(ruta) {
+    return ES_TH ? `${ruta}${ruta.includes('?') ? '&' : '?'}modulo=${encodeURIComponent(MODULO)}` : ruta;
+  }
+
+  function actualizarConteoAsistentes() {
+    document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
+    const porOp = document.getElementById('form-asistentes-por-op');
+    if (!ES_TH || !porOp) return;
+    const conteo = {};
+    formAsistentes.forEach(x => { const op = x.Operación || 'Sin operación'; conteo[op] = (conteo[op] || 0) + 1; });
+    const partes = Object.keys(conteo).sort().map(op => `${op} (${conteo[op]})`);
+    porOp.innerText = partes.length ? `Por operación: ${partes.join(' · ')}` : '';
+  }
 
   // Initialization
   document.addEventListener('DOMContentLoaded', () => {
@@ -335,12 +357,14 @@
     // Detectar si estamos editando
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('id');
+    const nombreFormato = ES_TH ? 'Registro de Asistencia' : 'Formato de Participación';
+    if (ES_TH) document.title = 'Registro de Asistencia — LOG&SER';
     if (id) {
-      document.getElementById('form-titulo').innerText = 'Editar Formato de Participación';
+      document.getElementById('form-titulo').innerText = `Editar ${nombreFormato}`;
       selectedAsistenciaId = id;
       cargarAsistenciaParaEditar(id);
     } else {
-      document.getElementById('form-titulo').innerText = 'Crear Formato de Participación';
+      document.getElementById('form-titulo').innerText = `Crear ${nombreFormato}`;
       inputFecha.value = hoyBogota;
       document.getElementById('form-asistentes-count').innerText = '0';
     }
@@ -348,10 +372,13 @@
 
   // Helper Toast
   function volverAlListado() {
-    if (window.parent && window.parent !== window && typeof window.parent.cerrarModalCrear === 'function') {
-      window.parent.cerrarModalCrear();
+    const cerrar = ES_TH ? 'cerrarModalFormAsistencia' : 'cerrarModalCrear';
+    if (window.parent && window.parent !== window && typeof window.parent[cerrar] === 'function') {
+      window.parent[cerrar]();
     } else {
-      (window.top || window).location.href = `/sst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      (window.top || window).location.href = ES_TH
+        ? `/talenthub?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=RegistroAsistencia`
+        : `/sst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
     }
   }
 
@@ -384,10 +411,21 @@
       rForm.appendChild(optForm);
     });
 
-    // Cambio de regional en Formulario
-    rForm.addEventListener('change', () => {
-      oForm.innerHTML = '<option value="">Seleccione Operación...</option>';
-      document.getElementById('form-asistentes-checklist-wrap').style.display = 'none';
+    // TalentHub: Regional opcional con acceso 1; Operación opcional con acceso 1 y 2
+    const regOpcional = ES_TH && ACCESO === 1;
+    const opOpcional = ES_TH && ACCESO <= 2;
+    if (ES_TH) {
+      rForm.options[0].innerText = regOpcional ? 'Todas las regionales' : 'Seleccione Regional...';
+      oForm.options[0].innerText = opOpcional ? 'Todas las operaciones' : 'Seleccione Operación...';
+      document.getElementById('lbl-regional-nota').innerHTML = regOpcional ? '<span style="color:#64748b; font-weight:400;">(opcional)</span>' : '<span class="req">*</span>';
+      document.getElementById('lbl-operacion-nota').innerHTML = opOpcional ? '<span style="color:#64748b; font-weight:400;">(opcional)</span>' : '<span class="req">*</span>';
+      const nota = document.getElementById('form-nota-acceso');
+      nota.style.display = 'block';
+      nota.innerText = 'Puede agregar asistentes de varias operaciones: escoja otra regional u operación y siga marcando; los ya agregados se conservan.';
+    }
+
+    function poblarOperaciones() {
+      oForm.innerHTML = `<option value="">${opOpcional ? 'Todas las operaciones' : 'Seleccione Operación...'}</option>`;
       const reg = rForm.value;
       const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : [];
       ops.forEach(op => {
@@ -395,9 +433,25 @@
         opt.value = op; opt.innerText = op;
         oForm.appendChild(opt);
       });
+    }
+
+    // Cambio de regional en Formulario
+    rForm.addEventListener('change', () => {
+      poblarOperaciones();
+      document.getElementById('form-asistentes-checklist-wrap').style.display = 'none';
+      if (ES_TH) cargarTrabajadoresParaChecklist();
     });
 
     oForm.addEventListener('change', cargarTrabajadoresParaChecklist);
+
+    // TalentHub: con una sola regional se deja escogida; con acceso 1 la lista sale de una vez
+    if (ES_TH) {
+      if (!regOpcional && CONFIG.regionalesFiltro.length === 1) {
+        rForm.value = CONFIG.regionalesFiltro[0];
+        poblarOperaciones();
+      }
+      cargarTrabajadoresParaChecklist();
+    }
   }
 
   // ════════ LÓGICA DE CHECKLIST (ASISTENTES) ════════
@@ -408,20 +462,28 @@
     const body = document.getElementById('form-checklist-body');
     const chkTodos = document.getElementById('chk-seleccionar-todos');
 
-    if (!regional || !operacion) {
+    // Requeridos: SST siempre ambos; TalentHub según el acceso (1 ninguno, 2 regional, 3 ambos)
+    const faltan = ES_TH
+      ? (ACCESO >= 2 && !regional) || (ACCESO >= 3 && !operacion)
+      : (!regional || !operacion);
+    if (faltan) {
       wrap.style.display = 'none';
       return;
     }
 
-    showLoading('Cargando colaboradores de la operación...');
+    showLoading('Cargando colaboradores...');
     try {
       chkTodos.checked = false;
-      const res = await fetch(`/participacion/api/trabajadores-por-operacion?regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`);
+      const url = ES_TH
+        ? apiUrl(`/participacion/api/trabajadores?usuario=${encodeURIComponent(CONFIG.usuarioId)}&regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`)
+        : `/participacion/api/trabajadores-por-operacion?regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`;
+      const res = await fetch(url);
       const trabajadores = await res.json();
+      if (!res.ok || !Array.isArray(trabajadores)) throw new Error((trabajadores && trabajadores.error) || 'Error al cargar colaboradores.');
 
       body.innerHTML = '';
       if (!trabajadores.length) {
-        body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+        body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos para esta selección.</div>';
         wrap.style.display = 'block';
         return;
       }
@@ -446,7 +508,7 @@
 
         div.innerHTML = `
           <input type="checkbox" id="${idCheckbox}" ${isChecked ? 'checked' : ''}>
-          <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
+          <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'}${ES_TH ? ` · ${t.Operación || 'Sin operación'}` : ''})</span></label>
         `;
 
         const checkbox = div.querySelector('input[type="checkbox"]');
@@ -465,7 +527,7 @@
           } else {
             formAsistentes = formAsistentes.filter(x => x.id_vinculacion !== t.id_vinculacion);
           }
-          document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
+          actualizarConteoAsistentes();
         });
 
         div.addEventListener('click', (e) => {
@@ -491,7 +553,7 @@
   async function cargarAsistenciaParaEditar(id) {
     showLoading('Cargando datos del formato...');
     try {
-      const res = await fetch(`/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+      const res = await fetch(apiUrl(`/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`));
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'No autorizado');
       const data = await res.json();
 
@@ -511,10 +573,12 @@
         Operación: i.operacion,
         Regional: i.regional
       }));
-      document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
+      actualizarConteoAsistentes();
 
       evidenciasList = data.evidencias || [];
       renderEvidencias();
+      // TalentHub: la lista ya pudo salir antes de traer el formato; se vuelve a pintar marcada
+      if (ES_TH) cargarTrabajadoresParaChecklist();
     } catch (err) {
       console.error(err);
       showToast('Error al cargar datos del formato', 'error');
@@ -561,15 +625,16 @@
       lugar: document.getElementById('form-lugar').value,
       objetivo: document.getElementById('form-objetivo').value,
       usuario: CONFIG.usuarioId,
+      modulo: MODULO,
       asistentes: formAsistentes.map(x => x.id_vinculacion),
       evidencias: evidenciasList
     };
 
     showLoading('Guardando registro...');
     try {
-      const url = selectedAsistenciaId 
-        ? `/participacion/api/asistencia/${selectedAsistenciaId}` 
-        : '/participacion/api/asistencias';
+      const url = apiUrl(selectedAsistenciaId
+        ? `/participacion/api/asistencia/${selectedAsistenciaId}`
+        : '/participacion/api/asistencias');
       const method = selectedAsistenciaId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {

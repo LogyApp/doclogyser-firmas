@@ -16,6 +16,7 @@ const { generarPDFDesdeHTML } = require('../services/renderer');
 const { LOGO_BASE64 } = require('../services/assets');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { computarAccesoSst } = require('../services/accesoSst');
+const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { normalizar } = require('../services/maestroMenu');
 const {
   obtenerParametrosParticipacion,
@@ -74,15 +75,69 @@ function enlaceFirma(base, token) {
   return `${base}/participacion/firmar?t=${encodeURIComponent(token)}`;
 }
 
+// ── Pestañas que usan estos formatos ────────────────────────────────────────
+// Las dos guardan en las mismas tablas; Dynamic_formato_asistencia.modulo dice de cuál es cada
+// formato y cada pestaña solo ve los suyos. Las peticiones llevan ?modulo= (sin él: sst).
+//   * sst:       SST > Participación. La Operación del formato es la de sus asistentes (MAX).
+//   * talenthub: TalentHub > Registro Asistencia. Un formato puede tener asistentes de varias
+//     operaciones (filtros y conteos por cualquiera de ellas), lleva la columna Operación en el
+//     PDF y la Evaluación de Eficacia de la formación después de generar el PDF.
+const PERFILES_ASISTENCIA = {
+  sst: {
+    modulo: 'sst',
+    seccionMenu: SECCION_MENU,
+    plantilla: 'registro_asistencia',
+    variasOperaciones: false,
+    evaluacion: false,
+    acceso: (usuarioId) => computarAccesoSst(usuarioId, SECCION_MENU),
+    nombre: 'Participación',
+  },
+  talenthub: {
+    modulo: 'talenthub',
+    seccionMenu: 'RegistroAsistencia',
+    plantilla: 'registro_asistencia_th',
+    variasOperaciones: true,
+    evaluacion: true,
+    acceso: (usuarioId) => computarAccesoTalenthub(usuarioId, 'RegistroAsistencia'),
+    nombre: 'Registro Asistencia',
+  },
+};
+
+function perfilAsistencia(modulo) {
+  return PERFILES_ASISTENCIA[String(modulo || 'sst').toLowerCase()] || PERFILES_ASISTENCIA.sst;
+}
+
+function perfilDeReq(req) {
+  return perfilAsistencia((req.query || {}).modulo || (req.body || {}).modulo);
+}
+
 // ── Acceso ──────────────────────────────────────────────────────────────────
-// Quién ve la pestaña y qué operaciones: Maestro_Menu (Modulo 'sst', Sección 'Participación').
-async function computarAccesoParticipacion(usuarioId) {
-  return computarAccesoSst(usuarioId, SECCION_MENU);
+// Quién ve la pestaña y qué operaciones: Maestro_Menu (sst / Participación o
+// talenthub / RegistroAsistencia). accesoCodigo: 1 nacional, 2 regional, 3 operación.
+async function computarAccesoParticipacion(usuarioId, perfil = PERFILES_ASISTENCIA.sst) {
+  const acceso = await perfil.acceso(usuarioId);
+  if (!acceso) return null;
+  acceso.perfil = perfil;
+  acceso.accesoCodigo = Number((acceso.seccionAcceso || {})[perfil.seccionMenu]) || (acceso.sinFiltro ? 1 : 3);
+  return acceso;
+}
+
+// TalentHub: el formato se ve si alguno de sus asistentes es de una operación del usuario.
+async function operacionesDelFormato(id) {
+  const [rows] = await pool.execute(
+    'SELECT DISTINCT regional, operacion FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ? ORDER BY regional, operacion',
+    [id]
+  );
+  return {
+    regionales: [...new Set(rows.map((r) => r.regional).filter(Boolean))],
+    operaciones: [...new Set(rows.map((r) => r.operacion).filter(Boolean))],
+  };
 }
 
 // Formato visible para el usuario (por la Operación de quien lo creó, o si lo creó él).
 // Devuelve { asistencia, esCreador, permisos } o { status, error }.
 async function cargarFormato(acceso, id) {
+  const perfil = acceso.perfil || PERFILES_ASISTENCIA.sst;
   const [[asistencia]] = await pool.execute(
     `SELECT a.*, u.Nombre AS nombre_responsable, u.Cargo AS cargo_responsable,
             COALESCE(item_reg.regional, u.Regional) AS regional_responsable,
@@ -99,22 +154,37 @@ async function cargarFormato(acceso, id) {
      WHERE a.id_asistencia = ?`,
     [id, id]
   );
-  if (!asistencia) return { status: 404, error: 'Formato no encontrado' };
+  if (!asistencia || (asistencia.modulo || 'sst') !== perfil.modulo) return { status: 404, error: 'Formato no encontrado' };
   const esCreador = normalizar(asistencia.usuario) === normalizar(acceso.usuarioId);
-  if (!acceso.sinFiltro && !esCreador && !(acceso.operacionesFiltro || []).includes(asistencia.operacion_responsable)) {
+  if (perfil.variasOperaciones) {
+    const ops = await operacionesDelFormato(id);
+    asistencia.regionales = ops.regionales;
+    asistencia.operaciones = ops.operaciones;
+    asistencia.regional_responsable = ops.regionales.join(', ') || asistencia.regional_responsable;
+    asistencia.operacion_responsable = ops.operaciones.join(', ') || asistencia.operacion_responsable;
+    const permitidas = acceso.operacionesFiltro || [];
+    if (!acceso.sinFiltro && !esCreador && !ops.operaciones.some((op) => permitidas.includes(op))) {
+      return { status: 403, error: 'No tiene acceso a este formato' };
+    }
+  } else if (!acceso.sinFiltro && !esCreador && !(acceso.operacionesFiltro || []).includes(asistencia.operacion_responsable)) {
     return { status: 403, error: 'No tiene acceso a este formato' };
   }
-  const p = await permisosParticipacion(acceso.rol);
+  const p = await permisosParticipacion(acceso.rol, null, perfil.modulo);
   const tieneDoc = !!asistencia.url_doc;
+  // Con Evaluación de Eficacia (solo TalentHub) rigen los permisos de "con evaluación".
+  // Regenerar el PDF lo puede hacer quien puede editar.
+  const evaluado = perfil.evaluacion && asistencia.formacion_eficaz != null;
+  const editar = evaluado ? p.editarEvaluado : tieneDoc ? p.editarFirmado : (esCreador || p.editarCualquiera);
   const permisos = {
-    editar:   tieneDoc ? p.editarFirmado : (esCreador || p.editarCualquiera),
-    generar:  tieneDoc ? p.editarFirmado : (esCreador || p.generarCualquiera),
+    editar,
+    generar:  tieneDoc ? editar : (esCreador || p.generarCualquiera),
     enlaces:  esCreador || p.enlacesCualquiera,
-    eliminar: tieneDoc ? p.eliminarFirmado : (esCreador || p.eliminarCualquiera),
+    eliminar: evaluado ? p.eliminarEvaluado : tieneDoc ? p.eliminarFirmado : (esCreador || p.eliminarCualquiera),
     editarFirmado:   p.editarFirmado,
     eliminarFirmado: p.eliminarFirmado,
+    evaluar:  perfil.evaluacion && tieneDoc && (evaluado ? p.editarEvaluado : (esCreador || p.evaluarCualquiera)),
   };
-  return { asistencia, esCreador, permisos };
+  return { asistencia, esCreador, permisos, evaluado };
 }
 
 // ── Firmas ──────────────────────────────────────────────────────────────────
@@ -154,14 +224,14 @@ async function asegurarTokens(items) {
 
 // Envía el correo de solicitud de firma. idsItems = null → a todos los que no han firmado.
 async function enviarSolicitudesFirma(idAsistencia, base, idsItems = null) {
-  const params = await obtenerParametrosParticipacion();
-  if (!notificacionesHabilitadas(params)) return { enviados: 0, sinCorreo: 0, deshabilitado: true };
-
   const [[asistencia]] = await pool.execute(
-    'SELECT tema, fecha, lugar FROM Dynamic_formato_asistencia WHERE id_asistencia = ?',
+    'SELECT * FROM Dynamic_formato_asistencia WHERE id_asistencia = ?',
     [idAsistencia]
   );
   if (!asistencia) return { enviados: 0, sinCorreo: 0 };
+  // Interruptor del módulo del formato (Participación o Registro Asistencia)
+  const params = await obtenerParametrosParticipacion(asistencia.modulo || 'sst');
+  if (!notificacionesHabilitadas(params)) return { enviados: 0, sinCorreo: 0, deshabilitado: true };
 
   const [rows] = await pool.execute(
     `SELECT i.id_item_asistencia, i.nombre_trabajador, i.identificacion, i.token_firma, i.firma_asistente, s.Email
@@ -200,9 +270,9 @@ async function enviarSolicitudesFirma(idAsistencia, base, idsItems = null) {
 }
 
 // ── PDF ─────────────────────────────────────────────────────────────────────
-// Diseño: plantilla 'registro_asistencia' de Maestro_Plantillas (mismo estilo del PDF de
-// Cesantías). Si no existe o está inactiva, se usa el diseño anterior escrito aquí.
-const NOMBRE_PLANTILLA = 'registro_asistencia';
+// Diseño: plantilla de Maestro_Plantillas del perfil ('registro_asistencia' en SST,
+// 'registro_asistencia_th' en TalentHub). En SST, si no existe o está inactiva, se usa el
+// diseño anterior escrito aquí.
 
 function fechaHoraBogotaTexto(d = new Date()) {
   const p = {};
@@ -211,22 +281,53 @@ function fechaHoraBogotaTexto(d = new Date()) {
   return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }
 
-async function armarHtmlDesdePlantilla({ asistencia, asistentes, evidencias, formato, firmaResponsableBase64, firmados, porCorreo }) {
+// TalentHub: sección de Evaluación de Eficacia al final del PDF (solo cuando ya se registró).
+async function seccionEvaluacionEficacia(asistencia) {
+  if (asistencia.formacion_eficaz == null) return '';
+  const eficaz = Number(asistencia.formacion_eficaz) === 1;
+  let firmaHtml = '';
+  if (asistencia.firma_evaluador && /^https:\/\//.test(asistencia.firma_evaluador)) {
+    const b64 = await descargarFirmaBase64PorUrl(asistencia.firma_evaluador).catch(() => null);
+    if (b64) firmaHtml = firmaConFecha(`<img src="${b64}" class="sig-img" alt="Firma">`, asistencia.fecha_registro_evaluacion);
+  }
+  const texto = (v) => (esc(v) || '—').replace(/\r?\n/g, '<br>');
+  return `
+  <section class="section-block" style="page-break-inside: avoid; break-inside: avoid;">
+    <div class="section-title">Evaluación de la Eficacia de la Formación</div>
+    <table class="data-grid">
+      <tr><td class="data-label" style="width: 36%;">¿LA FORMACIÓN FUE EFICAZ?</td><td class="data-val"><span class="${eficaz ? 'eficacia-badge-si' : 'eficacia-badge-no'}">${eficaz ? 'SÍ' : 'NO'}</span></td></tr>
+      <tr><td class="data-label">RESULTADO DE LA EVALUACIÓN DE LA EFICACIA DE LA FORMACIÓN</td><td class="data-val">${texto(asistencia.resultado_evaluacion)}</td></tr>
+      <tr><td class="data-label">FECHA DE LA EVALUACIÓN</td><td class="data-val">${esc(formatFechaEspanol(asistencia.fecha_evaluacion)) || '—'}</td></tr>
+      <tr><td class="data-label">ACCIÓN A SEGUIR SI NO FUE EFICAZ</td><td class="data-val">${texto(asistencia.accion_no_eficaz)}</td></tr>
+    </table>
+    <div class="signature-container" style="margin-top: 22px;">
+      <div class="signature-card">
+        <div class="sig-img-wrap">${firmaHtml}</div>
+        <div class="sig-line"></div>
+        <div class="sig-name">${esc(nombreLimpio(asistencia.nombre_evaluador)) || '—'}</div>
+        <div class="sig-details">${esc(asistencia.cargo_evaluador) || ''}${asistencia.cargo_evaluador ? '<br>' : ''}Evaluador de la eficacia</div>
+      </div>
+    </div>
+  </section>`;
+}
+
+async function armarHtmlDesdePlantilla({ asistencia, asistentes, evidencias, formato, firmaResponsableBase64, firmados, porCorreo, perfil = PERFILES_ASISTENCIA.sst }) {
   let plantilla = null;
   try {
     const [rows] = await pool.execute(
       'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
-      [NOMBRE_PLANTILLA]
+      [perfil.plantilla]
     );
     plantilla = rows.length ? rows[0].contenido_html : null;
   } catch (err) {
-    console.warn('[participacion] No se pudo leer la plantilla registro_asistencia:', err.message);
+    console.warn(`[participacion] No se pudo leer la plantilla ${perfil.plantilla}:`, err.message);
   }
   if (!plantilla) return null;
 
   const filas = asistentes.map((ast, idx) => `
         <tr>
-          <td class="col-num">${idx + 1}</td>
+          <td class="col-num">${idx + 1}</td>${perfil.variasOperaciones ? `
+          <td class="col-op">${esc(ast.operacion)}</td>` : ''}
           <td><strong>${esc(nombreLimpio(ast.nombre_trabajador))}</strong></td>
           <td>${esc(ast.identificacion)}</td>
           <td>${esc(ast.cargo)}</td>
@@ -265,6 +366,7 @@ async function armarHtmlDesdePlantilla({ asistencia, asistentes, evidencias, for
     filas_asistentes: filas,
     seccion_evidencias: seccionEvidencias,
     firma_responsable_html: firmaResponsableBase64 ? `<img src="${firmaResponsableBase64}" class="sig-img" alt="Firma">` : '',
+    seccion_evaluacion_eficacia: perfil.evaluacion ? await seccionEvaluacionEficacia(asistencia) : '',
     fecha_generacion: fechaHoraBogotaTexto(),
   };
   return plantilla.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, clave) => (Object.prototype.hasOwnProperty.call(datos, clave) ? String(datos[clave]) : ''));
@@ -285,13 +387,14 @@ function generarPDFAsistencia(id, opciones = {}) {
 
 async function _generarPDFAsistencia(id, { usuarioId } = {}) {
   const [[asistencia]] = await pool.execute(
-    `SELECT a.id_asistencia, a.tema, a.fecha, a.hora_inicial, a.hora_final, a.lugar, a.duracion, a.objetivo,
-            a.usuario, a.url_doc, a.id_doc_empresa,
+    `SELECT a.*,
             u.Nombre AS nombre_responsable, u.Cargo AS cargo_responsable,
+            ev.Nombre AS nombre_evaluador, ev.Cargo AS cargo_evaluador,
             COALESCE(item_reg.regional, u.Regional) AS regional_responsable,
             COALESCE(item_reg.operacion, u.\`Operación\`) AS operacion_responsable
      FROM Dynamic_formato_asistencia a
      LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
+     LEFT JOIN Maestro_Usuarios ev ON ev.ID = a.evaluador
      LEFT JOIN (
        SELECT id_asistencia, MAX(regional) as regional, MAX(operacion) as operacion
        FROM Dynamic_formato_itemsAsistencia
@@ -302,21 +405,23 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
     [id, id]
   );
   if (!asistencia) throw new Error('Asistencia no encontrada');
+  const perfil = perfilAsistencia(asistencia.modulo);
 
+  // TalentHub: asistentes de varias operaciones, ordenados por operación
   const [items] = await pool.execute(
-    `SELECT i.id_item_asistencia, i.nombre_trabajador, i.identificacion, i.cargo, i.firma_asistente,
+    `SELECT i.id_item_asistencia, i.nombre_trabajador, i.identificacion, i.cargo, i.operacion, i.firma_asistente,
             i.fecha_firma, i.fecha_envio_correo, s.Email AS email
      FROM Dynamic_formato_itemsAsistencia i
      LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = i.identificacion
      WHERE i.id_asistencia = ?
-     ORDER BY i.id_item_asistencia`,
+     ORDER BY ${perfil.variasOperaciones ? 'i.operacion, ' : ''}i.id_item_asistencia`,
     [id]
   );
 
-  const params = await obtenerParametrosParticipacion();
+  const params = await obtenerParametrosParticipacion(perfil.modulo);
   const formato = datosFormato(params);
   // Lo de Maestro_Plantillas (codigo_formato, version_formato, fecha_version) tiene prioridad
-  const dePlantilla = await formatoDePlantilla(NOMBRE_PLANTILLA);
+  const dePlantilla = await formatoDePlantilla(perfil.plantilla);
   if (dePlantilla.codigo) formato.codigo = dePlantilla.codigo;
   if (dePlantilla.version) formato.version = dePlantilla.version;
   if (dePlantilla.fecha) formato.fecha = dePlantilla.fecha;
@@ -479,8 +584,11 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
     [id]
   );
   const htmlPlantilla = await armarHtmlDesdePlantilla({
-    asistencia, asistentes: asistentesConFirma, evidencias, formato, firmaResponsableBase64, firmados, porCorreo,
+    asistencia, asistentes: asistentesConFirma, evidencias, formato, firmaResponsableBase64, firmados, porCorreo, perfil,
   });
+  if (!htmlPlantilla && perfil.modulo !== 'sst') {
+    throw new Error(`No hay una plantilla activa '${perfil.plantilla}' en Maestro_Plantillas.`);
+  }
   const pdfBuffer = await generarPDFDesdeHTML(htmlPlantilla || htmlCompleto, {
     margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
   });
@@ -494,7 +602,7 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
   } catch { /* se usa REGASIS */ }
 
   const fechaAct = asistencia.fecha ? partesBogota(asistencia.fecha) : partesBogota(new Date());
-  const observaciones = `Registro de asistencia #${id} · ${String(asistencia.tema || '').slice(0, 300)} · ${formatFechaEspanol(asistencia.fecha)} · ${items.length} asistentes, ${firmados} firmados`.slice(0, 512);
+  const observaciones = `Registro de asistencia${perfil.modulo === 'talenthub' ? ' (TalentHub)' : ''} #${id} · ${String(asistencia.tema || '').slice(0, 300)} · ${formatFechaEspanol(asistencia.fecha)} · ${items.length} asistentes, ${firmados} firmados`.slice(0, 512);
 
   let idDocEmpresa = asistencia.id_doc_empresa || null;
   if (idDocEmpresa) {
@@ -540,18 +648,22 @@ router.get('/', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
 
-    const acceso = await computarAccesoParticipacion(usuario);
+    const perfil = perfilDeReq(req);
+    const acceso = await computarAccesoParticipacion(usuario, perfil);
     if (!acceso) return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
 
-    const params = await obtenerParametrosParticipacion();
+    const params = await obtenerParametrosParticipacion(perfil.modulo);
     const permisos = await permisosParticipacion(acceso.rol, params);
     const html = fs.readFileSync(HTML_FORM_PATH, 'utf8');
+    const { perfil: _perfil, ...accesoPublico } = acceso;
     const config = JSON.stringify({
-      ...acceso,
+      ...accesoPublico,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       initialView: 'formulario',
       permisosParticipacion: permisos,
       notificacionesHabilitadas: notificacionesHabilitadas(params),
+      modulo: perfil.modulo,
+      variasOperaciones: perfil.variasOperaciones,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -630,6 +742,210 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
   }
 });
 
+// ═════ API: GET /api/trabajadores (TalentHub > Registro Asistencia) ═════
+// Personal activo para escoger asistentes, según el acceso de Maestro_Menu:
+//   1: Regional y Operación opcionales (sin ellas, todo el personal activo).
+//   2: Regional obligatoria, Operación opcional.
+//   3: Regional y Operación obligatorias.
+// Siempre dentro de las operaciones que el usuario puede ver.
+router.get('/api/trabajadores', async (req, res) => {
+  try {
+    const perfil = perfilDeReq(req);
+    const acceso = await computarAccesoParticipacion(req.query.usuario, perfil);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+    const regional = String(req.query.regional || '').trim();
+    const operacion = String(req.query.operacion || '').trim();
+    if (acceso.accesoCodigo >= 2 && !regional) return res.status(400).json({ error: 'Seleccione la regional.' });
+    if (acceso.accesoCodigo >= 3 && !operacion) return res.status(400).json({ error: 'Seleccione la operación.' });
+
+    const conds = ["Estado = 'Activo'"];
+    const params = [];
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) return res.json([]);
+      conds.push(`\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+    if (regional) { conds.push('Regional = ?'); params.push(regional); }
+    if (operacion) { conds.push('`Operación` = ?'); params.push(operacion); }
+
+    const [rows] = await pool.execute(
+      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación AS identificacion, Cargo, Operación, Regional
+       FROM \`Maestro_Vinculación\`
+       WHERE ${conds.join(' AND ')}
+       ORDER BY Operación, Trabajador`,
+      params
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[participacion] GET /api/trabajadores:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: GET /api/permisos ═════
+// Permisos del rol en la pestaña (botón "Nueva Asistencia") y su código de acceso.
+router.get('/api/permisos', async (req, res) => {
+  try {
+    const perfil = perfilDeReq(req);
+    const acceso = await computarAccesoParticipacion(req.query.usuario, perfil);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+    const params = await obtenerParametrosParticipacion(perfil.modulo);
+    res.json({
+      ok: true,
+      permisos: await permisosParticipacion(acceso.rol, params),
+      accesoCodigo: acceso.accesoCodigo,
+      notificacionesHabilitadas: notificacionesHabilitadas(params),
+      usuarioNombre: nombreLimpio(acceso.usuarioNombre),
+    });
+  } catch (err) {
+    console.error('[participacion] GET /api/permisos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Firma del evaluador de eficacia: Maestro_Usuarios.Colaborador → Maestro_Segmentación.Trabajador
+// → Identificación → firma más reciente del bucket de firmas (si no está en Segmentación, se
+// busca en Maestro_Vinculación). Devuelve { identificacion, url } o null.
+async function firmaDelUsuario(usuarioId) {
+  const [[u]] = await pool.execute('SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]);
+  if (!u || !u.Colaborador) return null;
+  let [[fila]] = await pool.execute(
+    'SELECT `Identificación` AS identificacion FROM `Maestro_Segmentación` WHERE Trabajador = ? LIMIT 1',
+    [u.Colaborador]
+  );
+  if (!fila) {
+    [[fila]] = await pool.execute(
+      'SELECT `Identificación` AS identificacion FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [u.Colaborador]
+    );
+  }
+  if (!fila || !fila.identificacion) return null;
+  const url = await obtenerUrlFirmaReciente(String(fila.identificacion)).catch(() => null);
+  return url ? { identificacion: String(fila.identificacion), url } : null;
+}
+
+// ═════ API: GET /api/firma-evaluador ═════
+// Vista previa de la firma de quien va a registrar la evaluación de eficacia.
+router.get('/api/firma-evaluador', async (req, res) => {
+  try {
+    const perfil = perfilDeReq(req);
+    const acceso = await computarAccesoParticipacion(req.query.usuario, perfil);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+    const firma = await firmaDelUsuario(acceso.usuarioId);
+    const base64 = firma ? await descargarFirmaBase64PorUrl(firma.url).catch(() => null) : null;
+    res.json({ ok: true, nombre: nombreLimpio(acceso.usuarioNombre), tieneFirma: !!base64, firmaBase64: base64 });
+  } catch (err) {
+    console.error('[participacion] GET /api/firma-evaluador:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── TalentHub: formatos con asistentes de varias operaciones ─────────────────
+// Un formato cuenta (y se filtra) por cada Regional y Operación de sus asistentes.
+// Estado: PENDIENTE (sin PDF), EVALUAR (con PDF, falta la evaluación de eficacia) o
+// COMPLETADO (con PDF y evaluación).
+const SQL_ESTADO_TH = `CASE WHEN a.url_doc IS NULL OR a.url_doc = '' THEN 'PENDIENTE'
+                            WHEN a.formacion_eficaz IS NULL THEN 'EVALUAR' ELSE 'COMPLETADO' END`;
+
+function condicionesVariasOperaciones(acceso, query) {
+  const conds = ['a.modulo = ?'];
+  const params = [acceso.perfil.modulo];
+  if (!acceso.sinFiltro) {
+    if (!acceso.operacionesFiltro.length) {
+      conds.push('a.usuario = ?');
+      params.push(acceso.usuarioId);
+    } else {
+      conds.push(`(a.usuario = ? OR EXISTS (SELECT 1 FROM Dynamic_formato_itemsAsistencia ia
+                    WHERE ia.id_asistencia = a.id_asistencia AND ia.operacion IN (${acceso.operacionesFiltro.map(() => '?').join(',')})))`);
+      params.push(acceso.usuarioId, ...acceso.operacionesFiltro);
+    }
+  }
+  const search = query.tema || query.q || query.search;
+  if (search) {
+    conds.push('(a.tema LIKE ? OR u.Nombre LIKE ? OR a.lugar LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+  }
+  if (query.fechaDesde) { conds.push('a.fecha >= ?'); params.push(query.fechaDesde); }
+  if (query.fechaHasta) { conds.push('a.fecha <= ?'); params.push(query.fechaHasta); }
+  return { conds, params };
+}
+
+async function listarVariasOperaciones(acceso, query) {
+  const { conds, params } = condicionesVariasOperaciones(acceso, query);
+  if (query.regional) {
+    conds.push('EXISTS (SELECT 1 FROM Dynamic_formato_itemsAsistencia ir WHERE ir.id_asistencia = a.id_asistencia AND ir.regional = ?)');
+    params.push(query.regional);
+  }
+  if (query.operacion) {
+    conds.push('EXISTS (SELECT 1 FROM Dynamic_formato_itemsAsistencia io WHERE io.id_asistencia = a.id_asistencia AND io.operacion = ?)');
+    params.push(query.operacion);
+  }
+  if (['PENDIENTE', 'EVALUAR', 'COMPLETADO'].includes(query.estado)) {
+    conds.push(`${SQL_ESTADO_TH} = ?`);
+    params.push(query.estado);
+  }
+  const [rows] = await pool.execute(
+    `SELECT a.id_asistencia, a.tema, a.fecha, a.hora_inicial, a.hora_final, a.duracion, a.lugar, a.objetivo,
+            a.url_doc, a.usuario, a.fecha_creacion, a.formacion_eficaz, a.fecha_evaluacion,
+            ${SQL_ESTADO_TH} AS estado_doc,
+            u.Nombre AS nombre_responsable,
+            it.regionales AS regional_responsable,
+            it.operaciones AS operacion_responsable,
+            COALESCE(it.total_asistentes, 0) AS total_asistentes
+     FROM Dynamic_formato_asistencia a
+     LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
+     LEFT JOIN (
+       SELECT id_asistencia,
+              GROUP_CONCAT(DISTINCT regional ORDER BY regional SEPARATOR ', ') AS regionales,
+              GROUP_CONCAT(DISTINCT operacion ORDER BY operacion SEPARATOR ', ') AS operaciones,
+              COUNT(*) AS total_asistentes
+       FROM Dynamic_formato_itemsAsistencia
+       WHERE id_asistencia IN (SELECT id_asistencia FROM Dynamic_formato_asistencia WHERE modulo = ?)
+       GROUP BY id_asistencia
+     ) it ON it.id_asistencia = a.id_asistencia
+     WHERE ${conds.join(' AND ')}
+     ORDER BY a.fecha_creacion DESC, a.id_asistencia DESC`,
+    [acceso.perfil.modulo, ...params]
+  );
+  return rows;
+}
+
+// Conteos de los filtros: cada formato se cuenta una vez por Regional / Operación de sus
+// asistentes, respetando los demás filtros escogidos.
+async function conteosVariasOperaciones(acceso, query) {
+  const { conds, params } = condicionesVariasOperaciones(acceso, query);
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT a.id_asistencia, ${SQL_ESTADO_TH} AS estado_doc, i.regional, i.operacion
+     FROM Dynamic_formato_asistencia a
+     LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
+     INNER JOIN Dynamic_formato_itemsAsistencia i ON i.id_asistencia = a.id_asistencia
+     WHERE ${conds.join(' AND ')}`,
+    params
+  );
+
+  const porFormato = new Map(); // id → { estado, regionales:Set, operaciones:Set }
+  rows.forEach((r) => {
+    if (!porFormato.has(r.id_asistencia)) porFormato.set(r.id_asistencia, { estado: r.estado_doc, regionales: new Set(), operaciones: new Set() });
+    const f = porFormato.get(r.id_asistencia);
+    if (r.regional) f.regionales.add(r.regional);
+    if (r.operacion) f.operaciones.add(r.operacion);
+  });
+
+  const { regional, operacion, estado } = query;
+  const okReg = (f) => !regional || f.regionales.has(regional);
+  const okOp = (f) => !operacion || f.operaciones.has(operacion);
+  const okEst = (f) => !estado || f.estado === estado;
+  const regionales = {};
+  const operaciones = {};
+  const estados = { COMPLETADO: 0, EVALUAR: 0, PENDIENTE: 0 };
+  porFormato.forEach((f) => {
+    if (okOp(f) && okEst(f)) f.regionales.forEach((r) => { regionales[r] = (regionales[r] || 0) + 1; });
+    if (okReg(f) && okEst(f)) f.operaciones.forEach((o) => { operaciones[o] = (operaciones[o] || 0) + 1; });
+    if (okReg(f) && okOp(f)) estados[f.estado] = (estados[f.estado] || 0) + 1;
+  });
+  return { regionales, operaciones, estados };
+}
+
 // ═════ API: GET /api/conteos-filtros ═════
 router.get('/api/conteos-filtros', async (req, res) => {
   try {
@@ -638,12 +954,14 @@ router.get('/api/conteos-filtros', async (req, res) => {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const acceso = await computarAccesoParticipacion(usuario);
+    const perfil = perfilDeReq(req);
+    const acceso = await computarAccesoParticipacion(usuario, perfil);
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
+    if (perfil.variasOperaciones) return res.json(await conteosVariasOperaciones(acceso, req.query));
 
-    const baseConds = [];
+    const baseConds = ["a.modulo = 'sst'"];
     const baseParams = [];
 
     if (!acceso.sinFiltro) {
@@ -731,10 +1049,12 @@ router.get('/api/asistencias', async (req, res) => {
     const { usuario, tema, regional, operacion, fechaDesde, fechaHasta, estado } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoParticipacion(usuario);
+    const perfil = perfilDeReq(req);
+    const acceso = await computarAccesoParticipacion(usuario, perfil);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+    if (perfil.variasOperaciones) return res.json(await listarVariasOperaciones(acceso, req.query));
 
-    const conds = [];
+    const conds = ["a.modulo = 'sst'"];
     const params = [];
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) {
@@ -804,10 +1124,28 @@ router.get('/api/asistencias', async (req, res) => {
 // No consulta el bucket de firmas (más rápido).
 router.get('/api/asistencia/:id', async (req, res) => {
   try {
-    const acceso = await computarAccesoParticipacion(req.query.usuario);
+    const acceso = await computarAccesoParticipacion(req.query.usuario, perfilDeReq(req));
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
     const f = await cargarFormato(acceso, req.params.id);
     if (f.error) return res.status(f.status).json({ error: f.error });
+
+    // Evaluación de eficacia (TalentHub): nombre del evaluador y su firma guardada
+    let evaluacion = null;
+    if (f.evaluado) {
+      const [[ev]] = await pool.execute('SELECT Nombre FROM Maestro_Usuarios WHERE ID = ?', [f.asistencia.evaluador]);
+      const firmaBase64 = f.asistencia.firma_evaluador
+        ? await descargarFirmaBase64PorUrl(f.asistencia.firma_evaluador).catch(() => null)
+        : null;
+      evaluacion = {
+        formacion_eficaz: Number(f.asistencia.formacion_eficaz),
+        resultado_evaluacion: f.asistencia.resultado_evaluacion || '',
+        fecha_evaluacion: f.asistencia.fecha_evaluacion,
+        accion_no_eficaz: f.asistencia.accion_no_eficaz || '',
+        nombre_evaluador: nombreLimpio(ev && ev.Nombre) || f.asistencia.evaluador,
+        fecha_registro_evaluacion: f.asistencia.fecha_registro_evaluacion,
+        firmaBase64,
+      };
+    }
 
     const [items] = await pool.execute(
       `SELECT i.id_item_asistencia, i.id_asistencia, i.id_vinculacion, i.nombre_trabajador, i.identificacion,
@@ -833,7 +1171,8 @@ router.get('/api/asistencia/:id', async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ ...f.asistencia, permisos: f.permisos, items: salida, asistentes: salida, evidencias });
+    const { firma_evaluador: _firmaEv, ...datos } = f.asistencia;
+    res.json({ ...datos, permisos: f.permisos, evaluacion, items: salida, asistentes: salida, evidencias });
   } catch (err) {
     console.error('[participacion] GET /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
@@ -869,6 +1208,21 @@ async function insertarAsistente(conn, idAsistencia, idVinculacion) {
   return r.insertId;
 }
 
+// TalentHub: los asistentes nuevos deben ser de operaciones que el usuario puede ver.
+// Devuelve el mensaje de error o null. (En SST no se valida, como antes.)
+async function asistentesFueraDeAlcance(acceso, idsVinculacion, yaEstaban = new Set()) {
+  if (!acceso.perfil.variasOperaciones || acceso.sinFiltro) return null;
+  const nuevos = [...new Set((idsVinculacion || []).map(String))].filter((id) => !yaEstaban.has(id));
+  if (!nuevos.length) return null;
+  const [rows] = await pool.query(
+    'SELECT `Id Vinculación` AS id, `Operación` AS operacion FROM `Maestro_Vinculación` WHERE `Id Vinculación` IN (?)',
+    [nuevos]
+  );
+  const permitidas = acceso.operacionesFiltro || [];
+  const fuera = rows.filter((r) => !permitidas.includes(r.operacion));
+  return fuera.length ? `Hay ${fuera.length} asistente(s) de operaciones que su usuario no tiene asignadas.` : null;
+}
+
 // ═════ API: POST /api/asistencias ═════
 // Crea el formato y envía a cada asistente el correo para firmar.
 router.post('/api/asistencias', async (req, res) => {
@@ -883,20 +1237,23 @@ router.post('/api/asistencias', async (req, res) => {
   if (!Array.isArray(asistentes) || asistentes.length === 0) {
     return res.status(400).json({ error: 'Debe incluir al menos un asistente.' });
   }
-  const acceso = await computarAccesoParticipacion(usuario).catch(() => null);
+  const perfil = perfilDeReq(req);
+  const acceso = await computarAccesoParticipacion(usuario, perfil).catch(() => null);
   if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
-  if (!(await permisosParticipacion(acceso.rol)).crear) {
-    return res.status(403).json({ error: 'Su rol no tiene permiso para crear formatos de participación' });
+  if (!(await permisosParticipacion(acceso.rol, null, perfil.modulo)).crear) {
+    return res.status(403).json({ error: `Su rol no tiene permiso para crear formatos en ${perfil.nombre}` });
   }
+  const fueraDeAlcance = await asistentesFueraDeAlcance(acceso, asistentes);
+  if (fueraDeAlcance) return res.status(403).json({ error: fueraDeAlcance });
 
   const conn = await pool.getConnection();
   let idAsistencia;
   try {
     await conn.beginTransaction();
     const [result] = await conn.execute(
-      `INSERT INTO Dynamic_formato_asistencia (tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', usuario, usuario]
+      `INSERT INTO Dynamic_formato_asistencia (tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, modulo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', usuario, usuario, perfil.modulo]
     );
     idAsistencia = result.insertId;
     for (const idVinculacion of [...new Set(asistentes)]) await insertarAsistente(conn, idAsistencia, idVinculacion);
@@ -934,17 +1291,24 @@ router.put('/api/asistencia/:id', async (req, res) => {
   if (!Array.isArray(asistentes) || asistentes.length === 0) {
     return res.status(400).json({ error: 'Debe incluir al menos un asistente.' });
   }
-  const acceso = await computarAccesoParticipacion(usuario).catch(() => null);
+  const acceso = await computarAccesoParticipacion(usuario, perfilDeReq(req)).catch(() => null);
   if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
   const f = await cargarFormato(acceso, id);
   if (f.error) return res.status(f.status).json({ error: f.error });
-  if (f.asistencia.url_doc) {
+  if (f.evaluado) {
+    if (!f.permisos.editar) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para editar un registro de asistencia que ya tiene la evaluación de eficacia.' });
+    }
+  } else if (f.asistencia.url_doc) {
     if (!f.permisos.editar) {
       return res.status(403).json({ error: 'Tu rol no tiene permiso para editar y regenerar el PDF de un formato de asistencia ya firmado.' });
     }
   } else if (!f.permisos.editar) {
     return res.status(403).json({ error: 'Su rol no tiene permiso para editar este formato' });
   }
+  const [yaEstaban] = await pool.execute('SELECT id_vinculacion FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?', [id]);
+  const fueraDeAlcance = await asistentesFueraDeAlcance(acceso, asistentes, new Set(yaEstaban.map((r) => String(r.id_vinculacion))));
+  if (fueraDeAlcance) return res.status(403).json({ error: fueraDeAlcance });
 
   const conn = await pool.getConnection();
   const nuevos = [];
@@ -1012,11 +1376,15 @@ router.put('/api/asistencia/:id', async (req, res) => {
 // ═════ API: DELETE /api/asistencia/:id ═════
 router.delete('/api/asistencia/:id', async (req, res) => {
   const { id } = req.params;
-  const acceso = await computarAccesoParticipacion(req.query.usuario).catch(() => null);
+  const acceso = await computarAccesoParticipacion(req.query.usuario, perfilDeReq(req)).catch(() => null);
   if (!acceso) return res.status(403).json({ error: 'Usuario no autenticado o no autorizado.' });
   const f = await cargarFormato(acceso, id);
   if (f.error) return res.status(f.status).json({ error: f.error });
-  if (f.asistencia.url_doc) {
+  if (f.evaluado) {
+    if (!f.permisos.eliminar) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar registros de asistencia que ya tienen la evaluación de eficacia.' });
+    }
+  } else if (f.asistencia.url_doc) {
     if (!f.permisos.eliminar) {
       return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar formatos de asistencia que ya tienen documento PDF generado.' });
     }
@@ -1072,7 +1440,7 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
   try {
     const { id } = req.params;
     const { id_item_asistencia, enviarATodos } = req.body || {};
-    const acceso = await computarAccesoParticipacion(req.query.usuario || (req.body || {}).usuario);
+    const acceso = await computarAccesoParticipacion(req.query.usuario || (req.body || {}).usuario, perfilDeReq(req));
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
     const f = await cargarFormato(acceso, id);
     if (f.error) return res.status(f.status).json({ error: f.error });
@@ -1080,7 +1448,7 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
     if (f.asistencia.url_doc && !enviarATodos && !id_item_asistencia) return res.status(400).json({ error: 'Nada que enviar' });
 
     const r = await enviarSolicitudesFirma(id, baseUrl(req), enviarATodos ? null : [id_item_asistencia]);
-    if (r.deshabilitado) return res.status(400).json({ error: 'Las notificaciones de correo de Participación están deshabilitadas (Config_Parametros).' });
+    if (r.deshabilitado) return res.status(400).json({ error: `Las notificaciones de correo de ${acceso.perfil.nombre} están deshabilitadas (Config_Parametros).` });
     if (!enviarATodos && !r.enviados) {
       return res.status(400).json({ error: r.sinCorreo ? 'El asistente no tiene correo registrado.' : 'No se pudo enviar el correo (¿ya firmó?).' });
     }
@@ -1097,7 +1465,7 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
 router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
   try {
     const { id } = req.params;
-    const acceso = await computarAccesoParticipacion(req.query.usuario || (req.body || {}).usuario);
+    const acceso = await computarAccesoParticipacion(req.query.usuario || (req.body || {}).usuario, perfilDeReq(req));
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
     const f = await cargarFormato(acceso, id);
     if (f.error) return res.status(f.status).json({ error: f.error });
@@ -1107,6 +1475,65 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
     res.json({ ok: true, url_doc: result.urlGeneral, firmados: result.firmados, total: result.total, firmasCompletas: result.todasFirmadas });
   } catch (err) {
     console.error('[participacion] POST /api/asistencia/:id/generar-pdf:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: PUT /api/asistencia/:id/evaluacion (TalentHub) ═════
+// Evaluación de Eficacia de la formación: solo con el PDF ya generado. Evaluador = usuario
+// actual (su firma más reciente del bucket). Al guardar se regenera el PDF (reemplaza el
+// anterior) con la sección de evaluación al final.
+router.put('/api/asistencia/:id/evaluacion', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+    const perfil = perfilDeReq(req);
+    if (!perfil.evaluacion) return res.status(400).json({ error: 'Esta pestaña no tiene evaluación de eficacia.' });
+    const acceso = await computarAccesoParticipacion(req.query.usuario || body.usuario, perfil);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+    const f = await cargarFormato(acceso, id);
+    if (f.error) return res.status(f.status).json({ error: f.error });
+    if (!f.asistencia.url_doc) return res.status(400).json({ error: 'Primero genere el PDF del registro de asistencia.' });
+    if (!f.permisos.evaluar) {
+      return res.status(403).json({ error: f.evaluado
+        ? 'Tu rol no tiene permiso para editar la evaluación de eficacia.'
+        : 'Tu rol no tiene permiso para registrar la evaluación de eficacia de este registro.' });
+    }
+
+    const eficaz = String(body.formacion_eficaz);
+    if (!['0', '1'].includes(eficaz)) return res.status(400).json({ error: 'Indique si la formación fue eficaz (Sí o No).' });
+    const resultado = String(body.resultado_evaluacion || '').trim();
+    const accion = String(body.accion_no_eficaz || '').trim();
+    const fechaEval = String(body.fecha_evaluacion || '').slice(0, 10);
+    if (!resultado) return res.status(400).json({ error: 'Escriba el resultado de la evaluación de la eficacia de la formación.' });
+    if (eficaz === '0' && !accion) return res.status(400).json({ error: 'Si la formación no fue eficaz, escriba la acción a seguir.' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEval)) return res.status(400).json({ error: 'Indique la fecha de la evaluación.' });
+    const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    if (fechaEval > hoyBogota) return res.status(400).json({ error: 'La fecha de la evaluación no puede ser superior a la fecha actual.' });
+    const fechaActividad = f.asistencia.fecha ? (typeof f.asistencia.fecha === 'string'
+      ? f.asistencia.fecha.slice(0, 10)
+      : new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(f.asistencia.fecha)) : '';
+    if (fechaActividad && fechaEval < fechaActividad) {
+      return res.status(400).json({ error: 'La fecha de la evaluación no puede ser anterior a la fecha de la actividad.' });
+    }
+
+    const firma = await firmaDelUsuario(acceso.usuarioId);
+    if (!firma) {
+      return res.status(400).json({ error: 'No se encontró su firma registrada. Regístrela en su perfil y vuelva a intentarlo.' });
+    }
+
+    await pool.execute(
+      `UPDATE Dynamic_formato_asistencia
+       SET formacion_eficaz = ?, resultado_evaluacion = ?, fecha_evaluacion = ?, accion_no_eficaz = ?,
+           evaluador = ?, firma_evaluador = ?, fecha_registro_evaluacion = NOW()
+       WHERE id_asistencia = ?`,
+      [Number(eficaz), resultado.slice(0, 5000), fechaEval, accion.slice(0, 5000) || null, acceso.usuarioId, firma.url, id]
+    );
+
+    const result = await generarPDFAsistencia(id, { usuarioId: acceso.usuarioId });
+    res.json({ ok: true, url_doc: result.urlGeneral });
+  } catch (err) {
+    console.error('[participacion] PUT /api/asistencia/:id/evaluacion:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1122,7 +1549,7 @@ router.get('/api/pdfs-con-pendientes', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT a.id_asistencia
        FROM Dynamic_formato_asistencia a
-       WHERE a.url_doc IS NOT NULL AND a.url_doc NOT LIKE '%/general/REGASIS.%'
+       WHERE a.modulo = 'sst' AND a.url_doc IS NOT NULL AND a.url_doc NOT LIKE '%/general/REGASIS.%'
          AND EXISTS (SELECT 1 FROM Dynamic_formato_itemsAsistencia i WHERE i.id_asistencia = a.id_asistencia AND i.firma_asistente IS NULL)
        ORDER BY a.id_asistencia`
     );
