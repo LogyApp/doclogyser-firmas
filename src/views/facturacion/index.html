@@ -891,6 +891,40 @@
       color: var(--accent-contrast);
     }
 
+    /* Filtro de color (Todos / Verde / Amarillo / Rojo) debajo del switch de sumas */
+    .sumas-y-colores {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .filtro-colores {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filtro-colores-lbl {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .color-circulo {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--card-bg);
+      box-shadow: 0 0 0 1px var(--border);
+      padding: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .color-circulo:hover { transform: scale(1.12); }
+    .color-circulo.active { box-shadow: 0 0 0 2px var(--accent); transform: scale(1.12); }
+    .color-circulo[data-color=""] { background: conic-gradient(var(--success) 0 120deg, var(--warning) 120deg 240deg, var(--danger) 240deg 360deg); }
+    .color-circulo[data-color="Green"] { background: var(--success); }
+    .color-circulo[data-color="Yellow"] { background: var(--warning); }
+    .color-circulo[data-color="Red"] { background: var(--danger); }
+
     /* Switch toggle */
     .switch input { opacity: 0; width: 0; height: 0; }
     .switch .slider.round {
@@ -1059,6 +1093,29 @@
         gap: 5px !important;
         padding-bottom: 4px;
         -webkit-overflow-scrolling: touch;
+      }
+      /* Switch de sumas y círculos de color en una sola línea */
+      .sumas-y-colores {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 6px;
+        width: 100%;
+      }
+      .sumas-y-colores > div:first-child {
+        padding: 3px 8px !important;
+        gap: 5px !important;
+        flex-shrink: 0;
+      }
+      .sumas-y-colores > div:first-child > span {
+        font-size: 0.72rem !important;
+      }
+      .filtro-colores { gap: 5px; }
+      .filtro-colores-lbl { font-size: 0.7rem; }
+      .color-circulo { width: 19px; height: 19px; }
+      @media (max-width: 380px) {
+        .filtro-colores-lbl { display: none; } /* pantallas muy angostas: solo los círculos */
       }
       .category-chip {
         min-width: 95px !important;
@@ -1538,6 +1595,7 @@
             <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
               <span>💳</span> Forma de Pago
             </div>
+            <div class="sumas-y-colores">
             <!-- Switch Valor Base / Total Pago -->
             <div style="display: flex; align-items: center; gap: 8px; background: var(--accent-soft); padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
               <span id="toggle-lbl-base" style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = false; toggleModoSumas(false);">Valor Base</span>
@@ -1546,6 +1604,15 @@
                 <span class="slider round"></span>
               </label>
               <span id="toggle-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--accent); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = true; toggleModoSumas(true);">Total Pago</span>
+            </div>
+            <!-- Filtro por color del servicio -->
+            <div class="filtro-colores" id="serv-filtro-colores" role="group" aria-label="Filtrar por color">
+              <span class="filtro-colores-lbl">Color</span>
+              <button type="button" class="color-circulo active" data-color="" onclick="seleccionarColorServicio('')" title="Todos" aria-label="Todos"></button>
+              <button type="button" class="color-circulo" data-color="Green" onclick="seleccionarColorServicio('Green')" title="Verde" aria-label="Verde"></button>
+              <button type="button" class="color-circulo" data-color="Yellow" onclick="seleccionarColorServicio('Yellow')" title="Amarillo" aria-label="Amarillo"></button>
+              <button type="button" class="color-circulo" data-color="Red" onclick="seleccionarColorServicio('Red')" title="Rojo" aria-label="Rojo"></button>
+            </div>
             </div>
           </div>
 
@@ -1812,6 +1879,7 @@
             <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
               <span>📑</span> Modalidad
             </div>
+            <div class="sumas-y-colores">
             <!-- Switch Subtotal / Total -->
             <div style="display: flex; align-items: center; gap: 8px; background: var(--accent-soft); padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
               <span id="toggle-recib-lbl-subtotal" style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = false; toggleRecibModoSumas(false);">Subtotal</span>
@@ -1820,6 +1888,15 @@
                 <span class="slider round"></span>
               </label>
               <span id="toggle-recib-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--accent); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = true; toggleRecibModoSumas(true);">Total</span>
+            </div>
+            <!-- Filtro por color del recibo -->
+            <div class="filtro-colores" id="recib-filtro-colores" role="group" aria-label="Filtrar por color">
+              <span class="filtro-colores-lbl">Color</span>
+              <button type="button" class="color-circulo active" data-color="" onclick="seleccionarColorRecibo('')" title="Todos" aria-label="Todos"></button>
+              <button type="button" class="color-circulo" data-color="Green" onclick="seleccionarColorRecibo('Green')" title="Verde" aria-label="Verde"></button>
+              <button type="button" class="color-circulo" data-color="Yellow" onclick="seleccionarColorRecibo('Yellow')" title="Amarillo" aria-label="Amarillo"></button>
+              <button type="button" class="color-circulo" data-color="Red" onclick="seleccionarColorRecibo('Red')" title="Rojo" aria-label="Rojo"></button>
+            </div>
             </div>
           </div>
 
@@ -8401,6 +8478,7 @@
     let metricasServicios = null;
     let modoSumas = 'total'; // 'base' o 'total'
     let activeFormaPago = ''; // '' = todas, '0', '1', '2', '3', '4'
+    let activeColorServicio = ''; // '' = todos, 'Green', 'Yellow', 'Red'
     let searchDebounceTimeout = null;
 
     let sortServiciosState = {
@@ -8446,6 +8524,18 @@
     function seleccionarFormaPago(fp) {
       activeFormaPago = fp;
       renderFormaPagoButtons();
+      cargarServicios();
+      cargarMetricasServicios();
+    }
+
+    // Círculos de color (Todos / Verde / Amarillo / Rojo) de Servicios y Recibos
+    function marcarCirculoColor(contenedorId, color) {
+      document.querySelectorAll(`#${contenedorId} .color-circulo`).forEach(b => b.classList.toggle('active', b.dataset.color === color));
+    }
+
+    function seleccionarColorServicio(color) {
+      activeColorServicio = color;
+      marcarCirculoColor('serv-filtro-colores', color);
       cargarServicios();
       cargarMetricasServicios();
     }
@@ -8523,6 +8613,8 @@
       document.getElementById('serv-filtro-usuario').value = '';
       document.getElementById('serv-filtro-cliente').value = '';
       activeFormaPago = '';
+      activeColorServicio = '';
+      marcarCirculoColor('serv-filtro-colores', '');
       cargarServicios();
       cargarMetricasServicios();
     }
@@ -8553,6 +8645,7 @@
         if (activeFormaPago !== '') {
           params.set('formaDePago', activeFormaPago);
         }
+        if (activeColorServicio) params.set('estado', activeColorServicio);
 
         const resp = await fetch(`/facturacion/api/servicios?${params.toString()}`);
         if (!resp.ok) {
@@ -8672,7 +8765,8 @@
           usuarioServicio: document.getElementById('serv-filtro-usuario')?.value || '',
           clienteAFacturar: document.getElementById('serv-filtro-cliente')?.value || '',
           q: document.getElementById('serv-filtro-q')?.value || '',
-          formaDePago: activeFormaPago
+          formaDePago: activeFormaPago,
+          estado: activeColorServicio
         });
 
         const resp = await fetch(`/facturacion/api/servicios/metricas?${params.toString()}`);
@@ -9089,6 +9183,8 @@
       });
       document.getElementById('serv-filtro-anio').value = 'todos';
       activeFormaPago = '';
+      activeColorServicio = '';
+      marcarCirculoColor('serv-filtro-colores', '');
       const cuerpo = document.getElementById('servFiltrosBody');
       if (cuerpo && cuerpo.style.display !== 'none') toggleFiltrosServicios(); // filtros plegados
       cargarServicios();
@@ -9203,6 +9299,7 @@
     let metricasRecibos = null;
     let recibModoSumas = 'total'; // 'subtotal' o 'total'
     let activeModalidadRecibo = ''; // '' = todas, 'RECAUDO', 'CREDITO'
+    let activeColorRecibo = ''; // '' = todos, 'Green', 'Yellow', 'Red'
     let searchRecibDebounceTimeout = null;
     let recibosCargados = false;
 
@@ -9258,6 +9355,13 @@
       cargarMetricasRecibos();
     }
 
+    function seleccionarColorRecibo(color) {
+      activeColorRecibo = color;
+      marcarCirculoColor('recib-filtro-colores', color);
+      cargarRecibos();
+      cargarMetricasRecibos();
+    }
+
     function onReciboSearchInput(val) {
       if (searchRecibDebounceTimeout) clearTimeout(searchRecibDebounceTimeout);
       searchRecibDebounceTimeout = setTimeout(() => {
@@ -9295,6 +9399,8 @@
       document.getElementById('recib-filtro-usuario').value = '';
       document.getElementById('recib-filtro-cliente').value = '';
       activeModalidadRecibo = '';
+      activeColorRecibo = '';
+      marcarCirculoColor('recib-filtro-colores', '');
       cargarRecibos();
       cargarMetricasRecibos();
     }
@@ -9360,6 +9466,7 @@
         if (activeModalidadRecibo !== '') {
           params.set('modalidad', activeModalidadRecibo);
         }
+        if (activeColorRecibo) params.set('estado', activeColorRecibo);
 
         const resp = await fetch(`/facturacion/api/recibos?${params.toString()}`);
         if (!resp.ok) {
@@ -9463,7 +9570,8 @@
           usuarioRecibo: document.getElementById('recib-filtro-usuario')?.value || '',
           clienteAFacturar: document.getElementById('recib-filtro-cliente')?.value || '',
           q: document.getElementById('recib-filtro-q')?.value || '',
-          modalidad: activeModalidadRecibo
+          modalidad: activeModalidadRecibo,
+          estado: activeColorRecibo
         });
 
         const resp = await fetch(`/facturacion/api/recibos/metricas?${params.toString()}`);

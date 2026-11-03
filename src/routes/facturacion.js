@@ -2187,6 +2187,30 @@ function sqlFiltroDia(col, dia, params) {
   return `(${col} >= ? AND ${col} < ?)`;
 }
 
+// Filtro de color (círculos Verde / Amarillo / Rojo de Servicios y Recibos); null = Todos.
+function estadoColor(v) {
+  return ['Green', 'Yellow', 'Red'].find((e) => e.toLowerCase() === String(v || '').trim().toLowerCase()) || null;
+}
+
+// Servicio: su columna Estado.
+function sqlEstadoServicio(estado, params) {
+  const e = estadoColor(estado);
+  if (!e) return null;
+  params.push(e);
+  return 's.Estado = ?';
+}
+
+// Recibo: el mismo color que muestra la tabla (máxima Validacion de sus servicios:
+// 2 = Amarillo, 1 = Verde, sin servicios u otro valor = Rojo).
+function sqlEstadoRecibo(estado) {
+  const e = estadoColor(estado);
+  if (!e) return null;
+  const maxVal = '(SELECT MAX(ds_e.Validacion) FROM Dynamic_Servicios ds_e WHERE ds_e.IdRecibo = dr.IdRecibo)';
+  if (e === 'Green') return `${maxVal} = 1`;
+  if (e === 'Yellow') return `${maxVal} = 2`;
+  return `COALESCE(${maxVal}, 0) NOT IN (1, 2)`;
+}
+
 // NITs con retención obligatoria de Fuente/IVA sin importar el Subtotal ni el flag del cliente
 // (regla heredada de la fórmula AppSheet). Config_Parametros facturacion / Recibos
 // 'NITs con retención obligatoria de Fuente e IVA'; se carga con los impuestos.
@@ -2320,6 +2344,10 @@ router.get('/api/servicios', async (req, res) => {
       whereClauses.push('s.`Forma De Pago` = ?');
       params.push(parseInt(formaDePago, 10));
     }
+
+    // Color (Estado)
+    const filtroEstado = sqlEstadoServicio(req.query.estado, params);
+    if (filtroEstado) whereClauses.push(filtroEstado);
 
     // Mes
     if (mes && mes !== 'todos') {
@@ -2550,6 +2578,9 @@ router.get('/api/servicios/metricas', async (req, res) => {
       )`);
       for (let i = 0; i < 6; i++) commonParams.push(qLike);
     }
+    // Color (Estado): aplica a todas las agrupaciones
+    const filtroEstado = sqlEstadoServicio(req.query.estado, commonParams);
+    if (filtroEstado) commonWhere.push(filtroEstado);
 
     const impuestos = await getImpuestos();
     const ivaTax = impuestos.iva || 0.19;
@@ -4438,6 +4469,10 @@ router.get('/api/recibos', async (req, res) => {
       params.push(modalidad);
     }
 
+    // Color (Estado del recibo)
+    const filtroEstado = sqlEstadoRecibo(req.query.estado);
+    if (filtroEstado) whereClauses.push(filtroEstado);
+
     // Filtros de fecha Desde y Hasta (sobre dr.Fecha)
     if (desde) {
       whereClauses.push('dr.Fecha >= ?');
@@ -4757,6 +4792,9 @@ router.get('/api/recibos/metricas', async (req, res) => {
       )`);
       for (let i = 0; i < 5; i++) commonParams.push(qLike);
     }
+    // Color (Estado del recibo): aplica a todas las agrupaciones
+    const filtroEstado = sqlEstadoRecibo(req.query.estado);
+    if (filtroEstado) commonWhere.push(filtroEstado);
 
     const impuestos = await getImpuestos();
     const ivaTax = impuestos.iva || 0.19;
