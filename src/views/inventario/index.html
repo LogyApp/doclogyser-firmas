@@ -1600,8 +1600,34 @@
       align-items: center;
       gap: 8px;
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 0.82rem;
       color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* Búsqueda dentro de la barra de filtros (siempre visible, igual que en SST, Nómina y Facturación) */
+    .filtros-busqueda {
+      flex: 1;
+      max-width: 380px;
+      margin: 0 12px 0 auto;
+      height: 34px;
+      padding: 6px 10px;
+      font-size: 0.84rem;
+      font-weight: 400;
+      cursor: text;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--text);
+      outline: none;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .filtros-busqueda:focus { border-color: var(--accent); }
+    /* En celular la búsqueda queda en la misma línea que "Filtros" y ocupa el espacio libre */
+    @media (max-width: 640px) {
+      .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
     }
     
     .filtros-badge {
@@ -3321,9 +3347,10 @@
       <div class="filters-card">
         <div class="filtros-toggle" id="filtros-toggle">
           <span class="filtros-toggle-left">
-            🔍 Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge">0</span>
           </span>
+          <input type="search" class="filtros-busqueda" id="filter-search" placeholder="&#128269; Buscar artículo, referencia, talla..." aria-label="Buscador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron">▸</span>
         </div>
 
@@ -3354,10 +3381,6 @@
               <select id="filter-clasificacion">
                 <option value="">Todas las clasificaciones</option>
               </select>
-            </div>
-            <div class="filter-group">
-              <label for="filter-search">Buscador</label>
-              <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
             </div>
             <div class="filter-group" style="display: flex; align-items: flex-end;">
               <button id="btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
@@ -3425,7 +3448,7 @@
         <div class="filters-card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="history-filtros-toggle">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Consulta
+              Filtros
               <span class="filtros-badge" id="history-filtros-badge">0</span>
             </span>
             <span class="filtros-chevron" id="history-filtros-chevron">▸</span>
@@ -3553,10 +3576,11 @@
         <div class="filters-card" style="margin: 16px 0;">
           <div class="filtros-toggle" id="pendiente-filtros-toggle">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="pendiente-filtros-badge">0</span>
             </span>
-            <span class="filtros-chevron" id="pendiente-filtros-chevron">▸</span>
+            <input type="search" class="filtros-busqueda" id="pendiente-filter-search" placeholder="&#128269; Buscar artículo o No. pedido..." aria-label="Buscar Artículo / No. Pedido" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="pendiente-filtros-chevron">▸</span>
           </div>
           <div id="pendiente-filtros-body" style="display: none;">
             <div class="filters-grid" style="margin-top: 14px;">
@@ -3577,10 +3601,6 @@
                 <select id="pendiente-filter-categoria">
                   <option value="">Todas las categorías</option>
                 </select>
-              </div>
-              <div class="filter-group">
-                <label for="pendiente-filter-search">Buscar Artículo / No. Pedido</label>
-                <input type="text" id="pendiente-filter-search" placeholder="Escribe el nombre del artículo o ID...">
               </div>
             </div>
           </div>
@@ -3621,10 +3641,11 @@
         <div class="filters-card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="historial-ingresos-filtros-toggle">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Consulta
+              Filtros
               <span class="filtros-badge" id="historial-ingresos-filtros-badge">0</span>
             </span>
-            <span class="filtros-chevron" id="historial-ingresos-filtros-chevron">▸</span>
+            <input type="search" class="filtros-busqueda" id="historial-ingresos-filter-search" placeholder="&#128269; Buscar ID transferencia, artículo, responsable..." aria-label="Buscador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="historial-ingresos-filtros-chevron">▸</span>
           </div>
 
           <div id="historial-ingresos-filtros-body" style="display: none;">
@@ -3648,10 +3669,6 @@
               <div class="filter-group">
                 <label for="historial-ingresos-filter-fecha-fin">Fecha Recibido (Hasta)</label>
                 <input type="date" id="historial-ingresos-filter-fecha-fin">
-              </div>
-              <div class="filter-group">
-                <label for="historial-ingresos-filter-search">Buscador</label>
-                <input type="text" id="historial-ingresos-filter-search" placeholder="ID transferencia, artículo, responsable...">
               </div>
               <div class="filter-group" style="display: flex; align-items: flex-end;">
                 <button id="btn-limpiar-filtros-historial-ingresos" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
@@ -3739,10 +3756,11 @@
           <div class="filters-card" style="margin-bottom: 16px;">
             <div class="filtros-toggle" id="articulos-filtros-toggle">
               <span class="filtros-toggle-left">
-                🔍 Filtros de Consulta
+                Filtros
                 <span class="filtros-badge" id="articulos-filtros-badge">0</span>
               </span>
-              <span class="filtros-chevron" id="articulos-filtros-chevron">▸</span>
+              <input type="search" class="filtros-busqueda" id="articulos-filter-search" placeholder="&#128269; Buscar nombre, referencia, elemento o ID..." aria-label="Buscar por nombre, referencia, elemento o ID" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="articulos-filtros-chevron">▸</span>
             </div>
 
             <div id="articulos-filtros-body" style="display: none;">
@@ -3761,10 +3779,6 @@
                   <select id="articulos-filter-clasificacion">
                     <option value="">Todas las clasificaciones</option>
                   </select>
-                </div>
-                <div class="filter-group" style="grid-column: span 2;">
-                  <label for="articulos-filter-search">Buscar por nombre, referencia, elemento o ID</label>
-                  <input type="text" id="articulos-filter-search" placeholder="Escribe para buscar..." style="background: var(--card-bg); width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); outline: none;">
                 </div>
                 <div class="filter-group" style="display: flex; justify-content: flex-end; align-items: flex-end;">
                   <button type="button" id="articulos-btn-limpiar-filtros" style="width: 100%; height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 0.8rem; transition: all 0.2s;">
@@ -3859,10 +3873,11 @@
             <div class="filters-card" style="margin-bottom: 16px;">
               <div class="filtros-toggle" id="sol-filtros-toggle">
                 <span class="filtros-toggle-left">
-                  🔍 Filtros de Búsqueda
+                  Filtros
                   <span class="filtros-badge" id="sol-filtros-badge">0</span>
                 </span>
-                <span class="filtros-chevron" id="sol-filtros-chevron">▸</span>
+                <input type="search" class="filtros-busqueda" id="sol-filtro-search" placeholder="&#128269; Buscar ID, asignado, acta..." aria-label="Búsqueda rápida" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="sol-filtros-chevron">▸</span>
               </div>
 
               <div id="sol-filtros-body" style="display: none;">
@@ -3901,10 +3916,6 @@
                     <select id="sol-filtro-operacion">
                       <option value="">Todas</option>
                     </select>
-                  </div>
-                  <div class="filter-group" style="grid-column: span 2;">
-                    <label for="sol-filtro-search">Búsqueda rápida</label>
-                    <input type="text" id="sol-filtro-search" placeholder="Buscar por ID, asignado, acta, etc...">
                   </div>
                   <div class="filter-group" style="display: flex; align-items: flex-end;">
                     <button id="sol-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
@@ -4130,10 +4141,11 @@
             <div class="filters-card" style="margin-bottom: 16px;">
               <div class="filtros-toggle" id="acta-filtros-toggle">
                 <span class="filtros-toggle-left">
-                  🔍 Filtros de Búsqueda
+                  Filtros
                   <span class="filtros-badge" id="acta-filtros-badge">0</span>
                 </span>
-                <span class="filtros-chevron" id="acta-filtros-chevron">▸</span>
+                <input type="search" class="filtros-busqueda" id="acta-filtro-search" placeholder="&#128269; Buscar ID, trabajador, operación..." aria-label="Búsqueda rápida" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="acta-filtros-chevron">▸</span>
               </div>
 
               <div id="acta-filtros-body" style="display: none;">
@@ -4173,10 +4185,6 @@
                   <div class="filter-group">
                     <label for="acta-filtro-fecha-fin">Fecha Final</label>
                     <input type="date" id="acta-filtro-fecha-fin" style="background: var(--card-bg); width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem;">
-                  </div>
-                  <div class="filter-group" style="grid-column: span 2;">
-                    <label for="acta-filtro-search">Búsqueda rápida</label>
-                    <input type="text" id="acta-filtro-search" placeholder="Buscar por ID, trabajador, operación...">
                   </div>
                   <div class="filter-group" style="display: flex; align-items: flex-end;">
                     <button id="acta-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
@@ -4396,10 +4404,11 @@
             <div class="filters-card" style="margin-bottom: 16px;">
               <div class="filtros-toggle" id="logica-filtros-toggle">
                 <span class="filtros-toggle-left">
-                  🔍 Filtros de Consulta
+                  Filtros
                   <span class="filtros-badge" id="logica-filtros-badge">0</span>
                 </span>
-                <span class="filtros-chevron" id="logica-filtros-chevron" style="transform: rotate(90deg);">▸</span>
+                <input type="search" class="filtros-busqueda" id="logica-filtro-search" placeholder="&#128269; Buscar operación, cargo, elemento..." aria-label="Búsqueda rápida" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="logica-filtros-chevron" style="transform: rotate(90deg);">▸</span>
               </div>
 
               <div id="logica-filtros-body" style="display: block;">
@@ -4429,10 +4438,6 @@
                     <select id="logica-filtro-clasificacion">
                       <option value="">Todas</option>
                     </select>
-                  </div>
-                  <div class="filter-group" style="grid-column: span 2;">
-                    <label for="logica-filtro-search">Búsqueda rápida</label>
-                    <input type="text" id="logica-filtro-search" placeholder="Buscar por operación, cargo, elemento...">
                   </div>
                   <div class="filter-group" style="display: flex; align-items: flex-end;">
                     <button id="logica-btn-limpiar-filtros" onclick="limpiarFiltrosLogica()" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
@@ -4506,10 +4511,11 @@
     <div class="filters-card" style="margin-top: 20px;">
       <div class="filtros-toggle" id="kardex-filtros-toggle">
         <span class="filtros-toggle-left">
-          🔍 Filtros de Consulta
+          Filtros
           <span class="filtros-badge" id="kardex-filtros-badge">0</span>
         </span>
-        <span class="filtros-chevron" id="kardex-filtros-chevron">▸</span>
+        <input type="search" class="filtros-busqueda" id="kardex-filter-search" placeholder="&#128269; Buscar artículo, acta, cc..." aria-label="Buscador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="kardex-filtros-chevron">▸</span>
       </div>
 
       <div id="kardex-filtros-body" style="display: none;">
@@ -4565,10 +4571,6 @@
             <input list="kardex-filter-articles-list" id="kardex-filter-articulo-search" placeholder="Todos los artículos" style="width: 100%; height: 42px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 0.85rem; font-weight: 500; color: var(--text); background: var(--card-bg); outline: none; transition: all 0.2s;">
             <datalist id="kardex-filter-articles-list"></datalist>
             <input type="hidden" id="kardex-filter-id-articulo">
-          </div>
-          <div class="filter-group">
-            <label for="kardex-filter-search">Buscador</label>
-            <input type="text" id="kardex-filter-search" placeholder="Buscar por artículo, acta, cc...">
           </div>
           <div class="filter-group" style="display: flex; align-items: flex-end;">
             <button id="kardex-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
@@ -4922,10 +4924,11 @@
         <div class="filters-card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="dotley-filtros-toggle">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="dotley-filtros-badge">0</span>
             </span>
-            <span class="filtros-chevron" id="dotley-filtros-chevron">▸</span>
+            <input type="search" class="filtros-busqueda" id="dotley-filtro-search" placeholder="&#128269; Buscar nombre o identificación..." aria-label="Búsqueda rápida" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="dotley-filtros-chevron">▸</span>
           </div>
 
           <div id="dotley-filtros-body" style="display: none;">
@@ -4941,10 +4944,6 @@
                 <select id="dotley-filtro-operacion">
                   <option value="">Todas</option>
                 </select>
-              </div>
-              <div class="filter-group" style="grid-column: span 2;">
-                <label for="dotley-filtro-search">Búsqueda rápida</label>
-                <input type="text" id="dotley-filtro-search" placeholder="Buscar por nombre o identificación...">
               </div>
               <div class="filter-group" style="display: flex; align-items: flex-end;">
                 <button id="dotley-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
@@ -6074,19 +6073,13 @@
     <div class="card" style="margin-bottom: 16px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
       <div class="filtros-toggle" id="tkFiltrosToggleInv" onclick="toggleFiltrosTicketsInv()" style="padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
         <span style="font-weight: 700; font-size: 0.85rem; color: var(--text); display: flex; align-items: center; gap: 8px;">
-          🔍 Filtros de Búsqueda
+          Filtros
           <span id="tkFiltrosBadgeInv" style="background: var(--accent-soft, rgba(0,11,89,0.1)); color: var(--accent, var(--primary)); font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; font-weight: 700;">0</span>
         </span>
+        <input type="search" class="filtros-busqueda" id="tk-filtro-q-inv" placeholder="&#128269; Buscar: afe21ddf, Cedi Yumbo, Lady Ocampo..." title="Buscar por Ticket, Solicitante, Descripción o Motivo" aria-label="Buscar por Ticket, Solicitante, Descripción o Motivo" oninput="onTicketSearchInputInv(this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
         <span id="tkFiltrosChevronInv" style="font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s;">▼</span>
       </div>
       <div id="tkFiltrosBodyInv" style="display: none; padding: 0 16px 16px 16px; border-top: 1px solid var(--border);">
-        <div style="margin-top: 14px; margin-bottom: 14px;">
-          <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Buscar por Ticket, Solicitante, Descripción o Motivo</label>
-          <div style="position: relative;">
-            <input type="text" id="tk-filtro-q-inv" placeholder="Ej: afe21ddf, Cedi Yumbo, Lady Ocampo..." oninput="onTicketSearchInputInv(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; background: var(--bg-elevated); color: var(--text);">
-            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-          </div>
-        </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
           <div>
