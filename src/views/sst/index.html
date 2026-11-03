@@ -1040,9 +1040,9 @@
       font-weight: 400;
       cursor: text;
     }
+    /* En celular la búsqueda queda en la misma línea que "Filtros" y ocupa el espacio libre */
     @media (max-width: 640px) {
-      .filtros-toggle:has(.filtros-busqueda) { flex-wrap: wrap; row-gap: 8px; }
-      .filtros-busqueda { order: 3; flex-basis: 100%; max-width: none; margin: 0; }
+      .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
     }
 
     .filtros-badge {
@@ -2770,7 +2770,7 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('ev')">
           <span class="filtros-toggle-left">
-            Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge-ev">0</span>
           </span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -2939,7 +2939,7 @@
         <div class="card-filters">
           <div class="filtros-toggle" onclick="toggleFiltros('cap')">
             <span class="filtros-toggle-left">
-              Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="filtros-badge-cap">0</span>
             </span>
             <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -3106,7 +3106,7 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('pc')">
           <span class="filtros-toggle-left">
-            Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge-pc">0</span>
           </span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -3224,7 +3224,7 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('part')">
           <span class="filtros-toggle-left">
-            Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge-part">0</span>
           </span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -3376,7 +3376,7 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('csst')">
           <span class="filtros-toggle-left">
-            Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge-csst">0</span>
           </span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -3499,7 +3499,7 @@
         <div class="card-filters">
           <div class="filtros-toggle" onclick="toggleFiltros('cm')">
             <span class="filtros-toggle-left">
-              Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="filtros-badge-cm">0</span>
             </span>
             <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -3647,7 +3647,7 @@
       </div>
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('inc')">
-          <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
+          <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
           <input type="search" class="form-control filtros-busqueda" id="filtro-inc-trabajador" placeholder="🔍 Buscar trabajador (nombre o cédula)..." aria-label="Buscar" oninput="filtrarDebounce('inc')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-inc">▸</span>
@@ -3711,7 +3711,7 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('ins')">
           <span class="filtros-toggle-left">
-            Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge-ins">0</span>
           </span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
@@ -3861,7 +3861,7 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('ats')">
           <span class="filtros-toggle-left">
-            Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="filtros-badge-ats">0</span>
           </span>
           <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
