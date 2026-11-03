@@ -29,6 +29,7 @@ const {
   horasVigenciaEnlaceActas,
   correoActasHabilitado,
   normalizarTexto,
+  obtenerLimitesReporte,
 } = require('../services/configInventario');
 
 // ¿La categoría está dentro del acceso del rol? (sin restricción, o una de las categorías del
@@ -267,31 +268,6 @@ router.get('/api/datos', async (req, res) => {
 // Modo: todo | regional | operacion. Excel hasta "Límite de filas reporte Excel - Inventario";
 // si pasa, solo CSV hasta "Límite de filas reporte CSV - Inventario"
 // (Config_Parametros, inventario / Inventario). Sin la fila → valores por defecto.
-const LIMITES_REPORTE_DEFECTO = { excel: 10000, csv: 100000 };
-
-// Límites de filas de un reporte del módulo: Config_Parametros (Modulo 'inventario',
-// Seccion = pestaña), conceptos "Límite de filas reporte Excel/CSV - <pestaña>".
-async function obtenerLimitesReporte(seccion) {
-  const conceptoExcel = `Límite de filas reporte Excel - ${seccion}`;
-  const conceptoCsv = `Límite de filas reporte CSV - ${seccion}`;
-  const limites = { ...LIMITES_REPORTE_DEFECTO };
-  try {
-    const [rows] = await pool.execute(
-      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'inventario' AND Seccion = ? AND Concepto IN (?, ?)",
-      [seccion, conceptoExcel, conceptoCsv]
-    );
-    rows.forEach((r) => {
-      const n = parseInt(r.Parametro, 10);
-      if (!(n > 0)) return;
-      if (r.Concepto === conceptoExcel) limites.excel = n;
-      if (r.Concepto === conceptoCsv) limites.csv = n;
-    });
-  } catch (err) {
-    console.error(`[inventario] No se pudieron leer los límites del reporte de ${seccion}:`, err.message);
-  }
-  return limites;
-}
-
 function obtenerLimitesReporteInventario() {
   return obtenerLimitesReporte('Inventario');
 }

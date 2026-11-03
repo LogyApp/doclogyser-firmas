@@ -488,7 +488,34 @@ async function obtenerCategoriasRestringidas() {
   return [...variantes];
 }
 
+// ── Límites de filas de los reportes (ventanas "Descargar reporte") ──────────
+// Config_Parametros (Modulo 'inventario', Seccion = pestaña), conceptos
+// "Límite de filas reporte Excel/CSV - <nombre>"; sin la fila → valores por defecto.
+const LIMITES_REPORTE_DEFECTO = { excel: 10000, csv: 100000 };
+
+async function obtenerLimitesReporte(seccion, nombre = seccion) {
+  const conceptoExcel = `Límite de filas reporte Excel - ${nombre}`;
+  const conceptoCsv = `Límite de filas reporte CSV - ${nombre}`;
+  const limites = { ...LIMITES_REPORTE_DEFECTO };
+  try {
+    const [rows] = await pool.execute(
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'inventario' AND Seccion = ? AND Concepto IN (?, ?)",
+      [seccion, conceptoExcel, conceptoCsv]
+    );
+    rows.forEach((r) => {
+      const n = parseInt(r.Parametro, 10);
+      if (!(n > 0)) return;
+      if (r.Concepto === conceptoExcel) limites.excel = n;
+      if (r.Concepto === conceptoCsv) limites.csv = n;
+    });
+  } catch (err) {
+    console.error(`[configInventario] No se pudieron leer los límites del reporte de ${seccion}:`, err.message);
+  }
+  return limites;
+}
+
 module.exports = {
+  obtenerLimitesReporte,
   obtenerConfigPestanaInventario,
   mesConfirmacionPermitido,
   obtenerCategoriasConfirmacion,

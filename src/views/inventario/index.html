@@ -4910,6 +4910,9 @@
             <span class="badge badge-estado" id="dotley-badge-total" style="background: var(--info-soft); border: 1px solid var(--info); color: var(--info-dark); font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
           </div>
           <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" class="btn-icono-descarga" onclick="abrirModalReporteDotacion()" title="Descargar reporte de Dotación de Ley (Excel o CSV)" aria-label="Descargar reporte de Dotación de Ley">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </button>
             <button type="button" id="dotley-btn-enviar-dotacion" class="btn-primary" style="display: none; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--success); color: var(--text-inverse); cursor: pointer;">
               <span>📦</span> Enviar Dotación de Ley
             </button>
@@ -5095,6 +5098,38 @@
           <button type="button" onclick="cerrarModalReporteInventario()">Cancelar</button>
           <button type="button" id="btnInvReporteCsv" onclick="descargarReporteInventario('csv')" disabled>📄 Descargar CSV</button>
           <button type="button" class="primario" id="btnInvReporteExcel" onclick="descargarReporteInventario('xlsx')" disabled>📊 Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Descargar reporte de la pestaña Dotación de Ley (Todo / Regional / Operación) -->
+  <div id="reporte-dotacion-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh;">
+    <div style="max-width: 520px; width: 95%; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <div style="background: var(--bg-elevated); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text);">📥 Descargar reporte de Dotación de Ley</h3>
+        <span onclick="cerrarModalReporteDotacion()" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+      <div style="padding: 20px 24px;">
+        <p style="font-size: .83rem; color: var(--text-muted); margin: 0 0 14px;">Incluye los trabajadores con dotación de ley este mes (los mismos de la tabla), con sus tallas y datos de contacto, de las regionales y operaciones que su rol puede ver.</p>
+        <div class="reporte-opciones">
+          <label><input type="radio" name="dotReporteModo" value="todo" checked onchange="cambiarModoReporteDotacion()"> Todo</label>
+          <label><input type="radio" name="dotReporteModo" value="regional" onchange="cambiarModoReporteDotacion()"> Por regional</label>
+          <label><input type="radio" name="dotReporteModo" value="operacion" onchange="cambiarModoReporteDotacion()"> Por operación</label>
+        </div>
+        <div class="reporte-campo" id="dotReporteBloqueRegional" style="display: none;">
+          <label for="dotReporteRegional">Regional</label>
+          <select id="dotReporteRegional" onchange="actualizarConteoReporteDotacion()"></select>
+        </div>
+        <div class="reporte-campo" id="dotReporteBloqueOperacion" style="display: none;">
+          <label for="dotReporteOperacion">Operación</label>
+          <select id="dotReporteOperacion" onchange="actualizarConteoReporteDotacion()"></select>
+        </div>
+        <div class="reporte-info" id="dotReporteInfo">Calculando...</div>
+        <div class="reporte-btns">
+          <button type="button" onclick="cerrarModalReporteDotacion()">Cancelar</button>
+          <button type="button" id="btnDotReporteCsv" onclick="descargarReporteDotacion('csv')" disabled>📄 Descargar CSV</button>
+          <button type="button" class="primario" id="btnDotReporteExcel" onclick="descargarReporteDotacion('xlsx')" disabled>📊 Descargar Excel</button>
         </div>
       </div>
     </div>
@@ -6654,6 +6689,131 @@
       } finally {
         btn.innerHTML = textoOriginal;
         actualizarConteoReporteInventario();
+      }
+    }
+
+    // ── Reporte de la pestaña Dotación de Ley ──
+    // Todo / Por regional / Por operación, dentro del alcance del usuario (Sección 'DotacionLey').
+    // Límites: "Límite de filas reporte Excel/CSV - Dotación de Ley" (Config_Parametros).
+    let _reporteDotacionSeq = 0;
+
+    function abrirModalReporteDotacion() {
+      // Regionales y operaciones que tienen trabajadores con dotación este mes (resumen de la pestaña)
+      const ops = (typeof dotleyOpsPorRegional === 'object' && dotleyOpsPorRegional) || {};
+      const regionales = Object.keys(ops).sort();
+      const operaciones = [...new Set(Object.values(ops).flatMap(v => [...v]))].sort();
+      const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      const opt = (v) => `<option value="${esc(v)}">${esc(v)}</option>`;
+      const selReg = document.getElementById('dotReporteRegional');
+      const selOp = document.getElementById('dotReporteOperacion');
+      selReg.innerHTML = regionales.map(opt).join('');
+      selOp.innerHTML = operaciones.map(opt).join('');
+      // Si la tabla ya está filtrada, se proponen esos valores
+      const fReg = document.getElementById('dotley-filtro-regional');
+      const fOp = document.getElementById('dotley-filtro-operacion');
+      if (fReg && fReg.value) selReg.value = fReg.value;
+      if (fOp && fOp.value) selOp.value = fOp.value;
+      const modoInicial = fOp && fOp.value ? 'operacion' : (fReg && fReg.value ? 'regional' : 'todo');
+      document.querySelector(`input[name="dotReporteModo"][value="${modoInicial}"]`).checked = true;
+      cambiarModoReporteDotacion();
+      const modal = document.getElementById('reporte-dotacion-modal');
+      modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => cerrarModalReporteDotacion());
+    }
+
+    function cerrarModalReporteDotacion() {
+      const modal = document.getElementById('reporte-dotacion-modal');
+      modal.style.display = 'none';
+      cerrarModalBack(modal._backEntry);
+      modal._backEntry = null;
+    }
+
+    function modoReporteDotacion() {
+      const r = document.querySelector('input[name="dotReporteModo"]:checked');
+      return r ? r.value : 'todo';
+    }
+
+    function cambiarModoReporteDotacion() {
+      const modo = modoReporteDotacion();
+      document.getElementById('dotReporteBloqueRegional').style.display = modo === 'regional' ? 'block' : 'none';
+      document.getElementById('dotReporteBloqueOperacion').style.display = modo === 'operacion' ? 'block' : 'none';
+      actualizarConteoReporteDotacion();
+    }
+
+    function paramsReporteDotacion() {
+      const params = new URLSearchParams({ usuario: CONFIG.usuarioId, modo: modoReporteDotacion() });
+      if (params.get('modo') === 'regional') params.set('regional', document.getElementById('dotReporteRegional').value);
+      if (params.get('modo') === 'operacion') params.set('operacion', document.getElementById('dotReporteOperacion').value);
+      return params;
+    }
+
+    async function actualizarConteoReporteDotacion() {
+      const info = document.getElementById('dotReporteInfo');
+      const btnExcel = document.getElementById('btnDotReporteExcel');
+      const btnCsv = document.getElementById('btnDotReporteCsv');
+      btnExcel.disabled = true;
+      btnCsv.disabled = true;
+      info.style.color = 'var(--text-muted)';
+      info.textContent = 'Calculando cantidad de filas...';
+      const seq = ++_reporteDotacionSeq;
+      try {
+        const resp = await fetch('/dotacionley/api/reporte/conteo?' + paramsReporteDotacion().toString());
+        const data = await resp.json();
+        if (seq !== _reporteDotacionSeq) return; // respuesta de una selección anterior
+        if (!resp.ok || !data.ok) {
+          info.style.color = 'var(--danger)';
+          info.textContent = data.error || 'No se pudo calcular el reporte.';
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString('es-CO');
+        btnExcel.disabled = !data.permiteExcel;
+        btnCsv.disabled = !data.permiteCsv;
+        if (data.total === 0) {
+          info.textContent = 'No hay trabajadores con dotación de ley para la opción seleccionada.';
+        } else if (data.permiteExcel) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> trabajadores. Puede descargarlo en Excel o CSV.`;
+        } else if (data.permiteCsv) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> trabajadores. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
+        } else {
+          info.style.color = 'var(--danger)';
+          info.innerHTML = `<strong>${fmt(data.total)}</strong> trabajadores. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Elija una regional u operación.`;
+        }
+      } catch {
+        if (seq !== _reporteDotacionSeq) return;
+        info.style.color = 'var(--danger)';
+        info.textContent = 'Error de red al calcular el reporte.';
+      }
+    }
+
+    async function descargarReporteDotacion(formato) {
+      const btn = document.getElementById(formato === 'csv' ? 'btnDotReporteCsv' : 'btnDotReporteExcel');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        const params = paramsReporteDotacion();
+        params.set('formato', formato);
+        const resp = await fetch('/dotacionley/api/reporte?' + params.toString());
+        if (!resp.ok) {
+          let msg = 'No se pudo generar el reporte.';
+          try { msg = (await resp.json()).error || msg; } catch {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        const disp = resp.headers.get('Content-Disposition') || '';
+        const m = disp.match(/filename\*=UTF-8''([^;]+)/) || disp.match(/filename="([^"]+)"/);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = m ? decodeURIComponent(m[1]) : `Dotacion_de_Ley.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.innerHTML = textoOriginal;
+        actualizarConteoReporteDotacion();
       }
     }
   </script>

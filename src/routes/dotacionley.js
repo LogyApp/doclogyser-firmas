@@ -1,8 +1,9 @@
 const express = require('express');
 const pool = require('../services/db');
 const { computarAccesoInventario } = require('../services/accesoInventario');
-const { obtenerConfigDotacion, normalizarTexto } = require('../services/configInventario');
+const { obtenerConfigDotacion, normalizarTexto, obtenerLimitesReporte } = require('../services/configInventario');
 const { notificarDotacionLey } = require('../services/email');
+const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
 
 const router = express.Router();
 
@@ -151,6 +152,118 @@ function nombreCorto(trabajador) {
   const partes = String(trabajador || '').split(' ** ');
   return partes.length > 1 ? partes[1].trim() : (trabajador || '');
 }
+
+// ═════ Reporte (ventana "Descargar reporte") ═════
+// Los trabajadores con dotación de ley este mes, igual que la tabla, dentro del acceso de la
+// Sección 'DotacionLey'. Modo: todo | regional | operacion. Excel hasta "Límite de filas
+// reporte Excel - Dotación de Ley"; si pasa, solo CSV hasta "Límite de filas reporte CSV -
+// Dotación de Ley" (Config_Parametros, inventario / Dotación de Ley; sin la fila, 10.000 y 100.000).
+const COLUMNAS_REPORTE_DOTACION = [
+  { titulo: 'Regional',       campo: 'Regional',       tipo: 'texto', ancho: 16 },
+  { titulo: 'Operación',      campo: 'Operacion',      tipo: 'texto', ancho: 26 },
+  { titulo: 'Identificación', campo: 'Identificacion', tipo: 'texto', ancho: 16 },
+  { titulo: 'Trabajador',     campo: 'Nombre',         tipo: 'texto', ancho: 34 },
+  { titulo: 'Cargo',          campo: 'Cargo',          tipo: 'texto', ancho: 26 },
+  { titulo: 'Fecha Ingreso',  campo: 'Fecha_Ingreso',  tipo: 'fecha', ancho: 14 },
+  { titulo: 'Camiseta',       campo: 'Camiseta',       tipo: 'texto', ancho: 11 },
+  { titulo: 'Buzo N°',        campo: 'Numero',         tipo: 'texto', ancho: 10 },
+  { titulo: 'Pantalón',       campo: 'Pantalon',       tipo: 'texto', ancho: 11 },
+  { titulo: 'Botas',          campo: 'Botas',          tipo: 'texto', ancho: 10 },
+  { titulo: 'Chaqueta',       campo: 'Chaqueta',       tipo: 'texto', ancho: 11 },
+  { titulo: 'Celular',        campo: 'Celular',        tipo: 'texto', ancho: 15 },
+  { titulo: 'Correo',         campo: 'Email',          tipo: 'texto', ancho: 32 },
+];
+
+// Devuelve { filas, etiqueta } o { error }
+async function filasReporteDotacion(acceso, query) {
+  const modo = String(query.modo || 'todo').toLowerCase();
+  const regional = String(query.regional || '').trim();
+  const operacion = String(query.operacion || '').trim();
+  let etiqueta = 'Todo';
+  if (modo === 'regional') {
+    if (!regional) return { error: 'Seleccione una regional.' };
+    etiqueta = regional;
+  } else if (modo === 'operacion') {
+    if (!operacion) return { error: 'Seleccione una operación.' };
+    etiqueta = operacion;
+  } else if (modo !== 'todo') {
+    return { error: 'Opción de reporte inválida.' };
+  }
+  etiqueta = etiqueta.replace(/[^\w\-ÁÉÍÓÚáéíóúÑñ ]+/g, '').trim().replace(/\s+/g, '_') || 'Reporte';
+  if (!acceso.sinFiltro && !acceso.operacionesFiltro.length) return { filas: [], etiqueta };
+
+  const cfg = await obtenerConfigDotacion();
+  const filas = filtrarPorAcceso(await obtenerTrabajadoresDotacion(cfg.mesesEntreEntregas), acceso)
+    .filter((r) => modo !== 'regional' || r.Regional === regional)
+    .filter((r) => modo !== 'operacion' || r.Operacion === operacion)
+    .sort((a, b) => comparar(a.Regional, b.Regional) || comparar(a.Operacion, b.Operacion) || comparar(a.Trabajador, b.Trabajador))
+    .map((r) => {
+      const tallas = construirTallas(r, cfg); // Buzo N° solo para los cargos que lo llevan
+      return { ...r, Nombre: nombreCorto(r.Trabajador), Camiseta: tallas.camiseta, Numero: tallas.numero, Pantalon: tallas.pantalon, Botas: tallas.botas };
+    });
+  return { filas, etiqueta };
+}
+
+function obtenerLimitesReporteDotacion() {
+  return obtenerLimitesReporte('Dotación de Ley');
+}
+
+// GET /api/reporte/conteo — cuántas filas tendría y qué formatos se permiten
+router.get('/api/reporte/conteo', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoInventario(usuario, 'DotacionLey');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const r = await filasReporteDotacion(acceso, req.query);
+    if (r.error) return res.status(400).json({ error: r.error });
+    const limites = await obtenerLimitesReporteDotacion();
+    const total = r.filas.length;
+    res.json({ ok: true, total, limites, permiteExcel: total > 0 && total <= limites.excel, permiteCsv: total > 0 && total <= limites.csv });
+  } catch (err) {
+    console.error('[dotacionley] GET /api/reporte/conteo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/reporte?formato=xlsx|csv — descarga el reporte
+router.get('/api/reporte', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const formato = String(req.query.formato || '').toLowerCase();
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!['xlsx', 'csv'].includes(formato)) return res.status(400).json({ error: 'Formato inválido. Use Excel o CSV.' });
+    const acceso = await computarAccesoInventario(usuario, 'DotacionLey');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const r = await filasReporteDotacion(acceso, req.query);
+    if (r.error) return res.status(400).json({ error: r.error });
+    const limites = await obtenerLimitesReporteDotacion();
+    const total = r.filas.length;
+    const fmt = (n) => Number(n).toLocaleString('es-CO');
+    if (total === 0) return res.status(400).json({ error: 'No hay trabajadores con dotación de ley para la opción seleccionada.' });
+    if (formato === 'xlsx' && total > limites.excel) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas. En Excel se permiten hasta ${fmt(limites.excel)}; descárguelo en CSV.` });
+    }
+    if (total > limites.csv) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas y el máximo permitido es ${fmt(limites.csv)}. Elija una regional u operación.` });
+    }
+
+    const archivo = nombreArchivo(`Dotacion_de_Ley_${r.etiqueta}`, formato);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`);
+    if (formato === 'xlsx') {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(generarXlsx({ hoja: 'Dotación de Ley', columnas: COLUMNAS_REPORTE_DOTACION, filas: r.filas }));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(encabezadoCsv(COLUMNAS_REPORTE_DOTACION) + r.filas.map((f) => filaCsv(COLUMNAS_REPORTE_DOTACION, f)).join(''));
+  } catch (err) {
+    console.error('[dotacionley] GET /api/reporte:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
+  }
+});
 
 const MSG_CORREO_DESACTIVADO = 'Las notificaciones de correo de Dotación de Ley están desactivadas (Config_Parametros).';
 
