@@ -228,7 +228,26 @@
     const DOCUMENTO_HTML = _cfg.documentoHtml;
     const TITULO = _cfg.titulo || 'DOCUMENTO';
 
-    document.getElementById('contenidoDoc').innerHTML = DOCUMENTO_HTML;
+    // Las actas de Casos Médicos son un documento HTML completo (diseño moderno de
+    // Maestro_Plantillas): se muestran en un marco aparte para que sus estilos no cambien
+    // los de esta página.
+    const PROCESOS_EN_MARCO = ['acta_apertura_cm', 'acta_cierre_cm'];
+    const contenedorDoc = document.getElementById('contenidoDoc');
+    if (PROCESOS_EN_MARCO.includes(String(PROCESO).toLowerCase()) && /^\s*(<!DOCTYPE|<html)/i.test(DOCUMENTO_HTML || '')) {
+      const marco = document.createElement('iframe');
+      marco.title = TITULO;
+      marco.style.cssText = 'width:100%;border:0;display:block;min-height:400px;';
+      marco.srcdoc = DOCUMENTO_HTML;
+      const ajustarMarco = () => {
+        try { marco.style.height = marco.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) {}
+      };
+      marco.addEventListener('load', () => { ajustarMarco(); setTimeout(ajustarMarco, 400); });
+      window.addEventListener('resize', ajustarMarco);
+      contenedorDoc.style.padding = '0';
+      contenedorDoc.appendChild(marco);
+    } else {
+      contenedorDoc.innerHTML = DOCUMENTO_HTML;
+    }
     document.getElementById('docTituloLabel').textContent = `📄 ${TITULO}`;
     document.title = TITULO;
 

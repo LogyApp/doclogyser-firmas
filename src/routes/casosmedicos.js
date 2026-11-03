@@ -1,11 +1,31 @@
 const express = require('express');
 const pool = require('../services/db');
 const { computarAccesoSST } = require('./sst');
-const { generarToken } = require('../services/token');
+const { generarToken, validarToken } = require('../services/token');
 const {
   construirDatosPlantillaCasoMedico,
   notificarActaCasoMedico,
 } = require('../services/casosmedicos_actas');
+const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
+const { generarPDFDesdeHTML } = require('../services/renderer');
+const { subirPDFActa } = require('../services/storage');
+const { rolPuedeSst } = require('../services/configSst');
+
+// Permisos de la pestaña en Config_Parametros (sst / Casos Medicos), ver configSst.js.
+// Quien creó el caso siempre puede editarlo, eliminarlo y gestionar sus actas.
+const SECCION_CM = 'Casos Medicos';
+
+function esCreadorDe(registro, usuario) {
+  const creador = String((registro && registro.usuario) || '').trim().toLowerCase();
+  return !!creador && creador === String(usuario || '').trim().toLowerCase();
+}
+
+async function puedeEnCaso(acceso, usuario, registro, accion) {
+  return esCreadorDe(registro, usuario) || rolPuedeSst(acceso.rol, SECCION_CM, accion);
+}
+
+// Alertas (vencimiento de recomendaciones y días sin seguimiento) recalculadas con la fecha de hoy
+const { recalcularAlertasCasos } = require('../services/casosMedicosAlertas');
 
 const router = express.Router();
 
@@ -123,6 +143,7 @@ router.get('/api/incapacidades', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 router.get('/api/trabajadores-casos', async (req, res) => {
   try {
+    await recalcularAlertasCasos();
     const { usuario, trabajador, regional, operacion, estado, prioridad, tipoCaso, fechaDesde, fechaHasta } = req.query;
 
     if (!usuario) {
@@ -268,6 +289,7 @@ router.get('/api/trabajadores-casos', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 router.get('/api/conteos-filtros', async (req, res) => {
   try {
+    await recalcularAlertasCasos();
     const { usuario, trabajador, regional, operacion, estado, prioridad, tipoCaso } = req.query;
 
     if (!usuario) {
@@ -413,6 +435,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 router.get('/api/casos-trabajador/:identificacion', async (req, res) => {
   try {
+    await recalcularAlertasCasos();
     const { identificacion } = req.params;
     if (!identificacion) {
       return res.status(400).json({ error: 'Cédula requerida' });
@@ -715,11 +738,8 @@ router.post('/api/crear', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado en el módulo SST' });
     }
 
-    const ROLES_CREAR_CASO = ['Sistema', 'AdmSst', 'LiderSst'];
-    if (!ROLES_CREAR_CASO.includes(acceso.rol)) {
-      return res.status(403).json({
-        error: `El rol '${acceso.rol}' no tiene permisos para crear casos médicos. Roles autorizados: Sistema, AdmSst y LiderSst.`
-      });
+    if (!(await rolPuedeSst(acceso.rol, SECCION_CM, 'crear'))) {
+      return res.status(403).json({ error: `El rol '${acceso.rol}' no tiene permisos para crear casos médicos.` });
     }
 
     if (!identificacion) {
@@ -970,11 +990,7 @@ router.put('/api/caso/:id', async (req, res) => {
     }
 
     const casoExistente = cRows[0];
-    const creador = String(casoExistente.usuario || '').trim().toLowerCase();
-    const esAdmin = acceso.rol === 'Sistema' || acceso.rol === 'AdmSst' || acceso.rol === 'LiderSst';
-    const esCreador = creador === String(usuario).trim().toLowerCase();
-
-    if (!esAdmin && !esCreador) {
+    if (!(await puedeEnCaso(acceso, usuario, casoExistente, 'editar'))) {
       return res.status(403).json({ error: 'No tienes permisos para editar este caso médico' });
     }
 
@@ -1139,6 +1155,9 @@ router.post('/api/caso/:id/generar-acta-apertura', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
 
     const caso = rows[0];
+    if (!(await puedeEnCaso(acceso, usuario, caso, 'actas'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para generar enlaces de firma de actas' });
+    }
     if (Number(caso.estado_general_id) !== 1) {
       return res.status(400).json({ error: 'El acta de apertura solo puede generarse cuando el estado general del caso está en ABIERTO' });
     }
@@ -1170,6 +1189,9 @@ router.post('/api/caso/:id/generar-acta-cierre', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
 
     const caso = rows[0];
+    if (!(await puedeEnCaso(acceso, usuario, caso, 'actas'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para generar enlaces de firma de actas' });
+    }
     if (Number(caso.estado_general_id) !== 2) {
       return res.status(400).json({ error: 'El acta de cierre solo puede generarse cuando el estado general del caso está en CERRADO' });
     }
@@ -1202,7 +1224,21 @@ router.post('/api/caso/:id/enviar-acta-correo', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
 
     const caso = rows[0];
-    let urlFirma = url;
+    if (!(await puedeEnCaso(acceso, usuario, caso, 'actas'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para enviar enlaces de firma de actas' });
+    }
+
+    // El enlace que llega de la pantalla solo se usa si es el enlace de firma vigente de este
+    // caso (mismo servidor, misma acta y token válido); si no, se genera uno nuevo.
+    const procActa = tipo === 'apertura' ? 'acta_apertura_cm' : 'acta_cierre_cm';
+    let urlFirma = null;
+    let enlace = null;
+    try { enlace = url ? new URL(String(url)) : null; } catch (e) { enlace = null; }
+    if (enlace && enlace.host === req.get('host') && enlace.pathname === `/doclogyser/${procActa}/${id}`) {
+      const colToken = tipo === 'apertura' ? 'token_apertura' : 'token_cierre';
+      const v = await validarToken(enlace.searchParams.get('token') || '', 'Maestro_casosmedicos', 'id', id, colToken, `${colToken}_expira`).catch(() => null);
+      if (v && v.valido) urlFirma = enlace.toString();
+    }
 
     if (tipo === 'apertura') {
       if (Number(caso.estado_general_id) !== 1) {
@@ -1253,6 +1289,53 @@ router.post('/api/caso/:id/enviar-acta-correo', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
+// API: POST /api/caso/:id/regenerar-acta  { usuario, tipo: 'apertura' | 'cierre' }
+// Rehace el PDF de un acta ya firmada con los datos actuales del caso y la plantilla vigente,
+// conservando la firma y su fecha. Mismo permiso que editar el caso (Sistema, AdmSst,
+// LiderSst o quien lo creó). Se guarda en la misma ruta del bucket (sin caché).
+// ══════════════════════════════════════════════════════════════
+router.post('/api/caso/:id/regenerar-acta', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, tipo } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    if (!['apertura', 'cierre'].includes(tipo)) return res.status(400).json({ error: 'Tipo de acta inválido' });
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [rows] = await pool.execute('SELECT * FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
+    const caso = rows[0];
+
+    if (!(await puedeEnCaso(acceso, usuario, caso, 'editar'))) {
+      return res.status(403).json({ error: 'No tienes permisos para regenerar las actas de este caso médico' });
+    }
+
+    const esApertura = tipo === 'apertura';
+    const urlActa = esApertura ? caso.url_acta_apertura : caso.url_acta_cierre;
+    if (!urlActa) return res.status(400).json({ error: `El acta de ${tipo} aún no está firmada.` });
+
+    const firmaSrc = (esApertura ? (caso.firma_apertura || caso.url_firma_apertura) : (caso.firma_cierre || caso.url_firma_cierre)) || '';
+    const fechaFirma = esApertura ? caso.fecha_firma_apertura : caso.fecha_firma_cierre;
+    const firmaHtml = firmaSrc
+      ? firmaConFecha(`<img src="${firmaSrc}" class="sig-img" style="max-height:65px;max-width:240px;display:block;margin:0 auto;" alt="Firma colaborador"/>`, fechaFirma)
+      : '';
+
+    const proc = esApertura ? 'acta_apertura_cm' : 'acta_cierre_cm';
+    const plantilla = await obtenerPlantilla(proc);
+    const { datos } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml });
+    const pdfBuffer = await generarPDFDesdeHTML(reemplazarVariables(plantilla.contenido_html || '', datos));
+    const nuevaUrl = await subirPDFActa(caso.identificacion, esApertura ? 'AACM' : 'ACCM', id, pdfBuffer);
+
+    res.json({ ok: true, url_doc: nuevaUrl });
+  } catch (err) {
+    console.error('[casosmedicos] POST /api/caso/:id/regenerar-acta:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
 // API: DELETE /api/caso/:id
 // Borrado lógico de un caso médico
 // ══════════════════════════════════════════════════════════════
@@ -1276,12 +1359,8 @@ router.delete('/api/caso/:id', async (req, res) => {
       return res.status(404).json({ error: 'Caso médico no encontrado' });
     }
 
-    // Validación de permisos para eliminar: rol Sistema o creador
-    const creador = String(cRows[0].usuario || '').trim().toLowerCase();
-    const esAdmin = acceso.rol === 'Sistema' || acceso.rol === 'AdmSst' || acceso.rol === 'LiderSst';
-    const esCreador = creador === String(usuario).trim().toLowerCase();
-
-    if (!esAdmin && !esCreador) {
+    // Permiso para eliminar: rol de Config_Parametros (sst / Casos Medicos) o creador
+    if (!(await puedeEnCaso(acceso, usuario, cRows[0], 'eliminar'))) {
       return res.status(403).json({ error: 'No tienes permisos para eliminar este caso médico' });
     }
 
@@ -1363,11 +1442,8 @@ router.post('/api/bitacora/crear', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado en el módulo SST' });
     }
 
-    const ROLES_CREAR_BITACORA = ['Sistema', 'AdmSst', 'LiderSst', 'AnaSst', 'AuxSst'];
-    if (!ROLES_CREAR_BITACORA.includes(acceso.rol)) {
-      return res.status(403).json({
-        error: `El rol '${acceso.rol}' no tiene permisos para agregar bitácoras. Roles autorizados: Sistema, AdmSst, LiderSst, AnaSst y AuxSst.`
-      });
+    if (!(await rolPuedeSst(acceso.rol, SECCION_CM, 'bitacora'))) {
+      return res.status(403).json({ error: `El rol '${acceso.rol}' no tiene permisos para agregar seguimientos en la bitácora.` });
     }
 
     if (!idcaso) {
@@ -1443,6 +1519,7 @@ router.post('/api/bitacora/crear', async (req, res) => {
         fecha_actualizacion = NOW()
       WHERE id = ?
     `, [fechaSeg, compromiso_accion || null, fecha_compromiso || null, actividad_actual || null, idcaso]);
+    await recalcularAlertasCasos(true); // el nuevo seguimiento cambia los días sin seguimiento
 
     res.json({
       ok: true,
@@ -1479,11 +1556,7 @@ router.delete('/api/bitacora/:id', async (req, res) => {
       return res.status(404).json({ error: 'Registro de bitácora no encontrado' });
     }
 
-    const creador = String(bRows[0].usuario || '').trim().toLowerCase();
-    const esAdmin = acceso.rol === 'Sistema' || acceso.rol === 'AdmSst' || acceso.rol === 'LiderSst';
-    const esCreador = creador === String(usuario).trim().toLowerCase();
-
-    if (!esAdmin && !esCreador) {
+    if (!(await puedeEnCaso(acceso, usuario, bRows[0], 'eliminar'))) {
       return res.status(403).json({ error: 'No tienes permisos para eliminar este registro de bitácora' });
     }
 

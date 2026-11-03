@@ -43,6 +43,27 @@ function aplicarFormatoPlantilla(html, formato) {
     (match, clave) => valores[clave] || match);
 }
 
+// ── Fecha de firma bajo cada firma, como el sello de LogySign ("Firmado: dd/mm/aaaa hh:mm") ──
+function textoFirmado(fecha) {
+  if (!fecha) return '';
+  // DATETIME en texto sin zona: es hora de Bogotá (el pool usa -05:00)
+  const d = fecha instanceof Date
+    ? fecha
+    : new Date(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(String(fecha)) ? `${String(fecha).replace(' ', 'T')}-05:00` : fecha);
+  if (isNaN(d)) return '';
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `Firmado: ${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+// La firma (imagen) con la fecha de firma debajo. Sin fecha devuelve la firma tal cual.
+function firmaConFecha(imgHtml, fecha) {
+  const texto = textoFirmado(fecha);
+  if (!imgHtml || !texto) return imgHtml || '';
+  return `<span class="firma-con-fecha" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-end;vertical-align:bottom;max-width:100%">${imgHtml}<span style="display:block;font-family:Arial,sans-serif;font-size:6.5pt;font-weight:400;line-height:1.2;color:#64748b;margin-top:1px;white-space:nowrap;text-transform:none;letter-spacing:0">${texto}</span></span>`;
+}
+
 async function obtenerPlantilla(proceso) {
   const [rows] = await pool.execute(
     'SELECT * FROM Maestro_Plantillas WHERE LOWER(nombre_proceso) = LOWER(?) ORDER BY activo DESC, version DESC LIMIT 1',
@@ -96,4 +117,5 @@ function reemplazarVariables(html, datos) {
 module.exports = {
   obtenerPlantilla, preprocesarDatos, reemplazarVariables,
   formatoDePlantilla, aplicarFormatoPlantilla,
+  textoFirmado, firmaConFecha,
 };

@@ -1,6 +1,18 @@
 const { v4: uuidv4 } = require('uuid');
 const pool = require('./db');
 const { transporter, EMAIL_FROM, FOOTER, encabezadoLogo, LOGO_HEADER_ATTACHMENT, COLOR_ENCABEZADO_AZUL } = require('./email');
+const { LOGO_BASE64 } = require('./assets');
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fechaHoraBogotaTexto(d = new Date()) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
 
 function formatFechaLarga(fecha) {
   if (!fecha) return '—';
@@ -79,7 +91,8 @@ async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = 
     periodoRecomendaciones = `Desde ${formatFechaCorta(caso.fecha_inicio)}`;
   }
 
-  const datos = {
+  // Textos escapados: los escribe el usuario y van dentro del HTML de la plantilla
+  const datosTexto = {
     codigo_caso: caso.codigo_caso || `CM-${String(caso.id).padStart(4, '0')}`,
     nombre_trabajador: nombreTrabajador,
     identificacion: caso.identificacion,
@@ -106,8 +119,18 @@ async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = 
     usuario_registro: caso.usuario_nombre || caso.usuario || 'SST',
     usuario_cierre: caso.usuario_nombre || caso.usuario || 'SST',
     fecha_registro: formatFechaLarga(caso.fecha_registro || new Date()),
-    firma_trabajador: firmaHtml,
   };
+  const datos = Object.fromEntries(Object.entries(datosTexto).map(([k, v]) => [k, esc(v)]));
+  Object.assign(datos, {
+    firma_trabajador: firmaHtml,
+    // Diseño moderno
+    logo_src: LOGO_BASE64,
+    fecha_generacion: fechaHoraBogotaTexto(),
+    // Si Maestro_Plantillas no tiene código, versión o fecha del formato, queda en blanco
+    codigo_formato: '',
+    version_formato: '',
+    fecha_formato: '',
+  });
 
   return { caso, datos };
 }

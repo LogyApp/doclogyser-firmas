@@ -1030,6 +1030,21 @@
       gap: 10px;
     }
 
+    /* Búsqueda dentro de la barra de filtros (siempre visible) */
+    .filtros-busqueda {
+      flex: 1;
+      max-width: 380px;
+      margin: 0 12px 0 auto;
+      height: 34px;
+      font-size: 0.84rem;
+      font-weight: 400;
+      cursor: text;
+    }
+    @media (max-width: 640px) {
+      .filtros-toggle:has(.filtros-busqueda) { flex-wrap: wrap; row-gap: 8px; }
+      .filtros-busqueda { order: 3; flex-basis: 100%; max-width: none; margin: 0; }
+    }
+
     .filtros-badge {
       display: none;
       align-items: center;
@@ -2758,14 +2773,12 @@
             Filtros de Búsqueda
             <span class="filtros-badge" id="filtros-badge-ev">0</span>
           </span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-ev-trabajador" placeholder="🔍 Buscar trabajador (nombre o C.C.)..." aria-label="Buscar trabajador" oninput="filtrarDebounce('ev')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-ev">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-ev" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group">
-              <label class="form-label">Trabajador</label>
-              <input type="text" class="form-control" id="filtro-ev-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('ev')">
-            </div>
             <div class="form-group">
               <label class="form-label">Regional</label>
               <select class="form-control" id="filtro-ev-regional" onchange="onRegionalChange('ev')">
@@ -2929,14 +2942,12 @@
               Filtros de Búsqueda
               <span class="filtros-badge" id="filtros-badge-cap">0</span>
             </span>
+            <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+            <input type="search" class="form-control filtros-busqueda" id="filtro-cap-trabajador" placeholder="🔍 Buscar trabajador (nombre o C.C.)..." aria-label="Buscar" oninput="filtrarDebounce('cap')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="filtros-chevron-cap">▸</span>
           </div>
           <div class="filtros-body" id="filtros-body-cap" style="display: none;">
             <div class="filters-grid">
-              <div class="form-group">
-                <label class="form-label">Trabajador</label>
-                <input type="text" class="form-control" id="filtro-cap-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('cap')">
-              </div>
               <div class="form-group">
                 <label class="form-label">Regional</label>
                 <select class="form-control" id="filtro-cap-regional" onchange="onRegionalChange('cap')">
@@ -3098,14 +3109,12 @@
             Filtros de Búsqueda
             <span class="filtros-badge" id="filtros-badge-pc">0</span>
           </span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-pc-trabajador" placeholder="🔍 Buscar trabajador (nombre o C.C.)..." aria-label="Buscar" oninput="filtrarDebounce('pc')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-pc">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-pc" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group">
-              <label class="form-label">Trabajador</label>
-              <input type="text" class="form-control" id="filtro-pc-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('pc')">
-            </div>
             <div class="form-group">
               <label class="form-label">Regional</label>
               <select class="form-control" id="filtro-pc-regional" onchange="onRegionalChange('pc')">
@@ -3218,14 +3227,12 @@
             Filtros de Búsqueda
             <span class="filtros-badge" id="filtros-badge-part">0</span>
           </span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-part-search" placeholder="🔍 Buscar por tema o responsable..." aria-label="Buscar" oninput="filtrarDebounce('part')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-part">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-part" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group">
-              <label class="form-label">Tema o Responsable</label>
-              <input type="text" class="form-control" id="filtro-part-search" placeholder="Tema o nombre..." oninput="filtrarDebounce('part')">
-            </div>
             <div class="form-group">
               <label class="form-label">Estado</label>
               <select class="form-control" id="filtro-part-estado" onchange="filtrarAutomatico('part')">
@@ -3372,14 +3379,12 @@
             Filtros de Búsqueda
             <span class="filtros-badge" id="filtros-badge-csst">0</span>
           </span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-csst-trabajador" placeholder="🔍 Buscar trabajador (nombre o C.C.)..." aria-label="Buscar" oninput="filtrarDebounce('csst')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-csst">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-csst" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group">
-              <label class="form-label">Trabajador</label>
-              <input type="text" class="form-control" id="filtro-csst-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('csst')">
-            </div>
             <div class="form-group">
               <label class="form-label">Regional</label>
               <select class="form-control" id="filtro-csst-regional" onchange="onRegionalChange('csst')">
@@ -3497,14 +3502,12 @@
               Filtros de Búsqueda
               <span class="filtros-badge" id="filtros-badge-cm">0</span>
             </span>
+            <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+            <input type="search" class="form-control filtros-busqueda" id="filtro-cm-trabajador" placeholder="🔍 Buscar trabajador (nombre o cédula)..." aria-label="Buscar" oninput="filtrarDebounce('cm')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="filtros-chevron-cm">▸</span>
           </div>
           <div class="filtros-body" id="filtros-body-cm" style="display: none;">
             <div class="filters-grid">
-              <div class="form-group">
-                <label class="form-label">Trabajador o Cédula</label>
-                <input type="text" class="form-control" id="filtro-cm-trabajador" placeholder="Nombre o Cédula..." oninput="filtrarDebounce('cm')">
-              </div>
               <div class="form-group">
                 <label class="form-label">Regional</label>
                 <select class="form-control" id="filtro-cm-regional" onchange="onRegionalChange('cm')">
@@ -3645,11 +3648,12 @@
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltros('inc')">
           <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-inc-trabajador" placeholder="🔍 Buscar trabajador (nombre o cédula)..." aria-label="Buscar" oninput="filtrarDebounce('inc')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-inc">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-inc" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group"><label class="form-label">Trabajador o Cédula</label><input type="text" class="form-control" id="filtro-inc-trabajador" placeholder="Nombre o cédula..." oninput="filtrarDebounce('inc')"></div>
             <div class="form-group"><label class="form-label">Regional</label><select class="form-control" id="filtro-inc-regional" onchange="onRegionalChange('inc')"><option value="">Todas</option></select></div>
             <div class="form-group"><label class="form-label">Operación</label><select class="form-control" id="filtro-inc-operacion" onchange="filtrarAutomatico('inc')"><option value="">Todas</option></select></div>
             <div class="form-group"><label class="form-label">Fecha Desde</label><input type="date" class="form-control" id="filtro-inc-desde" onchange="actualizarBadgeFiltros('inc'); cargarDatos('inc')"></div>
@@ -3710,14 +3714,12 @@
             Filtros de Búsqueda
             <span class="filtros-badge" id="filtros-badge-ins">0</span>
           </span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-ins-trabajador" placeholder="🔍 Buscar trabajador, cédula, placa o equipo..." aria-label="Buscar" oninput="filtrarDebounce('ins')" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-ins">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-ins" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group">
-              <label class="form-label">Trabajador / Cédula / Placa / Equipo</label>
-              <input type="text" class="form-control" id="filtro-ins-trabajador" placeholder="Nombre, cédula, placa o equipo..." oninput="filtrarDebounce('ins')">
-            </div>
             <div class="form-group">
               <label class="form-label">Regional</label>
               <select class="form-control" id="filtro-ins-regional" onchange="onRegionalChange('ins')">
@@ -3862,14 +3864,12 @@
             Filtros de Búsqueda
             <span class="filtros-badge" id="filtros-badge-ats">0</span>
           </span>
+          <!-- Búsqueda siempre visible: no hace falta desplegar los filtros -->
+          <input type="search" class="form-control filtros-busqueda" id="filtro-ats-search" placeholder="🔍 Buscar operación, coordinador o ID..." aria-label="Buscar" oninput="filtrarDebounceAts()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-ats">▸</span>
         </div>
         <div class="filtros-body" id="filtros-body-ats" style="display: none;">
           <div class="filters-grid">
-            <div class="form-group">
-              <label class="form-label">Búsqueda Rápida</label>
-              <input type="text" class="form-control" id="filtro-ats-search" placeholder="Operación, coordinador o ID..." oninput="filtrarDebounceAts()">
-            </div>
             <div class="form-group">
               <label class="form-label">Regional</label>
               <select class="form-control" id="filtro-ats-regional" onchange="onRegionalChangeAts()">
@@ -4358,6 +4358,39 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-editar-csst" onclick="if(event.target === this) cerrarModalEditarCompromiso();">
+    <div class="modal-content" style="max-width: 460px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text);">✏️ Editar Compromiso SST</div>
+        <button type="button" class="modal-close" onclick="cerrarModalEditarCompromiso()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-editar-csst" onsubmit="guardarEdicionCompromiso(event)">
+        <input type="hidden" id="modal-editar-csst-id">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Trabajador</label>
+          <input type="text" id="modal-editar-csst-trabajador" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Cargo *</label>
+          <input type="text" id="modal-editar-csst-cargo" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;" id="modal-editar-csst-fecha-wrap">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Fecha del documento *</label>
+          <input type="date" id="modal-editar-csst-fecha" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Observaciones</label>
+          <textarea id="modal-editar-csst-obs" rows="3" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none; resize: vertical;"></textarea>
+        </div>
+        <div id="modal-editar-csst-aviso" style="display:none; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px;">Al guardar se regenera el PDF con las mismas firmas.</div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalEditarCompromiso()">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="modal-editar-csst-guardar">💾 Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal Editar Contacto Asistente (Participación) -->
   <div class="modal-overlay" id="modal-contacto-part">
     <div class="modal-content" style="max-width: 480px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
@@ -4429,7 +4462,8 @@
   </div>
 
   <!-- Modal Crear / Agregar Caso Médico -->
-  <div class="modal-overlay" id="modal-cm-crear" onclick="if(event.target === this) cerrarModalAgregarCaso();">
+  <!-- No se cierra al dar clic afuera (formulario largo): solo con la X o con Cancelar -->
+  <div class="modal-overlay" id="modal-cm-crear">
     <div class="modal-content modal-form-large" style="max-width: 860px; height: 88vh;">
       <div class="modal-header">
         <div class="modal-title">
@@ -4678,7 +4712,8 @@
   </div>
 
   <!-- Modal Agregar Registro a Bitácora -->
-  <div class="modal-overlay" id="modal-cm-bitacora" onclick="if(event.target === this) cerrarModalBitacora();" style="display: none;">
+  <!-- No se cierra al dar clic afuera: solo con la X o con Cancelar -->
+  <div class="modal-overlay" id="modal-cm-bitacora" style="display: none;">
     <div class="modal-content modal-form-large" style="max-width: 650px;">
       <div class="modal-header">
         <div class="modal-title">
@@ -5822,6 +5857,9 @@
       }
       if (modulo === 'pc' && (item.url_doc || item.firma_trabajador)) {
         return permisoSst('pc', 'eliminarFirmado');
+      }
+      if (modulo === 'csst' && (item.url_doc || item.firma_trabajador || item.firma_analista || item.firma_lidersst)) {
+        return permisoSst('csst', 'eliminarFirmado');
       }
       // Solo se puede eliminar si NO está firmado
       if (item.url_doc) return false;
@@ -8136,6 +8174,12 @@
               </a>
             ` : ''}
 
+            ${permisoSst('csst', 'crear') ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarCompromiso('${item.idcsst}')">
+                ✏️ Editar Compromiso
+              </button>
+            ` : ''}
+
             ${puedeEliminarRegistro(item, 'csst') ? `
               <button class="btn btn-sm" onclick="confirmarEliminarRegistro('csst', '${item.idcsst}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
                 🗑️ Eliminar Registro
@@ -8149,6 +8193,19 @@
             <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
               📄 Abrir Compromiso Firmado (PDF)
             </a>
+            ${permisoSst('csst', 'editarFirmado') ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarCompromiso('${item.idcsst}')">
+                ✏️ Editar Compromiso
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="regenerarPDFCompromiso('${item.idcsst}')">
+                🔄 Regenerar PDF
+              </button>
+            ` : ''}
+            ${puedeEliminarRegistro(item, 'csst') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('csst', '${item.idcsst}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
           </div>
         `;
       }
@@ -8169,6 +8226,8 @@
           <div class="detail-row"><span class="label">Firma Trabajador:</span><span class="value">${item.firma_trabajador ? '<span class="badge badge-success">✓ Firmado</span>' : '<span class="badge badge-warning">⏳ Pendiente</span>'}</span></div>
           <div class="detail-row"><span class="label">Firma Analista:</span><span class="value">${item.firma_analista ? '<span class="badge badge-success">✓ Firmado</span>' : '<span class="badge badge-warning">⏳ Pendiente</span>'}</span></div>
           <div class="detail-row"><span class="label">Firma Líder SST:</span><span class="value">${item.firma_lidersst ? '<span class="badge badge-success">✓ Firmado</span>' : '<span class="badge badge-gray">⏳ Pendiente</span>'}</span></div>
+          ${item.fecha_documento ? `<div class="detail-row"><span class="label">Fecha Documento:</span><span class="value">${String(item.fecha_documento).slice(0, 10).split('-').reverse().join('/')}</span></div>` : ''}
+          ${item.observaciones ? `<div class="detail-row"><span class="label">Observaciones:</span><span class="value">${escaparHtmlIncapacidad(item.observaciones)}</span></div>` : ''}
         </div>
 
         ${actionsHtml}
@@ -8178,6 +8237,99 @@
       document.getElementById('detail-csst-body').innerHTML = bodyHtml;
       document.getElementById('layout-csst').classList.add('detail-active');
       document.getElementById('detail-csst').style.display = 'block';
+    }
+
+    function abrirModalEditarCompromiso(id) {
+      const item = (dataStore.csst || []).find(x => String(x.idcsst) === String(id)) || selectedItems.csst;
+      if (!item || String(item.idcsst) !== String(id)) return;
+      const firmado = !!item.url_doc;
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      document.getElementById('modal-editar-csst-id').value = item.idcsst;
+      document.getElementById('modal-editar-csst-trabajador').value = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      document.getElementById('modal-editar-csst-cargo').value = item.cargo_trabajador || '';
+      document.getElementById('modal-editar-csst-obs').value = item.observaciones || '';
+      // La fecha del documento es la que se imprime en el PDF: solo aplica si ya está generado
+      const fechaInput = document.getElementById('modal-editar-csst-fecha');
+      fechaInput.max = hoyStr;
+      fechaInput.required = firmado;
+      fechaInput.value = item.fecha_documento ? String(item.fecha_documento).slice(0, 10) : '';
+      document.getElementById('modal-editar-csst-fecha-wrap').style.display = firmado ? 'block' : 'none';
+      document.getElementById('modal-editar-csst-aviso').style.display = firmado ? 'block' : 'none';
+      document.getElementById('modal-editar-csst-guardar').textContent = firmado ? '💾 Guardar y Regenerar PDF' : '💾 Guardar';
+      const modalEl = document.getElementById('modal-editar-csst');
+      modalEl.style.display = 'flex';
+      modalEl._backEntry = registrarModalBack(() => cerrarModalEditarCompromiso());
+    }
+
+    function cerrarModalEditarCompromiso() {
+      const modalEl = document.getElementById('modal-editar-csst');
+      if (!modalEl) return;
+      modalEl.style.display = 'none';
+      cerrarModalBack(modalEl._backEntry);
+      modalEl._backEntry = null;
+    }
+
+    async function guardarEdicionCompromiso(e) {
+      e.preventDefault();
+      const id = document.getElementById('modal-editar-csst-id').value;
+      const cargo = document.getElementById('modal-editar-csst-cargo').value.trim();
+      const fechaInput = document.getElementById('modal-editar-csst-fecha');
+      const observaciones = document.getElementById('modal-editar-csst-obs').value.trim();
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      if (fechaInput.required && fechaInput.value > hoyStr) {
+        showToast('La fecha del documento no puede ser superior a hoy', 'error');
+        return;
+      }
+      showLoading('Guardando cambios...');
+      try {
+        const res = await fetch(`/compromisosst/api/compromiso/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cargo_trabajador: cargo,
+            fecha_documento: fechaInput.required ? fechaInput.value : undefined,
+            observaciones,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          cerrarModalEditarCompromiso();
+          showToast('Compromiso SST actualizado', 'success');
+          await cargarCompromisos();
+          abrirDetalleCompromiso(id);
+        } else {
+          showToast(data.error || 'Error al actualizar el compromiso', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al actualizar el compromiso', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarPDFCompromiso(id) {
+      if (!confirm('¿Desea regenerar el PDF de este compromiso? Se actualizará el documento con la plantilla vigente manteniendo las firmas.')) return;
+      showLoading('Regenerando documento PDF...');
+      try {
+        const res = await fetch(`/compromisosst/api/compromiso/${encodeURIComponent(id)}/regenerar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('PDF regenerado exitosamente', 'success');
+          await cargarCompromisos();
+          abrirDetalleCompromiso(id);
+        } else {
+          showToast(data.error || 'No se pudo regenerar el PDF', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     // Modal Canvas para Firma de Analista SST en CSST
@@ -8365,14 +8517,48 @@
     let currentExpedienteTrabajadorId = null;
 
     // Control de Permisos por Rol para Casos Médicos y Bitácoras
+    // dd/mm/aaaa hh:mm en hora de Bogotá
+    function fechaHoraFirmaCm(valor) {
+      if (!valor) return '—';
+      const d = new Date(valor);
+      if (isNaN(d)) return String(valor);
+      const p = {};
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .formatToParts(d).forEach(x => { p[x.type] = x.value; });
+      return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+    }
+
+    // Rehace el PDF del acta firmada con los datos actuales del caso, conservando la firma y su fecha
+    async function regenerarActaCasoMedico(idCaso, tipo) {
+      if (!confirm(`¿Desea regenerar el acta de ${tipo} con los datos actuales del caso? Se conserva la firma del trabajador y su fecha.`)) return;
+      showLoading('Regenerando acta...');
+      try {
+        const res = await fetch(`/casosmedicos/api/caso/${encodeURIComponent(idCaso)}/regenerar-acta`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, tipo })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(`Acta de ${tipo} regenerada`, 'success');
+          if (data.url_doc) window.open(`${data.url_doc}?v=${Date.now()}`, '_blank');
+        } else {
+          showToast(data.error || 'No se pudo regenerar el acta', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Permisos de Casos Médicos: Config_Parametros (sst / Casos Medicos), ver configSst.js
     function puedeCrearCaso() {
-      const rol = String(CONFIG.rol || '').trim();
-      return ['Sistema', 'AdmSst', 'LiderSst'].includes(rol);
+      return permisoSst('cm', 'crear');
     }
 
     function puedeCrearBitacora() {
-      const rol = String(CONFIG.rol || '').trim();
-      return ['Sistema', 'AdmSst', 'LiderSst', 'AnaSst', 'AuxSst'].includes(rol);
+      return permisoSst('cm', 'bitacora');
     }
 
     function actualizarPermisosBotonesCm() {
@@ -8844,9 +9030,10 @@
           const creador = String(c.usuario || '').trim().toLowerCase();
           const usuId = String(CONFIG.usuarioId || '').trim().toLowerCase();
           const usuNombre = String(CONFIG.usuarioNombre || '').trim().toLowerCase();
-          const esAdmin = ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
-          const puedeEliminarCaso = esAdmin || (creador && (creador === usuId || creador === usuNombre));
-          const puedeEditarCaso = puedeCrearCaso() || (creador && (creador === usuId || creador === usuNombre));
+          const esCreadorCaso = !!creador && (creador === usuId || creador === usuNombre);
+          const puedeEliminarCaso = permisoSst('cm', 'eliminar') || esCreadorCaso;
+          const puedeEditarCaso = permisoSst('cm', 'editar') || esCreadorCaso;
+          const puedeActasCaso = permisoSst('cm', 'actas') || esCreadorCaso;
 
           // Bitácoras hijas del caso
           const bitacoras = Array.isArray(c.bitacoras) ? c.bitacoras : [];
@@ -8883,7 +9070,7 @@
 
               // Permiso de eliminación de bitácora
               const creadorBit = String(b.usuario || '').trim().toLowerCase();
-              const puedeEliminarBit = esAdmin || (creadorBit && (creadorBit === usuId || creadorBit === usuNombre));
+              const puedeEliminarBit = permisoSst('cm', 'eliminar') || (creadorBit && (creadorBit === usuId || creadorBit === usuNombre));
 
               return `
                 <div class="cm-bitacora-card">
@@ -9022,8 +9209,17 @@
                             <span>📄</span> Ver Acta de Apertura Firmada
                           </a>
                           <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
-                            Firmado el: ${c.fecha_firma_apertura ? c.fecha_firma_apertura.slice(0, 10).split('-').reverse().join('/') : '—'}
+                            Firmado el: ${fechaHoraFirmaCm(c.fecha_firma_apertura)}
                           </span>
+                          ${puedeEditarCaso ? `
+                            <button type="button" class="btn btn-sm" onclick="regenerarActaCasoMedico(${c.id}, 'apertura')" style="margin-top:6px; background:var(--bg-elevated); color:var(--text); border:1px solid var(--border-strong); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              🔄 Regenerar Acta
+                            </button>
+                          ` : ''}
+                        </div>
+                      ` : c.estado_general_id === 1 && !puedeActasCaso ? `
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">
+                          Pendiente de firma del trabajador.
                         </div>
                       ` : c.estado_general_id === 1 ? `
                         <div style="display:flex; flex-direction:column; gap:6px;">
@@ -9074,8 +9270,17 @@
                             <span>📄</span> Ver Acta de Cierre Firmada
                           </a>
                           <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
-                            Firmado el: ${c.fecha_firma_cierre ? c.fecha_firma_cierre.slice(0, 10).split('-').reverse().join('/') : '—'}
+                            Firmado el: ${fechaHoraFirmaCm(c.fecha_firma_cierre)}
                           </span>
+                          ${puedeEditarCaso ? `
+                            <button type="button" class="btn btn-sm" onclick="regenerarActaCasoMedico(${c.id}, 'cierre')" style="margin-top:6px; background:var(--bg-elevated); color:var(--text); border:1px solid var(--border-strong); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              🔄 Regenerar Acta
+                            </button>
+                          ` : ''}
+                        </div>
+                      ` : c.estado_general_id === 2 && !puedeActasCaso ? `
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">
+                          Pendiente de firma del trabajador.
                         </div>
                       ` : c.estado_general_id === 2 ? `
                         <div style="display:flex; flex-direction:column; gap:6px;">

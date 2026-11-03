@@ -880,6 +880,7 @@ router.post('/api/responder/:id', async (req, res) => {
     const base64Data = firma.replace(/^data:image\/png;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
     const urlFirmaGcs = await subirFirma(ev.identificacion, buffer);
+    const fechaFirma = new Date();
 
     // 4. Obtener ítems actualizados (con seleccionada = 'SI') para renderizar el PDF
     const [updatedItems] = await pool.execute(
@@ -891,7 +892,8 @@ router.post('/api/responder/:id', async (req, res) => {
       ...ev,
       puntaje: score,
       resultado,
-      firma_trabajador: urlFirmaGcs
+      firma_trabajador: urlFirmaGcs,
+      fecha_firma: fechaFirma
     };
 
     // 5. Obtener vinculación para el PDF
@@ -917,9 +919,9 @@ router.post('/api/responder/:id', async (req, res) => {
     // 7. Actualizar registro principal en la base de datos
     await pool.execute(
       `UPDATE Maestro_capacitacionsst SET
-         puntaje = ?, resultado = ?, firma_trabajador = ?, url_doc = ?, token_firma = NULL, token_expira = NULL
+         puntaje = ?, resultado = ?, firma_trabajador = ?, fecha_firma = ?, url_doc = ?, token_firma = NULL, token_expira = NULL
        WHERE id_capacitacion = ?`,
-      [score, resultado, urlFirmaGcs, urlDoc, id_capacitacion]
+      [score, resultado, urlFirmaGcs, fechaFirma, urlDoc, id_capacitacion]
     );
 
     // 8. Registrar documento en Maestro_docTrabajador (Tipo 74, Prefijo CAPSST)

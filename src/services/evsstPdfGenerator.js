@@ -1,6 +1,6 @@
 const pool = require('./db');
 const { generarPDF, generarPDFDesdeHTML } = require('./renderer');
-const { formatoDePlantilla } = require('./plantilla');
+const { formatoDePlantilla, firmaConFecha } = require('./plantilla');
 const { LOGO_BASE64, ACTO_INSEGURO_1_BASE64, ACTO_INSEGURO_2_BASE64 } = require('./assets');
 
 const NOMBRE_PLANTILLA = 'evaluacion_sst';
@@ -196,7 +196,7 @@ async function armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, p9Selections 
     : '<span class="badge-no-aprobado">NO APROBADO</span>';
 
   const firmaTrabajadorHtml = ev.firma_trabajador
-    ? `<img src="${esc(ev.firma_trabajador)}" class="sig-img" alt="Firma">`
+    ? firmaConFecha(`<img src="${esc(ev.firma_trabajador)}" class="sig-img" alt="Firma">`, ev.fecha_firma)
     : '<span class="firma-nota">No firmó dentro del plazo de 48 horas</span>';
 
   const datos = {
@@ -256,7 +256,7 @@ async function renderPDF(ev, vin, evaluadorNombre) {
   // Check signature status (respaldo si la plantilla está inactiva)
   let firmaHtml = '';
   if (ev.firma_trabajador) {
-    firmaHtml = `<img src="${ev.firma_trabajador}" style="max-height: 80px; max-width: 250px; display: block; margin: 4px auto;" />`;
+    firmaHtml = firmaConFecha(`<img src="${ev.firma_trabajador}" style="max-height: 80px; max-width: 250px; display: block; margin: 4px auto;" />`, ev.fecha_firma);
   } else {
     firmaHtml = `<div class="no-firmo">No firmó dentro del plazo de 48 horas</div>`;
   }

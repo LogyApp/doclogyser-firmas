@@ -218,6 +218,10 @@ if (tareasDesactivadas) {
   const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
   iniciarProgramadorFormaPago();
 
+  // Resumen diario de Casos Médicos en alerta (7:00 AM Colombia; Config_Parametros sst / Casos Medicos)
+  const { iniciarProgramadorAlertasCasos } = require('./src/services/casosMedicosAlertas');
+  iniciarProgramadorAlertasCasos();
+
   // Reporte diario de ingresos sin confirmar "Tomó Cargo" (a las 7:30 AM Colombia)
   const { iniciarProgramadorTomoCargo } = require('./src/services/tomoCargoNotifier');
   iniciarProgramadorTomoCargo();

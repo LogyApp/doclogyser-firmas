@@ -23,7 +23,7 @@ const {
   notificacionesHabilitadas,
   datosFormato,
 } = require('../services/configParticipacion');
-const { formatoDePlantilla } = require('../services/plantilla');
+const { formatoDePlantilla, firmaConFecha } = require('../services/plantilla');
 
 const router = express.Router();
 const HTML_FORM_PATH = path.join(__dirname, '../views/formparticipacion/form.html');
@@ -231,7 +231,7 @@ async function armarHtmlDesdePlantilla({ asistencia, asistentes, evidencias, for
           <td>${esc(ast.identificacion)}</td>
           <td>${esc(ast.cargo)}</td>
           <td class="col-firma">${ast.firmaBase64
-            ? `<img src="${ast.firmaBase64}" class="firma-img" alt="Firma">`
+            ? firmaConFecha(`<img src="${ast.firmaBase64}" class="firma-img" alt="Firma">`, ast.fecha_firma)
             : `<span class="firma-nota">${esc(ast.anotacion)}</span>`}</td>
         </tr>`).join('');
 
@@ -305,7 +305,7 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
 
   const [items] = await pool.execute(
     `SELECT i.id_item_asistencia, i.nombre_trabajador, i.identificacion, i.cargo, i.firma_asistente,
-            i.fecha_envio_correo, s.Email AS email
+            i.fecha_firma, i.fecha_envio_correo, s.Email AS email
      FROM Dynamic_formato_itemsAsistencia i
      LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = i.identificacion
      WHERE i.id_asistencia = ?
@@ -349,7 +349,7 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
   let num = 1;
   for (const ast of asistentesConFirma) {
     const celdaFirma = ast.firmaBase64
-      ? `<img src="${ast.firmaBase64}" style="height: 38px; display: block; margin: 0 auto;" />`
+      ? firmaConFecha(`<img src="${ast.firmaBase64}" style="height: 38px; display: block; margin: 0 auto;" />`, ast.fecha_firma)
       : `<span style="color: #555; font-size: 7.5pt; font-style: italic;">${esc(ast.anotacion)}</span>`;
     filasAsistentesHtml += `
       <tr>

@@ -1,6 +1,7 @@
 const pool = require('./db');
 const { randomUUID } = require('crypto');
 const { LOGO_BASE64 } = require('./assets');
+const { textoFirmado } = require('./plantilla');
 const { generarPDFDesdeHTML } = require('./renderer');
 const { subirPDFAts, subirEvidenciaAts, obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
 // resolverCoordinadorOperacionATS se define localmente con jerarquia de 3 pasos
@@ -1132,7 +1133,7 @@ async function _generarPdfAts(idAts, usuario = null) {
   const filasTrabajadoresHtml = trabajadores.length > 0 ? trabajadores.map((t, idx) => {
     let firmaContent = '';
     if (t.estado_firma === 'ACEPTADA') {
-      const fechaFmt = formatFechaEsp(t.fecha_firma);
+      const fechaFmt = textoFirmado(t.fecha_firma) || formatFechaEsp(t.fecha_firma);
       if (t.firma_url && t.firma_url.startsWith('data:image')) {
         firmaContent = `<img src="${t.firma_url}" style="max-height:26px; max-width:110px; display:block; margin:0 auto;" /><div style="font-size:5.8pt; color:#15803d; text-align:center;">✓ ${fechaFmt}</div>`;
       } else {
@@ -1160,19 +1161,19 @@ async function _generarPdfAts(idAts, usuario = null) {
   // 7. Cajas de Firmas de Coordinador y SST
   let coordFirmaBox = '';
   if (detalle.fecha_firma_coordinador) {
-    const fCoord = formatFechaEsp(detalle.fecha_firma_coordinador);
+    const fCoord = textoFirmado(detalle.fecha_firma_coordinador) || formatFechaEsp(detalle.fecha_firma_coordinador);
     if (detalle.firma_coordinador_url && detalle.firma_coordinador_url.startsWith('data:image')) {
       coordFirmaBox = `
         <div style="margin-top:4px;">
           <img src="${detalle.firma_coordinador_url}" style="max-height:35px; max-width:140px; display:block;" />
-          <div style="font-size:6pt; color:#15803d; font-weight:700;">✓ Firmado el ${fCoord}</div>
+          <div style="font-size:6pt; color:#15803d; font-weight:700;">✓ ${fCoord}</div>
         </div>
       `;
     } else {
       coordFirmaBox = `
         <div style="margin-top:6px; border:1px solid #16a34a; background:#f0fdf4; padding:3px 6px; border-radius:3px; display:inline-block;">
           <span style="font-size:6.5pt; color:#15803d; font-weight:700;">✓ FIRMADO DIGITALMENTE</span>
-          <div style="font-size:5.8pt; color:#475569;">Fecha: ${fCoord}</div>
+          <div style="font-size:5.8pt; color:#475569;">${fCoord}</div>
         </div>
       `;
     }
@@ -1182,19 +1183,19 @@ async function _generarPdfAts(idAts, usuario = null) {
 
   let sstFirmaBox = '';
   if (detalle.fecha_firma_sst) {
-    const fSst = formatFechaEsp(detalle.fecha_firma_sst);
+    const fSst = textoFirmado(detalle.fecha_firma_sst) || formatFechaEsp(detalle.fecha_firma_sst);
     if (detalle.firma_sst_url && detalle.firma_sst_url.startsWith('data:image')) {
       sstFirmaBox = `
         <div style="margin-top:4px;">
           <img src="${detalle.firma_sst_url}" style="max-height:35px; max-width:140px; display:block;" />
-          <div style="font-size:6pt; color:#15803d; font-weight:700;">✓ Firmado el ${fSst}</div>
+          <div style="font-size:6pt; color:#15803d; font-weight:700;">✓ ${fSst}</div>
         </div>
       `;
     } else {
       sstFirmaBox = `
         <div style="margin-top:6px; border:1px solid #16a34a; background:#f0fdf4; padding:3px 6px; border-radius:3px; display:inline-block;">
           <span style="font-size:6.5pt; color:#15803d; font-weight:700;">✓ FIRMADO DIGITALMENTE</span>
-          <div style="font-size:5.8pt; color:#475569;">Fecha: ${fSst}</div>
+          <div style="font-size:5.8pt; color:#475569;">${fSst}</div>
         </div>
       `;
     }

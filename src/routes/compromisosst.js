@@ -21,8 +21,9 @@ const {
   marcarNotificacionesLeidas,
   marcarTodasLeidas
 } = require('../services/notificacionesService');
-const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
-const { generarPDF } = require('../services/renderer');
+const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
+const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
+const { LOGO_BASE64 } = require('../services/assets');
 const { computarAccesoSst } = require('../services/accesoSst');
 const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
 
@@ -114,6 +115,127 @@ async function obtenerIdentificacionPorUsuarioORol(usuarioId, rol) {
     console.error('[compromisosst] Error en obtenerIdentificacionPorUsuarioORol:', e.message);
     return null;
   }
+}
+
+const NOMBRE_LIDER_SST_DEFECTO = 'YULIED ECHAVARRÍA VASCO';
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fechaHoraBogotaTexto(d = new Date()) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+function hoyBogotaStr() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
+// 'AAAA-MM-DD' de un DATE de MySQL (Date o texto)
+function fechaIso(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date) return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(valor);
+  const m = String(valor).match(/^\d{4}-\d{2}-\d{2}/);
+  return m ? m[0] : null;
+}
+
+// Fecha en que se generó el PDF según el nombre del archivo (<cc>.CSST.<aammdd...>.pdf),
+// para compromisos que no tienen fecha_documento.
+function fechaDesdeUrlDoc(urlDoc) {
+  const m = String(urlDoc || '').match(/\.CSST\.(\d{2})(\d{2})(\d{2})\d*\.pdf$/i);
+  return m ? `20${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
+function fechaDocumentoCompromiso(c) {
+  return fechaIso(c.fecha_documento) || fechaDesdeUrlDoc(c.url_doc) || hoyBogotaStr();
+}
+
+async function nombreLiderSstPorDefecto() {
+  const [rows] = await pool.execute("SELECT Nombre FROM Maestro_Usuarios WHERE Rol = 'LiderSst' LIMIT 1").catch(() => [[]]);
+  return rows.length && rows[0].Nombre ? rows[0].Nombre : NOMBRE_LIDER_SST_DEFECTO;
+}
+
+// Arma el PDF del compromiso con la plantilla 'compromisosst' (Maestro_Plantillas) y lo sube.
+// c: fila de Dynamic_compromisosst con las firmas (url_firma_*) y nombres con que se genera.
+// Lo usan las firmas del Analista y del Líder SST, la edición y la regeneración.
+// La plantilla moderna (con {{logo_src}}) es un documento completo con su propio margen; la
+// anterior se envuelve con generarPDF. Se llenan las variables de las dos.
+async function armarPdfCompromiso(c) {
+  const plantilla = await obtenerPlantilla('compromisosst');
+  const html = String(plantilla.contenido_html || '');
+  const disenoModerno = html.includes('{{logo_src}}');
+
+  const fechaDoc = fechaDocumentoCompromiso(c);
+  const fechaFmt = new Date(`${fechaDoc}T12:00:00-05:00`).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
+
+  const [vinRows] = await pool.execute(
+    'SELECT Regional, `Operación` FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+    [c.identificaciontrabajador]
+  );
+  const opTrabajador = vinRows.length ? `${vinRows[0]['Operación']} (${vinRows[0].Regional})` : 'LOG&SER S.A.S.';
+  const nombreLider = c.nombre_lidersst || await nombreLiderSstPorDefecto();
+
+  // Cada firma lleva debajo su fecha de firma (fecha_firma_*), como en LogySign
+  const firmaModerna = (url, fecha) => (url ? firmaConFecha(`<img src="${esc(url)}" class="sig-img" alt="Firma">`, fecha) : '<span class="firma-nota">Sin firma</span>');
+  const firmaAnterior = (url, fecha) => (url ? firmaConFecha(`<img src="${url}" style="height:70px;display:block;margin:0 auto">`, fecha) : '');
+
+  const datos = {
+    // Diseño moderno
+    logo_src:            LOGO_BASE64,
+    id_compromiso:       esc(c.idcsst),
+    cargo:               esc(c.cargo_trabajador) || '—',
+    cargo_analista:      esc(c.cargo_analista) || '—',
+    fecha_generacion:    fechaHoraBogotaTexto(),
+    firma_trabajador_html: firmaModerna(c.url_firma_trabajador, c.fecha_firma_trabajador),
+    firma_analista_html:   firmaModerna(c.url_firma_analista, c.fecha_firma_analista),
+    firma_lidersst_html:   firmaModerna(c.url_firma_lidersst, c.fecha_firma_lidersst),
+    // Diseño anterior
+    firma_trabajador:    firmaAnterior(c.url_firma_trabajador, c.fecha_firma_trabajador),
+    firma_analista:      firmaAnterior(c.url_firma_analista, c.fecha_firma_analista),
+    firma_lidersst:      firmaAnterior(c.url_firma_lidersst, c.fecha_firma_lidersst),
+    // Comunes
+    fecha:               esc(fechaFmt),
+    nombre_trabajador:   esc(String(c.nombre_trabajador || '').toUpperCase()),
+    identificacion:      esc(c.identificaciontrabajador),
+    operacion:           esc(opTrabajador),
+    nombre_analista:     esc(c.nombre_analista) || '—',
+    nombre_lidersst:     esc(nombreLider),
+  };
+
+  const htmlFinal = reemplazarVariables(html, datos);
+  const pdfBuffer = disenoModerno
+    ? await generarPDFDesdeHTML(htmlFinal, { margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } })
+    : await generarPDF(htmlFinal, { margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' } });
+  return subirPDFCompromisoSST(c.identificaciontrabajador, formatTimestamp(), pdfBuffer);
+}
+
+// Regenera el PDF de un compromiso ya generado con sus datos actuales y la plantilla vigente,
+// conservando las firmas y la fecha del documento. Reemplaza el documento en
+// Maestro_docTrabajador y en la notificación de la campana.
+async function regenerarPdfCompromiso(c) {
+  const fechaDoc = fechaDocumentoCompromiso(c);
+  const urlDoc = await armarPdfCompromiso({ ...c, fecha_documento: fechaDoc });
+  await pool.execute(
+    'UPDATE Dynamic_compromisosst SET url_doc = ?, fecha_documento = ? WHERE idcsst = ?',
+    [urlDoc, fechaDoc, c.idcsst]
+  );
+  let reemplazado = 0;
+  if (c.url_doc) {
+    const [upd] = await pool.execute(
+      "UPDATE Maestro_docTrabajador SET Doc = ? WHERE Identificación = ? AND Prefijo = 'CSST' AND Doc = ?",
+      [urlDoc, String(c.identificaciontrabajador), c.url_doc]
+    );
+    reemplazado = upd.affectedRows;
+  }
+  if (!reemplazado) await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
+  pool.execute(
+    "UPDATE Maestro_notificaciones SET url_doc = ? WHERE modulo = 'csst' AND referencia_id = ? AND url_doc IS NOT NULL",
+    [urlDoc, c.idcsst]
+  ).catch(e => console.error('[compromisosst] Error actualizando notificación CSST:', e.message));
+  return urlDoc;
 }
 
 // Acceso gobernado por Maestro_Menu (sst, Sección "Compromiso SST"), igual
@@ -879,7 +1001,7 @@ router.post('/api/firmar-trabajador', async (req, res) => {
 
     await pool.execute(
       `UPDATE Dynamic_compromisosst 
-       SET firma_trabajador = ?, url_firma_trabajador = ?, token_trabajador = NULL, token_trabajador_expira = NULL 
+       SET firma_trabajador = ?, url_firma_trabajador = ?, fecha_firma_trabajador = NOW(), token_trabajador = NULL, token_trabajador_expira = NULL
        WHERE idcsst = ?`,
       [firma_base64, urlFirmaTrab, idcsst]
     );
@@ -965,66 +1087,48 @@ router.post('/api/firmar-analista', async (req, res) => {
     const urlFirmaAna = await subirFirma(finalCC, buffer);
 
     // 1. Obtener el nombre del Líder SST de la tabla Maestro_Usuarios (Rol = 'LiderSst')
-    const [liderUserRows] = await pool.execute(
-      "SELECT Nombre FROM Maestro_Usuarios WHERE Rol = 'LiderSst' LIMIT 1"
-    );
-    const nombreLiderSst = liderUserRows.length && liderUserRows[0].Nombre
-      ? liderUserRows[0].Nombre
-      : 'YULIED ECHAVARRÍA VASCO';
+    const nombreLiderSst = await nombreLiderSstPorDefecto();
 
     // 2. Obtener firma del Líder SST en base64 y su URL
     const urlFirmaLider = 'https://storage.googleapis.com/firmas-images/1035427104/firmalidersst.png';
     const firmaLiderBase64 = await obtenerFirmaBase64Reciente('1035427104').catch(() => null) || 'FIRMADO_LIDER_AUTOMATICO';
 
     // 3. Generar PDF del compromiso inmediatamente
-    const plantilla = await obtenerPlantilla('compromisosst');
-    const fechaFmt = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-    
-    // Obtener regional del trabajador para el PDF
-    const [vinRows] = await pool.execute(
-      'SELECT Regional, `Operación` FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [c.identificaciontrabajador]
-    );
-    const opTrabajador = vinRows.length ? `${vinRows[0]['Operación']} (${vinRows[0].Regional})` : 'LOG&SER S.A.S.';
-
-    const datos = {
-      fecha:             fechaFmt,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
-      identificacion:    String(c.identificaciontrabajador),
-      operacion:         opTrabajador,
-      nombre_analista:   finalName || '—',
-      nombre_lidersst:   nombreLiderSst,
-      firma_trabajador:  `<img src="${c.url_firma_trabajador}" style="height:70px;display:block;margin:0 auto">`,
-      firma_analista:    `<img src="${urlFirmaAna}" style="height:70px;display:block;margin:0 auto">`,
-      firma_lidersst:    `<img src="${urlFirmaLider}" style="height:70px;display:block;margin:0 auto">`
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal, {
-      margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' }
+    const fechaDoc = hoyBogotaStr();
+    const fechaFirma = new Date(); // la del Líder SST se pone en el mismo momento
+    const urlDoc = await armarPdfCompromiso({
+      ...c,
+      nombre_analista: finalName,
+      cargo_analista: finalCargo,
+      url_firma_analista: urlFirmaAna,
+      url_firma_lidersst: urlFirmaLider,
+      nombre_lidersst: nombreLiderSst,
+      fecha_firma_analista: fechaFirma,
+      fecha_firma_lidersst: fechaFirma,
+      fecha_documento: fechaDoc,
     });
-
-    // Guardar PDF en el bucket
-    const timestamp = formatTimestamp();
-    const urlDoc = await subirPDFCompromisoSST(c.identificaciontrabajador, timestamp, pdfBuffer);
 
     // 4. Actualizar registro en la base de datos (con firmas de Analista y Líder, y url_doc)
     await pool.execute(
-      `UPDATE Dynamic_compromisosst 
-       SET firma_analista = ?, url_firma_analista = ?, 
+      `UPDATE Dynamic_compromisosst
+       SET firma_analista = ?, url_firma_analista = ?, fecha_firma_analista = ?,
            identificacionanalista = ?, nombre_analista = ?, cargo_analista = ?,
-           firma_lidersst = ?, url_firma_lidersst = ?, url_doc = ?,
-           token_lidersst = NULL, token_lidersst_expira = NULL 
+           firma_lidersst = ?, url_firma_lidersst = ?, fecha_firma_lidersst = ?, nombre_lidersst = ?, url_doc = ?, fecha_documento = ?,
+           token_lidersst = NULL, token_lidersst_expira = NULL
        WHERE idcsst = ?`,
       [
-        firma_base64, 
-        urlFirmaAna, 
-        finalCC, 
-        finalName, 
-        finalCargo, 
-        firmaLiderBase64, 
-        urlFirmaLider, 
-        urlDoc, 
+        firma_base64,
+        urlFirmaAna,
+        fechaFirma,
+        finalCC,
+        finalName,
+        finalCargo,
+        firmaLiderBase64,
+        urlFirmaLider,
+        fechaFirma,
+        nombreLiderSst,
+        urlDoc,
+        fechaDoc,
         idcsst
       ]
     );
@@ -1074,50 +1178,30 @@ router.post('/api/firmar-lider', async (req, res) => {
     const [[liderRow]] = await pool.execute(
       "SELECT nombre FROM Maestro_firma_corporativa WHERE email = 'sst.nacional@logyser.com' LIMIT 1"
     );
-    const nombreLiderSst = liderRow ? liderRow.nombre : 'YULIED ECHAVARRÍA VASCO';
+    const nombreLiderSst = liderRow ? liderRow.nombre : NOMBRE_LIDER_SST_DEFECTO;
 
     // Subir firma de la Líder SST a GCS
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const urlFirmaLider = await subirFirma('1035427104', buffer); // C.C. Líder
 
     // ═════ GENERACIÓN DE PDF COMPROMISO ═════
-    const plantilla = await obtenerPlantilla('compromisosst');
-    const fechaFmt = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-    
-    // Obtener regional del trabajador para el PDF
-    const [vinRows] = await pool.execute(
-      'SELECT Regional, `Operación` FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [c.identificaciontrabajador]
-    );
-    const opTrabajador = vinRows.length ? `${vinRows[0]['Operación']} (${vinRows[0].Regional})` : 'LOG&SER S.A.S.';
-
-    const datos = {
-      fecha:             fechaFmt,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
-      identificacion:    String(c.identificaciontrabajador),
-      operacion:         opTrabajador,
-      nombre_analista:   c.nombre_analista || '—',
-      nombre_lidersst:   nombreLiderSst,
-      firma_trabajador:  `<img src="${c.url_firma_trabajador}" style="height:70px;display:block;margin:0 auto">`,
-      firma_analista:    `<img src="${c.url_firma_analista}" style="height:70px;display:block;margin:0 auto">`,
-      firma_lidersst:    `<img src="${urlFirmaLider}" style="height:70px;display:block;margin:0 auto">`
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal, {
-      margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' }
+    const fechaDoc = hoyBogotaStr();
+    const fechaFirma = new Date();
+    const urlDoc = await armarPdfCompromiso({
+      ...c,
+      url_firma_lidersst: urlFirmaLider,
+      nombre_lidersst: nombreLiderSst,
+      fecha_firma_lidersst: fechaFirma,
+      fecha_documento: fechaDoc,
     });
-
-    // Guardar PDF en el bucket
-    const timestamp = formatTimestamp();
-    const urlDoc = await subirPDFCompromisoSST(c.identificaciontrabajador, timestamp, pdfBuffer);
 
     // Actualizar registro en base de datos
     await pool.execute(
-      `UPDATE Dynamic_compromisosst 
-       SET firma_lidersst = ?, url_firma_lidersst = ?, url_doc = ?, token_lidersst = NULL, token_lidersst_expira = NULL 
+      `UPDATE Dynamic_compromisosst
+       SET firma_lidersst = ?, url_firma_lidersst = ?, fecha_firma_lidersst = ?, nombre_lidersst = ?, url_doc = ?, fecha_documento = ?,
+           token_lidersst = NULL, token_lidersst_expira = NULL
        WHERE idcsst = ?`,
-      [firma_base64, urlFirmaLider, urlDoc, idcsst]
+      [firma_base64, urlFirmaLider, fechaFirma, nombreLiderSst, urlDoc, fechaDoc, idcsst]
     );
 
     // Registrar en Maestro_docTrabajador (Tipo 72, Prefijo CSST)
@@ -1167,7 +1251,7 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
       return res.status(400).json({ error: 'El Líder SST ya ha firmado anteriormente.' });
     }
 
-    let nombreLiderSst = 'YULIED ECHAVARRÍA VASCO';
+    let nombreLiderSst = NOMBRE_LIDER_SST_DEFECTO;
     if (acceso.rol === 'LiderSst' || acceso.rol === 'AdmSst') {
       nombreLiderSst = acceso.usuarioNombre;
     } else {
@@ -1184,43 +1268,23 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
     const urlFirmaLider = await subirFirma(finalCC, buffer);
 
     // ═════ GENERACIÓN DE PDF COMPROMISO ═════
-    const plantilla = await obtenerPlantilla('compromisosst');
-    const fechaFmt = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-    
-    // Obtener regional del trabajador para el PDF
-    const [vinRows] = await pool.execute(
-      'SELECT Regional, `Operación` FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [c.identificaciontrabajador]
-    );
-    const opTrabajador = vinRows.length ? `${vinRows[0]['Operación']} (${vinRows[0].Regional})` : 'LOG&SER S.A.S.';
-
-    const datos = {
-      fecha:             fechaFmt,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
-      identificacion:    String(c.identificaciontrabajador),
-      operacion:         opTrabajador,
-      nombre_analista:   c.nombre_analista || '—',
-      nombre_lidersst:   nombreLiderSst,
-      firma_trabajador:  `<img src="${c.url_firma_trabajador}" style="height:70px;display:block;margin:0 auto">`,
-      firma_analista:    `<img src="${c.url_firma_analista}" style="height:70px;display:block;margin:0 auto">`,
-      firma_lidersst:    `<img src="${urlFirmaLider}" style="height:70px;display:block;margin:0 auto">`
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal, {
-      margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' }
+    const fechaDoc = hoyBogotaStr();
+    const fechaFirma = new Date();
+    const urlDoc = await armarPdfCompromiso({
+      ...c,
+      url_firma_lidersst: urlFirmaLider,
+      nombre_lidersst: nombreLiderSst,
+      fecha_firma_lidersst: fechaFirma,
+      fecha_documento: fechaDoc,
     });
-
-    // Guardar PDF en el bucket
-    const timestamp = formatTimestamp();
-    const urlDoc = await subirPDFCompromisoSST(c.identificaciontrabajador, timestamp, pdfBuffer);
 
     // Actualizar registro en base de datos
     await pool.execute(
-      `UPDATE Dynamic_compromisosst 
-       SET firma_lidersst = ?, url_firma_lidersst = ?, url_doc = ?, token_lidersst = NULL, token_lidersst_expira = NULL 
+      `UPDATE Dynamic_compromisosst
+       SET firma_lidersst = ?, url_firma_lidersst = ?, fecha_firma_lidersst = ?, nombre_lidersst = ?, url_doc = ?, fecha_documento = ?,
+           token_lidersst = NULL, token_lidersst_expira = NULL
        WHERE idcsst = ?`,
-      [firma_base64, urlFirmaLider, urlDoc, idcsst]
+      [firma_base64, urlFirmaLider, fechaFirma, nombreLiderSst, urlDoc, fechaDoc, idcsst]
     );
 
     // Registrar en Maestro_docTrabajador (Tipo 72, Prefijo CSST)
@@ -1241,6 +1305,81 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
     res.json({ ok: true, urlDoc });
   } catch (err) {
     console.error('[compromisosst] POST /api/firmar-lider-directo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: PUT /api/compromiso/:id ═════
+// Edita cargo, fecha del documento y observaciones. Con el PDF ya generado solo los roles de
+// Config_Parametros (sst / Compromiso SST, editarFirmado), y se regenera con las mismas firmas.
+router.put('/api/compromiso/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cargo_trabajador, fecha_documento, observaciones } = req.body;
+    const acceso = await computarAccesoCSST(req.body.usuario || req.query.usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para editar el compromiso.' });
+    }
+
+    const [[c]] = await pool.execute('SELECT * FROM Dynamic_compromisosst WHERE idcsst = ?', [id]);
+    if (!c) return res.status(404).json({ error: 'Compromiso no encontrado' });
+
+    const estaGenerado = !!c.url_doc;
+    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, estaGenerado ? 'editarFirmado' : 'crear'))) {
+      return res.status(403).json({
+        error: estaGenerado
+          ? 'Tu rol no tiene permiso para editar y regenerar el PDF de un compromiso ya firmado.'
+          : 'No autorizado para editar el compromiso.',
+      });
+    }
+
+    const nuevoCargo = String(cargo_trabajador == null ? c.cargo_trabajador || '' : cargo_trabajador).trim();
+    if (!nuevoCargo) return res.status(400).json({ error: 'El cargo es obligatorio.' });
+
+    // La fecha del documento solo aplica cuando ya hay PDF (es la fecha que se imprime)
+    let nuevaFecha = fechaIso(c.fecha_documento);
+    if (estaGenerado) {
+      nuevaFecha = fecha_documento ? String(fecha_documento).slice(0, 10) : fechaDocumentoCompromiso(c);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)) return res.status(400).json({ error: 'Fecha del documento inválida.' });
+      if (nuevaFecha > hoyBogotaStr()) return res.status(400).json({ error: 'La fecha del documento no puede ser superior a hoy.' });
+    }
+    const nuevasObs = observaciones === undefined ? c.observaciones : (observaciones || '');
+
+    await pool.execute(
+      'UPDATE Dynamic_compromisosst SET cargo_trabajador = ?, fecha_documento = ?, observaciones = ? WHERE idcsst = ?',
+      [nuevoCargo, nuevaFecha, nuevasObs, id]
+    );
+
+    let urlDoc = c.url_doc;
+    if (estaGenerado) {
+      urlDoc = await regenerarPdfCompromiso({ ...c, cargo_trabajador: nuevoCargo, fecha_documento: nuevaFecha, observaciones: nuevasObs });
+    }
+
+    res.json({ ok: true, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[compromisosst] PUT /api/compromiso/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/compromiso/:id/regenerar-pdf ═════
+// Rehace el PDF ya generado con la plantilla vigente (Maestro_Plantillas) y las mismas firmas.
+router.post('/api/compromiso/:id/regenerar-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const acceso = await computarAccesoCSST(req.body.usuario || req.query.usuario);
+    if (!acceso || !(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'editarFirmado'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para regenerar el PDF de un compromiso firmado.' });
+    }
+
+    const [rows] = await pool.execute('SELECT * FROM Dynamic_compromisosst WHERE idcsst = ?', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Compromiso no encontrado' });
+    if (!rows[0].url_doc) return res.status(400).json({ error: 'Este compromiso aún no tiene el PDF generado.' });
+
+    const urlDoc = await regenerarPdfCompromiso(rows[0]);
+    res.json({ ok: true, idcsst: id, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[compromisosst] POST /api/compromiso/:id/regenerar-pdf:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1368,33 +1507,43 @@ router.delete('/api/compromiso/:id', async (req, res) => {
 
     // 1. Verificar si existe el compromiso y su estado de firma
     const [rows] = await pool.execute(
-      'SELECT usuario, url_doc, firma_trabajador, firma_analista, firma_lidersst FROM Dynamic_compromisosst WHERE idcsst = ? LIMIT 1',
+      'SELECT identificaciontrabajador, usuario, url_doc, firma_trabajador, firma_analista, firma_lidersst FROM Dynamic_compromisosst WHERE idcsst = ? LIMIT 1',
       [id]
     );
     if (!rows.length) {
       return res.status(404).json({ error: 'Compromiso no encontrado' });
     }
     const c = rows[0];
+    const estaFirmado = !!(c.url_doc || c.firma_trabajador || c.firma_analista || c.firma_lidersst);
 
-    // 2. Solo se puede eliminar si NO está firmado
-    if (c.url_doc || c.firma_trabajador || c.firma_analista || c.firma_lidersst) {
-      return res.status(400).json({ error: 'No se puede eliminar un compromiso que ya cuenta con firmas o documento generado.' });
-    }
+    if (estaFirmado) {
+      // 2a. Con firmas o PDF: solo los roles de "Roles que pueden eliminar compromisos SST firmados",
+      //     y se quita también su documento de Maestro_docTrabajador
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminarFirmado'))) {
+        return res.status(400).json({ error: 'No se puede eliminar un compromiso que ya cuenta con firmas o documento generado.' });
+      }
+      if (c.url_doc) {
+        await pool.execute(
+          "DELETE FROM Maestro_docTrabajador WHERE Identificación = ? AND Prefijo = 'CSST' AND Doc = ?",
+          [String(c.identificaciontrabajador), c.url_doc]
+        );
+      }
+    } else {
+      // 2b. Sin firmar: rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña);
+      //     Sistema elimina cualquiera, los demás solo los creados por su propio usuario
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
+        return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
+      }
 
-    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
-    // Rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña)
-    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
-      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
-    }
+      const esSistema = acceso.rol === 'Sistema';
+      const creador = String(c.usuario || '').trim().toLowerCase();
+      const usuSolicitante = String(usuario).trim().toLowerCase();
+      const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
+      const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
 
-    const esSistema = acceso.rol === 'Sistema';
-    const creador = String(c.usuario || '').trim().toLowerCase();
-    const usuSolicitante = String(usuario).trim().toLowerCase();
-    const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
-    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
-
-    if (!esSistema && !esPropio) {
-      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+      if (!esSistema && !esPropio) {
+        return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+      }
     }
 
     await pool.execute('DELETE FROM Dynamic_compromisosst WHERE idcsst = ?', [id]);

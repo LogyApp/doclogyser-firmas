@@ -18,7 +18,7 @@ const {
   marcarNotificacionesLeidas,
   marcarTodasLeidas
 } = require('../services/notificacionesService');
-const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
+const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const { LOGO_BASE64 } = require('../services/assets');
 const { computarAccesoSst } = require('../services/accesoSst');
@@ -58,6 +58,7 @@ const TEXTO_FIRMA_ADMINISTRATIVA = 'Documento generado administrativamente sin f
 // Arma el PDF del consentimiento con la plantilla 'pruebaconsumo' (Maestro_Plantillas) y lo sube.
 // Lo usan la firma del trabajador, la generación administrativa y la regeneración.
 // firmaSrc: URL o imagen base64 de la firma; null = generado sin firma.
+// c.fecha_firma: cuándo firmó el trabajador; se imprime bajo la firma (generado administrativamente no tiene).
 // La plantilla moderna es un documento HTML completo (como Capacitación SST); la anterior era un
 // fragmento que se envuelve con generarPDF. Se llenan las variables de las dos.
 async function armarPdfPrueba(c, firmaSrc) {
@@ -81,11 +82,11 @@ async function armarPdfPrueba(c, firmaSrc) {
     nombre_registra:       esc(nombreRegistra) || '—',
     fecha_generacion:      fechaHoraBogotaTexto(),
     firma_trabajador_html: firmaSrc
-      ? `<img src="${esc(firmaSrc)}" class="sig-img" alt="Firma">`
+      ? firmaConFecha(`<img src="${esc(firmaSrc)}" class="sig-img" alt="Firma">`, c.fecha_firma)
       : `<span class="firma-nota">${TEXTO_FIRMA_ADMINISTRATIVA}</span>`,
     // Diseño anterior
     firma_trabajador: firmaSrc
-      ? `<img src="${firmaSrc}" style="height:80px;display:block;margin-bottom:4px">`
+      ? firmaConFecha(`<img src="${firmaSrc}" style="height:80px;display:block;margin-bottom:4px">`, c.fecha_firma)
       : `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">${TEXTO_FIRMA_ADMINISTRATIVA}</div>`,
     // Comunes
     ciudad:            esc(c.ciudad) || '—',
@@ -108,7 +109,8 @@ async function armarPdfPrueba(c, firmaSrc) {
 // Reemplaza el documento en Maestro_docTrabajador.
 async function regenerarPdfPrueba(c) {
   const urlDoc = await armarPdfPrueba(c, c.url_firma || null);
-  await pool.execute('UPDATE Dynamic_pruebaconsumo SET url_doc = ? WHERE idprueba = ?', [urlDoc, c.idprueba]);
+  // fecha_registro es ON UPDATE CURRENT_TIMESTAMP: regenerar no la cambia
+  await pool.execute('UPDATE Dynamic_pruebaconsumo SET url_doc = ?, fecha_registro = fecha_registro WHERE idprueba = ?', [urlDoc, c.idprueba]);
   let reemplazado = 0;
   if (c.url_doc) {
     const [upd] = await pool.execute(
@@ -857,16 +859,17 @@ router.post('/api/firmar-asistente', async (req, res) => {
     // Subir la firma en GCS
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const urlFirma = await subirFirma(c.identificacion, buffer);
+    const fechaFirma = new Date();
 
     // Renderizar y guardar el PDF
-    const urlDoc = await armarPdfPrueba(c, urlFirma);
+    const urlDoc = await armarPdfPrueba({ ...c, fecha_firma: fechaFirma }, urlFirma);
 
     // Actualizar base de datos
     await pool.execute(
       `UPDATE Dynamic_pruebaconsumo 
-       SET firma_trabajador = ?, url_firma = ?, url_doc = ?, token_firma = NULL, token_expira = NULL 
+       SET firma_trabajador = ?, url_firma = ?, fecha_firma = ?, url_doc = ?, token_firma = NULL, token_expira = NULL 
        WHERE idprueba = ?`,
-      [firma_base64, urlFirma, urlDoc, idprueba]
+      [firma_base64, urlFirma, fechaFirma, urlDoc, idprueba]
     );
 
     // Registrar en Maestro_docTrabajador

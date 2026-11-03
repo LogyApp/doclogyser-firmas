@@ -698,6 +698,7 @@ router.post('/api/responder/:id', async (req, res) => {
     const base64Data = firma.replace(/^data:image\/png;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
     const urlFirmaGcs = await subirFirma(ev.identificacion, buffer);
+    const fechaFirma = new Date();
 
     // Temp object for PDF rendering
     const tempEv = {
@@ -705,7 +706,8 @@ router.post('/api/responder/:id', async (req, res) => {
       p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13,
       puntaje: score,
       resultado,
-      firma_trabajador: urlFirmaGcs
+      firma_trabajador: urlFirmaGcs,
+      fecha_firma: fechaFirma
     };
 
     // 3. Fetch details for PDF
@@ -731,13 +733,13 @@ router.post('/api/responder/:id', async (req, res) => {
     await pool.execute(
       `UPDATE Maestro_evaluacionsst SET
          p1 = ?, p2 = ?, p3 = ?, p4 = ?, p5 = ?, p6 = ?, p7 = ?, p8 = ?, p9 = ?, p10 = ?, p11 = ?, p12 = ?, p13 = ?,
-         puntaje = ?, resultado = ?, firma_trabajador = ?, url_doc = ?, token_firma = NULL, token_expira = NULL
+         puntaje = ?, resultado = ?, firma_trabajador = ?, fecha_firma = ?, url_doc = ?, token_firma = NULL, token_expira = NULL
        WHERE id_evaluacion = ?`,
       [
         p1 || null, p2 || null, p3 || null, p4 || null, p5 || null, p6 || null, p7 || null, p8 || null,
         p9 ? (typeof p9 === 'string' ? p9 : JSON.stringify(p9)) : null,
         p10 || null, p11 || null, p12 || null, p13 || null,
-        score, resultado, urlFirmaGcs, urlDoc, id_evaluacion
+        score, resultado, urlFirmaGcs, fechaFirma, urlDoc, id_evaluacion
       ]
     );
 
@@ -848,7 +850,7 @@ async function regenerarPdfEvaluacion(evActualizado, oldUrlDoc) {
   const nuevoUrlDoc = await subirPDFEvaluacionSST(evActualizado.identificacion, timestamp, pdfBuffer);
 
   await pool.execute(
-    'UPDATE Maestro_evaluacionsst SET url_doc = ? WHERE id_evaluacion = ?',
+    'UPDATE Maestro_evaluacionsst SET url_doc = ?, fecha_registro = fecha_registro WHERE id_evaluacion = ?', // regenerar no cambia la fecha de registro
     [nuevoUrlDoc, evActualizado.id_evaluacion]
   );
 

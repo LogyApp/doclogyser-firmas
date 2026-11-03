@@ -36,6 +36,8 @@ const PERMISOS_SST = {
     clave: 'csst',
     crear: 'Roles que pueden crear compromisos SST',
     eliminar: 'Roles que pueden eliminar compromisos SST',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de compromisos SST firmados',
+    eliminarFirmado: 'Roles que pueden eliminar compromisos SST firmados',
   },
   ATS: {
     clave: 'ats',
@@ -49,7 +51,25 @@ const PERMISOS_SST = {
     editarFirmado: 'Roles que pueden editar y regenerar PDF de formatos firmados en Participación',
     eliminarFirmado: 'Roles que pueden eliminar formatos firmados en Participación',
   },
+  // Casos Médicos: quien creó el caso siempre puede editarlo, eliminarlo y gestionar sus actas
+  'Casos Medicos': {
+    clave: 'cm',
+    crear: 'Roles que pueden crear casos médicos',
+    editar: 'Roles que pueden editar cualquier caso médico y regenerar sus actas',
+    eliminar: 'Roles que pueden eliminar cualquier caso médico o seguimiento',
+    bitacora: 'Roles que pueden registrar seguimientos en la bitácora de casos médicos',
+    actas: 'Roles que pueden generar y enviar enlaces de firma de actas de casos médicos',
+    defectos: {
+      crear: 'Sistema, AdmSst, LiderSst',
+      editar: 'Sistema, AdmSst, LiderSst',
+      eliminar: 'Sistema, AdmSst, LiderSst',
+      bitacora: 'Sistema, AdmSst, LiderSst, AnaSst, AuxSst',
+      actas: 'Sistema, AdmSst, LiderSst',
+    },
+  },
 };
+
+const ACCIONES = ['crear', 'eliminar', 'plantillas', 'editarFirmado', 'eliminarFirmado', 'editar', 'bitacora', 'actas'];
 
 const DEFECTO_POR_ACCION = {
   crear: ROLES_ESCRITURA_ANTERIOR,
@@ -73,10 +93,12 @@ async function leerParametros() {
 }
 
 function rolesDe(filas, seccion, accion) {
-  const concepto = (PERMISOS_SST[seccion] || {})[accion];
+  const def = PERMISOS_SST[seccion] || {};
+  const concepto = def[accion];
   if (!concepto) return [];
   const fila = filas.find((f) => normalizar(f.Seccion) === normalizar(seccion) && normalizar(f.Concepto) === normalizar(concepto));
-  const texto = fila ? String(fila.Parametro == null ? '' : fila.Parametro) : DEFECTO_POR_ACCION[accion];
+  const defecto = (def.defectos && def.defectos[accion]) || DEFECTO_POR_ACCION[accion] || '';
+  const texto = fila ? String(fila.Parametro == null ? '' : fila.Parametro) : defecto;
   return texto.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
@@ -85,7 +107,7 @@ function rolEn(roles, rol) {
   return !!buscado && roles.some((r) => normalizar(r) === buscado);
 }
 
-// ¿El rol puede hacer la acción ('crear', 'eliminar', 'plantillas') en la pestaña?
+// ¿El rol puede hacer la acción ('crear', 'eliminar', 'plantillas', ...) en la pestaña?
 async function rolPuedeSst(rol, seccion, accion) {
   return rolEn(rolesDe(await leerParametros(), seccion, accion), rol);
 }
@@ -104,7 +126,7 @@ async function permisosSstDelRol(rol) {
   const permisos = {};
   Object.entries(PERMISOS_SST).forEach(([seccion, def]) => {
     permisos[def.clave] = {};
-    ['crear', 'eliminar', 'plantillas', 'editarFirmado', 'eliminarFirmado'].forEach((accion) => {
+    ACCIONES.forEach((accion) => {
       if (def[accion]) permisos[def.clave][accion] = rolEn(rolesDe(filas, seccion, accion), rol);
     });
   });

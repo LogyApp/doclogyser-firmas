@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
-const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
+const { obtenerPlantilla, preprocesarDatos, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const {
   obtenerFirmaBase64Reciente,
@@ -158,20 +158,12 @@ router.post('/:proceso/:id', async (req, res) => {
         urlFirma = await obtenerUrlFirmaReciente(t.identificacion);
       }
 
-      const nowBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
-      const dd = String(nowBogota.getDate()).padStart(2, '0');
-      const mm = String(nowBogota.getMonth() + 1).padStart(2, '0');
-      const yyyy = nowBogota.getFullYear();
-      const hh = String(nowBogota.getHours()).padStart(2, '0');
-      const min = String(nowBogota.getMinutes()).padStart(2, '0');
-      const fechaFirmaTexto = `Firmado: ${dd}/${mm}/${yyyy} ${hh}:${min}`;
-
-      const firmaHtml = `
-        <div style="display:inline-block;text-align:center;">
-          <img src="${firma_base64}" style="max-height:85px;max-width:260px;display:block;margin:0 auto;" alt="Firma colaborador"/>
-          <div style="font-size:7pt;color:#555;margin-top:2px;font-family:Arial,sans-serif;">${fechaFirmaTexto}</div>
-        </div>
-      `;
+      // Firma con "Firmado: dd/mm/aaaa hh:mm" debajo (como en LogySign y los demás PDF de SST)
+      const fechaFirma = new Date();
+      const firmaHtml = firmaConFecha(
+        `<img src="${firma_base64}" class="sig-img" style="max-height:65px;max-width:240px;display:block;margin:0 auto;" alt="Firma colaborador"/>`,
+        fechaFirma
+      );
 
       const { datos: datosPlantilla } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml });
       const htmlFinal = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
@@ -185,18 +177,18 @@ router.post('/:proceso/:id', async (req, res) => {
       if (esApertura) {
         await pool.execute(
           `UPDATE Maestro_casosmedicos
-           SET url_firma_apertura = ?, firma_apertura = ?, url_acta_apertura = ?, fecha_firma_apertura = NOW(),
+           SET url_firma_apertura = ?, firma_apertura = ?, url_acta_apertura = ?, fecha_firma_apertura = ?,
                token_apertura = NULL, token_apertura_expira = NULL
            WHERE id = ?`,
-          [urlFirma, firma_base64, urlActa, id]
+          [urlFirma, firma_base64, urlActa, fechaFirma, id]
         );
       } else {
         await pool.execute(
           `UPDATE Maestro_casosmedicos
-           SET url_firma_cierre = ?, firma_cierre = ?, url_acta_cierre = ?, fecha_firma_cierre = NOW(),
+           SET url_firma_cierre = ?, firma_cierre = ?, url_acta_cierre = ?, fecha_firma_cierre = ?,
                token_cierre = NULL, token_cierre_expira = NULL
            WHERE id = ?`,
-          [urlFirma, firma_base64, urlActa, id]
+          [urlFirma, firma_base64, urlActa, fechaFirma, id]
         );
       }
 
