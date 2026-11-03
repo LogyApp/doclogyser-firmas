@@ -1439,7 +1439,7 @@
             <input type="text" id="modal-worker-search" placeholder="Ej. Incapacidad, HC..." oninput="onWorkerModalSearch()">
           </div>
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-cloud-upload" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.3);" onclick="irASociodemograficaDesdeWorkerModal()" title="Abrir detalle del trabajador en Sociodemografica">
+            <button type="button" class="btn-cloud-upload" id="btn-worker-socio" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.3);" onclick="irASociodemograficaDesdeWorkerModal()" title="Abrir detalle del trabajador en Sociodemografica">
               <span aria-hidden="true">📊</span>
               <span>Sociodemografica</span>
             </button>
@@ -2015,6 +2015,12 @@
       
       // Auto-prefill regionals & operations if only 1 is allowed
       prellenoAutomaticoFiltros();
+
+      // El botón "Sociodemografica" de la ventana de documentos solo se muestra a roles con esa Sección
+      if (!CONFIG.puedeVerSociodemografica) {
+        const btnSocioDocs = document.getElementById('btn-worker-socio');
+        if (btnSocioDocs) btnSocioDocs.style.display = 'none';
+      }
 
       const urlParamsInit = new URLSearchParams(window.location.search);
       const tabParam = (urlParamsInit.get('tab') || '').toLowerCase().trim();

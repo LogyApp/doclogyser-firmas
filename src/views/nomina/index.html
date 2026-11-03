@@ -2969,7 +2969,7 @@
     <div class="modal-full-header">
       <span>Ficha del trabajador</span>
       <div style="display:flex; align-items:center; gap:8px;">
-        <button type="button" onclick="irASociodemograficaDesdeFicha()" style="border:1px solid rgba(255,255,255,.38); font-weight:700;" title="Abrir detalle del trabajador en Sociodemografica">&#128202; Sociodemografica</button>
+        <button type="button" id="btnSocioFichaModal" onclick="irASociodemograficaDesdeFicha()" style="border:1px solid rgba(255,255,255,.38); font-weight:700;" title="Abrir detalle del trabajador en Sociodemografica">&#128202; Sociodemografica</button>
         <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
       </div>
     </div>
@@ -3175,6 +3175,11 @@
 <script>
   const _cfg = __CONFIG__;
   const { usuario, usuarioNombre, rol, puedeGenerarDocs, tabs } = _cfg;
+  // El botón "Sociodemografica" de la Ficha solo se muestra a roles con esa Sección en Maestro_Menu
+  if (!_cfg.puedeVerSociodemografica) {
+    const btnSocioFicha = document.getElementById('btnSocioFichaModal');
+    if (btnSocioFicha) btnSocioFicha.style.display = 'none';
+  }
   const NOMINA_FOTO_DEFAULT = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   let _nominaPerfil = null;
   let _firmaDigitalActual = null;
@@ -3691,7 +3696,7 @@
     _gestionSocioCtx = (socioCtx && (socioCtx.identificacion || socioCtx.idVinculacion)) ? socioCtx : null;
     const btnSocio = document.getElementById('btnSocioGestionModal');
     if (btnSocio) {
-      btnSocio.style.display = _gestionSocioCtx ? 'inline-flex' : 'none';
+      btnSocio.style.display = (_gestionSocioCtx && _cfg.puedeVerSociodemografica) ? 'inline-flex' : 'none';
     }
     document.getElementById('modalTitulo').textContent = titulo;
     navegarIframeGestion(document.getElementById('gestionIframe'), url);
