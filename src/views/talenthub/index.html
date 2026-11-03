@@ -794,6 +794,28 @@
       cursor: pointer;
       user-select: none;
     }
+    /* Barra "Filtros" con búsqueda siempre visible (igual que en los demás módulos) */
+    .filter-panel-header .filtros-toggle-left {
+      display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.82rem;
+      color: var(--text); text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center; background: var(--accent);
+      color: var(--accent-contrast, #fff); border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+      min-width: 20px; height: 20px; padding: 0 6px; letter-spacing: normal;
+    }
+    .filtros-chevron { display: inline-block; transition: transform 0.2s ease; color: var(--text); font-size: 0.95rem; }
+    .filtros-chevron.open { transform: rotate(90deg); }
+    .filtros-busqueda {
+      flex: 1; max-width: 380px; margin: 0 12px 0 auto; height: 34px; padding: 6px 10px;
+      font: inherit; font-size: 0.84rem; font-weight: 400; cursor: text;
+      border: 1.5px solid var(--border); border-radius: 8px; background: var(--card-bg, transparent); color: var(--text); outline: none;
+    }
+    .filtros-busqueda:focus { border-color: var(--accent); }
+    /* En celular la búsqueda queda en la misma línea que "Filtros" y ocupa el espacio libre */
+    @media (max-width: 640px) {
+      .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
+    }
     .filter-panel-title {
       font-size: 0.92rem;
       font-weight: 700;
@@ -1725,13 +1747,12 @@
       <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Inventario) -->
       <div class="filter-panel" id="panelFiltrosRequisiciones">
         <div class="filter-panel-header" onclick="toggleFiltrosRequisiciones()">
-          <div class="filter-panel-title">
-            <span>🔍</span> Filtros y Búsqueda de Requisiciones
-            <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCount" style="margin-left:8px; font-size:0.72rem;">Cargando...</span>
-          </div>
-          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltros" onclick="toggleFiltrosRequisiciones()">
-            <span id="iconToggleFiltros">▲ Mostrar</span>
-          </button>
+          <span class="filtros-toggle-left">
+            Filtros
+            <span class="filtros-badge" id="lblFiltrosActivosCount"></span>
+          </span>
+          <input type="search" class="filtros-busqueda" id="filtroReqQ" placeholder="&#128269; Buscar código RQ, cargo, solicitante o ciudad..." aria-label="Buscador de Requisiciones" oninput="clearTimeout(window._thBusq); window._thBusq = setTimeout(aplicarFiltrosRequisiciones, 450)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter') aplicarFiltrosRequisiciones()">
+          <span class="filtros-chevron" id="iconToggleFiltros">▸</span>
         </div>
         <div class="filter-panel-body" id="bodyFiltrosRequisiciones" style="display:none;">
 
@@ -1747,10 +1768,6 @@
           </div>
 
           <div class="filter-grid">
-            <div class="filter-group" style="grid-column: span 2;">
-              <label>Buscador de Requisiciones</label>
-              <input type="text" id="filtroReqQ" placeholder="Escribe código RQ, Cargo, Solicitante o Ciudad..." onkeydown="if(event.key==='Enter') aplicarFiltrosRequisiciones()">
-            </div>
             <div class="filter-group">
               <label>Regional</label>
               <select id="filtroReqRegional" onchange="onFiltroRegionalChange()">
@@ -1963,13 +1980,12 @@
       <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Requisiciones) -->
       <div class="filter-panel" id="panelFiltrosAspirantes">
         <div class="filter-panel-header" onclick="toggleFiltrosAspirantes()">
-          <div class="filter-panel-title">
-            <span>🔍</span> Filtros y Búsqueda de Aspirantes
-            <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCountAsp" style="margin-left:8px; font-size:0.72rem;">Cargando...</span>
-          </div>
-          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltrosAsp" onclick="toggleFiltrosAspirantes()">
-            <span id="iconToggleFiltrosAsp">▲ Ocultar</span>
-          </button>
+          <span class="filtros-toggle-left">
+            Filtros
+            <span class="filtros-badge" id="lblFiltrosActivosCountAsp"></span>
+          </span>
+          <input type="search" class="filtros-busqueda" id="filtroAspQ" placeholder="&#128269; Buscar nombre, cédula, teléfono, correo o cargo..." aria-label="Buscador de Aspirantes" oninput="clearTimeout(window._thBusq); window._thBusq = setTimeout(aplicarFiltrosAspirantes, 450)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter') aplicarFiltrosAspirantes()">
+          <span class="filtros-chevron open" id="iconToggleFiltrosAsp">▸</span>
         </div>
         <div class="filter-panel-body" id="bodyFiltrosAspirantes">
 
@@ -1985,10 +2001,6 @@
           </div>
 
           <div class="filter-grid">
-            <div class="filter-group" style="grid-column: span 2;">
-              <label>Buscador de Aspirantes</label>
-              <input type="text" id="filtroAspQ" placeholder="Escribe nombre, cédula, teléfono, correo o cargo..." onkeydown="if(event.key==='Enter') aplicarFiltrosAspirantes()">
-            </div>
             <div class="filter-group">
               <label>Requisición Vinculada</label>
               <select id="filtroAspRequisicion" onchange="aplicarFiltrosAspirantes()">
@@ -2490,20 +2502,15 @@
       <!-- Card Filtros Plegables (como en Requisiciones y Aspirantes) -->
       <div class="filter-panel" id="panelFiltrosSociodemografica">
         <div class="filter-panel-header" onclick="toggleFiltrosSociodemografica()">
-          <div class="filter-panel-title">
-            <span>🔍</span> Filtros y Búsqueda de Sociodemografica
-            <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCountSocio" style="margin-left:8px; font-size:0.72rem;">Sin filtros</span>
-          </div>
-          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltrosSocio" onclick="event.stopPropagation(); toggleFiltrosSociodemografica()">
-            <span id="iconToggleFiltrosSocio">▲ Mostrar</span>
-          </button>
+          <span class="filtros-toggle-left">
+            Filtros
+            <span class="filtros-badge" id="lblFiltrosActivosCountSocio"></span>
+          </span>
+          <input type="search" class="filtros-busqueda" id="filtroSocioQ" placeholder="&#128269; Buscar cédula, nombre, cargo, correo o celular..." aria-label="Buscador (Cédula / Nombre / Cargo)" onclick="event.stopPropagation()" oninput="onFiltroSocioInput()" onkeydown="event.stopPropagation(); if(event.key==='Enter') cargarDatosSociodemografica()">
+          <span class="filtros-chevron" id="iconToggleFiltrosSocio">▸</span>
         </div>
         <div class="filter-panel-body" id="bodyFiltrosSociodemografica" style="display:none;">
           <div class="filter-grid">
-            <div class="filter-group" style="grid-column: span 2;">
-              <label>Buscador (Cédula / Nombre / Cargo)</label>
-              <input type="text" id="filtroSocioQ" placeholder="Escribe cédula, nombre, cargo, correo o celular..." oninput="onFiltroSocioInput()" onkeydown="if(event.key==='Enter') cargarDatosSociodemografica()">
-            </div>
             <div class="filter-group">
               <label>Regional</label>
               <select id="filtroSocioRegional" onchange="onFiltroSocioChange('regional')">
@@ -4649,7 +4656,7 @@
 
       const isHidden = body.style.display === 'none';
       body.style.display = isHidden ? 'block' : 'none';
-      if (icon) icon.textContent = isHidden ? '▼ Ocultar' : '▲ Mostrar';
+      if (icon) icon.classList.toggle('open', isHidden);
     }
 
     function aplicarFiltrosRequisiciones() {
@@ -4925,7 +4932,8 @@
 
         const lblCount = document.getElementById('lblFiltrosActivosCount');
         if (lblCount) {
-          lblCount.textContent = actCount > 0 ? `${actCount} filtro(s) activo(s)` : 'Sin filtros';
+          lblCount.textContent = actCount > 0 ? String(actCount) : '';
+          lblCount.style.display = actCount > 0 ? 'inline-flex' : 'none';
         }
 
         const lblTot = document.getElementById('lblTotalRegistrosReq');
@@ -6533,7 +6541,7 @@
 
       const isHidden = body.style.display === 'none';
       body.style.display = isHidden ? 'block' : 'none';
-      if (icon) icon.textContent = isHidden ? '▼ Ocultar' : '▲ Mostrar';
+      if (icon) icon.classList.toggle('open', isHidden);
     }
 
     function seleccionarFiltroEstadoAsp(nuevoEstado) {
@@ -6815,7 +6823,8 @@
 
         const lblCount = document.getElementById('lblFiltrosActivosCountAsp');
         if (lblCount) {
-          lblCount.textContent = actCount > 0 ? `${actCount} filtro(s) activo(s)` : 'Sin filtros';
+          lblCount.textContent = actCount > 0 ? String(actCount) : '';
+          lblCount.style.display = actCount > 0 ? 'inline-flex' : 'none';
         }
 
         const lblTot = document.getElementById('lblTotalRegistrosAsp');
@@ -8014,7 +8023,7 @@
       if (!body) return;
       const isHidden = body.style.display === 'none';
       body.style.display = isHidden ? 'block' : 'none';
-      if (icon) icon.textContent = isHidden ? '▼ Ocultar' : '▲ Mostrar';
+      if (icon) icon.classList.toggle('open', isHidden);
     }
 
     function onFiltroSocioInput() {
@@ -8051,7 +8060,8 @@
       ].filter(Boolean);
       const badge = document.getElementById('lblFiltrosActivosCountSocio');
       if (badge) {
-        badge.textContent = vals.length > 0 ? `${vals.length} filtro(s) activo(s)` : 'Sin filtros';
+        badge.textContent = vals.length > 0 ? String(vals.length) : '';
+        badge.style.display = vals.length > 0 ? 'inline-flex' : 'none';
       }
     }
 
