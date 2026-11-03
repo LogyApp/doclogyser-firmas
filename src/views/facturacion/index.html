@@ -310,8 +310,32 @@
       align-items: center;
       gap: 8px;
       font-weight: 700;
-      font-size: 0.92rem;
+      font-size: 0.82rem;
       color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* Búsqueda dentro de la barra de filtros (siempre visible, igual que en SST y Nómina) */
+    .filtros-busqueda {
+      flex: 1;
+      max-width: 380px;
+      margin: 0 12px 0 auto;
+      height: 34px;
+      padding: 6px 10px;
+      font-size: 0.84rem;
+      font-weight: 400;
+      cursor: text;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--text);
+      outline: none;
+    }
+    .filtros-busqueda:focus { border-color: var(--accent); }
+    /* En celular la búsqueda queda en la misma línea que "Filtros" y ocupa el espacio libre */
+    @media (max-width: 640px) {
+      .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
     }
 
     .filtros-badge {
@@ -1538,20 +1562,13 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="servFiltrosToggle" onclick="toggleFiltrosServicios()">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="servFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="serv-filtro-q" placeholder="&#128269; Buscar: PEPSICO, 304-18921, NUW696, 900123456..." title="Buscar por IdRecibo, IdServicio, Placa, Transportadora, Proveedor, Cliente a Facturar, Nit o Razón Social" aria-label="Buscar por IdRecibo, IdServicio, Placa, Transportadora, Proveedor, Cliente a Facturar, Nit o Razón Social" oninput="onServicioSearchInput(this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="servFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="servFiltrosBody" style="display: none;">
-            <!-- Barra de búsqueda libre -->
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por IdRecibo, IdServicio, Placa, Transportadora, Proveedor, Cliente a Facturar, Nit o Razón Social</label>
-              <div style="position: relative;">
-                <input type="text" id="serv-filtro-q" placeholder="Ej: PEPSICO, 304-18921, NUW696, 900123456..." oninput="onServicioSearchInput(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
 
             <!-- Grid de selects -->
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
@@ -1819,20 +1836,13 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="recibFiltrosToggle" onclick="toggleFiltrosRecibos()">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="recibFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="recib-filtro-q" placeholder="&#128269; Buscar: 305-06854, SKY772, GIANNINI, 1032497619..." title="Buscar por IdRecibo, Consecutivo Recibo, Placa, Cliente a Facturar, Nit, Razón Social o Usuario" aria-label="Buscar por IdRecibo, Consecutivo Recibo, Placa, Cliente a Facturar, Nit, Razón Social o Usuario" oninput="onReciboSearchInput(this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="recibFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="recibFiltrosBody" style="display: none;">
-            <!-- Barra de búsqueda libre -->
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por IdRecibo, Consecutivo Recibo, Placa, Cliente a Facturar, Nit, Razón Social o Usuario</label>
-              <div style="position: relative;">
-                <input type="text" id="recib-filtro-q" placeholder="Ej: 305-06854, SKY772, GIANNINI, 1032497619..." oninput="onReciboSearchInput(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
 
             <!-- Grid de selects -->
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
@@ -2075,7 +2085,7 @@
       <div class="card">
         <div class="filtros-toggle" id="bloqFiltrosToggle" onclick="toggleFiltrosBloqueo()">
           <span class="filtros-toggle-left">
-            &#128269; Filtros de Consulta
+            Filtros
             <span class="filtros-badge" id="bloqFiltrosBadge">0</span>
           </span>
           <span class="filtros-chevron" id="bloqFiltrosChevron">&#9656;</span>
@@ -2246,9 +2256,10 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="mcliFiltrosToggle" onclick="toggleFiltrosCat('mcli')">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="mcliFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="mcli-filtro-q" placeholder="&#128269; Buscar: 900123456, PEPSICO, Bogotá, 3101234567..." title="Buscar por Código / NIT, Razón Social, Ciudad, Dirección / Operación, Teléfono, Correo F.E. o Usuario" aria-label="Buscar por Código / NIT, Razón Social, Ciudad, Dirección / Operación, Teléfono, Correo F.E. o Usuario" oninput="onMaestroClientesFilterChange()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="mcliFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="mcliFiltrosBody" style="display: none;">
@@ -2279,13 +2290,6 @@
               </div>
             </div>
 
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Código / NIT, Razón Social, Ciudad, Dirección / Operación, Teléfono, Correo F.E. o Usuario</label>
-              <div style="position: relative;">
-                <input type="text" id="mcli-filtro-q" placeholder="Ej: 900123456, PEPSICO, Bogotá, 3101234567..." oninput="onMaestroClientesFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));">
               <div class="filtro-field">
                 <label>Solicitar Actualización</label>
@@ -2391,19 +2395,13 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="ccredFiltrosToggle" onclick="toggleFiltrosCat('ccred')">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="ccredFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="buscar-cliente" placeholder="&#128269; Buscar cliente, NIT, razón social o usuario..." title="Buscar por Cliente a Facturar, NIT, Razón Social o Usuario" aria-label="Buscar por Cliente a Facturar, NIT, Razón Social o Usuario" oninput="renderClientesTable()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="ccredFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="ccredFiltrosBody" style="display: none;">
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Cliente a Facturar, NIT, Razón Social o Usuario</label>
-              <div style="position: relative;">
-                <input type="text" id="buscar-cliente" placeholder="Buscar por Cliente a Facturar, NIT, Razón Social o Usuario..." oninput="renderClientesTable()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
               <div class="filtro-field">
                 <label>Estado de Bloqueo</label>
@@ -2494,19 +2492,13 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="mtranspFiltrosToggle" onclick="toggleFiltrosCat('mtransp')">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="mtranspFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="mtransp-filtro-q" placeholder="&#128269; Buscar: FRIOTRANS, fffa2888, Carlos..." title="Buscar por ID, Transportadora o Usuario" aria-label="Buscar por ID, Transportadora o Usuario" oninput="onTransportadorasFilterChange()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="mtranspFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="mtranspFiltrosBody" style="display: none;">
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por ID, Transportadora o Usuario</label>
-              <div style="position: relative;">
-                <input type="text" id="mtransp-filtro-q" placeholder="Ej: FRIOTRANS, fffa2888, Carlos..." oninput="onTransportadorasFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));">
               <div class="filtro-field">
                 <label>Desde (Fecha Ingreso)</label>
@@ -2604,19 +2596,13 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="mprovFiltrosToggle" onclick="toggleFiltrosCat('mprov')">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="mprovFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="mprov-filtro-q" placeholder="&#128269; Buscar: PEDRO MORENO, ffe7ed06, Diego..." title="Buscar por ID, Proveedor o Usuario" aria-label="Buscar por ID, Proveedor o Usuario" oninput="onProveedoresFilterChange()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="mprovFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="mprovFiltrosBody" style="display: none;">
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por ID, Proveedor o Usuario</label>
-              <div style="position: relative;">
-                <input type="text" id="mprov-filtro-q" placeholder="Ej: PEDRO MORENO, ffe7ed06, Diego..." oninput="onProveedoresFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));">
               <div class="filtro-field">
                 <label>Desde (Fecha Ingreso)</label>
@@ -2714,19 +2700,13 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="filtros-toggle" id="mplacaFiltrosToggle" onclick="toggleFiltrosCat('mplaca')">
             <span class="filtros-toggle-left">
-              🔍 Filtros de Búsqueda
+              Filtros
               <span class="filtros-badge" id="mplacaFiltrosBadge">0</span>
             </span>
+            <input type="search" class="filtros-busqueda" id="mplaca-filtro-q" placeholder="&#128269; Buscar: QPO622, PEPSICO, 890920304..." title="Buscar por Placa, ID, Cliente (Nit o Razón social), Cliente Crédito, Empleado o Usuario" aria-label="Buscar por Placa, ID, Cliente (Nit o Razón social), Cliente Crédito, Empleado o Usuario" oninput="onPlacasFilterChange()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
             <span class="filtros-chevron" id="mplacaFiltrosChevron">▸</span>
           </div>
           <div class="filtros-body" id="mplacaFiltrosBody" style="display: none;">
-            <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Placa, ID, Cliente (Nit o Razón social), Cliente Crédito, Empleado o Usuario</label>
-              <div style="position: relative;">
-                <input type="text" id="mplaca-filtro-q" placeholder="Ej: QPO622, PEPSICO, 890920304..." oninput="onPlacasFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
-                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-              </div>
-            </div>
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));">
               <div class="filtro-field">
                 <label>Tipo Cliente</label>
@@ -2840,19 +2820,13 @@
       <div class="card" style="margin-bottom: 16px;">
         <div class="filtros-toggle" id="tkFiltrosToggle" onclick="toggleFiltrosTickets()">
           <span class="filtros-toggle-left">
-            🔍 Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="tkFiltrosBadge">0</span>
           </span>
-          <span class="filtros-chevron" id="tkFiltrosChevron">▸</span>
+          <input type="search" class="filtros-busqueda" id="tk-filtro-q" placeholder="&#128269; Buscar: TK-00123, 305-06854, Juan Pérez..." title="Buscar por Ticket, IdRecibo o Usuario (Solicitante)" aria-label="Buscar por Ticket, IdRecibo o Usuario (Solicitante)" oninput="onTicketSearchInput(this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="tkFiltrosChevron">▸</span>
         </div>
         <div class="filtros-body" id="tkFiltrosBody" style="display: none;">
-          <div style="margin-bottom: 14px;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Ticket, IdRecibo o Usuario (Solicitante)</label>
-            <div style="position: relative;">
-              <input type="text" id="tk-filtro-q" placeholder="Ej: TK-00123, 305-06854, Juan Pérez..." oninput="onTicketSearchInput(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;">
-              <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
-            </div>
-          </div>
 
           <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
             <div class="filtro-field">
