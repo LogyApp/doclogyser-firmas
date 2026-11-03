@@ -403,6 +403,17 @@
       letter-spacing: .8px;
     }
     .filters-card .filtros-toggle-left { gap: 10px; }
+    /* Búsqueda dentro de la barra de filtros (siempre visible, igual que en los demás módulos) */
+    .filtros-busqueda {
+      flex: 1; max-width: 380px; margin: 0 12px 0 auto; height: 34px; padding: 6px 10px;
+      font-size: .84rem; font-weight: 400; cursor: text; text-transform: none; letter-spacing: normal;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); outline: none;
+    }
+    .filtros-busqueda:focus { border-color: var(--accent); }
+    /* En celular la búsqueda queda en la misma línea que "Filtros" y ocupa el espacio libre */
+    @media (max-width: 640px) {
+      .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
+    }
     .filters-card .filtros-chevron.open { transform: rotate(90deg); }
     .filters-card .filtros-body { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
     .filters-card .filters-grid { gap: 14px; }
@@ -1084,15 +1095,12 @@
     <!-- Filters Panel -->
     <section class="filters-card card-filters">
       <div class="filtros-toggle" id="main-filtros-toggle" role="button" tabindex="0" aria-controls="main-filtros-body" aria-expanded="false">
-        <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="main-filtros-badge">0</span></span>
+        <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="main-filtros-badge">0</span></span>
+        <input type="search" class="filtros-busqueda" id="filter-buscar" placeholder="&#128269; Buscar Trabajador..." aria-label="Buscar" oninput="debounceFilter()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
         <span class="filtros-chevron" id="main-filtros-chevron">▸</span>
       </div>
       <div class="filtros-body" id="main-filtros-body" style="display:none">
       <div class="filters-grid">
-        <div class="field">
-          <label for="filter-buscar" id="label-buscar">Buscar Trabajador</label>
-          <input type="text" id="filter-buscar" placeholder="Ej. Carlos o 100234..." oninput="debounceFilter()">
-        </div>
         <div class="field" id="filter-documento-wrapper" style="display: none;">
           <label for="filter-documento">Tipo de Documento</label>
           <select id="filter-documento" onchange="filtrar()">
@@ -1255,17 +1263,14 @@
       <section class="filters-card">
         <div class="filtros-toggle" id="logysignFiltrosToggle">
           <span class="filtros-toggle-left">
-            🔍 Filtros de Búsqueda
+            Filtros
             <span class="filtros-badge" id="logysignFiltrosBadge">0</span>
           </span>
+          <input type="search" class="filtros-busqueda" id="logysign-filter-buscar" placeholder="&#128269; Buscar colaborador, cédula o documento..." aria-label="Buscar colaborador o documento" oninput="filtrarLogysign()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="logysignFiltrosChevron">▶</span>
         </div>
         <div class="filtros-body" id="logysignFiltrosBody" style="display: none;">
           <div class="filters-grid">
-            <div class="field">
-              <label for="logysign-filter-buscar">Colaborador / Documento</label>
-              <input type="text" id="logysign-filter-buscar" placeholder="Busque por nombre, cédula o documento..." oninput="filtrarLogysign()">
-            </div>
             <div class="field">
               <label for="logysign-filter-estado">Estado</label>
               <select id="logysign-filter-estado" onchange="filtrarLogysign()">
@@ -1645,7 +1650,7 @@
 
     function actualizarBadgeFiltrosCloudDocs() {
       const filtros = [
-        ['filter-buscar', null],
+        ['filter-buscar', 'filter-buscar'],
         ['filter-documento', 'filter-documento-wrapper'],
         ['filter-clasificacion', 'filter-clasificacion-wrapper'],
         ['filter-estado', 'filter-estado-wrapper'],
@@ -2224,7 +2229,8 @@
       const registroWrapper = document.getElementById('filter-registro-wrapper');
       const todoValidacionWrapper = document.getElementById('filter-todo-validacion-wrapper');
       const solEstadoWrapper = document.getElementById('filter-solicitud-estado-wrapper');
-      const labelBuscar = document.getElementById('label-buscar');
+      // El texto de la búsqueda (barra "Filtros") cambia según la pestaña
+      const labelBuscar = document.getElementById('filter-buscar');
       
       mainSort = { key: '', dir: '' };
 
@@ -2316,42 +2322,42 @@
           registroWrapper.style.display = tab === 'todo' ? 'flex' : 'none';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'flex';
           solEstadoWrapper.style.display = 'none';
-          labelBuscar.innerText = 'Buscar Trabajador';
+          labelBuscar.placeholder = '🔍 Buscar Trabajador...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador');
         } else if (tab === 'documento') {
           docSelectWrapper.style.display = 'none';
           estadoWrapper.style.display = 'none';
           registroWrapper.style.display = 'flex';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
-          labelBuscar.innerText = 'Buscar Trabajador';
+          labelBuscar.placeholder = '🔍 Buscar Trabajador...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador');
         } else if (tab === 'solicitudes') {
           docSelectWrapper.style.display = 'none';
           estadoWrapper.style.display = 'none';
           registroWrapper.style.display = 'none';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'flex';
-          labelBuscar.innerText = 'Buscar Solicitante o Trabajador';
+          labelBuscar.placeholder = '🔍 Buscar Solicitante o Trabajador...'; labelBuscar.setAttribute('aria-label', 'Buscar Solicitante o Trabajador');
         } else if (tab === 'validarcap') {
           docSelectWrapper.style.display = 'none';
           estadoWrapper.style.display = 'none';
           registroWrapper.style.display = 'none';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
-          labelBuscar.innerText = 'Buscar Trabajador (Nombre o Cédula)';
+          labelBuscar.placeholder = '🔍 Buscar Trabajador (Nombre o Cédula)...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador (Nombre o Cédula)');
         } else if (tab === 'duplicados') {
           docSelectWrapper.style.display = 'flex';
           estadoWrapper.style.display = 'flex';
           registroWrapper.style.display = 'none';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
-          labelBuscar.innerText = 'Buscar Trabajador';
+          labelBuscar.placeholder = '🔍 Buscar Trabajador...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador');
         } else { // trabajador
           docSelectWrapper.style.display = 'none';
           estadoWrapper.style.display = 'flex';
           registroWrapper.style.display = 'none';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
-          labelBuscar.innerText = 'Buscar Trabajador';
+          labelBuscar.placeholder = '🔍 Buscar Trabajador...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador');
         }
 
         const labelRegistro = document.getElementById('label-registro');
