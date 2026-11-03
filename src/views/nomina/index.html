@@ -131,7 +131,17 @@
 
   /* Filtros plegables */
   .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
-  .filtros-toggle-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .95rem; color: var(--text); }
+  .filtros-toggle-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .82rem; color: var(--text); text-transform: uppercase; letter-spacing: .8px; }
+  /* Búsqueda dentro de la barra de filtros (siempre visible, igual que en SST) */
+  .filtros-busqueda {
+    flex: 1; max-width: 380px; margin: 0 12px 0 auto; height: 34px; padding: 6px 10px;
+    font-size: .84rem; font-weight: 400; cursor: text; text-transform: none; letter-spacing: normal;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text);
+  }
+  /* En celular la búsqueda queda en la misma línea que "Filtros" y ocupa el espacio libre */
+  @media (max-width: 640px) {
+    .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
+  }
   .filtros-badge {
     display: none; align-items: center; justify-content: center; background: var(--primary); color: var(--text-inverse);
     border-radius: 999px; font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
@@ -807,9 +817,6 @@
       width: 100%;
       min-width: 0 !important;
     }
-    #bioFilterWorkerSearch {
-      width: 100% !important;
-    }
     #bioRegionalOpFilters {
       display: grid !important;
       grid-template-columns: 1fr;
@@ -1321,16 +1328,16 @@
       <div class="card">
         <div class="filtros-toggle" id="actFiltrosToggle">
           <span class="filtros-toggle-left">
-            &#128269; Filtros de Consulta
+            Filtros
             <span class="filtros-badge" id="actFiltrosBadge">0</span>
           </span>
+          <input type="search" class="filtros-busqueda" id="actFilterIdentificacion" placeholder="&#128269; Buscar trabajador, cédula o Id Vinculación..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="actFiltrosChevron">&#9656;</span>
         </div>
         <div class="filtros-body" id="actFiltrosBody" style="display:none">
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="actFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="actFilterOperacion"></select></div>
-            <div class="filtro-field"><label>Buscar</label><input type="text" id="actFilterIdentificacion" placeholder="Identificación, trabajador, regional, operación o Id Vinculación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosActivos()">&#8635; Limpiar filtros</button>
         </div>
@@ -1375,9 +1382,10 @@
       <div class="card">
         <div class="filtros-toggle" id="retFiltrosToggle">
           <span class="filtros-toggle-left">
-            &#128269; Filtros de Consulta
+            Filtros
             <span class="filtros-badge" id="retFiltrosBadge">0</span>
           </span>
+          <input type="search" class="filtros-busqueda" id="retFilterIdentificacion" placeholder="&#128269; Buscar trabajador, cédula o Id Vinculación..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="retFiltrosChevron">&#9656;</span>
         </div>
         <div class="filtros-body" id="retFiltrosBody" style="display:none">
@@ -1392,7 +1400,6 @@
                 <option value="legalizado">Legalizado</option>
               </select>
             </div>
-            <div class="filtro-field"><label>Buscar</label><input type="text" id="retFilterIdentificacion" placeholder="Identificación, trabajador, regional, operación o Id Vinculación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosRetiros()">&#8635; Limpiar filtros</button>
         </div>
@@ -1444,7 +1451,7 @@
       <div class="card">
         <div class="filtros-toggle" id="bloqFiltrosToggle">
           <span class="filtros-toggle-left">
-            &#128269; Filtros de Consulta
+            Filtros
             <span class="filtros-badge" id="bloqFiltrosBadge">0</span>
           </span>
           <span class="filtros-chevron" id="bloqFiltrosChevron">&#9656;</span>
@@ -1518,7 +1525,8 @@
       <!-- Filtros Globales Biométrico -->
       <div class="card" style="margin-bottom: 16px;" id="bioGlobalFilters">
         <div class="filtros-toggle" id="bioFiltrosToggle">
-          <span class="filtros-toggle-left">&#128269; Filtros de Consulta</span>
+          <span class="filtros-toggle-left">Filtros</span>
+          <input type="search" class="filtros-busqueda" id="bioFilterWorkerSearch" placeholder="&#128269; Cédula o nombre del colaborador..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="bioFiltrosChevron">&#9656;</span>
         </div>
         <div class="filtros-body" id="bioFiltrosBody" style="display:none">
@@ -1533,10 +1541,6 @@
                   <label style="font-size:.72rem">Hasta</label>
                   <input type="date" id="bioFilterEndDate" style="padding:6px 10px; font-size:.82rem;">
                 </div>
-              </div>
-              <div class="filtro-field" style="margin-bottom:0; min-width:230px;">
-                <label style="font-size:.72rem">Buscar Colaborador</label>
-                <input type="text" id="bioFilterWorkerSearch" placeholder="Cédula o nombre..." style="padding:6px 10px; font-size:.82rem;">
               </div>
               <div id="bioRegionalOpFilters" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
                 <div class="filtro-field" style="margin-bottom:0; min-width:170px;">
@@ -1729,16 +1733,16 @@
         <div class="card">
           <div class="filtros-toggle" id="cooFiltrosToggle">
             <span class="filtros-toggle-left">
-              &#128269; Filtros de Consulta
+              Filtros
               <span class="filtros-badge" id="cooFiltrosBadge">0</span>
             </span>
-            <span class="filtros-chevron" id="cooFiltrosChevron">&#9656;</span>
+            <input type="search" class="filtros-busqueda" id="cooFilterBusqueda" placeholder="&#128269; Operación, Cod Siesa o dirección..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="cooFiltrosChevron">&#9656;</span>
           </div>
           <div class="filtros-body" id="cooFiltrosBody" style="display:none">
             <div class="filtros-grid">
               <div class="filtro-field"><label>Regional</label><select id="cooFilterRegional"></select></div>
               <div class="filtro-field"><label>Operación</label><select id="cooFilterOperacion"></select></div>
-              <div class="filtro-field"><label>Buscar</label><input type="text" id="cooFilterBusqueda" placeholder="Operación, Cod Siesa o dirección..."></div>
             </div>
             <button type="button" class="btn-reset" onclick="resetFiltrosCoords()">&#8635; Limpiar filtros</button>
           </div>
@@ -1776,12 +1780,13 @@
       </div>
       <div class="card-filters">
         <div class="filtros-toggle" onclick="toggleFiltrosIncapacidadesNomina()">
-          <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
+          <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
+          <input type="search" class="filtros-busqueda" id="filtro-inc-trabajador" placeholder="&#128269; Trabajador o cédula..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
           <span class="filtros-chevron" id="filtros-chevron-inc">&#9656;</span>
         </div>
         <div class="filtros-body" id="filtros-body-inc" style="display:none">
           <div class="inc-filters-grid">
-            <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-trabajador">Trabajador o Cédula</label><input type="text" class="inc-form-control" id="filtro-inc-trabajador" placeholder="Nombre o cédula..."></div>
+            
             <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-regional">Regional</label><select class="inc-form-control" id="filtro-inc-regional"><option value="">Todas</option></select></div>
             <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-operacion">Operación</label><select class="inc-form-control" id="filtro-inc-operacion"><option value="">Todas</option></select></div>
             <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-desde">Fecha Desde</label><input type="date" class="inc-form-control" id="filtro-inc-desde"></div>
@@ -1834,17 +1839,17 @@
         <div class="card">
           <div class="filtros-toggle" id="trasFiltrosToggle">
             <span class="filtros-toggle-left">
-              &#128269; Filtros de Consulta
+              Filtros
               <span class="filtros-badge" id="trasFiltrosBadge">0</span>
             </span>
-            <span class="filtros-chevron" id="trasFiltrosChevron">&#9656;</span>
+            <input type="search" class="filtros-busqueda" id="trasFilterBuscar" placeholder="&#128269; Trabajador, identificación, operación, observaciones..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="trasFiltrosChevron">&#9656;</span>
           </div>
           <div class="filtros-body" id="trasFiltrosBody" style="display:none">
             <div class="bio-pills-group" id="trasEstadoPills" style="margin-bottom:14px;"></div>
             <div class="filtros-grid">
               <div class="filtro-field" id="trasFilterRegionalWrap" style="display:none"><label>Regional</label><select id="trasFilterRegional"></select></div>
               <div class="filtro-field"><label>Operación origen</label><select id="trasFilterOperacion"></select></div>
-              <div class="filtro-field"><label>Buscar</label><input type="text" id="trasFilterBuscar" placeholder="Trabajador, identificación, operación, observaciones..."></div>
             </div>
             <button type="button" class="btn-reset" onclick="resetFiltrosTraslados()">&#8635; Limpiar filtros</button>
           </div>
@@ -1907,9 +1912,10 @@
       <div class="card">
         <div class="filtros-toggle" id="cesFiltrosToggle" onclick="toggleFiltrosCesantias()">
           <span class="filtros-toggle-left">
-            🔍 Filtros de Consulta
+            Filtros
             <span class="filtros-badge" id="cesFiltrosBadge">0</span>
           </span>
+          <input type="search" class="filtros-busqueda" id="cesFilterBuscar" placeholder="&#128269; Identificación, nombre o radicado CES-..." aria-label="Buscar" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" oninput="debounceCesantiasBuscar()">
           <span class="filtros-chevron" id="cesFiltrosChevron">▸</span>
         </div>
         <div class="filtros-body" id="cesFiltrosBody" style="display:none">
@@ -1946,10 +1952,6 @@
             <div class="filtro-field">
               <label>Fecha Hasta</label>
               <input type="date" id="cesFilterFechaHasta" onchange="aplicarFiltrosCesantias()">
-            </div>
-            <div class="filtro-field" style="grid-column: 1 / -1;">
-              <label>Buscar Trabajador o Radicado</label>
-              <input type="text" id="cesFilterBuscar" placeholder="Identificación, nombre completo o radicado CES-..." oninput="debounceCesantiasBuscar()">
             </div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosCesantias()">↺ Limpiar filtros</button>
