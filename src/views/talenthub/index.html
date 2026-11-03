@@ -2255,6 +2255,31 @@
           gap: 6px;
           align-items: center;
         }
+        /* Celular y tableta: las opciones de vista van en una sola línea que se desliza
+           horizontalmente; el borde derecho se desvanece para indicar que hay más opciones. */
+        @media (max-width: 900px) {
+          .socio-opciones-bar {
+            flex-wrap: nowrap;
+            flex: 1 1 100%;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
+            scrollbar-width: none;
+            padding: 2px 24px 2px 0;
+            -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+            mask-image: linear-gradient(to right, #000 85%, transparent);
+          }
+          .socio-opciones-bar::-webkit-scrollbar { display: none; }
+          /* El contenedor no debe crecer al ancho de todos los botones */
+          .socio-header-izq { flex: 1 1 100% !important; min-width: 0; max-width: 100%; }
+          .socio-opciones-bar.al-final {
+            -webkit-mask-image: none;
+            mask-image: none;
+          }
+          .socio-opcion-btn { flex: 0 0 auto; scroll-snap-align: start; }
+        }
         .socio-opcion-btn {
           padding: 7px 13px;
           border-radius: 8px;
@@ -2552,7 +2577,7 @@
         <!-- Card Tabla Maestra Sociodemográfica -->
         <div class="card socio-table-card">
           <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
+            <div class="socio-header-izq" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
               <!-- Switch Retirados (rojo) / Activos (verde) -->
               <div id="socioSwitchWrap" class="socio-switch-wrap" title="Alternar entre colaboradores Retirados y Activos">
                 <span id="lblSocioRetirados" class="socio-switch-label" onclick="intentarCambiarEstadoSocio(false)">Retirados</span>
@@ -7968,12 +7993,31 @@
             ${esc(o.label)}
           </button>
         `).join('');
+        ajustarBarraOpcionesSocio(bar);
       }
 
       const grpArea = document.getElementById('grupoFiltroSocioArea');
       if (grpArea) {
         grpArea.style.display = (_socioOpcionActiva === 'colaboradores') ? 'flex' : 'none';
       }
+    }
+
+    // En celular la barra de opciones se desliza: deja visible la opción activa y quita el
+    // desvanecido del borde derecho cuando ya se llegó al final.
+    function ajustarBarraOpcionesSocio(bar) {
+      const actualizarFinal = () => {
+        bar.classList.toggle('al-final', bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 4);
+      };
+      if (!bar._scrollSocioListo) {
+        bar.addEventListener('scroll', actualizarFinal, { passive: true });
+        window.addEventListener('resize', actualizarFinal);
+        bar._scrollSocioListo = true;
+      }
+      const activo = bar.querySelector('.socio-opcion-btn.active');
+      if (activo && bar.scrollWidth > bar.clientWidth) {
+        bar.scrollLeft = Math.max(0, activo.offsetLeft - bar.offsetLeft - 16);
+      }
+      actualizarFinal();
     }
 
     function intentarCambiarEstadoSocio(haciaActivo) {
