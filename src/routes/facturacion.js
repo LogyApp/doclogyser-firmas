@@ -542,6 +542,25 @@ router.get('/api/maestro-clientes/contexto-operacion', async (req, res) => {
   }
 });
 
+// Sube el Rut del cliente a Clientes_Images/ del bucket central y devuelve la ruta guardada
+// en Maestro_Clientes.Documento. Si falla, el error lleva la ruta en err.nombreArchivo.
+async function subirDocumentoCliente(codigo, archivo, ahoraBogota) {
+  const ext = path.extname(archivo.originalname) || '.pdf';
+  const timestamp = ahoraBogota.replace(/[^0-9]/g, '').slice(8, 14) || Date.now().toString().slice(-6);
+  const nombreArchivo = `Clientes_Images/${codigo}.Documento.${timestamp}${ext}`;
+  try {
+    const { storage } = require('../services/storage');
+    const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'talenthub_central';
+    await storage.bucket(BUCKET_NAME).file(nombreArchivo).save(archivo.buffer, {
+      contentType: archivo.mimetype || 'application/octet-stream'
+    });
+    return nombreArchivo;
+  } catch (err) {
+    err.nombreArchivo = nombreArchivo;
+    throw err;
+  }
+}
+
 // ── POST /api/maestro-clientes (Agregar Cliente) ───────────────────────────
 router.post('/api/maestro-clientes', uploadServicio.single('documento'), async (req, res) => {
   try {
@@ -607,20 +626,11 @@ router.post('/api/maestro-clientes', uploadServicio.single('documento'), async (
     // Documento opcional (Rut Cliente) subido a talenthub_central
     let documentoPath = null;
     if (req.file && req.file.buffer) {
-      const ext = path.extname(req.file.originalname) || '.pdf';
-      const timestamp = ahoraBogota.replace(/[^0-9]/g, '').slice(8, 14) || Date.now().toString().slice(-6);
-      const nombreArchivo = `Clientes_Images/${codigo}.Documento.${timestamp}${ext}`;
       try {
-        const { storage } = require('../services/storage');
-        const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'talenthub_central';
-        const file = storage.bucket(BUCKET_NAME).file(nombreArchivo);
-        await file.save(req.file.buffer, {
-          contentType: req.file.mimetype || 'application/octet-stream'
-        });
-        documentoPath = nombreArchivo;
+        documentoPath = await subirDocumentoCliente(codigo, req.file, ahoraBogota);
       } catch (storageErr) {
         console.warn('[facturacion] Error guardando archivo de Rut Cliente en storage:', storageErr.message);
-        documentoPath = nombreArchivo;
+        documentoPath = storageErr.nombreArchivo || null;
       }
     }
 
@@ -5193,6 +5203,129 @@ router.get('/api/clientes/buscar', async (req, res) => {
   } catch (err) {
     console.error('[facturacion] GET /api/clientes/buscar:', err);
     res.status(500).json([]);
+  }
+});
+
+// ── Cliente nuevo desde el formulario del Recibo ────────────────────────────────
+// Código (NIT) solo números, sin dígito de verificación: empresas (empieza por 8 o 9) hasta
+// 9 dígitos; cualquier otro hasta 11.
+function validarCodigoClienteNuevo(raw) {
+  const codigo = String(raw || '').trim();
+  if (!/^[0-9]+$/.test(codigo) || Number(codigo) <= 0) return { error: 'El Código (NIT) es obligatorio y solo admite números.' };
+  if (/^[89]/.test(codigo) && codigo.length > 9) {
+    return { error: 'Un NIT que empieza por 8 o 9 no puede tener más de 9 dígitos. No escriba el dígito de verificación.' };
+  }
+  if (codigo.length > 11) return { error: 'El Código (NIT) no puede tener más de 11 dígitos.' };
+  return { codigo: Number(codigo) };
+}
+
+const REGEX_CORREO_CLIENTE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Depto/Estado (ZONA), Ciudad (C.C.) y Dirección 1 (la Operación) para prellenar el cliente nuevo
+async function ubicacionClienteDeOperacion(operacion) {
+  const op = String(operacion || '').trim();
+  const ubicacion = { deptoEstado: '', ciudad: '', direccion1: op };
+  if (!op) return ubicacion;
+  const [rows] = await pool.execute(
+    'SELECT ZONA AS zona, `C.C.` AS cc FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+    [op]
+  );
+  if (rows.length) {
+    ubicacion.deptoEstado = rows[0].zona || '';
+    ubicacion.ciudad = rows[0].cc || '';
+  }
+  return ubicacion;
+}
+
+// ── GET /api/recibos/cliente-nuevo/ubicacion?operacion= ─────────────────────────
+router.get('/api/recibos/cliente-nuevo/ubicacion', async (req, res) => {
+  try {
+    const { usuario, operacion } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    res.json(await ubicacionClienteDeOperacion(operacion));
+  } catch (err) {
+    console.error('[facturacion] GET /api/recibos/cliente-nuevo/ubicacion:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/recibos/cliente-nuevo (Crear cliente en Maestro_Clientes) ─────────
+// Solicitar Actualización NUEVO, retenciones NULL, condición de pago CONTADO y Fecha última
+// venta = hoy; Rut (Documento) opcional.
+router.post('/api/recibos/cliente-nuevo', uploadServicio.single('documento'), async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const { codigo, error: errorCodigo } = validarCodigoClienteNuevo(req.body.codigo);
+    if (errorCodigo) return res.status(400).json({ error: errorCodigo });
+
+    const [existe] = await pool.execute(
+      'SELECT `Razón social` AS razonSocial FROM Maestro_Clientes WHERE `Código` = ? LIMIT 1', [codigo]
+    );
+    if (existe.length) {
+      return res.status(400).json({ error: `Ya existe un cliente con el código ${codigo}${existe[0].razonSocial ? ` (${existe[0].razonSocial})` : ''}.` });
+    }
+
+    const razonSocial = String(req.body.razonSocial || '').trim().toUpperCase();
+    if (!razonSocial) return res.status(400).json({ error: 'La Razón social es obligatoria.' });
+    const telefono = String(req.body.telefono || '').trim();
+    if (!telefono) return res.status(400).json({ error: 'El Teléfono es obligatorio.' });
+    const correoFE = String(req.body.correoFE || '').trim();
+    if (!REGEX_CORREO_CLIENTE.test(correoFE)) return res.status(400).json({ error: 'El Correo F.E. es obligatorio y debe ser un correo electrónico válido.' });
+
+    const ubicacion = await ubicacionClienteDeOperacion(req.body.operacion);
+    const textoOpcional = (val, defecto) => {
+      const v = String(val === undefined || val === null ? defecto : val).trim();
+      return v || null;
+    };
+    const deptoEstado = textoOpcional(req.body.deptoEstado, ubicacion.deptoEstado);
+    const ciudad = textoOpcional(req.body.ciudad, ubicacion.ciudad);
+    const direccion1 = textoOpcional(req.body.direccion1, ubicacion.direccion1);
+    const observaciones = textoOpcional(req.body.observaciones, '');
+
+    const ahoraBogota = formatearAhoraBogota();
+    let documento = null;
+    if (req.file && req.file.buffer) {
+      try {
+        documento = await subirDocumentoCliente(codigo, req.file, ahoraBogota);
+      } catch (storageErr) {
+        console.error('[facturacion] Error subiendo el Rut del cliente nuevo:', storageErr.message);
+        return res.status(500).json({ error: 'No se pudo subir el Documento Rut del Cliente. Intente de nuevo o créelo sin el documento.' });
+      }
+    }
+
+    const buscarCliente = `${codigo} ** ${razonSocial}`;
+    const usuarioVal = acceso.usuarioId || usuario;
+    try {
+      await pool.execute(
+        `INSERT INTO Maestro_Clientes (
+          \`Solicitar Actualización\`, \`Código\`, \`Razón social\`,
+          \`RTICA\`, \`RTIVA\`, \`RTSERVIC\`,
+          \`Fecha última venta\`, \`Depto/Estado\`, \`Ciudad\`, \`Dirección 1\`,
+          \`Telefono\`, \`Desc. condicion de pago\`, \`Correo F.E.\`,
+          \`Buscar Cliente\`, \`Usuario\`, \`Fecha Registro\`, \`Documento\`, \`Observaciones\`
+        ) VALUES ('NUEVO', ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?, 'CONTADO', ?, ?, ?, ?, ?, ?)`,
+        [
+          codigo, razonSocial,
+          ahoraBogota.slice(0, 10), deptoEstado, ciudad, direccion1,
+          telefono, correoFE,
+          buscarCliente, usuarioVal, ahoraBogota, documento, observaciones
+        ]
+      );
+    } catch (dbErr) {
+      if (dbErr.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: `Ya existe un cliente con el código ${codigo}.` });
+      throw dbErr;
+    }
+
+    res.json({ ok: true, codigo, razonSocial, telefono, correoFE, condicionPago: 'CONTADO', rtservic: null, rtiva: null, rtica: null });
+  } catch (err) {
+    console.error('[facturacion] POST /api/recibos/cliente-nuevo:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

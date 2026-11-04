@@ -4365,6 +4365,71 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
+       MODAL: CLIENTE NUEVO DESDE EL RECIBO (Maestro_Clientes)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-cliente-recibo-overlay">
+    <div class="modal-card" style="max-width: 640px;">
+      <div class="modal-header">
+        <span>➕ Nuevo Cliente</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalClienteRecibo()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-cliente-recibo" onsubmit="event.preventDefault(); guardarClienteRecibo();">
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+            <div class="form-group">
+              <label>Código (NIT) *</label>
+              <input type="text" id="mcr-codigo" inputmode="numeric" autocomplete="off" placeholder="Sin dígito de verificación" oninput="onCodigoClienteRecibo(this)">
+              <small id="mcr-codigo-ayuda" style="color: var(--text-muted); font-size: 0.74rem;">Solo números. Si empieza por 8 o 9, máximo 9 dígitos.</small>
+            </div>
+            <div class="form-group">
+              <label>Razón social *</label>
+              <input type="text" id="mcr-razon-social" autocomplete="off" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Teléfono *</label>
+              <input type="tel" id="mcr-telefono" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Correo F.E. *</label>
+              <input type="email" id="mcr-correo" autocomplete="off" placeholder="facturacion@empresa.com">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Depto/Estado</label>
+              <input type="text" id="mcr-depto">
+            </div>
+            <div class="form-group">
+              <label>Ciudad</label>
+              <input type="text" id="mcr-ciudad">
+            </div>
+            <div class="form-group">
+              <label>Dirección 1</label>
+              <input type="text" id="mcr-direccion">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Documento Rut del Cliente (Opcional)</label>
+            <div class="zona-archivo" data-input="mcr-documento"></div>
+            <input type="file" id="mcr-documento" accept="image/*,application/pdf" style="display:none;">
+          </div>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea id="mcr-observaciones" rows="2" maxlength="255" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
+          </div>
+          <div id="mcr-error" style="display:none; color: var(--danger-dark, #b91c1c); font-size: 0.85rem; font-weight: 600;"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalClienteRecibo()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-cliente-recibo" onclick="guardarClienteRecibo()">Crear Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
        MODAL 7: CARGA MASIVA DE SERVICIOS (EDITOR DE GRID)
        Reemplaza Plano Servicios V7.xlsm (Datos + 5 Planos + 5 Macros)
   ══════════════════════════════════════════════════════════ -->
@@ -10744,8 +10809,18 @@
           if (!resp.ok) return;
           const data = await resp.json();
           listEl.innerHTML = '';
+          // Crear el cliente si no existe (como Transportadora, Proveedor o Placa en el servicio)
+          const texto = q.trim();
+          if (!data.some(c => String(c.codigo) === texto)) {
+            const nuevoRow = document.createElement('div');
+            nuevoRow.className = 'autocomplete-item';
+            nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
+            nuevoRow.textContent = `+ Nuevo cliente "${texto}"`;
+            nuevoRow.onclick = () => { listEl.style.display = 'none'; abrirModalClienteRecibo(texto); };
+            listEl.appendChild(nuevoRow);
+          }
           if (!data.length) {
-            listEl.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+            listEl.insertAdjacentHTML('beforeend', '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>');
           } else {
             data.forEach(c => {
               const row = document.createElement('div');
@@ -10768,6 +10843,109 @@
           console.error(e);
         }
       }, 250);
+    }
+
+    // ── Cliente nuevo desde el Recibo (Maestro_Clientes) ─────────────────────
+    // Lo escrito en la búsqueda se pasa al Código (si son números) o a la Razón social.
+    // Depto/Estado, Ciudad y Dirección 1 se prellenan con la Operación del recibo (editables).
+    function validarCodigoClienteRecibo(codigo) {
+      if (!/^[0-9]+$/.test(codigo) || Number(codigo) <= 0) return 'El Código (NIT) es obligatorio y solo admite números.';
+      if (/^[89]/.test(codigo) && codigo.length > 9) return 'Un NIT que empieza por 8 o 9 no puede tener más de 9 dígitos. No escriba el dígito de verificación.';
+      if (codigo.length > 11) return 'El Código (NIT) no puede tener más de 11 dígitos.';
+      return '';
+    }
+
+    function onCodigoClienteRecibo(input) {
+      input.value = input.value.replace(/[^0-9]/g, '').slice(0, /^[89]/.test(input.value) ? 9 : 11);
+    }
+
+    async function abrirModalClienteRecibo(texto) {
+      const overlay = document.getElementById('modal-cliente-recibo-overlay');
+      document.getElementById('form-cliente-recibo').reset();
+      document.getElementById('mcr-error').style.display = 'none';
+      const soloNumeros = /^[0-9.\-\s]+$/.test(texto || '');
+      const codigoInput = document.getElementById('mcr-codigo');
+      codigoInput.value = soloNumeros ? texto : '';
+      onCodigoClienteRecibo(codigoInput);
+      document.getElementById('mcr-razon-social').value = soloNumeros ? '' : String(texto || '').toUpperCase();
+      montarZonasArchivoServicio();
+      actualizarZonaArchivoServicio('mcr-documento');
+
+      const operacion = (modalRecibo.modo === 'editar' && reciboDetalleActual)
+        ? reciboDetalleActual.recibo['Operación']
+        : document.getElementById('mr-operacion').value;
+      document.getElementById('mcr-direccion').value = operacion || '';
+
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') overlay._backEntry = registrarModalBack(() => cerrarModalClienteRecibo());
+      document.getElementById(soloNumeros ? 'mcr-razon-social' : 'mcr-codigo').focus();
+
+      if (!operacion) return;
+      try {
+        const resp = await fetch(`/facturacion/api/recibos/cliente-nuevo/ubicacion?usuario=${encodeURIComponent(CONFIG.usuario)}&operacion=${encodeURIComponent(operacion)}`);
+        if (!resp.ok) return;
+        const ub = await resp.json();
+        const prellenar = (id, val) => { const el = document.getElementById(id); if (!el.value) el.value = val || ''; };
+        prellenar('mcr-depto', ub.deptoEstado);
+        prellenar('mcr-ciudad', ub.ciudad);
+        prellenar('mcr-direccion', ub.direccion1);
+      } catch (e) { /* se puede escribir a mano */ }
+    }
+
+    function cerrarModalClienteRecibo() {
+      const overlay = document.getElementById('modal-cliente-recibo-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function') cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
+
+    async function guardarClienteRecibo() {
+      const val = id => document.getElementById(id).value.trim();
+      const errorEl = document.getElementById('mcr-error');
+      const mostrarError = msg => { errorEl.textContent = msg; errorEl.style.display = 'block'; };
+      errorEl.style.display = 'none';
+
+      const codigo = val('mcr-codigo');
+      const errorCodigo = validarCodigoClienteRecibo(codigo);
+      if (errorCodigo) return mostrarError(errorCodigo);
+      if (!val('mcr-razon-social')) return mostrarError('La Razón social es obligatoria.');
+      if (!val('mcr-telefono')) return mostrarError('El Teléfono es obligatorio.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('mcr-correo'))) return mostrarError('El Correo F.E. es obligatorio y debe ser un correo electrónico válido.');
+
+      const fd = new FormData();
+      fd.append('codigo', codigo);
+      fd.append('razonSocial', val('mcr-razon-social').toUpperCase());
+      fd.append('telefono', val('mcr-telefono'));
+      fd.append('correoFE', val('mcr-correo'));
+      fd.append('deptoEstado', val('mcr-depto'));
+      fd.append('ciudad', val('mcr-ciudad'));
+      fd.append('direccion1', val('mcr-direccion'));
+      fd.append('observaciones', val('mcr-observaciones'));
+      fd.append('operacion', (modalRecibo.modo === 'editar' && reciboDetalleActual) ? reciboDetalleActual.recibo['Operación'] : document.getElementById('mr-operacion').value);
+      const archivo = document.getElementById('mcr-documento').files[0];
+      if (archivo) fd.append('documento', archivo);
+
+      const btn = document.getElementById('btn-guardar-cliente-recibo');
+      btn.disabled = true;
+      btn.textContent = '⏳ Creando...';
+      try {
+        const resp = await fetch(`/facturacion/api/recibos/cliente-nuevo?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) return mostrarError(data.error || 'No se pudo crear el cliente.');
+        // Queda escogido en el recibo, igual que al elegirlo de la lista
+        document.getElementById('mr-nit').value = data.codigo;
+        document.getElementById('mr-nit-razon-social').textContent = data.razonSocial;
+        document.getElementById('mr-telefono').value = data.telefono || '';
+        document.getElementById('mr-email').value = data.correoFE || '';
+        mrNitFlagsActual = { RTSERVIC: data.rtservic, RTIVA: data.rtiva, RTICA: data.rtica };
+        cerrarModalClienteRecibo();
+        recalcularSugerenciaRetenciones();
+      } catch (e) {
+        mostrarError('Error de conexión al crear el cliente.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear Cliente';
+      }
     }
 
     // Se recalcula automáticamente (punto 3) cada vez que cambian Nit/Operación/Modalidad.
