@@ -1,0 +1,16 @@
+{
+  "name": "LogyApp · Logyser",
+  "short_name": "LogyApp",
+  "description": "ERP de Logyser: nómina, facturación, SST, TalentHub, inventario y documentos.",
+  "lang": "es-CO",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1B2A5E",
+  "icons": [
+    { "src": "https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/logyapp-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/img/icons/logyapp-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/logyapp-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/logyapp-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
