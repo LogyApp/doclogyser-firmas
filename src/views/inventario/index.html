@@ -4196,6 +4196,12 @@
                       <span>🧹</span> Limpiar Filtros
                     </button>
                   </div>
+                  <div class="filter-group" style="display: flex; align-items: flex-end;">
+                    <button type="button" class="btn-icono-descarga" onclick="abrirModalReporteActas()" title="Descargar reporte de Actas con estos filtros (Excel o CSV)" aria-label="Descargar reporte de Actas con estos filtros" style="width: 100%; height: 42px; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 600; font-size: 0.85rem;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      Descargar con estos filtros
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5158,6 +5164,29 @@
           <button type="button" onclick="cerrarModalReporteKardex()">Cancelar</button>
           <button type="button" id="btnKardexReporteCsv" onclick="descargarReporteKardex('csv')" disabled>📄 Descargar CSV</button>
           <button type="button" class="primario" id="btnKardexReporteExcel" onclick="descargarReporteKardex('xlsx')" disabled>📊 Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Descargar reporte de la pestaña Actas de Entrega (según los filtros de la pestaña) -->
+  <div id="reporte-actas-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh;">
+    <div style="max-width: 520px; width: 95%; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <div style="background: var(--bg-elevated); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text);">📥 Descargar reporte de Actas</h3>
+        <span onclick="cerrarModalReporteActas()" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+      <div style="padding: 20px 24px;">
+        <p style="font-size: .83rem; color: var(--text-muted); margin: 0 0 10px;">Se descargan las actas que su rol puede ver, con los filtros que tiene puestos en la pestaña, una fila por elemento entregado. Para cambiarlos, cierre esta ventana y ajuste los filtros (por ejemplo, las fechas).</p>
+        <div class="reporte-campo">
+          <label>Filtros aplicados</label>
+          <div id="actasReporteFiltros" style="font-size: .84rem; color: var(--text); line-height: 1.6;"></div>
+        </div>
+        <div class="reporte-info" id="actasReporteInfo">Calculando...</div>
+        <div class="reporte-btns">
+          <button type="button" onclick="cerrarModalReporteActas()">Cancelar</button>
+          <button type="button" id="btnActasReporteCsv" onclick="descargarReporteActas('csv')" disabled>📄 Descargar CSV</button>
+          <button type="button" class="primario" id="btnActasReporteExcel" onclick="descargarReporteActas('xlsx')" disabled>📊 Descargar Excel</button>
         </div>
       </div>
     </div>
@@ -7102,7 +7131,8 @@
         'acta-add-articles-modal',
         'elementos-manager-modal',
         'reporte-inventario-modal',
-        'reporte-kardex-modal'
+        'reporte-kardex-modal',
+        'reporte-actas-modal'
       ];
       function closeActiveModals() {
         MODAL_IDS_ACTIVE.forEach(id => {
@@ -17246,6 +17276,124 @@
       badge.textContent = count;
       badge.style.display = count > 0 ? 'inline-flex' : 'none';
     }
+
+    // ── Reporte de Actas (ventana emergente) ─────────────────────────────────
+    // Descarga lo que muestran los filtros de la pestaña. Excel hasta
+    // "Límite de filas reporte Excel - Actas"; si pasa, solo CSV hasta
+    // "Límite de filas reporte CSV - Actas" (Config_Parametros, inventario / Actas).
+    let _reporteActasSeq = 0;
+
+    function paramsFiltrosActas() {
+      const params = new URLSearchParams({ usuario: CONFIG.usuarioId });
+      const valores = {
+        estado: document.getElementById('acta-filtro-estado')?.value,
+        regional: document.getElementById('acta-filtro-regional')?.value,
+        operacion: document.getElementById('acta-filtro-operacion')?.value,
+        fechaInicio: document.getElementById('acta-filtro-fecha-inicio')?.value,
+        fechaFin: document.getElementById('acta-filtro-fecha-fin')?.value,
+        categoria: activeActaCategory,
+        search: document.getElementById('acta-filtro-search')?.value.trim(),
+      };
+      Object.entries(valores).forEach(([k, v]) => { if (v) params.set(k, v); });
+      return params;
+    }
+
+    window.abrirModalReporteActas = function() {
+      const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const filtros = [
+        ['Categoría', activeActaCategory],
+        ['Estado', document.getElementById('acta-filtro-estado')?.value],
+        ['Regional', document.getElementById('acta-filtro-regional')?.value],
+        ['Operación', document.getElementById('acta-filtro-operacion')?.value],
+        ['Fecha Inicial', document.getElementById('acta-filtro-fecha-inicio')?.value],
+        ['Fecha Final', document.getElementById('acta-filtro-fecha-fin')?.value],
+        ['Buscador', document.getElementById('acta-filtro-search')?.value.trim()],
+      ].filter(([, v]) => v);
+      document.getElementById('actasReporteFiltros').innerHTML = filtros.length
+        ? filtros.map(([k, v]) => `• <strong>${k}:</strong> ${esc(v)}`).join('<br>')
+        : 'Ninguno: se descargan <strong>todas</strong> las actas que su rol puede ver.';
+      const modal = document.getElementById('reporte-actas-modal');
+      modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => window.cerrarModalReporteActas());
+      actualizarConteoReporteActas();
+    };
+
+    window.cerrarModalReporteActas = function() {
+      const modal = document.getElementById('reporte-actas-modal');
+      modal.style.display = 'none';
+      cerrarModalBack(modal._backEntry);
+      modal._backEntry = null;
+    };
+
+    async function actualizarConteoReporteActas() {
+      const info = document.getElementById('actasReporteInfo');
+      const btnExcel = document.getElementById('btnActasReporteExcel');
+      const btnCsv = document.getElementById('btnActasReporteCsv');
+      btnExcel.disabled = true;
+      btnCsv.disabled = true;
+      info.style.color = 'var(--text-muted)';
+      info.textContent = 'Calculando cantidad de filas...';
+      const seq = ++_reporteActasSeq;
+      try {
+        const resp = await fetch('/actas/api/actas/reporte/conteo?' + paramsFiltrosActas().toString());
+        const data = await resp.json();
+        if (seq !== _reporteActasSeq) return;
+        if (!resp.ok || !data.ok) {
+          info.style.color = 'var(--danger)';
+          info.textContent = data.error || 'No se pudo calcular el reporte.';
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString('es-CO');
+        btnExcel.disabled = !data.permiteExcel;
+        btnCsv.disabled = !data.permiteCsv;
+        if (data.total === 0) {
+          info.textContent = 'No hay actas con los filtros seleccionados.';
+        } else if (data.permiteExcel) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Puede descargarlo en Excel o CSV.`;
+        } else if (data.permiteCsv) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
+        } else {
+          info.style.color = 'var(--danger)';
+          info.innerHTML = `<strong>${fmt(data.total)}</strong> filas. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Filtre por fechas, regional u operación.`;
+        }
+      } catch {
+        if (seq !== _reporteActasSeq) return;
+        info.style.color = 'var(--danger)';
+        info.textContent = 'Error de red al calcular el reporte.';
+      }
+    }
+
+    window.descargarReporteActas = async function(formato) {
+      const btn = document.getElementById(formato === 'csv' ? 'btnActasReporteCsv' : 'btnActasReporteExcel');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        const params = paramsFiltrosActas();
+        params.set('formato', formato);
+        const resp = await fetch('/actas/api/actas/reporte?' + params.toString());
+        if (!resp.ok) {
+          let msg = 'No se pudo generar el reporte.';
+          try { msg = (await resp.json()).error || msg; } catch {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        const disp = resp.headers.get('Content-Disposition') || '';
+        const m = disp.match(/filename\*=UTF-8''([^;]+)/) || disp.match(/filename="([^"]+)"/);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = m ? decodeURIComponent(m[1]) : `Actas.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.innerHTML = textoOriginal;
+        actualizarConteoReporteActas();
+      }
+    };
 
     async function fetchActasList(page = 1) {
       currentActasPage = page;

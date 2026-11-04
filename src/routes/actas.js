@@ -22,7 +22,9 @@ const {
   correoActasHabilitado,
   obtenerCategoriasRestringidas,
   normalizarTexto,
+  obtenerLimitesReporte,
 } = require('../services/configInventario');
+const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
 
 const { accesoSeccion } = require('../services/maestroMenu');
 
@@ -417,6 +419,32 @@ router.get('/api/trabajador-contacto', async (req, res) => {
   }
 });
 
+// Filtros de la pestaña (los usa el listado y el reporte, para que descarguen lo mismo que se ve).
+function construirFiltrosActas(query) {
+  const { estado, regional, operacion, categoria, search, fechaInicio, fechaFin } = query;
+  const searchParam = search ? `%${String(search).trim()}%` : null;
+  return {
+    fEstado: estado ? { cond: 'da.Estado = ?', params: [estado] } : null,
+    fRegional: regional ? { cond: 'mo.REGIONAL = ?', params: [regional] } : null,
+    fOperacion: operacion ? { cond: 'da.operacion = ?', params: [operacion] } : null,
+    fCategoria: categoria ? { cond: 'da.Categoria = ?', params: [categoria] } : null,
+    fFechaInicio: fechaInicio ? { cond: 'da.Fecha_Entrega >= ?', params: [fechaInicio] } : null,
+    fFechaFin: fechaFin ? { cond: 'da.Fecha_Entrega <= ?', params: [fechaFin] } : null,
+    fSearch: search ? {
+      cond: `(CAST(da.IdActa AS CHAR) LIKE ? OR
+              da.identificacion LIKE ? OR
+              UPPER(COALESCE(
+                (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
+                (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
+              )) LIKE UPPER(?) OR
+              UPPER(da.operacion) LIKE UPPER(?) OR
+              UPPER(mo.REGIONAL) LIKE UPPER(?) OR
+              UPPER(da.Usuario) LIKE UPPER(?))`,
+      params: [searchParam, searchParam, searchParam, searchParam, searchParam, searchParam]
+    } : null,
+  };
+}
+
 // ═════ API: GET /api/actas (listado, control de acceso aplicado, filtro fino en cliente) ═════
 router.get('/api/actas', async (req, res) => {
   try {
@@ -432,27 +460,8 @@ router.get('/api/actas', async (req, res) => {
     conds.push(...visibilidad.conds);
     params.push(...visibilidad.params);
 
-    const { estado, regional, operacion, categoria, search, fechaInicio, fechaFin, sort, order, page, limit } = req.query;
-
-    const fEstado = estado ? { cond: 'da.Estado = ?', params: [estado] } : null;
-    const fRegional = regional ? { cond: 'mo.REGIONAL = ?', params: [regional] } : null;
-    const fOperacion = operacion ? { cond: 'da.operacion = ?', params: [operacion] } : null;
-    const fCategoria = categoria ? { cond: 'da.Categoria = ?', params: [categoria] } : null;
-    const fFechaInicio = fechaInicio ? { cond: 'da.Fecha_Entrega >= ?', params: [fechaInicio] } : null;
-    const fFechaFin = fechaFin ? { cond: 'da.Fecha_Entrega <= ?', params: [fechaFin] } : null;
-    const searchParam = search ? `%${search.trim()}%` : null;
-    const fSearch = search ? {
-      cond: `(CAST(da.IdActa AS CHAR) LIKE ? OR
-              da.identificacion LIKE ? OR
-              UPPER(COALESCE(
-                (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
-                (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
-              )) LIKE UPPER(?) OR
-              UPPER(da.operacion) LIKE UPPER(?) OR
-              UPPER(mo.REGIONAL) LIKE UPPER(?) OR
-              UPPER(da.Usuario) LIKE UPPER(?))`,
-      params: [searchParam, searchParam, searchParam, searchParam, searchParam, searchParam]
-    } : null;
+    const { sort, order, page, limit } = req.query;
+    const { fEstado, fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch } = construirFiltrosActas(req.query);
 
     const buildActasCountWhere = (extraFilters) => {
       const c = [...conds];
@@ -572,6 +581,155 @@ router.get('/api/actas', async (req, res) => {
   } catch (err) {
     console.error('[actas] GET /api/actas:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ Reporte de la pestaña Actas de Entrega (botón "Descargar con estos filtros") ═════
+// Una fila por elemento entregado (un acta con varios elementos genera varias filas; un acta
+// sin elementos genera una). Descarga lo que muestran los filtros de la pestaña, dentro del
+// alcance del rol. Excel hasta "Límite de filas reporte Excel - Actas"; si pasa, solo CSV hasta
+// "Límite de filas reporte CSV - Actas" (Config_Parametros, inventario / Actas).
+const COLUMNAS_REPORTE_ACTAS = [
+  { titulo: 'Id Acta',            campo: 'IdActa',          tipo: 'numero',    ancho: 10 },
+  { titulo: 'Fecha Entrega',      campo: 'Fecha_Entrega',   tipo: 'fechaHora', ancho: 18 },
+  { titulo: 'Estado',             campo: 'Estado',          tipo: 'texto',     ancho: 12 },
+  { titulo: 'Categoría',          campo: 'Categoria',       tipo: 'texto',     ancho: 16 },
+  { titulo: 'Regional',           campo: 'Regional',        tipo: 'texto',     ancho: 16 },
+  { titulo: 'Operación',          campo: 'operacion',       tipo: 'texto',     ancho: 26 },
+  { titulo: 'Identificación',     campo: 'identificacion',  tipo: 'texto',     ancho: 16 },
+  { titulo: 'Trabajador',         campo: 'Trabajador',      tipo: 'texto',     ancho: 34 },
+  { titulo: 'Id Artículo',        campo: 'IdArticulo',      tipo: 'numero',    ancho: 12 },
+  { titulo: 'Artículo',           campo: 'Articulo',        tipo: 'texto',     ancho: 34 },
+  { titulo: 'Referencia',         campo: 'Referencia',      tipo: 'texto',     ancho: 24 },
+  { titulo: 'Talla',              campo: 'Talla',           tipo: 'texto',     ancho: 10 },
+  { titulo: 'Cantidad',           campo: 'Cantidad',        tipo: 'numero',    ancho: 11 },
+  { titulo: 'Nota del Elemento',  campo: 'Nota',            tipo: 'texto',     ancho: 30 },
+  { titulo: 'Observaciones',      campo: 'Observaciones',   tipo: 'texto',     ancho: 40 },
+  { titulo: 'Id Solicitud',       campo: 'IdSolicitud',     tipo: 'texto',     ancho: 34 },
+  { titulo: 'Usuario Registro',   campo: 'Usuario',         tipo: 'texto',     ancho: 24 },
+  { titulo: 'Fecha Registro',     campo: 'Fecha_Registro',  tipo: 'fechaHora', ancho: 18 },
+];
+
+const FROM_REPORTE_ACTAS = `FROM Dynamic_Actas da
+  LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = da.operacion
+  LEFT JOIN Dynamic_Actas_Items i ON i.IdActa = da.IdActa
+  LEFT JOIN Dynamic_Articulos ar ON ar.Id = i.IdArticulo`;
+
+// "Identificación ** NOMBRE" → "NOMBRE"
+function nombreTrabajadorActa(trabajador) {
+  const partes = String(trabajador || '').split(' ** ');
+  return (partes.length > 1 ? partes[1] : trabajador || '').trim();
+}
+
+async function construirFiltroReporteActas(acceso, query) {
+  const visibilidad = await condicionesVisibilidadActas(acceso);
+  const conds = [...visibilidad.conds];
+  const params = [...visibilidad.params];
+  Object.values(construirFiltrosActas(query)).forEach((f) => {
+    if (f) { conds.push(f.cond); params.push(...f.params); }
+  });
+  const partes = [query.operacion || query.regional, query.categoria].filter(Boolean);
+  const etiqueta = (partes.join('_') || 'Todas').replace(/[^\w\-ÁÉÍÓÚáéíóúÑñ ]+/g, '').trim().replace(/\s+/g, '_') || 'Reporte';
+  return { where: conds.length ? `WHERE ${conds.join(' AND ')}` : '', params, etiqueta };
+}
+
+async function contarFilasReporteActas(filtro) {
+  const [[row]] = await pool.execute(`SELECT COUNT(*) AS total ${FROM_REPORTE_ACTAS} ${filtro.where}`, filtro.params);
+  return Number(row.total || 0);
+}
+
+// GET /api/actas/reporte/conteo — cuántas filas tendría y qué formatos se permiten
+router.get('/api/actas/reporte/conteo', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoActas(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = await construirFiltroReporteActas(acceso, req.query);
+    const limites = await obtenerLimitesReporte(SECCION);
+    const total = await contarFilasReporteActas(filtro);
+    res.json({
+      ok: true,
+      total,
+      limites,
+      permiteExcel: total > 0 && total <= limites.excel,
+      permiteCsv: total > 0 && total <= limites.csv,
+    });
+  } catch (err) {
+    console.error('[actas] GET /api/actas/reporte/conteo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/actas/reporte?formato=xlsx|csv — descarga el reporte
+router.get('/api/actas/reporte', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const formato = String(req.query.formato || '').toLowerCase();
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!['xlsx', 'csv'].includes(formato)) return res.status(400).json({ error: 'Formato inválido. Use Excel o CSV.' });
+
+    const acceso = await computarAccesoActas(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = await construirFiltroReporteActas(acceso, req.query);
+    const limites = await obtenerLimitesReporte(SECCION);
+    const total = await contarFilasReporteActas(filtro);
+    const fmt = (n) => Number(n).toLocaleString('es-CO');
+    if (total === 0) return res.status(400).json({ error: 'No hay actas con los filtros seleccionados.' });
+    if (formato === 'xlsx' && total > limites.excel) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas. En Excel se permiten hasta ${fmt(limites.excel)}; descárguelo en CSV.` });
+    }
+    if (total > limites.csv) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas y el máximo permitido es ${fmt(limites.csv)}. Filtre por fechas, regional u operación.` });
+    }
+
+    const sql = `
+      SELECT
+        da.IdActa, da.Fecha_Entrega, da.Estado, da.Categoria, mo.REGIONAL AS Regional,
+        da.operacion, da.identificacion,
+        COALESCE(
+          (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
+          (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
+        ) AS Trabajador,
+        i.IdArticulo, ar.Articulo, ar.Referencia, ar.Talla, i.Cantidad, i.Nota,
+        da.Observaciones, da.IdSolicitud, da.Usuario, da.Fecha_Registro
+      ${FROM_REPORTE_ACTAS}
+      ${filtro.where}
+      ORDER BY da.Fecha_Registro DESC, da.IdActa DESC, i.IdElemento ASC
+    `;
+    const prepararFila = (f) => ({ ...f, Trabajador: nombreTrabajadorActa(f.Trabajador) });
+    const archivo = nombreArchivo(`Actas_${filtro.etiqueta}`, formato);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`);
+
+    if (formato === 'xlsx') {
+      const [filas] = await pool.execute(sql, filtro.params);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(generarXlsx({ hoja: 'Actas', columnas: COLUMNAS_REPORTE_ACTAS, filas: filas.map(prepararFila) }));
+    }
+
+    // CSV fila por fila, sin cargar todo en memoria; se detiene si el usuario cancela.
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.write(encabezadoCsv(COLUMNAS_REPORTE_ACTAS));
+    const stream = pool.pool.query(sql, filtro.params).stream({ highWaterMark: 500 });
+    let cancelado = false;
+    req.on('close', () => { if (!res.writableEnded) { cancelado = true; stream.destroy(); } });
+    stream.on('data', (fila) => {
+      if (!res.write(filaCsv(COLUMNAS_REPORTE_ACTAS, prepararFila(fila)))) {
+        stream.pause();
+        res.once('drain', () => stream.resume());
+      }
+    });
+    stream.on('end', () => res.end());
+    stream.on('error', (err) => {
+      if (!cancelado) console.error('[actas] Error generando CSV de Actas:', err.message);
+      res.end();
+    });
+  } catch (err) {
+    console.error('[actas] GET /api/actas/reporte:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
   }
 });
 
