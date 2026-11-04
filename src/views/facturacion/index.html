@@ -417,6 +417,10 @@
     :root[data-theme="oscuro"] table.data-table thead th,
     :root[data-theme="oscuro"] .filtros-toggle-left,
     :root[data-theme="oscuro"] [style*="color: var(--accent); text-transform: uppercase"] { color: var(--text) !important; }
+    /* Tema oscuro: dato principal de cada catálogo (Código/NIT, Cliente a Facturar, Transportadora, Proveedor, Placa)
+       y botones "Pasar a mayúsculas" con texto claro */
+    :root[data-theme="oscuro"] .dato-destacado { color: color-mix(in srgb, var(--accent) 35%, #ffffff) !important; }
+    :root[data-theme="oscuro"] [data-btn-mayus] { color: var(--text) !important; border-color: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
     :root[data-theme="oscuro"] .badge-modalidad { color: #ffffff !important; background: color-mix(in srgb, var(--accent) 45%, transparent) !important; border-color: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight label { color: var(--text) !important; }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight select { color: var(--text) !important; }
@@ -2550,7 +2554,7 @@
             <button type="button" class="btn-secondary" id="btn-normalizar-transportadora" onclick="abrirModalNormalizar('transportadora')" style="display: none; border-color: rgba(16,185,129,0.4); color: #059669; font-weight: 600;" title="Normaliza nombres en Dynamic_Servicios a su ID oficial">
               <span>🧹</span> Normalizar Textos en Servicios
             </button>
-            <button type="button" class="btn-secondary" id="btn-mayus-transportadora" onclick="convertirMayusculas('transportadora')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+            <button type="button" class="btn-secondary" id="btn-mayus-transportadora" data-btn-mayus="1" onclick="convertirMayusculas('transportadora')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
               <span>🔠</span> A Mayúsculas
             </button>
           </div>
@@ -2654,7 +2658,7 @@
             <button type="button" class="btn-secondary" id="btn-normalizar-proveedor" onclick="abrirModalNormalizar('proveedor')" style="display: none; border-color: rgba(16,185,129,0.4); color: #059669; font-weight: 600;" title="Normaliza nombres en Dynamic_Servicios a su ID oficial">
               <span>🧹</span> Normalizar Textos en Servicios
             </button>
-            <button type="button" class="btn-secondary" id="btn-mayus-proveedor" onclick="convertirMayusculas('proveedor')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+            <button type="button" class="btn-secondary" id="btn-mayus-proveedor" data-btn-mayus="1" onclick="convertirMayusculas('proveedor')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
               <span>🔠</span> A Mayúsculas
             </button>
           </div>
@@ -2758,7 +2762,7 @@
             <button type="button" class="btn-secondary" id="btn-longitud-placa" onclick="verPlacasLongitudDistinta()" style="font-weight: 600; border-color: rgba(245,158,11,0.45); color: #b45309;" title="Provisional: placas con menos o más de 6 caracteres">
               <span>📏</span> Placas ≠ 6 <span class="badge" id="badge-longitud-placa" style="background: rgba(245,158,11,0.16); color: #b45309; margin-left: 4px;">0</span>
             </button>
-            <button type="button" class="btn-secondary" id="btn-mayus-placa" onclick="convertirMayusculas('placa')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+            <button type="button" class="btn-secondary" id="btn-mayus-placa" data-btn-mayus="1" onclick="convertirMayusculas('placa')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
               <span>🔠</span> A Mayúsculas
             </button>
           </div>
@@ -5518,7 +5522,7 @@
           tr.innerHTML = `
             <td style="text-align: center; white-space: nowrap;">${btnEditarCli}</td>
             <td>${actBadge}</td>
-            <td style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
+            <td class="dato-destacado" style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
             <td style="font-weight: 600;">${esc(c.razonSocial) || '—'}</td>
             <td>${esc(c.telefono) || '—'}</td>
             <td style="font-size: 0.8rem;">${esc(c.correoFE) || '—'}</td>
@@ -5967,7 +5971,7 @@
             </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(t.id) || '—'}</td>
             <td>
-              <span style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('transportadora', '${esc(t.id)}')">${esc(t.transportadora) || '—'}</span>
+              <span class="dato-destacado" style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('transportadora', '${esc(t.id)}')">${esc(t.transportadora) || '—'}</span>
             </td>
             <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(t.usuario) || '—'}</td>
@@ -6171,7 +6175,7 @@
             </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
             <td>
-              <span style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('proveedor', '${esc(p.id)}')">${esc(p.proveedor) || '—'}</span>
+              <span class="dato-destacado" style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('proveedor', '${esc(p.id)}')">${esc(p.proveedor) || '—'}</span>
             </td>
             <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(p.usuario) || '—'}</td>
@@ -7270,7 +7274,7 @@
               ${btnEditar}${btnEliminar}
             </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
-            <td style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}${avisoLargo}</td>
+            <td class="dato-destacado" style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}${avisoLargo}</td>
             <td>${tipoBadge}</td>
             <td style="font-weight: 600;">${esc(p.clienteCredito) || '—'}</td>
             <td>${esc(p.cliente) || '—'}</td>
@@ -8015,7 +8019,7 @@
               <span class="slider"></span>
             </label>
           </td>
-          <td style="font-weight: 600; color: var(--accent);">${esc(cFNom)}</td>
+          <td class="dato-destacado" style="font-weight: 600; color: var(--accent);">${esc(cFNom)}</td>
           <td style="font-family: monospace; font-size: 0.85rem;">${esc(c.nit) || '—'}</td>
           <td>${esc(c.nombre)}</td>
           <td style="font-size: 0.85rem; color: var(--text-muted);">${esc(usrNom)}</td>
