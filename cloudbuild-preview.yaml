@@ -34,6 +34,15 @@ steps:
       - -ceu
       - |
         gcloud run services describe ${_SERVICIO_PROD} --region=${_REGION} --format=json > prod.json
+
+  # La imagen cloud-sdk:slim ya no trae python3: el procesamiento de prod.json va en un
+  # paso aparte con una imagen de Python (los pasos comparten la carpeta /workspace).
+  - id: preparar-configuracion
+    name: python:3.12-slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
         python3 - <<'PY'
         import json
         s = json.load(open('prod.json'))
