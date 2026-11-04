@@ -2683,14 +2683,32 @@ async function obtenerPermisosSociodemografica(rolUsuario) {
     );
   }
 
+  // Columna CONTRATO FIRMADO de Colaboradores: abrir el contrato y cambiar la Condición
+  // (En Proceso / Contratado) de Maestro_Vinculación. Sin la fila, nadie tiene el permiso.
+  const puedeVerContrato = rolEstaEnListaSocio(rolUsuario, getParam('Puede ver Contrato', ''));
+  const puedeCambiarCondicion = rolEstaEnListaSocio(
+    rolUsuario,
+    getParam('Puede cambiar la Condicion de contrato del trabajador', '')
+  );
+
   return {
     puedeVerRetirados,
     verActivo,
     verRetirado,
     editarActivo,
-    editarRetirado
+    editarRetirado,
+    puedeVerContrato,
+    puedeCambiarCondicion
   };
 }
+
+// Contrato firmado: registro de Maestro_docTrabajador con TipoDocumento 18 (alias v = Maestro_Vinculación).
+const SQL_CONTRATO_FIRMADO = `EXISTS (SELECT 1 FROM Maestro_docTrabajador dc
+  WHERE dc.\`Identificación\` = v.\`Identificación\` AND dc.TipoDocumento = '18')`;
+const SQL_CONTRATO_URL = `(SELECT dc.Url FROM Maestro_docTrabajador dc
+  WHERE dc.\`Identificación\` = v.\`Identificación\` AND dc.TipoDocumento = '18'
+  ORDER BY dc.FechaRegistro DESC, dc.id DESC LIMIT 1)`;
+const CONDICIONES_VINCULACION = ['En Proceso', 'Contratado'];
 
 function calcularEdadAnios(fechaNac) {
   if (!fechaNac) return null;
@@ -2894,7 +2912,10 @@ router.get('/api/sociodemografica', async (req, res) => {
           v.\`Fecha de Ingreso\` AS fecha_ingreso,
           v.\`Fecha de Retiro\` AS fecha_retiro,
           COALESCE(v.usuarioactualiza, v.Usuario) AS usuario_actualiza,
-          v.\`Fecha Actualización\` AS fecha_actualizacion
+          v.\`Fecha Actualización\` AS fecha_actualizacion,
+          v.Condicion AS condicion,
+          ${SQL_CONTRATO_FIRMADO} AS contrato_firmado,
+          ${permisos.puedeVerContrato ? SQL_CONTRATO_URL : 'NULL'} AS contrato_url
         FROM \`Maestro_Vinculación\` v
         LEFT JOIN \`Maestro_Segmentación\` s ON s.\`Identificación\` = v.\`Identificación\`
         LEFT JOIN Config_Area ca ON ca.ID = v.Area
@@ -2915,7 +2936,10 @@ router.get('/api/sociodemografica', async (req, res) => {
         fecha_ingreso: formatearFechaYMD(item.fecha_ingreso),
         fecha_retiro: formatearFechaYMD(item.fecha_retiro),
         usuario_actualiza: item.usuario_actualiza || '',
-        fecha_actualizacion: item.fecha_actualizacion || null
+        fecha_actualizacion: item.fecha_actualizacion || null,
+        condicion: item.condicion || '',
+        contrato_firmado: item.contrato_firmado ? 1 : 0,
+        contrato_url: item.contrato_url || ''
       }));
     } else if (opcionKey === 'examenes') {
       const conds = ['me.Estado = ?'];
@@ -3237,7 +3261,10 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
                 v.\`Fecha de Ingreso\` AS fecha_ingreso, v.\`Fecha de Retiro\` AS fecha_retiro,
                 v.\`Motivo del Retiro\` AS motivo_retiro,
                 COALESCE(v.usuarioactualiza, v.Usuario) AS usuario_actualiza_vinc,
-                v.\`Fecha Actualización\` AS fecha_actualizacion_vinc
+                v.\`Fecha Actualización\` AS fecha_actualizacion_vinc,
+                v.Condicion AS condicion,
+                ${SQL_CONTRATO_FIRMADO} AS contrato_firmado,
+                ${permisos.puedeVerContrato ? SQL_CONTRATO_URL : 'NULL'} AS contrato_url
          FROM \`Maestro_Vinculación\` v
          LEFT JOIN Config_Area ca ON ca.ID = v.Area
          WHERE v.\`Identificación\` = ?
@@ -3393,6 +3420,9 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       fecha_ingreso: formatearFechaYMD(v.fecha_ingreso),
       fecha_retiro: formatearFechaYMD(v.fecha_retiro),
       motivo_retiro: v.motivo_retiro || '',
+      condicion: v.condicion || '',
+      contrato_firmado: v.contrato_firmado ? 1 : 0,
+      contrato_url: v.contrato_url || '',
 
       // Datos Generales
       tipo_documento: s['Tipo de Documento'] || '',
@@ -3484,6 +3514,56 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
     });
   } catch (err) {
     console.error('[talenthub] GET /api/sociodemografica/detalle/:identificacion:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6.2.2 POST /api/sociodemografica/condicion-contrato
+// Cambia la Condición de la vinculación (En Proceso ↔ Contratado). Solo los roles de
+// "Puede cambiar la Condicion de contrato del trabajador" y dentro de sus operaciones.
+router.post('/api/sociodemografica/condicion-contrato', async (req, res) => {
+  try {
+    const { usuario, id_vinculacion, condicion } = req.body || {};
+
+    const acceso = await computarAccesoTalenthub(usuario, 'Sociodemografica');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para modificar Sociodemográfica.' });
+    }
+    const permisos = await obtenerPermisosSociodemografica(acceso.rol);
+    if (!permisos.puedeCambiarCondicion) {
+      return res.status(403).json({ error: `Su rol (${acceso.rol}) no tiene permiso para cambiar la Condición del contrato.` });
+    }
+
+    const nuevaCondicion = CONDICIONES_VINCULACION.find(c => normTokenSocio(c) === normTokenSocio(condicion));
+    if (!nuevaCondicion) {
+      return res.status(400).json({ error: 'Condición no válida. Use "En Proceso" o "Contratado".' });
+    }
+    if (!id_vinculacion) {
+      return res.status(400).json({ error: 'Vinculación requerida.' });
+    }
+
+    const [exist] = await pool.execute(
+      'SELECT `Id Vinculación`, `Operación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      [String(id_vinculacion)]
+    );
+    if (!exist.length) return res.status(404).json({ error: 'Registro de vinculación no encontrado.' });
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(exist[0]['Operación'])) {
+      return res.status(403).json({ error: 'No tiene alcance sobre la operación de este registro.' });
+    }
+
+    const usuarioAuditoria = `${acceso.usuarioNombre} - ${acceso.usuarioId}`;
+    await pool.execute(
+      `UPDATE \`Maestro_Vinculación\`
+       SET Condicion = ?,
+           usuarioactualiza = ?,
+           \`Fecha Actualización\` = CONVERT_TZ(NOW(), 'SYSTEM', '-05:00')
+       WHERE \`Id Vinculación\` = ?`,
+      [nuevaCondicion, usuarioAuditoria, exist[0]['Id Vinculación']]
+    );
+
+    return res.json({ ok: true, condicion: nuevaCondicion, mensaje: `Condición actualizada a "${nuevaCondicion}".` });
+  } catch (err) {
+    console.error('[talenthub] POST /api/sociodemografica/condicion-contrato:', err);
     res.status(500).json({ error: err.message });
   }
 });

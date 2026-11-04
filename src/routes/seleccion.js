@@ -1310,7 +1310,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
         'Colombia', a.departamento, a.ciudad, a.direccion_barrio,
         a.telefono, a.correo_electronico, a.estado_civil, gradoEscolaridad, a.eps, null,
         null, a.afp, null, null, null,
-        null, 'Bolivar', null, nombreEmergencia, teleEmergencia,
+        null, 'Sura', null, nombreEmergencia, teleEmergencia,
         null, null, a.camisa_talla, a.camisa_talla, null, a.talla_pantalon, a.zapatos_talla,
         null, null, 'Activo', operacion, operacion,
         nombreUsuario, nombreUsuario, fechaActualizacion
@@ -1322,8 +1322,8 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const idVinculacionNueva = crypto.randomUUID();
     await connection.query(`
         INSERT INTO Maestro_Vinculación 
-        (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Estado, \`Fecha Actualización\`, Usuario, usuarioactualiza)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?, ?)
+        (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Estado, Condicion, \`Fecha Actualización\`, Usuario, usuarioactualiza)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo', 'En Proceso', ${horaBogotaSQL}, ?, ?)
     `, [idVinculacionNueva, nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, nombreUsuario, nombreUsuario]);
 
     // 6. Maestro_Examenes

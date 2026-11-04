@@ -2329,6 +2329,34 @@
           background: var(--accent);
           color: var(--accent-contrast, #ffffff);
         }
+        .socio-contrato-check {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: rgba(22, 163, 74, 0.16);
+          color: #16a34a;
+          font-weight: 800;
+          font-size: 0.85rem;
+          text-decoration: none;
+        }
+        a.socio-contrato-check { cursor: pointer; border: 1px solid rgba(22, 163, 74, 0.45); }
+        a.socio-contrato-check:hover { background: #16a34a; color: #ffffff; }
+        .socio-condicion-circulo {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          padding: 0;
+          cursor: pointer;
+          border: 2px solid rgba(0, 0, 0, 0.18);
+          transition: transform 0.15s ease;
+        }
+        .socio-condicion-circulo:hover { transform: scale(1.15); }
+        .socio-condicion-circulo:disabled { opacity: 0.5; cursor: wait; }
+        .socio-condicion-circulo.en-proceso { background: #eab308; }
+        .socio-condicion-circulo.contratado { background: #16a34a; }
 
         /* ── Layout Split-View Estilo SST (Escritorio derecha / Móvil pantalla completa) ── */
         .socio-view-layout {
@@ -8043,6 +8071,7 @@
         { key: 'area',                label: 'Area',                   width: '160px' },
         { key: 'fecha_ingreso',       label: 'Fecha de Ingreso',       width: '135px' },
         { key: 'fecha_retiro',        label: 'Fecha de Retiro',        width: '135px' },
+        { key: 'contrato_firmado',    label: 'Contrato Firmado',       width: '125px', type: 'contrato' },
         { key: 'usuario_actualiza',   label: 'Usuario actualiza',      width: '180px' },
         { key: 'fecha_actualizacion', label: 'Fecha de actualización', width: '165px', type: 'datetime' }
       ],
@@ -8614,6 +8643,9 @@
         const fg = esAct ? '#15803d' : '#b91c1c';
         return `<span style="display:inline-block; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.74rem; background:${bg}; color:${fg};">${esc(val || '—')}</span>`;
       }
+      if (col.type === 'contrato') {
+        return renderCeldaContratoSocio(row);
+      }
       if (col.type === 'doc_url') {
         const idDoc = MAPA_DOC_SOCIO_ID[col.key] || '';
         const puedeSubir = esDetalle && idDoc && puedeEditarTabDetalleSocio(_socioDetalleTabActiva);
@@ -8656,6 +8688,59 @@
         return `<strong style="color:var(--text);" title="${esc(String(val))}">${esc(String(val))}</strong>`;
       }
       return `<span title="${esc(String(val))}">${esc(String(val))}</span>`;
+    }
+
+    // CONTRATO FIRMADO: chulito verde si hay documento TipoDocumento 18 (solo "Puede ver Contrato"
+    // lo abre) y círculo de la Condición de la vinculación, amarillo En Proceso / verde Contratado
+    // (solo "Puede cambiar la Condicion de contrato del trabajador" lo ve y lo cambia).
+    function renderCeldaContratoSocio(row) {
+      let html = '';
+      if (row.contrato_firmado) {
+        html += row.contrato_url
+          ? `<a href="${esc(row.contrato_url)}" target="_blank" rel="noopener noreferrer" class="socio-contrato-check" onclick="event.stopPropagation();" title="Contrato firmado — clic para abrirlo">✔</a>`
+          : `<span class="socio-contrato-check" title="Contrato firmado">✔</span>`;
+      }
+      const idVinc = row.id_vinculacion || row.id_registro || '';
+      if (_socioPermisos?.puedeCambiarCondicion && idVinc) {
+        const contratado = row.condicion === 'Contratado';
+        const actual = contratado ? 'Contratado' : 'En Proceso';
+        const siguiente = contratado ? 'En Proceso' : 'Contratado';
+        html += `<button type="button" class="socio-condicion-circulo ${contratado ? 'contratado' : 'en-proceso'}" onclick="event.stopPropagation(); cambiarCondicionContratoSocio('${esc(String(idVinc))}', '${siguiente}', this)" title="Condición: ${actual} — clic para cambiar a ${siguiente}"></button>`;
+      }
+      return html
+        ? `<span style="display:inline-flex; align-items:center; gap:8px;">${html}</span>`
+        : '<span style="color:var(--text-muted);">—</span>';
+    }
+
+    async function cambiarCondicionContratoSocio(idVinculacion, condicion, btn) {
+      if (!confirm(`¿Cambiar la Condición del trabajador a "${condicion}"?`)) return;
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/talenthub/api/sociodemografica/condicion-contrato', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, id_vinculacion: idVinculacion, condicion })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo cambiar la Condición', 'error');
+          if (btn) btn.disabled = false;
+          return;
+        }
+        _socioRegistros.forEach(r => {
+          if (String(r.id_registro) === String(idVinculacion)) r.condicion = data.condicion;
+        });
+        if (_socioDetalleConsolidado && String(_socioDetalleConsolidado.id_vinculacion || _socioDetalleConsolidado.id_registro) === String(idVinculacion)) {
+          _socioDetalleConsolidado.condicion = data.condicion;
+          if (!_socioDetalleModoEdicion) renderContenidoDetalleSocio();
+        }
+        renderFilasTablaSocio();
+        showToast(data.mensaje || 'Condición actualizada', 'success');
+      } catch (err) {
+        console.error('[Sociodemografica] Error cambiando la Condición:', err);
+        showToast('Error de red al cambiar la Condición', 'error');
+        if (btn) btn.disabled = false;
+      }
     }
 
     function renderFilasTablaSocio() {
