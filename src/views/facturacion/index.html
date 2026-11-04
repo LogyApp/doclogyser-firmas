@@ -412,6 +412,16 @@
       color: var(--accent-dark) !important;
     }
     /* En oscuro el azul oscuro no se lee: texto como los demás filtros */
+    /* Tema oscuro: encabezados de tabla, etiqueta "Filtros" y títulos de bloque con texto claro
+       (el color de acento solo garantiza 3:1 y se veía opaco en letra pequeña) */
+    :root[data-theme="oscuro"] table.data-table thead th,
+    :root[data-theme="oscuro"] .filtros-toggle-left,
+    :root[data-theme="oscuro"] [style*="color: var(--accent); text-transform: uppercase"] { color: var(--text) !important; }
+    /* Tema oscuro: dato principal de cada catálogo (Código/NIT, Cliente a Facturar, Transportadora, Proveedor, Placa)
+       y botones "Pasar a mayúsculas" con texto claro */
+    :root[data-theme="oscuro"] .dato-destacado { color: color-mix(in srgb, var(--accent) 35%, #ffffff) !important; }
+    :root[data-theme="oscuro"] [data-btn-mayus] { color: var(--text) !important; border-color: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
+    :root[data-theme="oscuro"] .badge-modalidad { color: #ffffff !important; background: color-mix(in srgb, var(--accent) 45%, transparent) !important; border-color: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight label { color: var(--text) !important; }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight select { color: var(--text) !important; }
 
@@ -1725,13 +1735,13 @@
                 <th style="width:110px; text-align:right" data-sort="valorReteFuente">V. ReteFuente<span id="servSort-valorReteFuente" class="sort-indicator"></span></th>
                 <th style="width:100px; text-align:right" data-sort="valorReteIVA">V. ReteIVA<span id="servSort-valorReteIVA" class="sort-indicator"></span></th>
                 <th style="width:100px; text-align:right" data-sort="valorReteICA">V. ReteICA<span id="servSort-valorReteICA" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="clienteAFacturar">Cliente a Facturar<span id="servSort-clienteAFacturar" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="transportadora">Transportadora<span id="servSort-transportadora" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="proveedor">Proveedor<span id="servSort-proveedor" class="sort-indicator"></span></th>
                 <th style="width:130px" data-sort="actividad">Actividad<span id="servSort-actividad" class="sort-indicator"></span></th>
                 <th style="width:90px" data-sort="unidad">Unidad<span id="servSort-unidad" class="sort-indicator"></span></th>
                 <th style="width:90px" data-sort="placa">Placa<span id="servSort-placa" class="sort-indicator"></span></th>
                 <th style="width:100px" data-sort="vehiculo">Vehículo<span id="servSort-vehiculo" class="sort-indicator"></span></th>
-                <th style="width:160px" data-sort="clienteAFacturar">Cliente a Facturar<span id="servSort-clienteAFacturar" class="sort-indicator"></span></th>
-                <th style="width:150px" data-sort="transportadora">Transportadora<span id="servSort-transportadora" class="sort-indicator"></span></th>
-                <th style="width:140px" data-sort="proveedor">Proveedor<span id="servSort-proveedor" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="usuario">Usuario<span id="servSort-usuario" class="sort-indicator"></span></th>
                 <th style="width:140px" data-sort="fechaRegistro">Fecha Registro<span id="servSort-fechaRegistro" class="sort-indicator"></span></th>
                 <th style="width:140px" data-sort="quincena">Quincena<span id="servSort-quincena" class="sort-indicator"></span></th>
@@ -1994,7 +2004,7 @@
           </div>
         </div>
 
-        <!-- Tabla de 24 Columnas de Recibos (Redimensionable y Ordenable) -->
+        <!-- Tabla de 23 Columnas de Recibos (Redimensionable y Ordenable) -->
         <div class="table-container">
           <table class="data-table" id="tabla-recibos">
             <thead>
@@ -2002,10 +2012,11 @@
                 <th style="width:140px" data-sort="fecha_registro" class="sorted">Fecha Registro<span id="recSort-fecha_registro" class="sort-indicator"> ▼</span></th>
                 <th style="width:140px" data-sort="consecutivo_recibo">Consecutivo Recibo<span id="recSort-consecutivo_recibo" class="sort-indicator"></span></th>
                 <th style="width:130px" data-sort="total">Total<span id="recSort-total" class="sort-indicator"></span></th>
-                <th style="width:130px" data-sort="regional">Regional<span id="recSort-regional" class="sort-indicator"></span></th>
                 <th style="width:140px" data-sort="operacion">Operación<span id="recSort-operacion" class="sort-indicator"></span></th>
-                <th style="width:120px" data-sort="modalidad">Modalidad<span id="recSort-modalidad" class="sort-indicator"></span></th>
                 <th style="width:120px" data-sort="area">Área<span id="recSort-area" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="modalidad">Modalidad<span id="recSort-modalidad" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="cliente_credito">Cliente Crédito<span id="recSort-cliente_credito" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="categoria">Categoría<span id="recSort-categoria" class="sort-indicator"></span></th>
                 <th style="width:160px" data-sort="transportadora">Transportadora<span id="recSort-transportadora" class="sort-indicator"></span></th>
                 <th style="width:160px" data-sort="proveedor">Proveedor<span id="recSort-proveedor" class="sort-indicator"></span></th>
                 <th style="width:100px" data-sort="placa">Placa<span id="recSort-placa" class="sort-indicator"></span></th>
@@ -2014,8 +2025,6 @@
                 <th style="width:110px" data-sort="retefuente">Retefuente<span id="recSort-retefuente" class="sort-indicator"></span></th>
                 <th style="width:110px" data-sort="reteiva">ReteIVA<span id="recSort-reteiva" class="sort-indicator"></span></th>
                 <th style="width:110px" data-sort="reteica">ReteICA<span id="recSort-reteica" class="sort-indicator"></span></th>
-                <th style="width:160px" data-sort="cliente_credito">Cliente Crédito<span id="recSort-cliente_credito" class="sort-indicator"></span></th>
-                <th style="width:120px" data-sort="categoria">Categoría<span id="recSort-categoria" class="sort-indicator"></span></th>
                 <th style="width:120px" data-sort="nit">NIT<span id="recSort-nit" class="sort-indicator"></span></th>
                 <th style="width:180px" data-sort="nombres">Nombres / Razón Social<span id="recSort-nombres" class="sort-indicator"></span></th>
                 <th style="width:120px" data-sort="telefono">Teléfono<span id="recSort-telefono" class="sort-indicator"></span></th>
@@ -2026,7 +2035,7 @@
               </tr>
             </thead>
             <tbody id="tabla-recibos-body">
-              <tr><td colspan="24" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando recibos...</td></tr>
+              <tr><td colspan="23" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando recibos...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2545,7 +2554,7 @@
             <button type="button" class="btn-secondary" id="btn-normalizar-transportadora" onclick="abrirModalNormalizar('transportadora')" style="display: none; border-color: rgba(16,185,129,0.4); color: #059669; font-weight: 600;" title="Normaliza nombres en Dynamic_Servicios a su ID oficial">
               <span>🧹</span> Normalizar Textos en Servicios
             </button>
-            <button type="button" class="btn-secondary" id="btn-mayus-transportadora" onclick="convertirMayusculas('transportadora')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+            <button type="button" class="btn-secondary" id="btn-mayus-transportadora" data-btn-mayus="1" onclick="convertirMayusculas('transportadora')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
               <span>🔠</span> A Mayúsculas
             </button>
           </div>
@@ -2649,7 +2658,7 @@
             <button type="button" class="btn-secondary" id="btn-normalizar-proveedor" onclick="abrirModalNormalizar('proveedor')" style="display: none; border-color: rgba(16,185,129,0.4); color: #059669; font-weight: 600;" title="Normaliza nombres en Dynamic_Servicios a su ID oficial">
               <span>🧹</span> Normalizar Textos en Servicios
             </button>
-            <button type="button" class="btn-secondary" id="btn-mayus-proveedor" onclick="convertirMayusculas('proveedor')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+            <button type="button" class="btn-secondary" id="btn-mayus-proveedor" data-btn-mayus="1" onclick="convertirMayusculas('proveedor')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
               <span>🔠</span> A Mayúsculas
             </button>
           </div>
@@ -2753,7 +2762,7 @@
             <button type="button" class="btn-secondary" id="btn-longitud-placa" onclick="verPlacasLongitudDistinta()" style="font-weight: 600; border-color: rgba(245,158,11,0.45); color: #b45309;" title="Provisional: placas con menos o más de 6 caracteres">
               <span>📏</span> Placas ≠ 6 <span class="badge" id="badge-longitud-placa" style="background: rgba(245,158,11,0.16); color: #b45309; margin-left: 4px;">0</span>
             </button>
-            <button type="button" class="btn-secondary" id="btn-mayus-placa" onclick="convertirMayusculas('placa')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+            <button type="button" class="btn-secondary" id="btn-mayus-placa" data-btn-mayus="1" onclick="convertirMayusculas('placa')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
               <span>🔠</span> A Mayúsculas
             </button>
           </div>
@@ -5513,7 +5522,7 @@
           tr.innerHTML = `
             <td style="text-align: center; white-space: nowrap;">${btnEditarCli}</td>
             <td>${actBadge}</td>
-            <td style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
+            <td class="dato-destacado" style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
             <td style="font-weight: 600;">${esc(c.razonSocial) || '—'}</td>
             <td>${esc(c.telefono) || '—'}</td>
             <td style="font-size: 0.8rem;">${esc(c.correoFE) || '—'}</td>
@@ -5962,7 +5971,7 @@
             </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(t.id) || '—'}</td>
             <td>
-              <span style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('transportadora', '${esc(t.id)}')">${esc(t.transportadora) || '—'}</span>
+              <span class="dato-destacado" style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('transportadora', '${esc(t.id)}')">${esc(t.transportadora) || '—'}</span>
             </td>
             <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(t.usuario) || '—'}</td>
@@ -6166,7 +6175,7 @@
             </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
             <td>
-              <span style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('proveedor', '${esc(p.id)}')">${esc(p.proveedor) || '—'}</span>
+              <span class="dato-destacado" style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('proveedor', '${esc(p.id)}')">${esc(p.proveedor) || '—'}</span>
             </td>
             <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(p.usuario) || '—'}</td>
@@ -7265,7 +7274,7 @@
               ${btnEditar}${btnEliminar}
             </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
-            <td style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}${avisoLargo}</td>
+            <td class="dato-destacado" style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}${avisoLargo}</td>
             <td>${tipoBadge}</td>
             <td style="font-weight: 600;">${esc(p.clienteCredito) || '—'}</td>
             <td>${esc(p.cliente) || '—'}</td>
@@ -8010,7 +8019,7 @@
               <span class="slider"></span>
             </label>
           </td>
-          <td style="font-weight: 600; color: var(--accent);">${esc(cFNom)}</td>
+          <td class="dato-destacado" style="font-weight: 600; color: var(--accent);">${esc(cFNom)}</td>
           <td style="font-family: monospace; font-size: 0.85rem;">${esc(c.nit) || '—'}</td>
           <td>${esc(c.nombre)}</td>
           <td style="font-size: 0.85rem; color: var(--text-muted);">${esc(usrNom)}</td>
@@ -8738,13 +8747,13 @@
             <td style="text-align: right;">${reteFuenteHtml}</td>
             <td style="text-align: right;">${reteIvaHtml}</td>
             <td style="text-align: right;">${reteIcaHtml}</td>
+            <td>${esc(s.clienteAFacturar || '-')}</td>
+            <td>${esc(s.transportadora || '-')}</td>
+            <td>${esc(s.proveedor || '-')}</td>
             <td>${esc(s.actividad || '-')}</td>
             <td>${esc(s.unidad || '-')}</td>
             <td>${esc(s.placa || '-')}</td>
             <td>${esc(s.vehiculo || '-')}</td>
-            <td>${esc(s.clienteAFacturar || '-')}</td>
-            <td>${esc(s.transportadora || '-')}</td>
-            <td>${esc(s.proveedor || '-')}</td>
             <td>${esc(s.usuario || '-')}</td>
             <td>${formatFechaBogota(s.fechaRegistro)}</td>
             <td>${esc(s.quincena || '-')}</td>
@@ -9447,7 +9456,7 @@
 
     async function cargarRecibos() {
       const tbody = document.getElementById('tabla-recibos-body');
-      tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando recibos...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="23" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando recibos...</td></tr>';
 
       try {
         const params = new URLSearchParams({
@@ -9483,14 +9492,14 @@
         renderRecibosTable();
       } catch (err) {
         console.error('[cargarRecibos]', err);
-        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de recibos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="23" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de recibos.</td></tr>';
       }
     }
 
     function renderRecibosTable() {
       const tbody = document.getElementById('tabla-recibos-body');
       if (!allRecibos.length) {
-        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron recibos con los filtros actuales.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="23" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron recibos con los filtros actuales.</td></tr>';
         return;
       }
 
@@ -9532,10 +9541,11 @@
             <td>${formatFechaBogota(r.fecha_registro)}</td>
             <td style="font-weight: 700; color: ${colorEstado};">${esc(r.consecutivo_recibo || '-')}</td>
             <td style="font-weight: 800; font-size: 0.92rem; color: ${colorEstado};">$ ${formatMiles(r.total)}</td>
-            <td>${esc(r.regional || '-')}</td>
             <td>${esc(r.operacion || '-')}</td>
-            <td><span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: var(--accent-soft); border: 1px solid var(--border); color: var(--accent);">${esc(r.modalidad || '-')}</span></td>
             <td>${esc(r.area || '-')}</td>
+            <td><span class="badge-modalidad" style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: var(--accent-soft); border: 1px solid var(--border); color: var(--accent);">${esc(r.modalidad || '-')}</span></td>
+            <td>${esc(r.cliente_credito || '-')}</td>
+            <td>${esc(r.categoria || '-')}</td>
             <td>${esc(r.transportadora || '-')}</td>
             <td>${esc(r.proveedor || '-')}</td>
             <td><strong>${esc(r.placa || '-')}</strong></td>
@@ -9544,8 +9554,6 @@
             <td>${reteFuenteHtml}</td>
             <td>${reteIvaHtml}</td>
             <td>${reteIcaHtml}</td>
-            <td>${esc(r.cliente_credito || '-')}</td>
-            <td>${esc(r.categoria || '-')}</td>
             <td>${esc(r.nit || '-')}</td>
             <td>${esc(r.nombres || '-')}</td>
             <td>${esc(r.telefono || '-')}</td>
