@@ -6670,7 +6670,15 @@ function leerAjusteServicio(body) {
   if (modalidad && !configServicios.MODALIDADES.includes(modalidad)) return { error: 'La Modalidad debe ser RECAUDO, CREDITO o vacía.' };
   const operacion = String(body.operacion || '').trim();
   const limpiarLista = (v) => configServicios.lista(Array.isArray(v) ? v.join(',') : v).join(', ');
-  const habilitados = campo.tipo === 'lista' ? limpiarLista(body.datos_habilitados) : '';
+  // Tipo de dato (Etapa y Muelle): Texto, Número o Lista; vacío = Texto
+  const tipoDato = campo.tipoDato ? configServicios.TIPOS_DATO.find((t) => configServicios.normalizar(t) === configServicios.normalizar(body.tipo_dato)) || '' : '';
+  // Lista: las opciones que se escriben (sin repetir) quedan en datos_habilitados
+  const opcionesLista = tipoDato === 'Lista'
+    ? [...new Map(configServicios.lista(Array.isArray(body.datos_habilitados) ? body.datos_habilitados.join(',') : body.datos_habilitados)
+        .map((o) => [configServicios.normalizar(o), o.slice(0, 100)])).values()].join(', ')
+    : '';
+  if (tipoDato === 'Lista' && !opcionesLista) return { error: 'Escriba al menos una opción para la lista.' };
+  const habilitados = campo.tipo === 'lista' ? limpiarLista(body.datos_habilitados) : opcionesLista;
   if (habilitados && !operacion && ['area', 'actividad'].includes(campo.catalogo)) {
     return { error: 'Área y Actividad dependen de la Operación: para limitar sus datos escoja una Operación.' };
   }
@@ -6680,8 +6688,6 @@ function leerAjusteServicio(body) {
   }
   const orden = String(body.orden ?? '').trim();
   if (orden && !/^-?\d+$/.test(orden)) return { error: 'El Orden debe ser un número entero.' };
-  // Tipo de dato (Etapa y Muelle): Número o Texto; vacío = Texto
-  const tipoDato = campo.tipoDato ? configServicios.TIPOS_DATO.find((t) => configServicios.normalizar(t) === configServicios.normalizar(body.tipo_dato)) || '' : '';
   if (tipoDato === 'Número' && defecto && !configServicios.esNumero(defecto)) return { error: 'El valor por defecto debe ser un número.' };
   // "Mostrar solo si": dato del recibo y valores con los que el campo aparece
   const condicionCampo = String(body.condicion_campo || '').trim();

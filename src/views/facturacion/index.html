@@ -422,6 +422,23 @@
     :root[data-theme="oscuro"] .dato-destacado { color: color-mix(in srgb, var(--accent) 35%, #ffffff) !important; }
     :root[data-theme="oscuro"] [data-btn-mayus] { color: var(--text) !important; border-color: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
     :root[data-theme="oscuro"] .badge-modalidad { color: #ffffff !important; background: color-mix(in srgb, var(--accent) 45%, transparent) !important; border-color: color-mix(in srgb, var(--accent) 70%, transparent) !important; }
+    /* Proveedores y Auxiliares escogidos en el formulario de servicio */
+    .chip-seleccion {
+      display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft); border: 1px solid var(--accent-soft);
+      color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+    }
+    .chip-seleccion .chip-quitar { cursor: pointer; font-weight: 800; }
+    /* Botones de las zonas para adjuntar fotos del formulario de servicio */
+    .zona-archivo-btn {
+      padding: 6px 12px; font-size: 0.75rem; border: 1px solid var(--border); background: var(--card-bg); color: var(--text);
+      border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-family: inherit;
+    }
+    .zona-archivo-btn:hover { border-color: var(--accent); }
+    .zona-archivo.bloqueada .zona-archivo-caja { opacity: 0.6; cursor: default; pointer-events: none; }
+    :root[data-theme="oscuro"] .chip-seleccion {
+      color: #ffffff; background: color-mix(in srgb, var(--accent) 40%, transparent);
+      border-color: color-mix(in srgb, var(--accent) 75%, #ffffff 10%);
+    }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight label { color: var(--text) !important; }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight select { color: var(--text) !important; }
 
@@ -4058,8 +4075,14 @@
           <div class="btn-grupo">
             <button type="button" class="btn-grupo-opt" id="aj-tipo-dato-texto" onclick="setTipoDatoAjuste('Texto')">Texto</button>
             <button type="button" class="btn-grupo-opt" id="aj-tipo-dato-numero" onclick="setTipoDatoAjuste('Número')">Número</button>
+            <button type="button" class="btn-grupo-opt" id="aj-tipo-dato-lista" onclick="setTipoDatoAjuste('Lista')">Lista</button>
           </div>
-          <small style="color: var(--text-muted); font-size: 0.76rem;">Número: el formulario de servicio muestra teclado numérico y solo acepta números.</small>
+          <small style="color: var(--text-muted); font-size: 0.76rem;">Número: el formulario de servicio muestra teclado numérico y solo acepta números. Lista: se escoge una de las opciones que escriba abajo.</small>
+        </div>
+        <div class="form-group" id="aj-opciones-wrap" style="display:none;">
+          <label>Opciones de la lista * <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(una por línea, en el orden en que aparecen)</small></label>
+          <textarea id="aj-opciones-lista" rows="5" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; resize:vertical;" placeholder="Ej.&#10;CARGUE&#10;DESCARGUE&#10;ALISTAMIENTO" oninput="onOpcionesListaAjusteChange()"></textarea>
+          <small style="color: var(--text-muted); font-size: 0.76rem;">Las opciones no pueden llevar coma. El valor por defecto, si lo pone, debe ser una de ellas.</small>
         </div>
         <div class="form-group">
           <label>Rol <small style="font-weight:400; text-transform:none; color:var(--text-muted);">(ninguno marcado = todos los que entran a Recibos o Servicios)</small></label>
@@ -4226,10 +4249,14 @@
             <div class="form-group">
               <label>Etapa</label>
               <input type="text" id="ms-etapa">
+              <select id="ms-etapa-lista" style="display:none;" onchange="document.getElementById('ms-etapa').value = this.value"></select>
+              <div class="btn-grupo" id="ms-etapa-botones" style="display:none; flex-wrap:wrap;"></div>
             </div>
             <div class="form-group">
               <label>Muelle</label>
               <input type="text" id="ms-muelle">
+              <select id="ms-muelle-lista" style="display:none;" onchange="document.getElementById('ms-muelle').value = this.value"></select>
+              <div class="btn-grupo" id="ms-muelle-botones" style="display:none; flex-wrap:wrap;"></div>
             </div>
           </div>
 
@@ -4283,8 +4310,8 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
               <div class="form-group">
                 <label>Foto Transferencia *</label>
-                <input type="file" id="ms-foto-transferencia" accept="image/*,application/pdf">
-                <button type="button" class="btn-foto-camara" onclick="tomarFotoServicio('ms-foto-transferencia')">📷 Tomar foto</button>
+                <div class="zona-archivo" data-input="ms-foto-transferencia"></div>
+                <input type="file" id="ms-foto-transferencia" accept="image/*,application/pdf" style="display:none;">
                 <small id="ms-foto-transferencia-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
               </div>
               <div class="form-group">
@@ -4297,14 +4324,14 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
               <label>Foto Documento</label>
-              <input type="file" id="ms-foto-documento" accept="image/*,application/pdf">
-              <button type="button" class="btn-foto-camara" onclick="tomarFotoServicio('ms-foto-documento')">📷 Tomar foto</button>
+              <div class="zona-archivo" data-input="ms-foto-documento"></div>
+              <input type="file" id="ms-foto-documento" accept="image/*,application/pdf" style="display:none;">
               <small id="ms-foto-documento-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
             </div>
             <div class="form-group">
               <label>Foto Evidencia</label>
-              <input type="file" id="ms-foto-evidencia" accept="image/*,application/pdf">
-              <button type="button" class="btn-foto-camara" onclick="tomarFotoServicio('ms-foto-evidencia')">📷 Tomar foto</button>
+              <div class="zona-archivo" data-input="ms-foto-evidencia"></div>
+              <input type="file" id="ms-foto-evidencia" accept="image/*,application/pdf" style="display:none;">
               <small id="ms-foto-evidencia-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
             </div>
           </div>
@@ -10955,7 +10982,7 @@
           <td>${a.operacion ? esc(a.operacion) : '<em style="color:var(--text-muted);">Todas</em>'}</td>
           <td>${esc(a.seccion)}</td>
           <td>${a.modalidad ? esc(a.modalidad) : '<span style="color:var(--text-muted);">Ambas</span>'}</td>
-          <td><strong>${esc(a.columna_origen)}</strong>${a.tipo_dato === 'Número' ? ' <small style="color:var(--text-muted);">(Número)</small>' : ''}${Number(a.editable_validado) === 1 ? '<br><small style="color:var(--success-dark); font-weight:700;">✓ Editable en verde</small>' : ''}</td>
+          <td><strong>${esc(a.columna_origen)}</strong>${['Número', 'Lista'].includes(a.tipo_dato) ? ` <small style="color:var(--text-muted);">(${esc(a.tipo_dato)})</small>` : ''}${Number(a.editable_validado) === 1 ? '<br><small style="color:var(--success-dark); font-weight:700;">✓ Editable en verde</small>' : ''}</td>
           <td>${esc(a.etiqueta_columna || '')}</td>
           <td style="text-align:center">${si(a.visible, 'Sí')}</td>
           <td style="text-align:center">${si(a.obligatorio, 'Sí')}</td>
@@ -10975,12 +11002,43 @@
         .map(c => `<option value="${esc(c.columna)}">${esc(c.etiqueta)}${c.etiqueta !== c.columna ? ` (${esc(c.columna)})` : ''}</option>`).join('');
     }
 
-    // Tipo de dato de Etapa y Muelle (Config_Servicios.tipo_dato): 'Texto' o 'Número'
+    // Tipo de dato de Etapa y Muelle (Config_Servicios.tipo_dato): 'Texto', 'Número' o 'Lista'
+    // (Lista: las opciones se escriben aquí y se guardan en datos_habilitados)
     let ajTipoDato = 'Texto';
     function setTipoDatoAjuste(valor) {
-      ajTipoDato = valor === 'Número' ? 'Número' : 'Texto';
+      ajTipoDato = ['Número', 'Lista'].includes(valor) ? valor : 'Texto';
       document.getElementById('aj-tipo-dato-texto').classList.toggle('sel', ajTipoDato === 'Texto');
       document.getElementById('aj-tipo-dato-numero').classList.toggle('sel', ajTipoDato === 'Número');
+      document.getElementById('aj-tipo-dato-lista').classList.toggle('sel', ajTipoDato === 'Lista');
+      const campo = ajCampo(document.getElementById('aj-seccion').value, document.getElementById('aj-columna').value) || {};
+      document.getElementById('aj-opciones-wrap').style.display = (campo.tipoDato && ajTipoDato === 'Lista') ? '' : 'none';
+      onOpcionesListaAjusteChange();
+    }
+
+    function opcionesListaAjuste() {
+      const vistas = new Set();
+      return document.getElementById('aj-opciones-lista').value.split('\n')
+        .map(s => s.replace(/,/g, ' ').trim()).filter(Boolean)
+        .filter(s => { const k = s.toLowerCase(); if (vistas.has(k)) return false; vistas.add(k); return true; });
+    }
+
+    // Con tipo Lista, el valor por defecto se escoge entre las opciones escritas
+    function onOpcionesListaAjusteChange() {
+      const campo = ajCampo(document.getElementById('aj-seccion').value, document.getElementById('aj-columna').value) || {};
+      if (!campo.tipoDato) return;
+      const defSel = document.getElementById('aj-defecto-select');
+      const defTxt = document.getElementById('aj-defecto-texto');
+      const esLista = ajTipoDato === 'Lista';
+      if (esLista) {
+        const actual = defSel.style.display !== 'none' ? defSel.value : defTxt.value.trim();
+        const opciones = opcionesListaAjuste();
+        defSel.innerHTML = '<option value="">— Sin valor por defecto —</option>' + opciones.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+        defSel.value = opciones.includes(actual) ? actual : '';
+      } else if (defSel.style.display !== 'none' && defSel.value) {
+        defTxt.value = defSel.value;
+      }
+      defSel.style.display = esLista ? '' : 'none';
+      defTxt.style.display = esLista ? 'none' : '';
     }
 
     function setAjusteBool(nombre, valor) {
@@ -11011,6 +11069,8 @@
       setAjusteBool('visible', ajEditando ? Number(a.visible) : 1);
       setAjusteBool('obligatorio', ajEditando ? Number(a.obligatorio) : 0);
       setAjusteBool('editable', ajEditando ? Number(a.editable_validado) || 0 : 0);
+      document.getElementById('aj-opciones-lista').value = a.tipo_dato === 'Lista'
+        ? String(a.datos_habilitados || '').split(',').map(s => s.trim()).filter(Boolean).join('\n') : '';
       setTipoDatoAjuste(a.tipo_dato);
       ajHabSel = new Set(String(a.datos_habilitados || '').split(',').map(s => s.trim()).filter(Boolean));
       ajRolesSel = new Set(String(a.rol || '').split(',').map(s => s.trim()).filter(Boolean));
@@ -11026,7 +11086,7 @@
         ? `${puedeEditar ? '✏️ Editar' : '👁 Ver'} Ajuste — ${a.columna_origen}` : '➕ Nuevo Ajuste';
       document.getElementById('aj-btn-guardar').style.display = puedeEditar ? '' : 'none';
       document.getElementById('aj-btn-eliminar').style.display = (ajEditando && ajPuede('eliminar')) ? '' : 'none';
-      document.querySelectorAll('#modal-ajuste-overlay .modal-body input, #modal-ajuste-overlay .modal-body select, #modal-ajuste-overlay .modal-body button')
+      document.querySelectorAll('#modal-ajuste-overlay .modal-body input, #modal-ajuste-overlay .modal-body select, #modal-ajuste-overlay .modal-body textarea, #modal-ajuste-overlay .modal-body button')
         .forEach(el => { el.disabled = !puedeEditar; });
 
       const overlay = document.getElementById('modal-ajuste-overlay');
@@ -11109,6 +11169,9 @@
       defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto') ? '' : 'none';
       defSel.style.display = campo.tipo === 'lista' ? '' : 'none';
       defTxt.style.display = campo.tipo === 'texto' ? '' : 'none';
+      // Etapa y Muelle: opciones de la lista y su valor por defecto
+      if (campo.tipoDato) setTipoDatoAjuste(ajTipoDato);
+      else document.getElementById('aj-opciones-wrap').style.display = 'none';
       if (campo.tipo !== 'lista') { ajCatalogo = []; return; }
 
       const porOperacion = ['area', 'actividad'].includes(campo.catalogo);
@@ -11153,6 +11216,8 @@
       const campo = ajCampo(seccion, columna) || {};
       // Los habilitados se guardan en el orden del catálogo
       const habilitados = ajCatalogo.filter(o => ajHabSel.has(o.valor)).map(o => o.valor);
+      const esListaPropia = !!campo.tipoDato && ajTipoDato === 'Lista';
+      if (esListaPropia && !opcionesListaAjuste().length) return alert('Escriba al menos una opción para la lista (una por línea).');
       const payload = {
         seccion,
         columna_origen: columna,
@@ -11162,8 +11227,8 @@
         visible: ajBool.visible,
         obligatorio: ajBool.obligatorio,
         editable_validado: ajBool.editable,
-        datos_habilitados: campo.tipo === 'lista' ? habilitados.join(', ') : '',
-        valor_defecto: campo.tipo === 'lista' ? document.getElementById('aj-defecto-select').value
+        datos_habilitados: campo.tipo === 'lista' ? habilitados.join(', ') : esListaPropia ? opcionesListaAjuste().join(', ') : '',
+        valor_defecto: (campo.tipo === 'lista' || esListaPropia) ? document.getElementById('aj-defecto-select').value
           : campo.tipo === 'texto' ? document.getElementById('aj-defecto-texto').value : '',
         tipo_dato: campo.tipoDato ? ajTipoDato : '',
         rol: [...ajRolesSel].join(', '),
@@ -11386,6 +11451,44 @@
           if (a[col] && a[col].defecto && el && !el.value) el.value = a[col].defecto;
         });
       }
+
+      // Etapa y Muelle tipo Lista: se escoge entre las opciones de la operación; con 5 o menos se
+      // muestran como botones y con más, como lista desplegable. El valor que el servicio ya tenía
+      // se conserva aunque hoy no esté en la lista.
+      ['Etapa', 'Muelle'].forEach(col => {
+        const id = CAMPOS_FORM_AJUSTES.Servicio[col];
+        const el = document.getElementById(id);
+        const sel = document.getElementById(`${id}-lista`);
+        const botones = document.getElementById(`${id}-botones`);
+        const c = a[col];
+        const esLista = !!(c && c.lista && c.habilitados.length);
+        const actual = el.value.trim();
+        const opciones = esLista ? c.habilitados.slice() : [];
+        if (esLista && actual && !opciones.some(o => o.toLowerCase() === actual.toLowerCase())) opciones.push(actual);
+        const conBotones = esLista && opciones.length <= 5;
+        el.style.display = esLista ? 'none' : '';
+        sel.style.display = esLista && !conBotones ? '' : 'none';
+        botones.style.display = conBotones ? 'flex' : 'none';
+        if (!esLista) return;
+        const igual = opciones.find(o => o.toLowerCase() === actual.toLowerCase()) || '';
+        el.value = igual;
+        if (conBotones) {
+          botones.innerHTML = opciones.map(o =>
+            `<button type="button" class="btn-grupo-opt ${o === igual ? 'sel' : ''}" data-valor="${esc(o)}" onclick="seleccionarOpcionListaServicio('${id}', this)">${esc(o)}</button>`).join('');
+        } else {
+          sel.innerHTML = '<option value="">Seleccione...</option>' + opciones.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+          sel.value = igual;
+        }
+      });
+    }
+
+    // Botón de una opción de Etapa / Muelle tipo Lista: lo marca (o lo desmarca si ya estaba)
+    function seleccionarOpcionListaServicio(id, btn) {
+      const el = document.getElementById(id);
+      const yaEstaba = btn.classList.contains('sel');
+      document.querySelectorAll(`#${id}-botones .btn-grupo-opt`).forEach(b => b.classList.remove('sel'));
+      if (!yaEstaba) btn.classList.add('sel');
+      el.value = yaEstaba ? '' : btn.dataset.valor;
     }
 
     // Orden de los campos del formulario de servicio (columna orden de Config_Servicios). La primera
@@ -11614,8 +11717,14 @@
       msUnidadManual = !!existente; // en un servicio ya registrado no se cambia la Unidad que ya tiene
       msValorManual = !!existente; // ni el Valor Unitario: la tarifa solo se busca al crear
       document.getElementById('ms-tarifa-info').textContent = '';
-      // Etapa y Muelle vuelven a texto; los ajustes de la operación los pasan a número si aplica
-      ['ms-etapa', 'ms-muelle'].forEach(id => { document.getElementById(id).type = 'text'; });
+      // Etapa y Muelle vuelven a texto; los ajustes de la operación los pasan a número o lista si aplica
+      ['ms-etapa', 'ms-muelle'].forEach(id => {
+        const el = document.getElementById(id);
+        el.type = 'text';
+        el.style.display = '';
+        document.getElementById(`${id}-lista`).style.display = 'none';
+        document.getElementById(`${id}-botones`).style.display = 'none';
+      });
 
       document.getElementById('ms-transportadora-input').value = existente?.transportadoraNombre || '';
       document.getElementById('ms-pl1-input').value = existente?.placaNombre || '';
@@ -11634,6 +11743,8 @@
       document.getElementById('ms-foto-documento').value = '';
       document.getElementById('ms-foto-evidencia').value = '';
       document.getElementById('ms-foto-transferencia').value = '';
+      montarZonasArchivoServicio();
+      ['ms-foto-documento', 'ms-foto-evidencia', 'ms-foto-transferencia'].forEach(actualizarZonaArchivoServicio);
       const archivoActual = (columna) => editandoPendiente
         ? (existente[columna] ? `Adjunto: ${esc(existente[columna])} (se conserva si no escoge otro)` : 'Sin archivo')
         : archivoActualServicio(existente?.[columna]);
@@ -11713,7 +11824,10 @@
       const btnGuardar = document.getElementById('btn-guardar-servicio');
       aviso.style.display = bloquear ? 'block' : 'none';
       btnGuardar.disabled = false;
-      if (!bloquear) return;
+      if (!bloquear) {
+        ['ms-foto-documento', 'ms-foto-evidencia', 'ms-foto-transferencia'].forEach(actualizarZonaArchivoServicio);
+        return;
+      }
       const permitidos = Object.entries(msAjustes).filter(([, c]) => c.editableValidado && c.visible)
         .map(([col]) => grupoCampoFormulario(document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]))).filter(Boolean);
       form.querySelectorAll('input, select, textarea, button').forEach(el => {
@@ -11721,10 +11835,96 @@
         el.disabled = true;
         el.dataset.bloqueoVerde = '1';
       });
+      ['ms-foto-documento', 'ms-foto-evidencia', 'ms-foto-transferencia'].forEach(actualizarZonaArchivoServicio);
       aviso.textContent = permitidos.length
         ? '🟢 Servicio validado (verde): solo puede cambiar los campos habilitados para editar en verde.'
         : '🟢 Servicio validado (verde): no tiene campos habilitados para editar.';
       btnGuardar.disabled = !permitidos.length;
+    }
+
+    // Zonas para adjuntar Foto Documento, Foto Evidencia y Foto Transferencia (mismo diseño de
+    // "Evidencia (foto, opcional)" de Actas de Entrega en Inventario): arrastrar y soltar,
+    // "Elegir archivo", "Tomar foto" y vista previa con "Quitar". El archivo queda en el mismo
+    // <input type="file"> de siempre, así que guardar el servicio no cambia.
+    const ICONO_SUBIR = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:block; margin:0 auto 6px;"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><polyline points="7 9 12 4 17 9"></polyline><line x1="12" y1="4" x2="12" y2="16"></line></svg>';
+    const ICONO_CLIP = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>';
+    const ICONO_CAMARA = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>';
+
+    function montarZonasArchivoServicio() {
+      document.querySelectorAll('.zona-archivo[data-input]').forEach(zona => {
+        if (zona.dataset.montada) return;
+        zona.dataset.montada = '1';
+        const id = zona.dataset.input;
+        const input = document.getElementById(id);
+        zona.innerHTML = `
+          <div class="zona-archivo-caja" style="border:2px dashed var(--border); border-radius:8px; padding:12px; text-align:center; background:var(--bg-elevated); transition: border-color .15s, background-color .15s; cursor:pointer;">
+            <div class="zona-archivo-placeholder">
+              ${ICONO_SUBIR}
+              <div style="font-size:0.76rem; color: var(--text-muted); margin-bottom:8px;">Arrastra una foto o archivo aquí o elige una opción</div>
+              <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                <button type="button" class="zona-archivo-btn" data-accion="archivo">${ICONO_CLIP} Elegir archivo</button>
+                <button type="button" class="zona-archivo-btn" data-accion="camara">${ICONO_CAMARA} Tomar foto</button>
+              </div>
+            </div>
+            <div class="zona-archivo-preview" style="display:none;"></div>
+          </div>`;
+        const caja = zona.querySelector('.zona-archivo-caja');
+        caja.addEventListener('click', e => {
+          const btn = e.target.closest('[data-accion]');
+          if (btn && btn.dataset.accion === 'camara') { e.stopPropagation(); tomarFotoServicio(id); return; }
+          if (btn && btn.dataset.accion === 'quitar') { e.stopPropagation(); input.value = ''; actualizarZonaArchivoServicio(id); return; }
+          if (e.target.closest('a')) return;
+          input.click();
+        });
+        input.addEventListener('change', () => actualizarZonaArchivoServicio(id));
+        ['dragenter', 'dragover'].forEach(evt => caja.addEventListener(evt, e => {
+          e.preventDefault(); e.stopPropagation();
+          caja.style.borderColor = 'var(--accent)';
+          caja.style.background = 'var(--accent-soft)';
+        }));
+        ['dragleave', 'drop'].forEach(evt => caja.addEventListener(evt, e => {
+          e.preventDefault(); e.stopPropagation();
+          caja.style.borderColor = 'var(--border)';
+          caja.style.background = 'var(--bg-elevated)';
+        }));
+        caja.addEventListener('drop', e => {
+          const file = e.dataTransfer.files && e.dataTransfer.files[0];
+          if (!file || !(file.type.startsWith('image/') || file.type === 'application/pdf')) return;
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          input.files = dt.files;
+          actualizarZonaArchivoServicio(id);
+        });
+      });
+    }
+
+    // Vista previa del archivo escogido (imagen o nombre del PDF); sin archivo vuelve a las opciones
+    function actualizarZonaArchivoServicio(id) {
+      const zona = document.querySelector(`.zona-archivo[data-input="${id}"]`);
+      const input = document.getElementById(id);
+      if (!zona || !input) return;
+      const placeholder = zona.querySelector('.zona-archivo-placeholder');
+      const preview = zona.querySelector('.zona-archivo-preview');
+      if (!preview) return; // aún sin montar
+      const file = input.files && input.files[0];
+      zona.classList.toggle('bloqueada', !!input.disabled); // campo bloqueado (servicio validado)
+      if (preview.dataset.url) { URL.revokeObjectURL(preview.dataset.url); delete preview.dataset.url; }
+      if (!file) {
+        preview.style.display = 'none';
+        preview.innerHTML = '';
+        placeholder.style.display = 'block';
+        return;
+      }
+      placeholder.style.display = 'none';
+      preview.style.display = 'block';
+      const quitar = '<button type="button" data-accion="quitar" style="margin-top:6px; font-size:0.72rem; color:var(--danger-dark); background:none; border:none; cursor:pointer; text-decoration:underline;">Quitar archivo</button>';
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        preview.dataset.url = url;
+        preview.innerHTML = `<img src="${url}" alt="Vista previa" style="max-width:100%; max-height:160px; border-radius:6px; display:block; margin:0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">${quitar}`;
+      } else {
+        preview.innerHTML = `<div style="font-size:0.82rem; font-weight:700; color:var(--text); word-break:break-all;">📄 ${esc(file.name)}</div>${quitar}`;
+      }
     }
 
     // Fotos del servicio desde el celular: abre la cámara y deja la foto en el campo de archivo
@@ -12056,9 +12256,9 @@
     function renderProveedorChips() {
       recalcularTarifaServicio();
       document.getElementById('ms-proveedor-chips').innerHTML = msProveedorSeleccionados.map(p => `
-        <span style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); border:1px solid var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
+        <span class="chip-seleccion">
           ${esc(p.proveedor)}
-          <span style="cursor:pointer; font-weight:800;" onclick="quitarProveedorChip('${esc(p.id)}')">&times;</span>
+          <span class="chip-quitar" onclick="quitarProveedorChip('${esc(p.id)}')">&times;</span>
         </span>
       `).join('');
     }
@@ -12177,9 +12377,9 @@
     }
     function renderAuxiliaresChips() {
       document.getElementById('ms-auxiliares-chips').innerHTML = msAuxiliaresSeleccionados.map(nombre => `
-        <span style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); border:1px solid var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
+        <span class="chip-seleccion">
           ${esc(nombre)}
-          <span style="cursor:pointer; font-weight:800;" onclick="quitarAuxiliarChip('${esc(nombre).replace(/'/g, "\\'")}')">&times;</span>
+          <span class="chip-quitar" onclick="quitarAuxiliarChip('${esc(nombre).replace(/'/g, "\\'")}')">&times;</span>
         </span>
       `).join('');
     }

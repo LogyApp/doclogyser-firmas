@@ -8,7 +8,8 @@ const pool = require('./db');
 // Campos que se pueden ajustar. tipo 'lista' = se escoge de un catálogo (datos_habilitados);
 // 'busqueda' = se busca en un maestro grande (sin datos_habilitados ni valor por defecto);
 // 'archivo' = adjunto; 'texto' = valor libre. bodyKey = nombre del campo en el formulario/API.
-// tipoDato: el campo de texto puede ser Número o Texto según la operación (Config_Servicios.tipo_dato).
+// tipoDato: el campo de texto puede ser Texto, Número o Lista según la operación (Config_Servicios.tipo_dato).
+// Lista: se escoge entre las opciones que se escriben en datos_habilitados (separadas por coma).
 const CAMPOS = {
   Recibo: [
     // Modalidad: modalidades permitidas en la operación y la que llega escogida (fila sin modalidad)
@@ -49,7 +50,7 @@ const CAMPOS = {
 
 const SECCIONES = Object.keys(CAMPOS);
 const MODALIDADES = ['RECAUDO', 'CREDITO'];
-const TIPOS_DATO = ['Texto', 'Número'];
+const TIPOS_DATO = ['Texto', 'Número', 'Lista'];
 
 function normalizar(valor) {
   return String(valor == null ? '' : valor).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -122,11 +123,13 @@ async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {
     const roles = lista(f.rol);
     const paraRol = !roles.length || roles.some((r) => normalizar(r) === rolNorm);
     const aplica = cumpleCondicion(f, contexto);
+    const esLista = !!campo.tipoDato && normalizar(f.tipo_dato) === 'lista'; // Etapa y Muelle con opciones
     config[columna] = {
       etiqueta: String(f.etiqueta_columna || '').trim() || campo.etiqueta,
       visible: Number(f.visible) === 1 && paraRol && aplica,
       obligatorio: Number(f.obligatorio) === 1 && aplica,
-      habilitados: campo.tipo === 'lista' ? lista(f.datos_habilitados) : [],
+      habilitados: (campo.tipo === 'lista' || esLista) ? lista(f.datos_habilitados) : [],
+      lista: esLista,
       defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',
       paraRol,
       orden: f.orden == null ? null : Number(f.orden), // posición en el formulario (1 = primero)
