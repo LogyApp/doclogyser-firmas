@@ -439,6 +439,12 @@
       color: #ffffff; background: color-mix(in srgb, var(--accent) 40%, transparent);
       border-color: color-mix(in srgb, var(--accent) 75%, #ffffff 10%);
     }
+    /* "Volver al recibo" del detalle del servicio */
+    #btn-volver-a-recibo { border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
+    :root[data-theme="oscuro"] #btn-volver-a-recibo {
+      color: #ffffff; background: color-mix(in srgb, var(--accent) 40%, transparent);
+      border-color: color-mix(in srgb, var(--accent) 75%, #ffffff 10%);
+    }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight label { color: var(--text) !important; }
     :root[data-theme="oscuro"] .filtro-field-quincena-highlight select { color: var(--text) !important; }
 
@@ -1775,10 +1781,10 @@
       <div id="servicios-vista-detalle" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-secondary" onclick="volverAListadoServicios()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);">
+            <button type="button" id="btn-volver-a-servicios" class="btn-secondary" onclick="volverAListadoServicios()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);">
               <span>←</span> Volver al listado de servicios
             </button>
-            <button type="button" id="btn-volver-a-recibo" class="btn-secondary" onclick="volverAReciboOrigen()" style="display: none; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent-dark);">
+            <button type="button" id="btn-volver-a-recibo" class="btn-secondary" onclick="volverAReciboOrigen()" style="display: none; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px;">
               <span>←</span> Volver al recibo <strong id="btn-volver-a-recibo-id" style="margin-left: 4px;"></strong>
             </button>
           </div>
@@ -8828,7 +8834,7 @@
           : '<span style="color: var(--text-muted);">$ 0</span>';
 
         return `
-          <tr onclick="verDetalleServicio('${esc(s.idServicio)}')" style="cursor: pointer;" title="Clic para ver detalle del servicio">
+          <tr onclick="origenReciboId = null; verDetalleServicio('${esc(s.idServicio)}')" style="cursor: pointer;" title="Clic para ver detalle del servicio">
             <td>${formatFechaBogota(s.fechaServicio)}</td>
             <td style="color: ${colorEstado}; font-weight: 700;">${esc(s.consecutivoRecibo || '-')}</td>
             <td style="color: ${colorEstado}; font-weight: 800; text-align: right;">$ ${formatMiles(s.totalPago)}</td>
@@ -9034,9 +9040,11 @@
       const mobTitle = document.getElementById('mobileHeaderTitle');
       if (mobTitle) mobTitle.textContent = 'Detalle Servicio';
 
-      // Botón para volver al recibo si se navegó desde el detalle del recibo
+      // Botón para volver al recibo si se navegó desde el detalle del recibo; en ese caso no
+      // se muestra "Volver al listado de servicios"
       const btnVolverRecibo = document.getElementById('btn-volver-a-recibo');
       const btnVolverReciboId = document.getElementById('btn-volver-a-recibo-id');
+      document.getElementById('btn-volver-a-servicios').style.display = origenReciboId ? 'none' : 'inline-flex';
       if (btnVolverRecibo) {
         if (origenReciboId) {
           btnVolverRecibo.style.display = 'inline-flex';

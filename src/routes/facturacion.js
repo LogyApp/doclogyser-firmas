@@ -5188,13 +5188,17 @@ router.get('/api/clientes/buscar', async (req, res) => {
 
     if (!q || !q.trim() || q.trim().length < 2) return res.json([]);
 
+    // Las columnas distinguen mayúsculas (utf8mb4_bin): se compara con utf8mb4_unicode_ci para
+    // que no importen mayúsculas ni tildes.
     const qLike = `%${q.trim()}%`;
     const [rows] = await pool.execute(
       `SELECT \`Código\` as codigo, \`Razón social\` as razonSocial, Telefono as telefono,
               \`Correo F.E.\` as correoFE, \`Desc. condicion de pago\` as condicionPago,
               RTSERVIC as rtservic, RTIVA as rtiva, RTICA as rtica
        FROM Maestro_Clientes
-       WHERE \`Buscar Cliente\` LIKE ? OR \`Razón social\` LIKE ? OR CAST(\`Código\` AS CHAR) LIKE ?
+       WHERE \`Buscar Cliente\` COLLATE utf8mb4_unicode_ci LIKE ?
+          OR \`Razón social\` COLLATE utf8mb4_unicode_ci LIKE ?
+          OR CAST(\`Código\` AS CHAR) LIKE ?
        ORDER BY \`Razón social\` ASC
        LIMIT 20`,
       [qLike, qLike, qLike]
