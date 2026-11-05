@@ -1652,6 +1652,11 @@
     };
     btns.appendChild(btnWA);
 
+    // Con estos motivos no se notifica al trabajador por correo: el botón no se muestra
+    const _normMotivo = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const MOTIVOS_SIN_CORREO = ['no tomo cargo', 'terminacion por muerte'];
+    const ocultarCorreo = MOTIVOS_SIN_CORREO.includes(_normMotivo(motivoRetiro));
+
     // Email
     const btnEmail = document.createElement('button');
     btnEmail.type = 'button'; btnEmail.className = 'btn-email-send';
@@ -1693,7 +1698,7 @@
         else { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Correo'; alert('Error: ' + (d.error || '')); }
       } catch { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Correo'; alert('Error de conexión.'); }
     };
-    btns.appendChild(btnEmail);
+    if (!ocultarCorreo) btns.appendChild(btnEmail);
 
     // Mostrar enlace PZ si está activo
     if (hayPZ && !todosFirmados) {
