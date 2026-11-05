@@ -3,6 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+        var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+          : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+        document.documentElement.setAttribute('data-theme', tema);
+      } catch (e) {}
+    })();
+  </script>
   <title>Autorización de Descuento por Nómina — LOG&SER</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -205,6 +215,52 @@
       #btn-limpiar-filtros { width: 100%; }
       .btn { font-size: .85rem; padding: 10px 14px; }
     }
+
+    /* ── Tema oscuro (lee la preferencia guardada por el resto de módulos) ── */
+    [data-theme="oscuro"] body { background: #0b0f17; color: #e6e8ee; }
+    [data-theme="oscuro"] { --border: #2f3b52; }
+    [data-theme="oscuro"] .header-card,
+    [data-theme="oscuro"] .card,
+    [data-theme="oscuro"] .detail-card,
+    [data-theme="oscuro"] #discount-filters-card,
+    [data-theme="oscuro"] .table-container { background: #151c2b; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+    [data-theme="oscuro"] .detail-card { border-color: #2f3b52; border-left-color: var(--accent); }
+    [data-theme="oscuro"] .card[style*="background: #fff"] { background: #151c2b !important; }
+    [data-theme="oscuro"] .section-title { border-bottom-color: #232c3d; color: #8ec5ff; }
+    [data-theme="oscuro"] #discount-filters-card .discount-filters-toggle,
+    [data-theme="oscuro"] .filtros-chevron,
+    [data-theme="oscuro"] .sort-arrow { color: #8ec5ff; }
+    [data-theme="oscuro"] label,
+    [data-theme="oscuro"] .detail-info-box p strong,
+    [data-theme="oscuro"] [style*="color: #475569"],
+    [data-theme="oscuro"] [style*="color:#475569"] { color: #c9cfdd !important; }
+    [data-theme="oscuro"] input[type="text"],
+    [data-theme="oscuro"] input[type="date"],
+    [data-theme="oscuro"] input[type="email"],
+    [data-theme="oscuro"] input[type="tel"],
+    [data-theme="oscuro"] input[type="number"],
+    [data-theme="oscuro"] select,
+    [data-theme="oscuro"] textarea { background: #0f1624; color: #e6e8ee; border-color: #2f3b52; color-scheme: dark; }
+    [data-theme="oscuro"] #table-pruebas th { background: #121826; color: #c9cfdd; border-bottom-color: #2f3b52; }
+    [data-theme="oscuro"] #table-pruebas th.sortable:hover { background: #1b2436; color: #8ec5ff; }
+    [data-theme="oscuro"] #table-pruebas td { color: #e6e8ee; border-bottom-color: #232c3d; }
+    [data-theme="oscuro"] tr:hover td { background: #1b2436; }
+    [data-theme="oscuro"] .detail-info-box p { border-bottom-color: #232c3d; }
+    [data-theme="oscuro"] [style*="color:#64748b"],
+    [data-theme="oscuro"] [style*="color:#888"],
+    [data-theme="oscuro"] [style*="color: #888"] { color: #94a0b8 !important; }
+    [data-theme="oscuro"] .badge-user { background: rgba(41,128,185,.2); border-color: rgba(41,128,185,.5); color: #9fd0f5; }
+    [data-theme="oscuro"] .badge-total { background: #232c3d; border-color: #2f3b52; color: #c9cfdd; }
+    [data-theme="oscuro"] .btn-secondary { background: #232c3d; color: #c9cfdd; }
+    [data-theme="oscuro"] .btn-secondary:hover { background: #2f3b52; }
+    [data-theme="oscuro"] .btn-primary { background: #2f3b52; }
+    [data-theme="oscuro"] .btn-primary:hover { background: #3b4a66; }
+    [data-theme="oscuro"] .badge-firma-aceptada { background: rgba(16,185,129,.2); color: #6ee7b7; }
+    [data-theme="oscuro"] .badge-firma-prefilled { background: rgba(245,158,11,.2); color: #fcd34d; }
+    [data-theme="oscuro"] .badge-firma-sin { background: rgba(239,68,68,.2); color: #fca5a5; }
+    [data-theme="oscuro"] .badge-no-firma { background: rgba(249,115,22,.18); border-color: rgba(249,115,22,.45); color: #fdba74; }
+    [data-theme="oscuro"] .loading-overlay { background: rgba(11,15,23,.75); }
+    [data-theme="oscuro"] .spinner { border-color: #2f3b52; border-top-color: var(--primary); }
   </style>
   <!-- Ícono LogyApp: favicon e ícono de la PWA (ver public/manifest.webmanifest) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">

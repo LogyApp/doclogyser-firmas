@@ -177,6 +177,7 @@
   table.retiros-table tbody tr:hover { background: var(--accent-soft); }
   td.col-fecha-retiro { background: var(--retiro-bg); color: var(--retiro); font-weight: 700; }
   td.col-fecha-ingreso { background: var(--accent-soft); color: var(--accent-dark); font-weight: 700; }
+  [data-theme="oscuro"] td.col-fecha-ingreso { color: var(--text); }
   .celda-fecha-hora { font-size: .75rem; color: var(--text-muted); }
 
   .badge-legal { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700; }
@@ -320,6 +321,7 @@
   .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: var(--bg-elevated); }
   .profile-signature-png { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 110px; }
   .profile-signature-png img { max-width: 100%; height: auto; border: 1px solid var(--border); background: white; }
+  [data-theme="oscuro"] .profile-signature-preview { background: #fff; color: #1b2a5e; }
   .profile-signature-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .profile-signature-actions a { color: var(--text); font-size: .82rem; font-weight: 600; }
   .profile-digital-signature { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }

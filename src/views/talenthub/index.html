@@ -437,6 +437,12 @@
     .tag-badge-primary { background: var(--accent-soft); color: var(--accent-dark); }
     .tag-badge-danger { background: var(--danger-soft); color: var(--danger); }
     .tag-badge-success { background: var(--success-soft); color: var(--success); }
+    /* Tema oscuro: --accent-dark queda poco legible sobre fondo oscuro */
+    [data-theme="oscuro"] .tag-badge-primary,
+    [data-theme="oscuro"] .chip,
+    [data-theme="oscuro"] .badge-vac-asp,
+    [data-theme="oscuro"] .tag-cond { color: var(--text) !important; }
+    [data-theme="oscuro"] .chip-sistema { color: var(--text) !important; background: rgba(255,255,255,0.14); }
 
     /* Modales */
     .modal-backdrop {
@@ -520,6 +526,7 @@
     .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: var(--bg-elevated); }
     .profile-signature-png { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 110px; }
     .profile-signature-png img { max-width: 100%; height: auto; border: 1px solid var(--border); background: white; }
+    [data-theme="oscuro"] .profile-signature-preview { background: #fff; color: #1b2a5e; }
     .profile-signature-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .profile-signature-actions a { color: var(--text); font-size: 0.82rem; font-weight: 600; }
     .profile-digital-signature { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
@@ -5373,7 +5380,7 @@
               <span class="status-badge ${badgeClase}">${esc(r.Estado)}</span>
             </td>
             <td style="text-align:center;">
-              <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:var(--accent-soft); color:var(--accent-dark); font-weight:800; font-size:0.82rem;" title="Vacantes Requeridas: ${vacantes} / Aspirantes Relacionados: ${totalAspirantes}">
+              <span class="badge-vac-asp" style="display:inline-block; padding:2px 8px; border-radius:12px; background:var(--accent-soft); color:var(--accent-dark); font-weight:800; font-size:0.82rem;" title="Vacantes Requeridas: ${vacantes} / Aspirantes Relacionados: ${totalAspirantes}">
                 ${vacantes} / ${totalAspirantes}
               </span>
             </td>

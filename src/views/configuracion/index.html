@@ -108,6 +108,13 @@
   .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .72rem; font-weight: 700; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; }
   .bool-si { color: var(--success-dark); font-weight: 700; }
   .bool-no { color: var(--danger); font-weight: 700; }
+  /* Tema oscuro: --accent-dark / --success-dark pierden contraste sobre fondo oscuro */
+  [data-theme="oscuro"] .chip,
+  [data-theme="oscuro"] .tag,
+  [data-theme="oscuro"] .btn-grupo-opt.sel,
+  [data-theme="oscuro"] .roles-acciones button { color: var(--text) !important; }
+  [data-theme="oscuro"] .chip-todos,
+  [data-theme="oscuro"] .bool-si { color: var(--success) !important; }
 
   /* Selector de roles (como Parámetros de Requisiciones) */
   .roles-sel { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
