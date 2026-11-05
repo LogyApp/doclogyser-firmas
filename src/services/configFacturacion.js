@@ -12,6 +12,7 @@ const P = {
   LIMITE_SERVICIOS:      'Límite máximo de servicios por carga',
   TOPE_VALOR_BASE:       'Tope del Valor Base por servicio',
   OPS_AREA_USUARIO:      'Operaciones donde el Área del servicio se prellena con la del usuario',
+  OPS_FILTRO_BODEGA:     'Operaciones con filtro Bodega en Servicios',
 };
 
 const DEFAULTS = {
@@ -19,6 +20,7 @@ const DEFAULTS = {
   [P.LIMITE_SERVICIOS]:   '500',
   [P.TOPE_VALOR_BASE]:    '3000000',
   [P.OPS_AREA_USUARIO]:   '',
+  [P.OPS_FILTRO_BODEGA]:  'D1 Cúcuta',
 };
 
 function normalizarTexto(valor) {
@@ -274,8 +276,15 @@ async function obtenerAreasUsuarioServicio(usuarioId) {
   return { operaciones, areas };
 }
 
+// Operaciones donde la pestaña Servicios habilita el filtro Bodega (valores de Etapa).
+async function obtenerOpsFiltroBodega() {
+  const p = await obtenerParametrosServicios();
+  return lista(valor(p, P.OPS_FILTRO_BODEGA));
+}
+
 module.exports = {
   obtenerAreaUsuarioServicio,
+  obtenerOpsFiltroBodega,
   obtenerAreasUsuarioServicio,
   obtenerConfigServiciosMasivo,
   obtenerTopeValorBaseServicio,

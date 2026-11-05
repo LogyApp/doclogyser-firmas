@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, normalizarTexto } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
@@ -146,7 +146,8 @@ router.get('/', async (req, res) => {
     // Parámetros de Config_Parametros y quincena actual, leídos en paralelo
     const [
       cfgServiciosMasivo, quincenaActual, permisosRecibos, topeValorBaseServicio,
-      puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, ajustesServicios
+      puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, ajustesServicios,
+      opsFiltroBodega
     ] = await Promise.all([
       obtenerConfigServiciosMasivo(base.rol),
       leerQuincenaActual(),
@@ -156,7 +157,8 @@ router.get('/', async (req, res) => {
       puedeDepurarMaestros(base.rol),
       puedeGestionarMaestros(base.rol),
       puedeEditarRetenciones(base.rol),
-      accesoAjustes ? configServicios.permisosAjustesServicios(base.rol) : null
+      accesoAjustes ? configServicios.permisosAjustesServicios(base.rol) : null,
+      obtenerOpsFiltroBodega()
     ]);
 
     const config = JSON.stringify({
@@ -176,6 +178,8 @@ router.get('/', async (req, res) => {
       // Porcentajes de Config_Impuestos para los valores informativos de los formularios
       impuestos: await getImpuestos().then(({ iva, reteFuente, reteIva, reteIcaMap }) => ({ iva, reteFuente, reteIva, reteIcaMap })).catch(() => null),
       topeValorBaseServicio,
+      // Operaciones donde la pestaña Servicios habilita el filtro Bodega (Config_Parametros)
+      opsFiltroBodega,
       puedeGestionarClientesCredito: puedeGestionarCredito,
       clientesMaestros: {
         puedeDepurar,
@@ -2290,6 +2294,25 @@ function calcularTotalesServicio(row, impuestos) {
   };
 }
 
+// Filtros Área (nombre de Config_Area: varias operaciones pueden tener la misma) y Bodega
+// (Etapa del servicio, solo en las operaciones de 'Operaciones con filtro Bodega en Servicios').
+function sqlFiltroArea(area, params) {
+  if (!area || area === 'todas') return null;
+  params.push(area);
+  return 's.Area IN (SELECT ID FROM Config_Area WHERE AREA = ?)';
+}
+
+function operacionConBodega(operacion, opsFiltroBodega) {
+  const op = normalizarTexto(operacion);
+  return !!op && opsFiltroBodega.some(o => normalizarTexto(o) === op);
+}
+
+function sqlFiltroBodega(bodega, operacion, opsFiltroBodega, params) {
+  if (!bodega || !operacionConBodega(operacion, opsFiltroBodega)) return null;
+  params.push(bodega);
+  return 's.Etapa = ?';
+}
+
 // ── GET /api/servicios ────────────────────────────────────────────────────────
 router.get('/api/servicios', async (req, res) => {
   try {
@@ -2300,8 +2323,6 @@ router.get('/api/servicios', async (req, res) => {
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const {
-      desde,
-      hasta,
       formaDePago,
       anio,
       mes,
@@ -2309,6 +2330,8 @@ router.get('/api/servicios', async (req, res) => {
       dia,
       regional,
       operacion,
+      area,
+      bodega,
       usuarioServicio,
       clienteAFacturar,
       q,
@@ -2330,18 +2353,8 @@ router.get('/api/servicios', async (req, res) => {
       params.push(...acceso.operacionesFiltro);
     }
 
-    // Filtros de fecha Desde y Hasta (sobre Hora Inicio)
-    if (desde) {
-      whereClauses.push('s.`Hora Inicio` >= ?');
-      params.push(desde.length <= 10 ? `${desde} 00:00:00` : desde);
-    }
-    if (hasta) {
-      whereClauses.push('s.`Hora Inicio` <= ?');
-      params.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
-    }
-
-    // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
-    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
+    // Año (por defecto el año actual si no se especifica)
+    const anioFiltro = anio || String(anioActualBogota());
     let anioNum = null;
     if (anioFiltro !== 'todos') {
       anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
@@ -2384,6 +2397,12 @@ router.get('/api/servicios', async (req, res) => {
       whereClauses.push('r.`Operación` = ?');
       params.push(operacion);
     }
+
+    // Área y Bodega
+    const filtroArea = sqlFiltroArea(area, params);
+    if (filtroArea) whereClauses.push(filtroArea);
+    const filtroBodega = sqlFiltroBodega(bodega, operacion, await obtenerOpsFiltroBodega(), params);
+    if (filtroBodega) whereClauses.push(filtroBodega);
 
     // Usuario
     if (usuarioServicio && usuarioServicio !== 'todos') {
@@ -2511,12 +2530,12 @@ router.get('/api/servicios/metricas', async (req, res) => {
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const {
-      desde,
-      hasta,
       formaDePago,
       anio,
       regional,
       operacion,
+      area,
+      bodega,
       mes,
       quincena,
       dia,
@@ -2530,24 +2549,14 @@ router.get('/api/servicios/metricas', async (req, res) => {
 
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) {
-        return res.json({ formasDePago: [], regionalesOps: [], fechas: [], clientes: [], usuarios: [] });
+        return res.json({ formasDePago: [], regionalesOps: [], fechas: [], clientes: [], usuarios: [], areas: [], bodegas: [] });
       }
       commonWhere.push(`r.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
       commonParams.push(...acceso.operacionesFiltro);
     }
 
-    // Filtros de fecha Desde y Hasta (sobre Hora Inicio)
-    if (desde) {
-      commonWhere.push('s.`Hora Inicio` >= ?');
-      commonParams.push(desde.length <= 10 ? `${desde} 00:00:00` : desde);
-    }
-    if (hasta) {
-      commonWhere.push('s.`Hora Inicio` <= ?');
-      commonParams.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
-    }
-
-    // Año (por defecto el año actual si no se especifica y no hay filtro desde/hasta)
-    const anioFiltro = (typeof anio === 'undefined' || anio === null || anio === '') ? (desde || hasta ? 'todos' : String(anioActualBogota())) : anio;
+    // Año (por defecto el año actual si no se especifica)
+    const anioFiltro = anio || String(anioActualBogota());
     let anioNum = null;
     if (anioFiltro !== 'todos') {
       anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
@@ -2563,6 +2572,11 @@ router.get('/api/servicios/metricas', async (req, res) => {
       commonWhere.push('r.`Operación` = ?');
       commonParams.push(operacion);
     }
+    const filtroArea = sqlFiltroArea(area, commonParams);
+    if (filtroArea) commonWhere.push(filtroArea);
+    const opsFiltroBodega = await obtenerOpsFiltroBodega();
+    const filtroBodega = sqlFiltroBodega(bodega, operacion, opsFiltroBodega, commonParams);
+    if (filtroBodega) commonWhere.push(filtroBodega);
     if (mes && mes !== 'todos') {
       commonWhere.push(sqlFiltroMes('s.`Hora Inicio`', mes, anioNum, commonParams));
     }
@@ -2746,9 +2760,40 @@ router.get('/api/servicios/metricas', async (req, res) => {
       LIMIT 100
     `, dropdownParams);
 
-    // Las cinco agrupaciones se consultan en paralelo
-    const [[fpRows], [opsRows], [fechasRows], [cliRows], [userRows], [diasRows]] = await Promise.all([
-      q_fpRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows, q_diasRows
+    // Áreas (nombre de Config_Area)
+    const q_areaRows = pool.query(`
+      SELECT
+        ar.AREA as area,
+        COUNT(*) as totalCount,
+        ROUND(SUM(${vBaseSql})) as sumValorBase,
+        ROUND(SUM(${totalPagoSql})) as sumTotalPago
+      FROM Dynamic_Servicios s
+      LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
+      JOIN Config_Area ar ON s.Area = ar.ID
+      ${whereSqlDropdowns} AND ar.AREA IS NOT NULL AND ar.AREA != ''
+      GROUP BY ar.AREA
+      ORDER BY ar.AREA ASC
+    `, dropdownParams);
+
+    // Bodegas (valores únicos de Etapa): solo con una operación de 'Operaciones con filtro Bodega en Servicios'
+    const q_bodegaRows = operacionConBodega(operacion, opsFiltroBodega) ? pool.query(`
+      SELECT
+        s.Etapa as bodega,
+        COUNT(*) as totalCount,
+        ROUND(SUM(${vBaseSql})) as sumValorBase,
+        ROUND(SUM(${totalPagoSql})) as sumTotalPago
+      FROM Dynamic_Servicios s
+      LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
+      ${whereSqlDropdowns} AND s.Etapa IS NOT NULL AND s.Etapa != ''
+      GROUP BY s.Etapa
+      ORDER BY s.Etapa ASC
+    `, dropdownParams) : Promise.resolve([[]]);
+
+    // Las agrupaciones se consultan en paralelo
+    const [[fpRows], [opsRows], [fechasRows], [cliRows], [userRows], [diasRows], [areaRows], [bodegaRows]] = await Promise.all([
+      q_fpRows, q_opsRows, q_fechasRows, q_cliRows, q_userRows, q_diasRows, q_areaRows, q_bodegaRows
     ]);
 
     res.json({
@@ -2757,7 +2802,9 @@ router.get('/api/servicios/metricas', async (req, res) => {
       fechas: fechasRows,
       dias: diasRows,
       clientes: cliRows,
-      usuarios: userRows
+      usuarios: userRows,
+      areas: areaRows,
+      bodegas: bodegaRows
     });
   } catch (err) {
     console.error('[facturacion] GET /api/servicios/metricas:', err);
