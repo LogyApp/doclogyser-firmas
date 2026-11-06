@@ -942,6 +942,28 @@
       background: var(--accent-soft) !important;
     }
 
+    .asp-socio-dot {
+      flex-shrink: 0;
+      width: 12px;
+      height: 12px;
+      margin-top: 3px;
+      border-radius: 50%;
+      background: #16a34a;
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.22);
+      cursor: pointer;
+    }
+    .asp-socio-dot:hover { transform: scale(1.2); }
+    .asp-wa-btn { color: #16a34a; }
+    .asp-wa-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .asp-admin-frame {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 150px);
+      min-height: 600px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+    }
     .asp-avatar {
       width: 32px;
       height: 32px;
@@ -1630,7 +1652,7 @@
           <span>➕ Nueva Requisición</span>
         </button>
         <button type="button" class="btn btn-primary" id="btnHeaderNuevaAsistencia" onclick="abrirModalFormAsistencia()" style="display:none;">
-          <span>➕ Nueva Asistencia</span>
+          <span>➕ Nueva Participación</span>
         </button>
       </div>
     </div>
@@ -1992,6 +2014,17 @@
     <!-- ── SECCIÓN: ASPIRANTES Y HOJAS DE VIDA ────────────────────────────────── -->
     <div id="tabContentAspirantes" style="display: none;">
 
+      <!-- VISTA ADMIN DEL ASPIRANTE (reemplaza el listado, como el formulario de Nueva Acta) -->
+      <div id="aspVistaAdmin" style="display: none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <h2 id="aspAdminTitulo" style="font-size:1.1rem; font-weight:700; color:var(--text); margin:0;">Panel Admin del Aspirante</h2>
+          <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem; font-weight:600;" onclick="cerrarAdminAspirante()">⬅️ Volver al listado</button>
+        </div>
+        <iframe id="frameAdminAspirante" class="asp-admin-frame" title="Panel Admin del aspirante"></iframe>
+      </div>
+
+      <div id="aspVistaListado">
+
       <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Requisiciones) -->
       <div class="filter-panel" id="panelFiltrosAspirantes">
         <div class="filter-panel-header" onclick="toggleFiltrosAspirantes()">
@@ -2049,12 +2082,10 @@
               </select>
             </div>
             <div class="filter-group">
-              <label>Fecha Registro Desde</label>
-              <input type="date" id="filtroAspDesde" onchange="aplicarFiltrosAspirantes()">
-            </div>
-            <div class="filter-group">
-              <label>Fecha Registro Hasta</label>
-              <input type="date" id="filtroAspHasta" onchange="aplicarFiltrosAspirantes()">
+              <label>Quincena</label>
+              <select id="filtroAspQuincena" onchange="aplicarFiltrosAspirantes()">
+                <option value="">Todas las quincenas</option>
+              </select>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               <button type="button" class="btn btn-primary" onclick="aplicarFiltrosAspirantes()" style="flex:1;">
@@ -2115,6 +2146,11 @@
           <table id="tablaAspirantes" class="resizable-table">
             <thead>
               <tr>
+                <th style="width: 150px; min-width: 130px; text-align:center;">
+                  <div class="th-content" style="justify-content:center;">
+                    <span>Acciones</span>
+                  </div>
+                </th>
                 <th style="width: 220px; min-width: 170px;" class="sortable" onclick="ordenarAspirantes('nombre')">
                   <div class="th-content">
                     <span>Aspirante</span>
@@ -2171,10 +2207,6 @@
                   </div>
                   <div class="col-resizer"></div>
                 </th>
-                <th style="width: 165px; min-width: 145px; text-align:center;">
-                  <div class="th-content" style="justify-content:center;">
-                    <span>Acciones</span>
-                  </div>
                 </th>
               </tr>
             </thead>
@@ -2186,6 +2218,7 @@
           </table>
         </div>
       </div>
+      </div><!-- /aspVistaListado -->
 
     </div>
 
@@ -2888,7 +2921,7 @@
       <div class="ra-view-layout" id="raViewLayout">
         <div class="card ra-table-card">
           <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
-            <span style="font-weight: 700;">📝 Registros de Asistencia</span>
+            <span style="font-weight: 700;">📝 Registros de Participación</span>
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span id="raTotalBadge" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">(0 registros)</span>
               <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarRegistroAsistencia()">
@@ -2910,7 +2943,7 @@
                 </tr>
               </thead>
               <tbody id="tbodyRegistroAsistencia">
-                <tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros de asistencia...</td></tr>
+                <tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros de participación...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2919,7 +2952,7 @@
         <div class="card ra-detail-card" id="raDetailCard">
           <div class="ra-detail-mobile-bar">
             <button type="button" class="btn btn-outline" style="padding: 5px 12px; font-size: 0.78rem; font-weight: 700;" onclick="cerrarDetalleRegistroAsistencia()">← Volver a la lista</button>
-            <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Registro de Asistencia</span>
+            <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Registro de Participación</span>
             <button type="button" class="btn btn-outline" style="padding: 4px 9px; font-size: 0.8rem;" onclick="cerrarDetalleRegistroAsistencia()" aria-label="Cerrar">✕</button>
           </div>
           <div class="ra-detail-hdr">
@@ -2937,10 +2970,10 @@
   <div class="modal-backdrop" id="modalFormAsistencia" style="z-index: 1100;">
     <div class="modal-box modal-box-lg" style="max-width: 860px; width: 100%; height: 92vh; max-height: 92vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
       <div class="modal-hdr" style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; margin-bottom:0; border-bottom:1.5px solid var(--border); flex-shrink:0;">
-        <h3 id="modalFormAsistenciaTitulo" style="margin:0;">Nuevo Registro de Asistencia</h3>
+        <h3 id="modalFormAsistenciaTitulo" style="margin:0;">Nuevo Registro de Participación</h3>
         <button type="button" class="btn btn-outline" style="padding: 4px 9px;" onclick="cerrarModalFormAsistencia()" aria-label="Cerrar">✕</button>
       </div>
-      <iframe id="iframeFormAsistencia" title="Formulario de Registro de Asistencia" style="flex:1; width:100%; border:0; background:#f4f6f9;"></iframe>
+      <iframe id="iframeFormAsistencia" title="Formulario de Registro de Participación" style="flex:1; width:100%; border:0; background:#f4f6f9;"></iframe>
     </div>
   </div>
 
@@ -3817,9 +3850,9 @@
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-            <a id="btnFichaAbrirAdmin" href="#" target="_blank" class="btn btn-primary" style="padding:6px 12px; font-size:0.75rem; text-decoration:none;" title="Abrir en Panel Administrativo de Selección">
+            <button type="button" id="btnFichaAbrirAdmin" class="btn btn-primary" style="padding:6px 12px; font-size:0.75rem;" onclick="abrirAdminDesdeFicha()" title="Panel administrativo de Selección">
               <span>📋 Panel Admin</span>
-            </a>
+            </button>
             <button type="button" class="btn btn-outline" id="btnFichaCopiarPortal" style="padding:6px 12px; font-size:0.75rem;" onclick="copiarLinkPortalFicha()" title="Copiar enlace del portal del aspirante">
               <span>🔗 Copiar Portal</span>
             </button>
@@ -3862,7 +3895,7 @@
       Requisiciones:    { icon: '📋', title: 'Requisiciones de Personal', subtitle: 'Solicitudes y seguimiento de vacantes laborales' },
       Aspirantes:       { icon: '👥', title: 'Aspirantes & Hojas de Vida', subtitle: 'Catálogo de aspirantes, fases y pruebas de selección' },
       Sociodemografica: { icon: '📊', title: 'Sociodemografica', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
-      RegistroAsistencia: { icon: '📝', title: 'Registro de Asistencia', nav: 'Registro Asistencia', subtitle: 'Registro y firma de asistentes a formaciones, con evaluación de eficacia' },
+      RegistroAsistencia: { icon: '📝', title: 'Registro de Participación', nav: 'Registro Participación', subtitle: 'Registro y firma de asistentes a formaciones, con evaluación de eficacia' },
       Integridad:      { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
       Parametros:       { icon: '⚙️', title: 'Parámetros del Módulo', subtitle: 'Reglas de negocio y configuración de TalentHub (tabla Config_Parametros)' }
     };
@@ -3890,6 +3923,12 @@
         inicializarRequisiciones();
       } else if (CONFIG.activeTab === 'Aspirantes') {
         inicializarAspirantes();
+        const urlAsp = new URLSearchParams(window.location.search);
+        const aspDeep = (urlAsp.get('asp') || '').trim();
+        if (aspDeep) {
+          if (urlAsp.get('subtab') === 'Admin') abrirAdminAspirante(aspDeep);
+          else abrirFichaAspirante(aspDeep, 'Datos');
+        }
       }
 
       // 4. Soporte para enlaces en el launcher con el usuario
@@ -3924,7 +3963,7 @@
       Requisiciones: 'Requisiciones',
       Aspirantes: 'Aspirantes & Hojas de Vida',
       Sociodemografica: 'Sociodemografica',
-      RegistroAsistencia: 'Registro Asistencia',
+      RegistroAsistencia: 'Registro Participación',
       Integridad: 'Integridad',
       Parametros: 'Parámetros'
     };
@@ -6843,8 +6882,7 @@
       operacion: 'todas',
       departamento: 'todos',
       medio: 'todos',
-      desde: '',
-      hasta: ''
+      quincena: ''
     };
     let _aspOrden = {
       columna: 'fecha_registro',
@@ -6972,6 +7010,16 @@
         }).join('');
         selMed.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Medios (${total || 0})</option>${opts}`;
       }
+
+      // 5. Quincenas (Maestro_Fechas)
+      const selQui = document.getElementById('filtroAspQuincena');
+      if (selQui && facetas?.quincenas && facetas.quincenas.length > 0) {
+        const valActual = _aspFiltros.quincena || '';
+        const opts = facetas.quincenas.map(q =>
+          `<option value="${esc(q.valor)}" ${q.valor === valActual ? 'selected' : ''}>${esc(q.etiqueta)}</option>`
+        ).join('');
+        selQui.innerHTML = `<option value="">Todas las quincenas</option>${opts}`;
+      }
     }
 
     function aplicarFiltrosAspirantes() {
@@ -6981,8 +7029,7 @@
       _aspFiltros.operacion = document.getElementById('filtroAspOperacion')?.value || 'todas';
       _aspFiltros.departamento = document.getElementById('filtroAspDepartamento')?.value || 'todos';
       _aspFiltros.medio = document.getElementById('filtroAspMedio')?.value || 'todos';
-      _aspFiltros.desde = document.getElementById('filtroAspDesde')?.value || '';
-      _aspFiltros.hasta = document.getElementById('filtroAspHasta')?.value || '';
+      _aspFiltros.quincena = document.getElementById('filtroAspQuincena')?.value || '';
       cargarAspirantes();
     }
 
@@ -6993,8 +7040,7 @@
       if (document.getElementById('filtroAspOperacion')) document.getElementById('filtroAspOperacion').value = 'todas';
       if (document.getElementById('filtroAspDepartamento')) document.getElementById('filtroAspDepartamento').value = 'todos';
       if (document.getElementById('filtroAspMedio')) document.getElementById('filtroAspMedio').value = 'todos';
-      if (document.getElementById('filtroAspDesde')) document.getElementById('filtroAspDesde').value = '';
-      if (document.getElementById('filtroAspHasta')) document.getElementById('filtroAspHasta').value = '';
+      if (document.getElementById('filtroAspQuincena')) document.getElementById('filtroAspQuincena').value = '';
 
       _aspFiltros = {
         q: '',
@@ -7004,8 +7050,7 @@
         operacion: 'todas',
         departamento: 'todos',
         medio: 'todos',
-        desde: '',
-        hasta: ''
+        quincena: ''
       };
       cargarAspirantes();
     }
@@ -7116,8 +7161,7 @@
           operacion: _aspFiltros.operacion,
           departamento: _aspFiltros.departamento,
           medio: _aspFiltros.medio,
-          desde: _aspFiltros.desde,
-          hasta: _aspFiltros.hasta,
+          quincena: _aspFiltros.quincena,
           sortBy: _aspOrden.columna,
           sortDir: _aspOrden.orden
         });
@@ -7147,8 +7191,7 @@
         if (_aspFiltros.operacion && _aspFiltros.operacion !== 'todas') actCount++;
         if (_aspFiltros.departamento && _aspFiltros.departamento !== 'todos') actCount++;
         if (_aspFiltros.medio && _aspFiltros.medio !== 'todos') actCount++;
-        if (_aspFiltros.desde) actCount++;
-        if (_aspFiltros.hasta) actCount++;
+        if (_aspFiltros.quincena) actCount++;
 
         const lblCount = document.getElementById('lblFiltrosActivosCountAsp');
         if (lblCount) {
@@ -7230,11 +7273,32 @@
         `;
       }
 
+      const socioDot = a.en_socio
+        ? `<span class="asp-socio-dot" role="button" tabindex="0" title="Ya está en Sociodemográfica. Clic para ver el detalle" onclick="event.stopPropagation(); abrirSociodemograficaDesdeAspirante('${esc(String(a.identificacion || ''))}')"></span>`
+        : '';
+
       const indentStyle = isGrouped ? 'padding-left: 24px;' : '';
+      const waTel = String(a.telefono || a.celular || '').replace(/\D/g, '');
 
       return `
         <tr onclick="abrirFichaAspirante('${esc(aspId)}')" style="cursor:pointer;">
-          <td style="${indentStyle}">
+          <td style="text-align:center; ${indentStyle}" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap;">
+              <a href="/seleccion/portal/${encodeURIComponent(aspId)}" target="_blank" rel="noopener" class="btn btn-outline" style="padding:3px 7px; font-size:0.72rem; text-decoration:none;" title="Abrir el portal del aspirante">
+                <span>🌐 Portal</span>
+              </a>
+              <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.72rem;" onclick="copiarLinkPortalAspirante('${esc(aspId)}')" title="Copiar enlace de acceso al portal del aspirante">
+                <span>🔗</span>
+              </button>
+              <button type="button" class="btn btn-outline asp-wa-btn" style="padding:3px 6px; font-size:0.72rem;" ${waTel ? '' : 'disabled'} onclick="enviarPortalWhatsAppAspirante('${esc(aspId)}')" title="${waTel ? 'Enviar el enlace del portal por WhatsApp' : 'El aspirante no tiene teléfono'}" aria-label="Enviar por WhatsApp">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.04 2C6.5 2 2 6.5 2 12.04c0 1.77.46 3.5 1.34 5.02L2 22l5.07-1.33a10 10 0 0 0 4.97 1.27h.01C17.55 21.94 22 17.44 22 11.9 22 6.5 17.5 2 12.04 2zm0 18.2h-.01a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.01.79.8-2.93-.2-.3a8.2 8.2 0 1 1 6.9 3.76z"/></svg>
+              </button>
+              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" onclick="event.preventDefault(); abrirAdminAspirante('${esc(aspId)}')" class="btn btn-primary" style="padding:3px 7px; font-size:0.72rem; text-decoration:none;" title="Abrir Panel Admin">
+                <span>⚙️ Admin</span>
+              </a>
+            </div>
+          </td>
+          <td>
             <div style="display:flex; align-items:center; gap:10px;">
               <img src="${foto}" alt="Foto" class="asp-avatar" onerror="this.src=TALENTHUB_FOTO_DEFAULT">
               <div style="min-width:0;">
@@ -7256,7 +7320,7 @@
             </div>
             ${correo ? `<div style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;" title="${correo}">✉️ ${correo}</div>` : ''}
           </td>
-          <td>${reqHtml}</td>
+          <td><div style="display:flex; align-items:flex-start; gap:8px;">${socioDot}<div style="min-width:0;">${reqHtml}</div></div></td>
           <td>
             <span style="font-size:0.8rem; font-weight:500; color:var(--text);">${ubicacion}</span>
           </td>
@@ -7270,21 +7334,28 @@
           <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-muted);">
             ${fechaReg}
           </td>
-          <td style="text-align:center;" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap;">
-              <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.72rem;" onclick="abrirFichaAspirante('${esc(aspId)}')" title="Ver Ficha Completa">
-                <span>👁️ Ficha</span>
-              </button>
-              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn btn-primary" style="padding:3px 7px; font-size:0.72rem; text-decoration:none;" title="Abrir Panel Admin">
-                <span>⚙️ Admin</span>
-              </a>
-              <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.72rem;" onclick="copiarLinkPortalAspirante('${esc(aspId)}')" title="Copiar enlace de acceso al portal del aspirante">
-                <span>🔗</span>
-              </button>
-            </div>
-          </td>
         </tr>
       `;
+    }
+
+    function abrirSociodemograficaDesdeAspirante(identificacion) {
+      if (!identificacion) return;
+      cerrarModales();
+      _socioPendingAbrirDetalle = { identificacion, id_vinculacion: '', estadoSolicitado: '' };
+      const inpQ = document.getElementById('filtroSocioQ');
+      if (inpQ) inpQ.value = identificacion;
+      switchTab('Sociodemografica');
+    }
+
+    function enviarPortalWhatsAppAspirante(aspId) {
+      const a = _aspirantes.find(x => String(x.id_aspirante || x.IdAspirante) === String(aspId));
+      let tel = String(a?.telefono || a?.celular || '').replace(/\D/g, '');
+      if (!tel) { showToast('El aspirante no tiene teléfono registrado.', 'error'); return; }
+      if (tel.length === 10) tel = '57' + tel;
+      const nombre = a.primer_nombre || 'aspirante';
+      const url = `${window.location.origin}/seleccion/portal/${encodeURIComponent(aspId)}`;
+      const msg = `Hola ${nombre}, este es tu enlace para continuar tu proceso de selección en Logyser: ${url}`;
+      window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
     }
 
     function renderizarTablaAspirantes() {
@@ -7354,8 +7425,9 @@
       tbody.innerHTML = html;
     }
 
-    async function abrirFichaAspirante(idAspirante) {
+    async function abrirFichaAspirante(idAspirante, subTabInicial) {
       if (!idAspirante) return;
+      if (subTabInicial) _aspSubTabActiva = subTabInicial;
       const modal = document.getElementById('modalFichaAspirante');
       if (!modal) return;
 
@@ -7408,9 +7480,7 @@
         if (fechaEl) fechaEl.textContent = `Registrado: ${a.fecha_registro ? String(a.fecha_registro).substring(0, 10) : '-'}`;
 
         const btnAdmin = document.getElementById('btnFichaAbrirAdmin');
-        if (btnAdmin) {
-          btnAdmin.href = `/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-        }
+        if (btnAdmin) btnAdmin.style.display = '';
 
         const btnHdv = document.getElementById('btnFichaVerHdv');
         if (btnHdv) {
@@ -7451,6 +7521,35 @@
       const activeBtn = document.getElementById(`btnTabFicha${tabName}`);
       if (activeBtn) activeBtn.classList.add('active');
       renderSubTabFichaAspirante(tabName);
+    }
+
+    function abrirAdminDesdeFicha() {
+      const a = _aspActualDetalle?.aspirante || {};
+      const id = a.id_aspirante || a.IdAspirante;
+      cerrarModales();
+      if (id) abrirAdminAspirante(id);
+    }
+
+    // Vista a pantalla completa dentro de la pestaña (como Nueva Acta en Inventario)
+    function abrirAdminAspirante(aspId) {
+      if (!aspId) return;
+      if (CONFIG.activeTab !== 'Aspirantes') switchTab('Aspirantes');
+      const fila = _aspirantes.find(x => String(x.id_aspirante || x.IdAspirante) === String(aspId));
+      const nombre = fila ? (fila.nombre_completo || '') : (_aspActualDetalle?.aspirante?.nombre_completo || '');
+      document.getElementById('aspAdminTitulo').textContent = `⚙️ Panel Admin${nombre ? ' — ' + nombre : ''}`;
+      document.getElementById('frameAdminAspirante').src = `/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('aspVistaListado').style.display = 'none';
+      document.getElementById('aspVistaAdmin').style.display = 'block';
+      window.history.replaceState({}, '', `${window.location.pathname}?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=Aspirantes&subtab=Admin&asp=${encodeURIComponent(aspId)}`);
+      window.scrollTo(0, 0);
+    }
+
+    function cerrarAdminAspirante() {
+      document.getElementById('frameAdminAspirante').src = 'about:blank';
+      document.getElementById('aspVistaAdmin').style.display = 'none';
+      document.getElementById('aspVistaListado').style.display = 'block';
+      window.history.replaceState({}, '', `${window.location.pathname}?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=Aspirantes`);
+      cargarAspirantes();
     }
 
     function renderSubTabFichaAspirante(tabName) {
@@ -10183,7 +10282,7 @@
         const [datos, conteos] = await Promise.all([rData.json(), rConteos.json()]);
         if (!rData.ok || !Array.isArray(datos)) {
           _raDatos = [];
-          showToast((datos && datos.error) || 'No tienes permiso para ver Registro Asistencia', 'error');
+          showToast((datos && datos.error) || 'No tienes permiso para ver Registro Participación', 'error');
         } else {
           _raDatos = datos;
         }
@@ -10200,7 +10299,7 @@
       } catch (err) {
         console.error('[RegistroAsistencia] cargar:', err);
         _raDatos = [];
-        showToast('Error de red al cargar los registros de asistencia', 'error');
+        showToast('Error de red al cargar los registros de participación', 'error');
       }
       renderTablaRegistroAsistencia();
     }
@@ -10246,7 +10345,7 @@
       });
       document.getElementById('raTotalBadge').textContent = `(${items.length} registros)`;
       if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron registros de asistencia.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron registros de participación.</td></tr>';
         return;
       }
       tbody.innerHTML = items.map(it => `
@@ -10519,7 +10618,7 @@
 
     // Formulario de crear / editar (el mismo de Participación, con modulo=talenthub)
     function abrirModalFormAsistencia(id = null) {
-      document.getElementById('modalFormAsistenciaTitulo').textContent = id ? `Editar Registro de Asistencia #${id}` : 'Nuevo Registro de Asistencia';
+      document.getElementById('modalFormAsistenciaTitulo').textContent = id ? `Editar Registro de Participación #${id}` : 'Nuevo Registro de Participación';
       document.getElementById('iframeFormAsistencia').src = raUrl(`/formparticipacion${id ? `?id=${encodeURIComponent(id)}` : ''}`);
       const modal = document.getElementById('modalFormAsistencia');
       modal.style.display = 'flex';

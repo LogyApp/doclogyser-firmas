@@ -2476,9 +2476,47 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Selección | Logyser</title>
     <link rel="stylesheet" href="/css/seleccion.css">
+    <link rel="stylesheet" href="/css/theme-tokens.css">
+    <script>
+      (function () {
+        try {
+          var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+          var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+            : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+          document.documentElement.setAttribute('data-theme', tema);
+        } catch (e) {}
+        if (window.self !== window.top) document.documentElement.classList.add('emb');
+      })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Inter', sans-serif; }
+      html.emb .logo-admin { display: none; }
+      html.emb body { padding: 0 !important; background: transparent !important; }
+      html[data-theme="oscuro"] body { background: var(--bg, #0f172a) !important; color: var(--text, #e2e8f0); }
+      html[data-theme="oscuro"].emb body { background: transparent !important; }
+      html[data-theme="oscuro"] .bg-white { background-color: var(--card-bg, #1e293b) !important; }
+      html[data-theme="oscuro"] .bg-slate-50, html[data-theme="oscuro"] .bg-slate-100 { background-color: var(--bg-elevated, #273449) !important; }
+      html[data-theme="oscuro"] .bg-slate-200 { background-color: #334155 !important; }
+      html[data-theme="oscuro"] .border-slate-100, html[data-theme="oscuro"] .border-slate-200 { border-color: var(--border, #334155) !important; }
+      html[data-theme="oscuro"] .text-slate-800, html[data-theme="oscuro"] .text-slate-700, html[data-theme="oscuro"] .text-slate-600 { color: var(--text, #e2e8f0) !important; }
+      html[data-theme="oscuro"] .text-slate-500, html[data-theme="oscuro"] .text-slate-400, html[data-theme="oscuro"] .text-slate-300 { color: var(--text-muted, #94a3b8) !important; }
+      html[data-theme="oscuro"] .text-blue-600, html[data-theme="oscuro"] .text-blue-700 { color: #93c5fd !important; }
+      html[data-theme="oscuro"] .text-emerald-700, html[data-theme="oscuro"] .text-emerald-800, html[data-theme="oscuro"] .text-green-600 { color: #6ee7b7 !important; }
+      html[data-theme="oscuro"] .text-amber-600, html[data-theme="oscuro"] .text-amber-700, html[data-theme="oscuro"] .text-amber-800 { color: #fcd34d !important; }
+      html[data-theme="oscuro"] .text-purple-800 { color: #d8b4fe !important; }
+      html[data-theme="oscuro"] .text-red-400, html[data-theme="oscuro"] .text-red-800 { color: #fca5a5 !important; }
+      html[data-theme="oscuro"] .bg-amber-50, html[data-theme="oscuro"] .bg-amber-100 { background-color: rgba(245, 158, 11, 0.16) !important; }
+      html[data-theme="oscuro"] .bg-blue-50, html[data-theme="oscuro"] .bg-blue-100 { background-color: rgba(59, 130, 246, 0.18) !important; }
+      html[data-theme="oscuro"] .bg-emerald-50, html[data-theme="oscuro"] .bg-emerald-100, html[data-theme="oscuro"] .bg-green-50 { background-color: rgba(16, 185, 129, 0.16) !important; }
+      html[data-theme="oscuro"] .bg-purple-100 { background-color: rgba(168, 85, 247, 0.18) !important; }
+      html[data-theme="oscuro"] .bg-red-100 { background-color: rgba(239, 68, 68, 0.18) !important; }
+      html[data-theme="oscuro"] .border-amber-200, html[data-theme="oscuro"] .border-blue-200, html[data-theme="oscuro"] .border-emerald-200,
+      html[data-theme="oscuro"] .border-green-200, html[data-theme="oscuro"] .border-purple-200, html[data-theme="oscuro"] .border-red-200 { border-color: rgba(148, 163, 184, 0.35) !important; }
+      html[data-theme="oscuro"] input, html[data-theme="oscuro"] select, html[data-theme="oscuro"] textarea {
+        background-color: var(--card-bg, #1e293b) !important; color: var(--text, #e2e8f0) !important; border-color: var(--border, #334155) !important;
+      }
+      html[data-theme="oscuro"] .interfaz-bloqueada a { color: #93c5fd !important; }
       .interfaz-bloqueada { filter: grayscale(1); opacity: 0.7; }
       .interfaz-bloqueada button, .interfaz-bloqueada input, .interfaz-bloqueada select { 
         pointer-events: none !important; cursor: not-allowed; 
@@ -2496,7 +2534,7 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
         <!-- Fila 1: Identificación y Estado Principal -->
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div class="flex items-center gap-3.5">
-            <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-9 md:h-10 w-auto object-contain shrink-0">
+            <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="logo-admin h-9 md:h-10 w-auto object-contain shrink-0">
             <div>
               <div class="flex flex-wrap items-center gap-2">
                 <h1 class="text-base md:text-lg font-black text-slate-800 uppercase tracking-tight leading-tight">${asp.nombreCompleto}</h1>

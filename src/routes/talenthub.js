@@ -2280,7 +2280,7 @@ router.get('/api/aspirantes', async (req, res) => {
   try {
     const {
       usuario, q, estado, requisicion, regional, operacion,
-      departamento, medio, desde, hasta, sortBy, sortDir
+      departamento, medio, desde, hasta, quincena, sortBy, sortDir
     } = req.query;
 
     const acceso = await computarAccesoTalenthub(usuario, 'Aspirantes')
@@ -2311,6 +2311,7 @@ router.get('/api/aspirantes', async (req, res) => {
         r.\`Cargo Requerido\` AS req_cargo,
         r.\`Regional\` AS req_regional,
         r.Estado AS req_estado,
+        EXISTS (SELECT 1 FROM \`Maestro_Vinculación\` mv WHERE mv.\`Identificación\` = a.identificacion) AS en_socio,
         COUNT(DISTINCT d.id_documento) AS docs_cargados,
         SUM(CASE WHEN d.estado = 'Aprobado' THEN 1 ELSE 0 END) AS docs_aprobados,
         SUM(CASE WHEN d.estado = 'Firmado' THEN 1 ELSE 0 END) AS docs_firmados
@@ -2350,14 +2351,14 @@ router.get('/api/aspirantes', async (req, res) => {
       params.push(qWild, qWild, qWild, qWild, qWild, qWild, qWild, qWild, qWild);
     }
 
-    // Filtro por Estado
-    if (estado && estado !== 'todos' && estado !== 'Todos') {
+    // Filtro por Estado ("TODOS" llega en mayúsculas desde la pestaña)
+    if (estado && String(estado).trim().toLowerCase() !== 'todos') {
       sql += ` AND LOWER(TRIM(COALESCE(a.estado_proceso, 'Registro'))) = LOWER(TRIM(?))`;
       params.push(estado);
     }
 
     // Filtro por Requisición
-    if (requisicion && requisicion !== 'todas') {
+    if (requisicion && String(requisicion).trim().toLowerCase() !== 'todas') {
       if (requisicion === 'sin_requisicion') {
         sql += ` AND (a.IdRequisicion IS NULL OR a.IdRequisicion = 0)`;
       } else if (requisicion === 'con_requisicion') {
@@ -2369,27 +2370,42 @@ router.get('/api/aspirantes', async (req, res) => {
     }
 
     // Filtro por Regional
-    if (regional && regional !== 'todas' && regional !== 'Todas') {
+    if (regional && String(regional).trim().toLowerCase() !== 'todas') {
       sql += ` AND r.\`Regional\` = ?`;
       params.push(regional);
     }
 
     // Filtro por Operación
-    if (operacion && operacion !== 'todas' && operacion !== 'Todas') {
+    if (operacion && String(operacion).trim().toLowerCase() !== 'todas') {
       sql += ` AND r.\`Operación\` = ?`;
       params.push(operacion);
     }
 
     // Filtro por Departamento del Aspirante
-    if (departamento && departamento !== 'todos' && departamento !== 'Todos') {
+    if (departamento && String(departamento).trim().toLowerCase() !== 'todos') {
       sql += ` AND a.departamento = ?`;
       params.push(departamento);
     }
 
     // Filtro por Medio de Reclutamiento
-    if (medio && medio !== 'todos' && medio !== 'Todos') {
+    if (medio && String(medio).trim().toLowerCase() !== 'todos') {
       sql += ` AND a.medio_reclutamiento = ?`;
       params.push(medio);
+    }
+
+    // Quincena ("AÑO|Nombre quincena" de Maestro_Fechas) convertida a rango de fecha de registro
+    if (quincena && String(quincena).includes('|')) {
+      const [anioQ, ...restoQ] = String(quincena).split('|');
+      const [rangoQ] = await pool.execute(
+        'SELECT DATE_FORMAT(MIN(`Fecha`), "%Y-%m-%d") AS ini, DATE_FORMAT(MAX(`Fecha`), "%Y-%m-%d") AS fin FROM `Maestro_Fechas` WHERE `Año` = ? AND `Quincena` = ?',
+        [parseInt(anioQ, 10) || 0, restoQ.join('|')]
+      );
+      if (rangoQ[0]?.ini) {
+        sql += ` AND a.fecha_registro >= ? AND a.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)`;
+        params.push(rangoQ[0].ini, rangoQ[0].fin);
+      } else {
+        sql += ` AND 1 = 0`;
+      }
     }
 
     // Filtros de fecha de registro
@@ -2432,7 +2448,7 @@ router.get('/api/aspirantes', async (req, res) => {
     const [rows] = await pool.execute(sql, params);
 
     // Consulta de KPIs por Estado y facetas para los filtros desplegables
-    const [[kpiRows], [facetasDeptos], [facetasMedios], [facetasReqs], [facetasRegs], [facetasOps]] = await Promise.all([
+    const [[kpiRows], [facetasDeptos], [facetasMedios], [facetasReqs], [facetasRegs], [facetasOps], [facetasQuincenas]] = await Promise.all([
       pool.execute(`
         SELECT 
           COUNT(*) AS total,
@@ -2442,8 +2458,8 @@ router.get('/api/aspirantes', async (req, res) => {
           SUM(CASE WHEN LOWER(TRIM(estado_proceso)) = 'bloqueado' THEN 1 ELSE 0 END) AS bloqueado
         FROM Dynamic_hv_aspirante
       `),
-      pool.execute(`SELECT DISTINCT departamento FROM Dynamic_hv_aspirante WHERE departamento IS NOT NULL AND departamento != '' ORDER BY departamento`),
-      pool.execute(`SELECT DISTINCT medio_reclutamiento FROM Dynamic_hv_aspirante WHERE medio_reclutamiento IS NOT NULL AND medio_reclutamiento != '' ORDER BY medio_reclutamiento`),
+      pool.execute(`SELECT departamento AS valor, COUNT(*) AS cnt FROM Dynamic_hv_aspirante WHERE departamento IS NOT NULL AND departamento != '' GROUP BY departamento ORDER BY departamento`),
+      pool.execute(`SELECT medio_reclutamiento AS valor, COUNT(*) AS cnt FROM Dynamic_hv_aspirante WHERE medio_reclutamiento IS NOT NULL AND medio_reclutamiento != '' GROUP BY medio_reclutamiento ORDER BY medio_reclutamiento`),
       pool.execute(`
         SELECT DISTINCT r.IdRequisicion, r.\`Requisición\`, r.\`Operación\`, r.\`Cargo Requerido\`
         FROM Dynamic_Requisiciones r
@@ -2451,8 +2467,29 @@ router.get('/api/aspirantes', async (req, res) => {
         ORDER BY r.\`Requisición\` DESC
         LIMIT 100
       `),
-      pool.execute(`SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE REGIONAL IS NOT NULL AND REGIONAL != 'INACTIVO' ORDER BY REGIONAL`),
-      pool.execute(`SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN`)
+      pool.execute(`
+        SELECT r.\`Regional\` AS valor, COUNT(DISTINCT a.id_aspirante) AS cnt
+        FROM Dynamic_hv_aspirante a
+        INNER JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+        WHERE r.\`Regional\` IS NOT NULL AND r.\`Regional\` != ''
+        GROUP BY r.\`Regional\` ORDER BY r.\`Regional\`
+      `),
+      pool.execute(`
+        SELECT r.\`Operación\` AS valor, COUNT(DISTINCT a.id_aspirante) AS cnt
+        FROM Dynamic_hv_aspirante a
+        INNER JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+        WHERE r.\`Operación\` IS NOT NULL AND r.\`Operación\` != ''
+        GROUP BY r.\`Operación\` ORDER BY r.\`Operación\`
+      `),
+      pool.execute(`
+        SELECT \`Año\` AS anio, \`Quincena\` AS quincena
+        FROM Maestro_Fechas
+        WHERE \`Año\` >= 2025 AND \`Quincena\` IS NOT NULL
+        GROUP BY \`Año\`, \`Quincena\`
+        HAVING MIN(\`Fecha\`) <= CURDATE()
+        ORDER BY MIN(\`Fecha\`) DESC
+        LIMIT 48
+      `)
     ]);
 
     res.json({
@@ -2461,15 +2498,17 @@ router.get('/api/aspirantes', async (req, res) => {
         ...r,
         docs_cargados: parseInt(r.docs_cargados, 10) || 0,
         docs_aprobados: parseInt(r.docs_aprobados, 10) || 0,
-        docs_firmados: parseInt(r.docs_firmados, 10) || 0
+        docs_firmados: parseInt(r.docs_firmados, 10) || 0,
+        en_socio: Number(r.en_socio) === 1
       })),
-      kpis: kpiRows[0] || {},
+      kpis: { ...(kpiRows[0] || {}), enProceso: Number(kpiRows[0]?.en_proceso) || 0 },
       facetas: {
-        departamentos: facetasDeptos.map(d => d.departamento),
-        mediosReclutamiento: facetasMedios.map(m => m.medio_reclutamiento),
+        departamentos: facetasDeptos,
+        mediosReclutamiento: facetasMedios,
         requisiciones: facetasReqs,
-        regionales: facetasRegs.map(r => r.REGIONAL),
-        operaciones: facetasOps.map(o => o.OPERACIÓN)
+        regionales: facetasRegs,
+        operaciones: facetasOps,
+        quincenas: facetasQuincenas.map(q => ({ valor: `${q.anio}|${q.quincena}`, etiqueta: `${q.quincena} · ${q.anio}` }))
       }
     });
 

@@ -7,7 +7,22 @@ const { computarAccesoNomina } = require('../services/accesoNomina');
 const { seccionesDelRol, accesoSeccion } = require('../services/maestroMenu');
 const { obtenerPermisosProduccion } = require('../services/configProduccion');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
-const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
+const { obtenerFirmaBase64Reciente, subirFirma, subirArchivoCloudDocs } = require('../services/storage');
+const {
+  obtenerCatalogoNovedades,
+  obtenerParametrosAsistencia,
+  verificarBloqueoNomina,
+  obtenerAreasOperacion,
+  buscarTrabajadoresSegmentacion,
+  buscarTrabajadoresVinculacion,
+  registrarAsistenciaDiaria,
+  registrarNovedadPorRango,
+  editarRegistroAsistencia,
+  eliminarRegistroAsistencia,
+  listarAsistencias,
+  obtenerMetricasAsistencia,
+  obtenerQuincenaFecha,
+} = require('../services/asistenciaService');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido } = require('../services/configRetiro');
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
@@ -296,11 +311,15 @@ router.get('/', async (req, res) => {
     const accesoProdTarifas = await computarAccesoNomina(usuario, 'Produccion_Tarifas');
     const accesoProd = accesoProduccion || accesoProdAreas || accesoProdTarifas;
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd) {
+    // Asistencia y Novedades: permisos vía Maestro_Menu (Modulo 'nomina', Seccion 'Asistencia')
+    const accesoAsistencia = await computarAccesoNomina(usuario, 'Asistencia');
+    const paramsAsistencia = accesoAsistencia ? await obtenerParametrosAsistencia() : null;
+
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia;
     const puedeGenerarDocs = await puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -324,7 +343,7 @@ router.get('/', async (req, res) => {
     }
 
     const opsTicket = await opsPorRegionalTicket([
-      accesoRetiro, accesoActivo, accesoBloqueo, accesoBiometrico, accesoTraslados, accesoCesantias
+      accesoRetiro, accesoActivo, accesoBloqueo, accesoBiometrico, accesoTraslados, accesoCesantias, accesoProd, accesoAsistencia
     ]);
 
     // Botón "Sociodemografica" en la Ficha y en la ventana de Retiro: solo para roles con la
@@ -378,6 +397,21 @@ router.get('/', async (req, res) => {
           tarifas: Boolean(accesoProdTarifas),
           opsPorRegional: accesoProd.opsPorRegional || {},
           ...(await obtenerPermisosProduccion(base.rol)),
+        } : null,
+        asistencia: accesoAsistencia ? {
+          sinFiltro: accesoAsistencia.sinFiltro,
+          operacionesFiltro: accesoAsistencia.operacionesFiltro || [],
+          opsPorRegional: accesoAsistencia.opsPorRegional || {},
+          regionalesFiltro: Object.keys(accesoAsistencia.opsPorRegional || {}).sort((a, b) => a.localeCompare(b, 'es')),
+          regional: accesoAsistencia.regional || '',
+          operacion: accesoAsistencia.operacion || '',
+          seccionAcceso: accesoAsistencia.seccionAcceso || {},
+          rol: accesoAsistencia.rol || base.rol,
+          quincenaActual: await obtenerQuincenaFecha(new Date().toLocaleDateString('en-CA')),
+          puedeEditarTodosEstados: paramsAsistencia?.rolesEditarEliminarTodosEstados?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeEditarYellow: paramsAsistencia?.rolesEditarEliminarYellow?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeRegistrarRetirados: paramsAsistencia?.rolesRegistrarRetirados?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          ...(paramsAsistencia || {}),
         } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');
@@ -2359,6 +2393,283 @@ router.post('/api/cesantias/:id/generar-pdf', async (req, res) => {
   } catch (err) {
     console.error('[nomina Cesantias API] Error generando PDF:', err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── ASISTENCIA Y NOVEDADES API ──────────────────────────────────────────────
+const uploadAsistencia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+async function verificarAccesoAsistenciaAPI(req, res, next) {
+  try {
+    const usuario = req.query.usuario || req.body.usuario || req.headers['x-usuario'];
+    if (!usuario) return res.status(401).json({ ok: false, error: 'Usuario no proporcionado' });
+    const acceso = await computarAccesoNomina(usuario, 'Asistencia');
+    if (!acceso) return res.status(403).json({ ok: false, error: 'No tienes permisos para Asistencia y Novedades' });
+    req.accesoAsistencia = acceso;
+    req.usuarioId = usuario;
+    req.usuarioRol = acceso.rol;
+    next();
+  } catch (err) {
+    console.error('[verificarAccesoAsistenciaAPI]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+// 1. Catálogo de novedades
+router.get('/api/asistencia/novedades', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const novedades = await obtenerCatalogoNovedades();
+    res.json({ ok: true, novedades });
+  } catch (err) {
+    console.error('[GET /api/asistencia/novedades]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 1b. Áreas por operación (Config_Area donde ADMINISTRATIVO = 'V')
+router.get('/api/asistencia/areas', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { operacion } = req.query;
+    if (!operacion) return res.json({ ok: true, areas: [] });
+    const areas = await obtenerAreasOperacion(operacion);
+    res.json({ ok: true, areas });
+  } catch (err) {
+    console.error('[GET /api/asistencia/areas]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. Colaboradores por operación y área (Maestro_Vinculación + Maestro_Segmentación)
+router.get('/api/asistencia/trabajadores', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { operacion, area, q } = req.query;
+    const acceso = req.accesoAsistencia;
+    const paramsCfg = await obtenerParametrosAsistencia();
+    const rolNorm = (req.usuarioRol || '').toLowerCase().trim();
+    const puedeVerRetirados = (paramsCfg.rolesRegistrarRetirados || []).map(r => r.toLowerCase().trim()).includes(rolNorm);
+
+    const trabajadores = await buscarTrabajadoresVinculacion({
+      operacion: operacion || null,
+      area: area || null,
+      operacionesPermitidas: acceso.sinFiltro ? [] : acceso.operacionesFiltro,
+      q: q || '',
+      puedeVerRetirados
+    });
+    res.json({ ok: true, trabajadores });
+  } catch (err) {
+    console.error('[GET /api/asistencia/trabajadores]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. Métricas y conteos interactivos para filtros de asistencia
+router.get('/api/asistencia/metricas', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { anio, quincena, dia, regional, operacion, novedad, busqueda } = req.query;
+    const acceso = req.accesoAsistencia;
+
+    if (operacion && !acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar esta operación' });
+    }
+
+    const metricas = await obtenerMetricasAsistencia({
+      operacionesPermitidas: acceso.sinFiltro ? [] : acceso.operacionesFiltro,
+      anio: anio || '2026',
+      quincena: quincena || '',
+      dia: dia || '',
+      regional: regional || '',
+      operacion: operacion || '',
+      novedad: novedad || '',
+      busqueda: busqueda || ''
+    });
+
+    res.json({ ok: true, ...metricas });
+  } catch (err) {
+    console.error('[GET /api/asistencia/metricas]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 4. Listar registros de asistencia y novedades
+router.get('/api/asistencia/registros', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { anio, quincena, dia, regional, operacion, fechaInicio, fechaFin, novedad, busqueda, pagina, limite } = req.query;
+    const acceso = req.accesoAsistencia;
+
+    // Validación de seguridad de operación
+    if (operacion && !acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar esta operación' });
+    }
+
+    const data = await listarAsistencias({
+      operacionesPermitidas: acceso.sinFiltro ? [] : acceso.operacionesFiltro,
+      anio: anio || '',
+      quincena: quincena || '',
+      dia: dia || '',
+      regional: regional || '',
+      operacion: operacion || '',
+      fechaInicio: fechaInicio || '',
+      fechaFin: fechaFin || '',
+      novedad: novedad || '',
+      busqueda: busqueda || '',
+      pagina: pagina || 1,
+      limite: limite || 50
+    });
+
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('[GET /api/asistencia/registros]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 4. Registro de asistencia diaria (múltiples trabajadores en un día)
+router.post('/api/asistencia/diaria', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const {
+      operacion, area, novedad, prefijoNovedad, dia,
+      horaEntrada, horaSalida, trabajadoresIds,
+      apoyoOtraOperacion, operacionApoya, observaciones
+    } = req.body;
+
+    const acceso = req.accesoAsistencia;
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para registrar en esta operación' });
+    }
+
+    const resultado = await registrarAsistenciaDiaria({
+      operacion,
+      area,
+      novedad: novedad || 'Asistencia',
+      prefijoNovedad: prefijoNovedad || 'SI',
+      dia,
+      horaEntrada,
+      horaSalida,
+      trabajadoresIds: Array.isArray(trabajadoresIds) ? trabajadoresIds : JSON.parse(trabajadoresIds || '[]'),
+      apoyoOtraOperacion: apoyoOtraOperacion || 'NO',
+      operacionApoya: operacionApoya || null,
+      observaciones: observaciones || null,
+      usuario: req.usuarioId,
+      rol: req.usuarioRol
+    });
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[POST /api/asistencia/diaria]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 5. Registro de novedad por rango de fechas (con carga de archivos)
+router.post('/api/asistencia/novedad', uploadAsistencia.fields([
+  { name: 'soporte', maxCount: 1 },
+  { name: 'incapacidad', maxCount: 1 },
+  { name: 'historiaClinica', maxCount: 1 }
+]), verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const {
+      trabajadorIdentificacion, operacion, area, novedad, prefijoNovedad,
+      diaInicio, diaFin, codDiagnostico, diagnostico, tipoIncapacidad, observaciones
+    } = req.body;
+
+    let urlSoporte = null;
+    let urlIncapacidad = null;
+    let urlHistoriaClinica = null;
+
+    if (req.files) {
+      if (req.files.soporte && req.files.soporte[0]) {
+        const file = req.files.soporte[0];
+        urlSoporte = await subirArchivoCloudDocs(trabajadorIdentificacion, 'SOP', file.buffer, file.originalname, file.mimetype);
+      }
+      if (req.files.incapacidad && req.files.incapacidad[0]) {
+        const file = req.files.incapacidad[0];
+        urlIncapacidad = await subirArchivoCloudDocs(trabajadorIdentificacion, 'INC', file.buffer, file.originalname, file.mimetype);
+      }
+      if (req.files.historiaClinica && req.files.historiaClinica[0]) {
+        const file = req.files.historiaClinica[0];
+        urlHistoriaClinica = await subirArchivoCloudDocs(trabajadorIdentificacion, 'HC', file.buffer, file.originalname, file.mimetype);
+      }
+    }
+
+    const resultado = await registrarNovedadPorRango({
+      trabajadorIdentificacion,
+      operacion,
+      area,
+      novedad,
+      prefijoNovedad,
+      diaInicio,
+      diaFin,
+      codDiagnostico,
+      diagnostico,
+      tipoIncapacidad,
+      urlSoporte,
+      urlIncapacidad,
+      urlHistoriaClinica,
+      observaciones,
+      usuario: req.usuarioId,
+      rol: req.usuarioRol
+    });
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[POST /api/asistencia/novedad]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 6. Editar registro de asistencia
+router.put('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const idAsistencia = req.params.id;
+    const {
+      horaEntrada, horaSalida, novedad, prefijoNovedad, area,
+      apoyoOtraOperacion, operacionApoya, tipoIncapacidad,
+      codDiagnostico, diagnostico, observaciones
+    } = req.body;
+    const acceso = req.accesoAsistencia;
+
+    const resultado = await editarRegistroAsistencia({
+      idAsistencia,
+      horaEntrada,
+      horaSalida,
+      novedad,
+      prefijoNovedad,
+      area,
+      apoyoOtraOperacion,
+      operacionApoya,
+      tipoIncapacidad,
+      codDiagnostico,
+      diagnostico,
+      observaciones,
+      usuario: req.usuarioId,
+      rol: req.usuarioRol,
+      operacionesPermitidas: acceso.operacionesFiltro,
+      sinFiltro: acceso.sinFiltro
+    });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[PUT /api/asistencia/:id]', err);
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+// 7. Eliminar registro de asistencia
+router.delete('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const idAsistencia = req.params.id;
+    const acceso = req.accesoAsistencia;
+
+    const resultado = await eliminarRegistroAsistencia({
+      idAsistencia,
+      usuario: req.usuarioId,
+      rol: req.usuarioRol,
+      operacionesPermitidas: acceso.operacionesFiltro,
+      sinFiltro: acceso.sinFiltro
+    });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[DELETE /api/asistencia/:id]', err);
+    res.status(400).json({ ok: false, error: err.message });
   }
 });
 
