@@ -411,6 +411,9 @@ router.get('/', async (req, res) => {
           puedeEditarTodosEstados: paramsAsistencia?.rolesEditarEliminarTodosEstados?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeEditarYellow: paramsAsistencia?.rolesEditarEliminarYellow?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeRegistrarRetirados: paramsAsistencia?.rolesRegistrarRetirados?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeRegistrarDiasFuturos: paramsAsistencia?.rolesRegistrarDiasFuturos?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeVerNovedadesSistema: paramsAsistencia?.rolesVerNovedadesSistema?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeExcluirCargos: paramsAsistencia?.rolesExencionCargosAsistencia?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           ...(paramsAsistencia || {}),
         } : null,
       },
@@ -2418,8 +2421,8 @@ async function verificarAccesoAsistenciaAPI(req, res, next) {
 // 1. Catálogo de novedades
 router.get('/api/asistencia/novedades', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
-    const novedades = await obtenerCatalogoNovedades();
-    res.json({ ok: true, novedades });
+    const catalogo = await obtenerCatalogoNovedades(req.usuarioRol);
+    res.json({ ok: true, ...catalogo });
   } catch (err) {
     console.error('[GET /api/asistencia/novedades]', err);
     res.status(500).json({ ok: false, error: err.message });
@@ -2439,21 +2442,46 @@ router.get('/api/asistencia/areas', verificarAccesoAsistenciaAPI, async (req, re
   }
 });
 
+// 1c. Catálogo de diagnósticos CIE-10 (Config_Diagnostico)
+// TODO: Cuando se retire AppSheet, eliminar la columna 'Diagnostico' de Dynamic_Asistencia
+// ya que el dato se resuelve únicamente mediante 'Cod Diagnostico' (JOIN con Config_Diagnostico.Cod).
+router.get('/api/asistencia/diagnosticos', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toUpperCase();
+    if (!q || q.length < 2) {
+      return res.json({ ok: true, diagnosticos: [] });
+    }
+    const [rows] = await pool.query(
+      'SELECT Cod as cod, `Descripción` as descripcion FROM Config_Diagnostico WHERE UPPER(Cod) LIKE ? OR UPPER(`Descripción`) LIKE ? LIMIT 35',
+      [`${q}%`, `%${q}%`]
+    );
+    res.json({ ok: true, diagnosticos: rows });
+  } catch (err) {
+    console.error('[GET /api/asistencia/diagnosticos]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // 2. Colaboradores por operación y área (Maestro_Vinculación + Maestro_Segmentación)
 router.get('/api/asistencia/trabajadores', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
-    const { operacion, area, q } = req.query;
+    const { operacion, area, q, esApoyo, tipoEvento } = req.query;
     const acceso = req.accesoAsistencia;
     const paramsCfg = await obtenerParametrosAsistencia();
     const rolNorm = (req.usuarioRol || '').toLowerCase().trim();
     const puedeVerRetirados = (paramsCfg.rolesRegistrarRetirados || []).map(r => r.toLowerCase().trim()).includes(rolNorm);
+    const puedeExcluirCargos = (paramsCfg.rolesExencionCargosAsistencia || []).map(r => r.toLowerCase().trim()).includes(rolNorm);
 
     const trabajadores = await buscarTrabajadoresVinculacion({
       operacion: operacion || null,
       area: area || null,
       operacionesPermitidas: acceso.sinFiltro ? [] : acceso.operacionesFiltro,
       q: q || '',
-      puedeVerRetirados
+      puedeVerRetirados,
+      esApoyo: String(esApoyo || '').toLowerCase() === 'true' || String(esApoyo || '') === '1',
+      tipoEvento: tipoEvento || 'Asistencia',
+      puedeExcluirCargos,
+      cargosExcluidos: paramsCfg.cargosExcluidosAsistencia || []
     });
     res.json({ ok: true, trabajadores });
   } catch (err) {
@@ -2579,11 +2607,37 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
     if (req.files) {
       if (req.files.soporte && req.files.soporte[0]) {
         const file = req.files.soporte[0];
-        urlSoporte = await subirArchivoCloudDocs(trabajadorIdentificacion, 'SOP', file.buffer, file.originalname, file.mimetype);
+        let sopPrefijo = 'SOP';
+        try {
+          const [docRows] = await pool.query(`
+            SELECT cdt.Prefijo 
+            FROM Config_Asistencia ca 
+            JOIN Config_Doc_Trabajador cdt ON ca.TipoDocumento = cdt.Id 
+            WHERE ca.Novedad = ? LIMIT 1
+          `, [novedad]);
+          if (docRows.length && docRows[0].Prefijo) {
+            sopPrefijo = docRows[0].Prefijo;
+          }
+        } catch (ePref) {
+          console.warn('[POST /api/asistencia/novedad] Error consultando prefijo doc soporte:', ePref.message);
+        }
+        urlSoporte = await subirArchivoCloudDocs(trabajadorIdentificacion, sopPrefijo, file.buffer, file.originalname, file.mimetype);
       }
       if (req.files.incapacidad && req.files.incapacidad[0]) {
         const file = req.files.incapacidad[0];
-        urlIncapacidad = await subirArchivoCloudDocs(trabajadorIdentificacion, 'INC', file.buffer, file.originalname, file.mimetype);
+        let incPrefijo = 'INC';
+        if (tipoIncapacidad) {
+          try {
+            const [caRows] = await pool.query(
+              "SELECT `Prefijo Novedad` AS prefijo FROM Config_Asistencia WHERE Novedad = ? AND Evento = 'Incapacidad' LIMIT 1",
+              [tipoIncapacidad]
+            );
+            if (caRows.length && caRows[0].prefijo) {
+              incPrefijo = caRows[0].prefijo;
+            }
+          } catch (eIncPref) {}
+        }
+        urlIncapacidad = await subirArchivoCloudDocs(trabajadorIdentificacion, incPrefijo, file.buffer, file.originalname, file.mimetype);
       }
       if (req.files.historiaClinica && req.files.historiaClinica[0]) {
         const file = req.files.historiaClinica[0];
@@ -2622,7 +2676,7 @@ router.put('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res)
   try {
     const idAsistencia = req.params.id;
     const {
-      horaEntrada, horaSalida, novedad, prefijoNovedad, area,
+      horaEntrada, horaSalida, horaLlegada, novedad, prefijoNovedad, area,
       apoyoOtraOperacion, operacionApoya, tipoIncapacidad,
       codDiagnostico, diagnostico, observaciones
     } = req.body;
@@ -2630,7 +2684,7 @@ router.put('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res)
 
     const resultado = await editarRegistroAsistencia({
       idAsistencia,
-      horaEntrada,
+      horaEntrada: horaEntrada || horaLlegada,
       horaSalida,
       novedad,
       prefijoNovedad,

@@ -2,9 +2,11 @@
  * Módulo de Asistencia y Novedades para Nómina (LogyApp)
  * Gestiona filtros con conteos interactivos (Año, Quincena, Día, Regional, Operación, Novedad),
  * catálogo dinámico con códigos de color de Config_Asistencia adaptados a modo claro/oscuro,
+ * selección interactiva de Operación (chips si < 5, select si >= 5),
  * selección obligatoria de Área (Config_Area donde ADMINISTRATIVO='V') para habilitar colaboradores,
+ * soporte para apoyo a otra operación restringido a operaciones de la misma regional,
  * dropzones para soporte/incapacidades con cámara y drag&drop,
- * y permisos por rol para editar/eliminar registros en estado Yellow o sin importar estado (Sistema, Nomina).
+ * y permisos por rol para registrar días futuros, editar/eliminar registros en estado Yellow o sin importar estado.
  */
 
 const _asisState = {
@@ -15,13 +17,19 @@ const _asisState = {
   limite: 50,
   totalPaginas: 1,
   novedades: [],
+  incapacidades: [],
   novedadesMap: {},
+  incapacidadesMap: {},
   metricas: null,
+  operaciones: [],
   areasDiaria: [],
   areasNovedad: [],
   areaSeleccionadaDiaria: null,
   areaSeleccionadaNovedad: null,
+  operacionSeleccionadaDiaria: null,
+  operacionSeleccionadaNovedad: null,
   trabajadoresOperacion: [],
+  trabajadoresNovedad: [],
   trabajadoresSeleccionados: new Map(), // identificacion -> { identificacion, nombreCompleto, ... }
   modoRegistro: 'diaria', // 'diaria' | 'novedad'
   debounceTimer: null
@@ -61,7 +69,7 @@ function renderBadgeNovedad(novedad, colorHex) {
   const nov = novedad || 'Asistencia';
   let hex = colorHex;
   if (!hex || hex.toUpperCase() === '#FFFFFF') {
-    const info = _asisState.novedadesMap[nov];
+    const info = _asisState.novedadesMap[nov] || _asisState.incapacidadesMap[nov];
     if (info && info.color) hex = info.color;
   }
   hex = hex || '#FFFFFF';
@@ -97,15 +105,6 @@ function renderBadgeNovedad(novedad, colorHex) {
   return `<span style="display:inline-flex; align-items:center; padding:3px 9px; border-radius:6px; font-size:11.5px; line-height:1.2; background:${bg}; color:${text}; border:1px solid ${border}; white-space:nowrap; ${extraStyles}">${esc(nov)}</span>`;
 }
 
-// Renderizar badge de Estado
-function renderBadgeEstado(estado) {
-  const st = (estado || 'Yellow').trim();
-  if (st.toLowerCase() === 'green') {
-    return `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:12px; font-size:.74rem; font-weight:700; background:rgba(34,197,94,0.15); color:#15803d; border:1px solid rgba(34,197,94,0.3);" title="Bloqueado por Nómina (Solo lectura)">🟢 Green</span>`;
-  }
-  return `<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:12px; font-size:.74rem; font-weight:700; background:rgba(234,179,8,0.15); color:#854d0e; border:1px solid rgba(234,179,8,0.3);" title="Editable según permisos">🟡 Yellow</span>`;
-}
-
 // ══════════════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN DE LA PESTAÑA
 // ══════════════════════════════════════════════════════════════════════════
@@ -113,18 +112,19 @@ function renderBadgeEstado(estado) {
 async function initAsistenciaNomina() {
   const cfg = obtenerConfigAsistencia();
 
-  // 1. Poblar selectores de operaciones en los formularios del modal
-  const selModalOpDiaria = document.getElementById('asisModalOpDiaria');
-  const selModalOpNovedad = document.getElementById('asisModalOpNovedad');
-  const selModalOpApoya = document.getElementById('asisModalOpApoya');
-  const selFiltroOp = document.getElementById('asisFilterOperacion');
-  const selFiltroReg = document.getElementById('asisFilterRegional');
-
-  const ops = (cfg.operacionesFiltro || []).slice().sort((a, b) => a.localeCompare(b, 'es'));
+  let ops = (cfg.operacionesFiltro || []).slice();
   const opsPorReg = cfg.opsPorRegional || {};
+  if (!ops.length && Object.keys(opsPorReg).length) {
+    const setOps = new Set();
+    Object.values(opsPorReg).forEach(list => (list || []).forEach(o => setOps.add(o)));
+    ops = Array.from(setOps);
+  }
+  ops.sort((a, b) => a.localeCompare(b, 'es'));
+  _asisState.operaciones = ops;
   const regionales = Object.keys(opsPorReg).sort((a, b) => a.localeCompare(b, 'es'));
 
-  // Poblar selector de Regional en filtros
+  // 1. Selector de Regional en Filtros
+  const selFiltroReg = document.getElementById('asisFilterRegional');
   if (selFiltroReg && regionales.length) {
     let regOpts = '<option value="">Todas las regionales</option>';
     regionales.forEach(r => {
@@ -133,7 +133,8 @@ async function initAsistenciaNomina() {
     selFiltroReg.innerHTML = regOpts;
   }
 
-  // Poblar selector de Operación en filtros
+  // 2. Selector de Operación en Filtros
+  const selFiltroOp = document.getElementById('asisFilterOperacion');
   if (selFiltroOp) {
     let opOpts = '<option value="">Todas las operaciones</option>';
     ops.forEach(op => {
@@ -142,77 +143,226 @@ async function initAsistenciaNomina() {
     selFiltroOp.innerHTML = opOpts;
   }
 
-  // Poblar selectores en modal
-  if (selModalOpDiaria) {
-    let opOpts = '<option value="">Seleccione una operación...</option>';
-    ops.forEach(op => {
-      opOpts += `<option value="${esc(op)}">${esc(op)}</option>`;
-    });
-    selModalOpDiaria.innerHTML = opOpts;
-  }
-  if (selModalOpNovedad) {
-    let opOpts = '<option value="">Seleccione una operación...</option>';
-    ops.forEach(op => {
-      opOpts += `<option value="${esc(op)}">${esc(op)}</option>`;
-    });
-    selModalOpNovedad.innerHTML = opOpts;
-  }
-  if (selModalOpApoya) {
-    let opOpts = '<option value="">Seleccione operación destino...</option>';
-    ops.forEach(op => {
-      opOpts += `<option value="${esc(op)}">${esc(op)}</option>`;
-    });
-    selModalOpApoya.innerHTML = opOpts;
-  }
+  // 3. Renderizar selectores de Operación interactivos en modal (chips o select)
+  renderizarSelectorOperacionModal('diaria');
+  renderizarSelectorOperacionModal('novedad');
 
-  // Fecha por defecto en modal Diaria
+  // 4. Fechas por defecto y bloqueo de días futuros según permisos
+  const hoyCol = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' })).toLocaleDateString('en-CA');
   const inputDiaDiaria = document.getElementById('asisModalDiaDiaria');
-  if (inputDiaDiaria && !inputDiaDiaria.value) {
-    inputDiaDiaria.value = new Date().toLocaleDateString('en-CA');
+  const inputDiaInicio = document.getElementById('asisModalDiaInicio');
+  const inputDiaFin = document.getElementById('asisModalDiaFin');
+
+  if (inputDiaDiaria && !inputDiaDiaria.value) inputDiaDiaria.value = hoyCol;
+  if (inputDiaInicio && !inputDiaInicio.value) inputDiaInicio.value = hoyCol;
+  if (inputDiaFin && !inputDiaFin.value) inputDiaFin.value = hoyCol;
+
+  if (!cfg.puedeRegistrarDiasFuturos) {
+    if (inputDiaDiaria) inputDiaDiaria.setAttribute('max', hoyCol);
+    if (inputDiaInicio) inputDiaInicio.setAttribute('max', hoyCol);
+    // inputDiaFin no tiene max: permite extender novedad hacia el futuro si inició hoy o antes
   }
 
-  // 2. Cargar catálogo de novedades para selector del modal y filtros
+  // 5. Cargar catálogo de novedades e incapacidades
   await cargarCatalogoNovedades();
 
-  // 3. Montar dropzones de evidencias
+  // 6. Montar dropzones de evidencias
   montarZonasArchivoAsistencia();
 
-  // 4. Cargar métricas y datos iniciales
+  // 7. Cargar métricas y registros iniciales
   await cargarMetricasAsistencia();
   await fetchAsistenciaData();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// CATÁLOGO DE NOVEDADES
+// SELECTORES INTERACTIVOS DE OPERACIÓN (BOTONES SI < 5, SELECT SI >= 5)
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderizarSelectorOperacionModal(tipo) {
+  const cfg = obtenerConfigAsistencia();
+  const containerId = tipo === 'diaria' ? 'asisModalOpDiariaContainer' : 'asisModalOpNovedadContainer';
+  const hiddenId = tipo === 'diaria' ? 'asisModalOpDiaria' : 'asisModalOpNovedad';
+  const container = document.getElementById(containerId);
+  const hiddenInput = document.getElementById(hiddenId);
+  if (!container) return;
+
+  const ops = (_asisState.operaciones || []).slice();
+
+  // Si tiene < 5 operaciones y no es sinFiltro (acceso 2 y 3) -> Visual de botones
+  const esModoBotones = !cfg.sinFiltro && ops.length < 5;
+
+  if (esModoBotones) {
+    container.innerHTML = `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+        ${ops.map(op => `
+          <button type="button" class="asis-op-btn" data-op="${esc(op)}" onclick="seleccionarOperacionModal('${tipo}', '${esc(op)}')">
+            ${esc(op)}
+          </button>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <select class="filtro-field" style="width:100%; max-width:320px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;" onchange="seleccionarOperacionModal('${tipo}', this.value)">
+        <option value="">Seleccione una operación...</option>
+        ${ops.map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('')}
+      </select>
+    `;
+  }
+
+  // Si solo tiene acceso a una operación, debe aparecer ya escogida
+  if (ops.length === 1) {
+    seleccionarOperacionModal(tipo, ops[0]);
+  }
+}
+
+async function seleccionarOperacionModal(tipo, operacion) {
+  const hiddenId = tipo === 'diaria' ? 'asisModalOpDiaria' : 'asisModalOpNovedad';
+  const containerId = tipo === 'diaria' ? 'asisModalOpDiariaContainer' : 'asisModalOpNovedadContainer';
+  const hiddenInput = document.getElementById(hiddenId);
+  const container = document.getElementById(containerId);
+
+  if (hiddenInput) hiddenInput.value = operacion || '';
+
+  // Actualizar estilo visual activo si es modo botones
+  if (container) {
+    container.querySelectorAll('.asis-op-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-op') === String(operacion));
+    });
+    const sel = container.querySelector('select');
+    if (sel && sel.value !== operacion) {
+      sel.value = operacion || '';
+    }
+  }
+
+  if (tipo === 'diaria') {
+    _asisState.operacionSeleccionadaDiaria = operacion || null;
+
+    // Actualizar lista de operaciones de apoyo (mismo regional que la operación base)
+    actualizarOperacionesApoyoRegional(operacion);
+
+    // Limpiar trabajadores seleccionados
+    _asisState.trabajadoresSeleccionados.clear();
+    actualizarChipsSeleccionados();
+
+    // Cargar áreas de la operación seleccionada
+    await cargarAreasOperacion(operacion, 'diaria');
+  } else {
+    _asisState.operacionSeleccionadaNovedad = operacion || null;
+    _asisState.areaSeleccionadaNovedad = null;
+    _asisState.trabajadoresNovedad = [];
+
+    const hiddenColab = document.getElementById('asisModalIdTrabajadorNovedad');
+    if (hiddenColab) hiddenColab.value = '';
+
+    const colabContainer = document.getElementById('asisModalColabNovedadContainer');
+    if (colabContainer) {
+      colabContainer.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación y un área para cargar los colaboradores.</span>';
+    }
+
+    await cargarAreasOperacion(operacion, 'novedad');
+  }
+}
+
+/**
+ * Filtra las operaciones disponibles para apoyo: solo las de la misma Regional que la operación base
+ */
+function actualizarOperacionesApoyoRegional(opBase) {
+  const selOpApoya = document.getElementById('asisModalOpApoya');
+  const chkApoyo = document.getElementById('asisModalChkApoyo');
+  const wrapApoyo = document.getElementById('asisWrapOpApoya');
+
+  if (chkApoyo) chkApoyo.checked = false;
+  if (wrapApoyo) wrapApoyo.style.display = 'none';
+  if (!selOpApoya) return;
+
+  if (!opBase) {
+    selOpApoya.innerHTML = '<option value="">Seleccione primero la operación base...</option>';
+    return;
+  }
+
+  const cfg = obtenerConfigAsistencia();
+  let regionalBase = '';
+
+  for (const [reg, ops] of Object.entries(cfg.opsPorRegional || {})) {
+    if (ops.includes(opBase)) {
+      regionalBase = reg;
+      break;
+    }
+  }
+
+  // Operaciones de la misma regional excluyendo la operación base
+  let opsMismaRegional = [];
+  if (regionalBase && cfg.opsPorRegional && cfg.opsPorRegional[regionalBase]) {
+    opsMismaRegional = cfg.opsPorRegional[regionalBase].filter(o => o !== opBase);
+  }
+
+  // Si el usuario no tiene sinFiltro, intersectar con sus operaciones permitidas
+  if (!cfg.sinFiltro && cfg.operacionesFiltro && cfg.operacionesFiltro.length) {
+    opsMismaRegional = opsMismaRegional.filter(o => cfg.operacionesFiltro.includes(o));
+  }
+
+  opsMismaRegional.sort((a, b) => a.localeCompare(b, 'es'));
+
+  if (!opsMismaRegional.length) {
+    selOpApoya.innerHTML = '<option value="">No hay otras operaciones en la misma regional</option>';
+    return;
+  }
+
+  let opts = '<option value="">Escoge la operación que apoya...</option>';
+  opsMismaRegional.forEach(o => {
+    opts += `<option value="${esc(o)}">${esc(o)}</option>`;
+  });
+  selOpApoya.innerHTML = opts;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CATÁLOGO DE NOVEDADES E INCAPACIDADES
 // ══════════════════════════════════════════════════════════════════════════
 
 async function cargarCatalogoNovedades() {
   try {
     const r = await fetch(`/nomina/api/asistencia/novedades?usuario=${encodeURIComponent(usuario)}`);
     const data = await r.json();
-    if (data.ok && data.novedades) {
-      _asisState.novedades = data.novedades;
+    if (data.ok) {
+      _asisState.novedades = data.novedades || [];
+      _asisState.incapacidades = data.incapacidades || [];
       _asisState.novedadesMap = {};
-      data.novedades.forEach(n => {
+      _asisState.incapacidadesMap = {};
+
+      _asisState.novedades.forEach(n => {
         _asisState.novedadesMap[n.novedad] = n;
       });
+      _asisState.incapacidades.forEach(inc => {
+        _asisState.incapacidadesMap[inc.novedad] = inc;
+      });
 
-      // Llenar selector del modal Novedad
+      // Llenar selector del modal Novedad (solo novedades, sin "Asistencia")
       const selNovModal = document.getElementById('asisModalNovedad');
       if (selNovModal) {
         let opts = '<option value="">Seleccione el tipo de novedad...</option>';
-        data.novedades.forEach(n => {
-          opts += `<option value="${esc(n.novedad)}" data-prefijo="${esc(n.prefijo)}" data-color="${esc(n.color || '')}" data-soporte="${n.requiereSoporte ? '1' : '0'}" data-descsop="${esc(n.descripcionSoporte || '')}">${esc(n.novedad)}</option>`;
+        _asisState.novedades.forEach(n => {
+          opts += `<option value="${esc(n.novedad)}" data-prefijo="${esc(n.prefijoNovedad)}" data-rango="${n.esRangoFechas ? '1' : '0'}" data-soporte="${n.requiereSoporte ? '1' : '0'}" data-tipodoc="${n.tipoDocumento}" data-descsop="${esc(n.descripcionSoporte || '')}">${esc(n.novedad)}</option>`;
         });
         selNovModal.innerHTML = opts;
+      }
+
+      // Llenar selector de Tipo de Incapacidad
+      const selIncModal = document.getElementById('asisModalTipoInc');
+      if (selIncModal) {
+        let opts = '<option value="">Seleccione incapacidad...</option>';
+        _asisState.incapacidades.forEach(inc => {
+          opts += `<option value="${esc(inc.novedad)}" data-prefijo="${esc(inc.prefijoNovedad)}" data-tipodoc="${inc.tipoDocumento}" data-descsop="${esc(inc.descripcionSoporte || '')}">${esc(inc.novedad)}</option>`;
+        });
+        selIncModal.innerHTML = opts;
       }
 
       // Llenar selector del modal de Edición
       const selNovEdit = document.getElementById('asisEditNovedad');
       if (selNovEdit) {
-        let opts = '';
-        data.novedades.forEach(n => {
-          opts += `<option value="${esc(n.novedad)}" data-prefijo="${esc(n.prefijo)}">${esc(n.novedad)}</option>`;
+        let opts = '<option value="Asistencia" data-prefijo="SI">Asistencia</option>';
+        _asisState.novedades.forEach(n => {
+          opts += `<option value="${esc(n.novedad)}" data-prefijo="${esc(n.prefijoNovedad)}">${esc(n.novedad)}</option>`;
         });
         selNovEdit.innerHTML = opts;
       }
@@ -226,11 +376,6 @@ async function cargarCatalogoNovedades() {
 // MANEJO Y SELECCIÓN DE ÁREAS (CONFIG_AREA donde ADMINISTRATIVO='V')
 // ══════════════════════════════════════════════════════════════════════════
 
-/**
- * Carga las áreas de la operación desde Config_Area (donde ADMINISTRATIVO = 'V')
- * Si <= 5: las renderiza en forma de botones
- * Si > 5: las renderiza en forma de selector desplegable
- */
 async function cargarAreasOperacion(operacion, tipo = 'diaria') {
   const containerId = tipo === 'diaria' ? 'asisModalAreaDiariaContainer' : 'asisModalAreaNovedadContainer';
   const hiddenId = tipo === 'diaria' ? 'asisModalAreaDiaria' : 'asisModalAreaNovedad';
@@ -266,7 +411,6 @@ async function cargarAreasOperacion(operacion, tipo = 'diaria') {
     }
 
     if (areas.length <= 5) {
-      // Mostrar en forma de botones
       container.innerHTML = `
         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
           ${areas.map(a => `
@@ -277,7 +421,6 @@ async function cargarAreasOperacion(operacion, tipo = 'diaria') {
         </div>
       `;
     } else {
-      // Mostrar en forma de lista desplegable
       container.innerHTML = `
         <select class="filtro-field" style="width:100%; max-width:320px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;" onchange="seleccionarAreaModal('${tipo}', this.value, this.options[this.selectedIndex].text)">
           <option value="">Seleccione un área...</option>
@@ -291,7 +434,6 @@ async function cargarAreasOperacion(operacion, tipo = 'diaria') {
   }
 }
 
-// Seleccionar área en el modal (diaria o novedad)
 function seleccionarAreaModal(tipo, areaId, areaNombre) {
   const hiddenId = tipo === 'diaria' ? 'asisModalAreaDiaria' : 'asisModalAreaNovedad';
   const containerId = tipo === 'diaria' ? 'asisModalAreaDiariaContainer' : 'asisModalAreaNovedadContainer';
@@ -302,13 +444,13 @@ function seleccionarAreaModal(tipo, areaId, areaNombre) {
 
   if (tipo === 'diaria') {
     _asisState.areaSeleccionadaDiaria = areaId ? { id: areaId, nombre: areaNombre } : null;
-    // Resaltar botón activo si está en modo botones
     if (container) {
       container.querySelectorAll('.asis-area-btn').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-area-id') === String(areaId));
       });
+      const sel = container.querySelector('select');
+      if (sel && sel.value !== String(areaId)) sel.value = areaId || '';
     }
-    // Habilitar y cargar colaboradores de esa operación y área
     cargarTrabajadoresDiaria();
   } else {
     _asisState.areaSeleccionadaNovedad = areaId ? { id: areaId, nombre: areaNombre } : null;
@@ -316,64 +458,66 @@ function seleccionarAreaModal(tipo, areaId, areaNombre) {
       container.querySelectorAll('.asis-area-btn').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-area-id') === String(areaId));
       });
+      const sel = container.querySelector('select');
+      if (sel && sel.value !== String(areaId)) sel.value = areaId || '';
     }
-    // Habilitar buscador de colaborador en Novedad
-    const searchColab = document.getElementById('asisModalBuscarColabNovedad');
-    if (searchColab) {
-      searchColab.disabled = !areaId;
-      searchColab.title = areaId ? '' : 'Escoja primero operación y área';
-      searchColab.value = '';
-    }
-    const hiddenColab = document.getElementById('asisModalIdTrabajadorNovedad');
-    if (hiddenColab) hiddenColab.value = '';
-    const badgeColab = document.getElementById('asisBadgeColabSeleccionado');
-    if (badgeColab) badgeColab.style.display = 'none';
+    cargarTrabajadoresNovedad();
   }
 }
 
-// Al cambiar la operación en el formulario Diaria
-async function onOpDiariaChange() {
-  const op = document.getElementById('asisModalOpDiaria')?.value;
-  const containerCheckboxes = document.getElementById('asisListaTrabajadoresCheckboxes');
-  const searchInput = document.getElementById('asisBuscarColaboradorDiaria');
-  if (searchInput) searchInput.value = '';
+// ══════════════════════════════════════════════════════════════════════════
+// MANEJO DE APOYO DE OTRA OPERACIÓN (ASISTENCIA DIARIA)
+// ══════════════════════════════════════════════════════════════════════════
 
+function onToggleApoyoOperacion() {
+  const chk = document.getElementById('asisModalChkApoyo');
+  const wrap = document.getElementById('asisWrapOpApoya');
+  const selOpApoya = document.getElementById('asisModalOpApoya');
+
+  // Seguridad: deseleccionar y vaciar colaboradores elegidos si cambia de opinión
   _asisState.trabajadoresSeleccionados.clear();
   actualizarChipsSeleccionados();
 
-  if (!op) {
-    if (containerCheckboxes) containerCheckboxes.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">Seleccione una operación y un área para cargar los colaboradores.</div>';
-    _asisState.trabajadoresOperacion = [];
-    const areaContainer = document.getElementById('asisModalAreaDiariaContainer');
-    if (areaContainer) areaContainer.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación.</span>';
-    return;
+  if (wrap && chk) {
+    wrap.style.display = chk.checked ? 'block' : 'none';
   }
 
-  // Cargar áreas
-  if (containerCheckboxes) containerCheckboxes.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">Seleccione un área para cargar los colaboradores activos.</div>';
-  await cargarAreasOperacion(op, 'diaria');
+  if (chk && chk.checked) {
+    if (selOpApoya && selOpApoya.value) {
+      cargarTrabajadoresDiaria();
+    } else {
+      const container = document.getElementById('asisListaTrabajadoresCheckboxes');
+      if (container) {
+        container.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">Escoja la operación que apoya para cargar sus colaboradores activos.</div>';
+      }
+    }
+  } else {
+    cargarTrabajadoresDiaria();
+  }
 }
 
-// Al cambiar la operación en el formulario Novedad
-async function onOpNovedadChange() {
-  const op = document.getElementById('asisModalOpNovedad')?.value;
-  const searchColab = document.getElementById('asisModalBuscarColabNovedad');
-  if (searchColab) {
-    searchColab.disabled = true;
-    searchColab.value = '';
-  }
-  const hiddenColab = document.getElementById('asisModalIdTrabajadorNovedad');
-  if (hiddenColab) hiddenColab.value = '';
-  const badgeColab = document.getElementById('asisBadgeColabSeleccionado');
-  if (badgeColab) badgeColab.style.display = 'none';
-
-  await cargarAreasOperacion(op, 'novedad');
+function onOpApoyaChange() {
+  _asisState.trabajadoresSeleccionados.clear();
+  actualizarChipsSeleccionados();
+  cargarTrabajadoresDiaria();
 }
 
 // Cargar colaboradores activos según Operación y Área seleccionada (Modo Diaria)
 async function cargarTrabajadoresDiaria() {
-  const op = document.getElementById('asisModalOpDiaria')?.value;
-  const area = document.getElementById('asisModalAreaDiaria')?.value;
+  const chkApoyo = document.getElementById('asisModalChkApoyo');
+  const esApoyo = Boolean(chkApoyo && chkApoyo.checked);
+
+  let op = '';
+  let area = '';
+
+  if (esApoyo) {
+    op = document.getElementById('asisModalOpApoya')?.value || '';
+    area = ''; // Para apoyo a otra operación no se restringe por área
+  } else {
+    op = document.getElementById('asisModalOpDiaria')?.value || '';
+    area = document.getElementById('asisModalAreaDiaria')?.value || '';
+  }
+
   const container = document.getElementById('asisListaTrabajadoresCheckboxes');
   const searchInput = document.getElementById('asisBuscarColaboradorDiaria');
   if (searchInput) searchInput.value = '';
@@ -381,8 +525,12 @@ async function cargarTrabajadoresDiaria() {
   _asisState.trabajadoresSeleccionados.clear();
   actualizarChipsSeleccionados();
 
-  if (!op || !area) {
-    if (container) container.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">Seleccione una operación y un área para cargar los colaboradores activos.</div>';
+  if (!op || (!esApoyo && !area)) {
+    if (container) {
+      container.innerHTML = esApoyo
+        ? '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">Escoja la operación que apoya para cargar sus colaboradores activos.</div>'
+        : '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">Seleccione una operación y un área para cargar los colaboradores activos.</div>';
+    }
     _asisState.trabajadoresOperacion = [];
     return;
   }
@@ -393,7 +541,9 @@ async function cargarTrabajadoresDiaria() {
     const qs = new URLSearchParams({
       usuario,
       operacion: op,
-      area: area
+      area: area,
+      esApoyo: esApoyo ? 'true' : 'false',
+      tipoEvento: 'Asistencia'
     });
     const r = await fetch(`/nomina/api/asistencia/trabajadores?${qs.toString()}`);
     const data = await r.json();
@@ -408,7 +558,7 @@ async function cargarTrabajadoresDiaria() {
   }
 }
 
-// Filtrar listado de colaboradores en vivo
+// Filtrar listado de colaboradores en vivo (insensible a mayúsculas/minúsculas)
 function filtrarColaboradoresDiaria() {
   const q = (document.getElementById('asisBuscarColaboradorDiaria')?.value || '').toLowerCase().trim();
   if (!q) {
@@ -417,7 +567,7 @@ function filtrarColaboradoresDiaria() {
   }
   const filtrados = _asisState.trabajadoresOperacion.filter(t => 
     (t.nombreCompleto || t.trabajador || '').toLowerCase().includes(q) || 
-    String(t.identificacion || '').includes(q)
+    String(t.identificacion || '').toLowerCase().includes(q)
   );
   renderCheckboxesTrabajadores(filtrados);
 }
@@ -437,7 +587,7 @@ function renderCheckboxesTrabajadores(lista) {
     const badgeRetirado = t.estado === 'Retirado' ? '<span style="font-size:10px; padding:1px 6px; border-radius:4px; background:#fee2e2; color:#b91c1c; font-weight:700; margin-left:6px;">RETIRADO</span>' : '';
     return `
       <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; transition:background .12s;" onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'">
-        <input type="checkbox" value="${t.identificacion}" ${isChecked ? 'checked' : ''} onchange="toggleTrabajadorSeleccionado(${t.identificacion})" style="width:16px; height:16px; cursor:pointer;">
+        <input type="checkbox" value="${t.identificacion}" ${isChecked ? 'checked' : ''} onchange="toggleTrabajadorSeleccionado('${t.identificacion}')" style="width:16px; height:16px; cursor:pointer;">
         <div style="flex:1;">
           <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(t.nombreCompleto || t.trabajador || '')} ${badgeRetirado}</div>
           <div style="font-size:.74rem; color:var(--text-muted);">Cédula: ${esc(t.identificacion)} · Cargo: ${esc(t.cargo || 'Operativo')}</div>
@@ -447,21 +597,20 @@ function renderCheckboxesTrabajadores(lista) {
   }).join('');
 }
 
-// Toggle seleccionar un trabajador
 function toggleTrabajadorSeleccionado(identificacion) {
-  if (_asisState.trabajadoresSeleccionados.has(identificacion)) {
-    _asisState.trabajadoresSeleccionados.delete(identificacion);
+  const idStr = String(identificacion);
+  if (_asisState.trabajadoresSeleccionados.has(idStr)) {
+    _asisState.trabajadoresSeleccionados.delete(idStr);
   } else {
-    const t = _asisState.trabajadoresOperacion.find(x => x.identificacion === identificacion);
-    if (t) _asisState.trabajadoresSeleccionados.set(identificacion, t);
+    const t = _asisState.trabajadoresOperacion.find(x => String(x.identificacion) === idStr);
+    if (t) _asisState.trabajadoresSeleccionados.set(idStr, t);
   }
   actualizarChipsSeleccionados();
 }
 
-// Seleccionar todos / deseleccionar todos
 function seleccionarTodosTrabajadores(marcar = true) {
   if (marcar) {
-    _asisState.trabajadoresOperacion.forEach(t => _asisState.trabajadoresSeleccionados.set(t.identificacion, t));
+    _asisState.trabajadoresOperacion.forEach(t => _asisState.trabajadoresSeleccionados.set(String(t.identificacion), t));
   } else {
     _asisState.trabajadoresSeleccionados.clear();
   }
@@ -469,7 +618,6 @@ function seleccionarTodosTrabajadores(marcar = true) {
   actualizarChipsSeleccionados();
 }
 
-// Actualizar chips visuales de seleccionados
 function actualizarChipsSeleccionados() {
   const container = document.getElementById('asisChipsSeleccionados');
   const contador = document.getElementById('asisContadorSeleccionados');
@@ -489,7 +637,7 @@ function actualizarChipsSeleccionados() {
     chips.push(`
       <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:14px; background:var(--accent-soft, rgba(27,42,94,0.1)); color:var(--accent, #1B2A5E); font-size:.76rem; font-weight:700; border:1px solid rgba(27,42,94,0.2);">
         ${esc(primerNombre)} (${t.identificacion})
-        <button type="button" onclick="removerChipSeleccionado(${t.identificacion})" style="background:none; border:none; cursor:pointer; padding:0; line-height:1; font-weight:bold; color:inherit; font-size:12px;">✕</button>
+        <button type="button" onclick="removerChipSeleccionado('${t.identificacion}')" style="background:none; border:none; cursor:pointer; padding:0; line-height:1; font-weight:bold; color:inherit; font-size:12px;">✕</button>
       </span>
     `);
   });
@@ -497,7 +645,7 @@ function actualizarChipsSeleccionados() {
 }
 
 function removerChipSeleccionado(identificacion) {
-  _asisState.trabajadoresSeleccionados.delete(identificacion);
+  _asisState.trabajadoresSeleccionados.delete(String(identificacion));
   filtrarColaboradoresDiaria();
   actualizarChipsSeleccionados();
 }
@@ -725,7 +873,7 @@ function actualizarSelectoresConMetricas(metricas) {
       }
     });
 
-    let opsPermitidas = cfg.operacionesFiltro || [];
+    let opsPermitidas = _asisState.operaciones || [];
     if (curReg && cfg.opsPorRegional && cfg.opsPorRegional[curReg]) {
       opsPermitidas = cfg.opsPorRegional[curReg];
     }
@@ -815,8 +963,28 @@ function onQuincenaFiltroChangeAsistencia() {
 }
 
 function onAsistenciaRegionalChange() {
+  const regSel = document.getElementById('asisFilterRegional');
   const opSel = document.getElementById('asisFilterOperacion');
-  if (opSel) opSel.value = '';
+  const regVal = regSel ? regSel.value : '';
+  const cfg = obtenerConfigAsistencia();
+  const opsPorReg = cfg.opsPorRegional || {};
+
+  let opsDisponibles = [];
+  if (regVal && opsPorReg[regVal]) {
+    opsDisponibles = opsPorReg[regVal].slice();
+  } else {
+    opsDisponibles = (_asisState.operaciones || []).slice();
+  }
+  opsDisponibles.sort((a, b) => a.localeCompare(b, 'es'));
+
+  if (opSel) {
+    let opOpts = '<option value="">Todas las operaciones</option>';
+    opsDisponibles.forEach(op => {
+      opOpts += `<option value="${esc(op)}">${esc(op)}</option>`;
+    });
+    opSel.innerHTML = opOpts;
+    opSel.value = '';
+  }
   onAsistenciaFiltroChange();
 }
 
@@ -874,7 +1042,7 @@ async function fetchAsistenciaData() {
   const emptyState = document.getElementById('asisEmptyState');
   const pagBar = document.getElementById('asisPaginacion');
 
-  if (tbody) tbody.innerHTML = '<tr><td colspan="14" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando registros de asistencia...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando registros de asistencia...</td></tr>';
   if (emptyState) emptyState.style.display = 'none';
 
   const anio = document.getElementById('asisFilterAnio')?.value || '2026';
@@ -940,11 +1108,18 @@ async function fetchAsistenciaData() {
     renderTablaAsistencias(_asisState.registros);
   } catch (err) {
     console.error('[asistencia] Error fetchAsistenciaData:', err);
-    if (tbody) tbody.innerHTML = `<tr><td colspan="14" style="text-align:center; padding:20px; color:#ef4444;">Error al cargar datos: ${esc(err.message)}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#ef4444;">Error al cargar datos: ${esc(err.message)}</td></tr>`;
   }
 }
 
-// Renderizar filas de la tabla
+// Función para limpiar el nombre del colaborador (elimina "Identificación ** " si viene de segmentación)
+function limpiarNombreColaborador(str) {
+  if (!str) return '';
+  const partes = String(str).split('**');
+  return (partes[partes.length - 1] || '').trim();
+}
+
+// Renderizar filas de la tabla (Columna Día con círculo indicador de Estado)
 function renderTablaAsistencias(registros) {
   const tbody = document.getElementById('asistenciaBody');
   if (!tbody) return;
@@ -955,7 +1130,11 @@ function renderTablaAsistencias(registros) {
 
   tbody.innerHTML = registros.map(r => {
     const estado = r.estado || 'Yellow';
-    const badgeEstado = renderBadgeEstado(estado);
+    const esGreen = estado.toLowerCase() === 'green';
+    const dotColor = esGreen ? '#16a34a' : '#eab308';
+    const dotTitle = esGreen ? 'Bloqueado por Nómina (Solo lectura)' : 'Editable según permisos';
+    const dotHtml = `<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background-color:${dotColor}; margin-right:6px; box-shadow:0 0 2px rgba(0,0,0,0.2);" title="${dotTitle}"></span>`;
+
     const badgeNov = renderBadgeNovedad(r.novedad, r.color);
 
     let horarioTexto = '-';
@@ -985,31 +1164,43 @@ function renderTablaAsistencias(registros) {
     const soportesHtml = soportes.length ? `<div style="display:flex; gap:6px;">${soportes.join('')}</div>` : '<span style="color:var(--text-muted); font-size:.78rem;">-</span>';
 
     // Permisos de edición y eliminación
-    const puedeModificar = puedeTodos || (puedeYellow && estado === 'Yellow');
-    let accionesHtml = '<span style="color:var(--text-muted); font-size:.78rem;">-</span>';
-    if (puedeModificar) {
-      accionesHtml = `
-        <div style="display:flex; gap:6px; justify-content:center;">
-          <button type="button" class="btn-icon-circle" title="Editar registro" onclick="abrirModalEditarAsistencia(${r.idAsistencia})" style="color:var(--accent); background:var(--bg-elevated); border:1px solid var(--border); padding:4px; border-radius:4px; cursor:pointer;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-          </button>
-          <button type="button" class="btn-icon-circle" title="Eliminar registro" onclick="eliminarAsistenciaRegistro(${r.idAsistencia})" style="color:#ef4444; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:4px; border-radius:4px; cursor:pointer;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </div>
-      `;
+    const esYellow = !esGreen;
+    const esAsistencia = (r.novedad || '').trim().toLowerCase() === 'asistencia';
+
+    // Edición: Sistema y Nómina pueden todo. Demás roles solo si está en Yellow.
+    const puedeEditarFila = puedeTodos || (puedeYellow && esYellow);
+
+    // Eliminación: Sistema y Nómina pueden todo. Demás roles solo si está en Yellow Y la novedad es diferente a Asistencia.
+    const puedeEliminarFila = puedeTodos || (puedeYellow && esYellow && !esAsistencia);
+
+    let botonesAcciones = [];
+    if (puedeEditarFila) {
+      botonesAcciones.push(`
+        <button type="button" class="btn-icon-circle" title="Editar registro" onclick="abrirModalEditarAsistencia(${r.idAsistencia})" style="color:var(--accent); background:var(--bg-elevated); border:1px solid var(--border); padding:4px; border-radius:4px; cursor:pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        </button>
+      `);
     }
+    if (puedeEliminarFila) {
+      botonesAcciones.push(`
+        <button type="button" class="btn-icon-circle" title="Eliminar registro" onclick="eliminarAsistenciaRegistro(${r.idAsistencia})" style="color:#ef4444; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:4px; border-radius:4px; cursor:pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      `);
+    }
+
+    const accionesHtml = botonesAcciones.length
+      ? `<div style="display:flex; gap:6px; justify-content:center;">${botonesAcciones.join('')}</div>`
+      : '<span style="color:var(--text-muted); font-size:.78rem;">-</span>';
 
     return `
       <tr class="cesantias-table-row">
-        <td style="white-space:nowrap;">${badgeEstado}</td>
-        <td style="font-weight:600; font-size:.82rem; white-space:nowrap;">${esc(r.dia)}</td>
+        <td style="font-weight:600; font-size:.82rem; white-space:nowrap;">${dotHtml}${esc(r.dia)}</td>
         <td style="font-size:.82rem; white-space:nowrap;">${esc(r.quincena || '-')}</td>
-        <td style="font-size:.82rem; white-space:nowrap;">${esc(r.regional || '-')}</td>
         <td style="font-size:.82rem;">${esc(r.operacion || '-')}</td>
         <td style="font-size:.82rem;">${esc(r.areaNombre || r.area || '-')}</td>
         <td>
-          <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(r.trabajador || r.nombre || '')}</div>
+          <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(limpiarNombreColaborador(r.trabajador || r.nombre || ''))}</div>
           <div style="font-size:.74rem; color:var(--text-muted);">C.C. ${esc(r.cedula || '')}</div>
         </td>
         <td>${badgeNov}</td>
@@ -1035,6 +1226,8 @@ function abrirModalRegistroAsistencia(modo = 'diaria') {
   const modal = document.getElementById('modalRegistroAsistenciaOverlay');
   if (!modal) return;
 
+  renderizarSelectorOperacionModal('diaria');
+  renderizarSelectorOperacionModal('novedad');
   setModoRegistroAsistencia(modo);
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -1098,14 +1291,6 @@ function calcularTiempoEnVivo() {
   badge.textContent = `${hh}h ${mm > 0 ? mm + 'm' : ''} laboradas`;
 }
 
-function onToggleApoyoOperacion() {
-  const chk = document.getElementById('asisModalChkApoyo');
-  const wrap = document.getElementById('asisWrapOpApoya');
-  if (wrap && chk) {
-    wrap.style.display = chk.checked ? 'block' : 'none';
-  }
-}
-
 // Guardar Asistencia Diaria
 async function guardarAsistenciaDiaria() {
   const btn = document.getElementById('asisBtnGuardarDiaria');
@@ -1131,6 +1316,10 @@ async function guardarAsistenciaDiaria() {
   }
   if (!dia) {
     alert('Por favor ingrese el día de asistencia.');
+    return;
+  }
+  if (apoyoChk && !opApoya) {
+    alert('Por favor escoja la operación que apoya.');
     return;
   }
   if (!_asisState.trabajadoresSeleccionados.size) {
@@ -1188,63 +1377,182 @@ async function guardarAsistenciaDiaria() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// MODO NOVEDAD
+// MODO NOVEDAD: CARGA Y SELECCIÓN DE UN SOLO COLABORADOR (SEGÚN OPERACIÓN Y ÁREA)
 // ══════════════════════════════════════════════════════════════════════════
 
-let _timerBuscarColabNovedad = null;
-function onBuscarColabNovedad() {
-  clearTimeout(_timerBuscarColabNovedad);
-  _timerBuscarColabNovedad = setTimeout(async () => {
-    const q = (document.getElementById('asisModalBuscarColabNovedad')?.value || '').trim();
-    const resultadosBox = document.getElementById('asisResultadosColabNovedad');
-    const op = document.getElementById('asisModalOpNovedad')?.value || '';
-    const area = document.getElementById('asisModalAreaNovedad')?.value || '';
+async function cargarTrabajadoresNovedad() {
+  const op = document.getElementById('asisModalOpNovedad')?.value || '';
+  const area = document.getElementById('asisModalAreaNovedad')?.value || '';
+  const container = document.getElementById('asisModalColabNovedadContainer');
+  const hiddenInput = document.getElementById('asisModalIdTrabajadorNovedad');
+  if (hiddenInput) hiddenInput.value = '';
 
-    if (!q || q.length < 2) {
-      if (resultadosBox) resultadosBox.style.display = 'none';
+  if (!op || !area) {
+    if (container) {
+      container.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación y un área para cargar los colaboradores.</span>';
+    }
+    _asisState.trabajadoresNovedad = [];
+    return;
+  }
+
+  if (container) {
+    container.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted);">Cargando colaboradores de Maestro_Vinculación...</span>';
+  }
+
+  try {
+    const qs = new URLSearchParams({
+      usuario,
+      operacion: op,
+      area: area,
+      tipoEvento: 'Novedad'
+    });
+    const r = await fetch(`/nomina/api/asistencia/trabajadores?${qs.toString()}`);
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || 'Error al cargar trabajadores');
+
+    const lista = data.trabajadores || [];
+    _asisState.trabajadoresNovedad = lista;
+
+    if (!lista.length) {
+      container.innerHTML = '<span style="font-size:.82rem; color:var(--text-muted); font-style:italic;">No se encontraron colaboradores en esta operación y área.</span>';
       return;
     }
 
-    try {
-      const qs = new URLSearchParams({
-        usuario,
-        operacion: op,
-        area: area,
-        q: q
-      });
-      const r = await fetch(`/nomina/api/asistencia/trabajadores?${qs.toString()}`);
-      const data = await r.json();
-      if (r.ok && data.ok && data.trabajadores && data.trabajadores.length) {
-        resultadosBox.style.display = 'block';
-        resultadosBox.innerHTML = data.trabajadores.slice(0, 10).map(t => `
-          <div style="padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; font-size:.82rem;" onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'" onclick="seleccionarColaboradorNovedad(${t.identificacion}, '${esc(t.nombreCompleto || t.trabajador || '')}', '${esc(t.operacion)}')">
-            <strong style="color:var(--text);">${esc(t.nombreCompleto || t.trabajador || '')}</strong>
-            <div style="color:var(--text-muted); font-size:.74rem;">C.C. ${esc(t.identificacion)} · Sede: ${esc(t.operacion)} · Cargo: ${esc(t.cargo || 'Operativo')}</div>
-          </div>
-        `).join('');
-      } else {
-        resultadosBox.style.display = 'block';
-        resultadosBox.innerHTML = '<div style="padding:10px; font-size:.8rem; color:var(--text-muted); text-align:center;">No se encontraron colaboradores.</div>';
-      }
-    } catch (e) {
-      console.warn('[asistencia] Error buscando colaborador:', e);
+    renderSelectorColaboradorNovedad(lista);
+  } catch (err) {
+    console.error('[asistencia] Error cargarTrabajadoresNovedad:', err);
+    if (container) {
+      container.innerHTML = `<span style="font-size:.82rem; color:#ef4444;">Error al cargar colaboradores: ${esc(err.message)}</span>`;
     }
-  }, 300);
+  }
 }
 
-function seleccionarColaboradorNovedad(identificacion, nombreCompleto, operacion) {
-  const hiddenId = document.getElementById('asisModalIdTrabajadorNovedad');
-  const searchInput = document.getElementById('asisModalBuscarColabNovedad');
-  const resultadosBox = document.getElementById('asisResultadosColabNovedad');
-  const badgeNombre = document.getElementById('asisBadgeColabSeleccionado');
+function renderSelectorColaboradorNovedad(lista) {
+  const container = document.getElementById('asisModalColabNovedadContainer');
+  if (!container) return;
 
-  if (hiddenId) hiddenId.value = identificacion;
-  if (searchInput) searchInput.value = `${identificacion} - ${nombreCompleto}`;
-  if (resultadosBox) resultadosBox.style.display = 'none';
-  if (badgeNombre) {
-    badgeNombre.innerHTML = `Colaborador seleccionado: <strong>${esc(nombreCompleto)}</strong> (C.C. ${identificacion})`;
-    badgeNombre.style.display = 'block';
+  container.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <input type="search" id="asisModalFiltroColabNovedad" placeholder="🔍 Filtrar colaborador en esta lista (${lista.length} disponibles)..." oninput="filtrarSelectColaboradorNovedad(this.value)" style="width:100%; padding:6px 10px; font-size:.82rem; border:1px solid var(--border); border-radius:6px;">
+      <select id="asisModalSelectColabNovedad" size="5" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:4px; font-size:.84rem; background:var(--bg-elevated); color:var(--text);" onchange="onSeleccionarColaboradorNovedad(this.value)">
+        <option value="" disabled selected style="font-style:italic; padding:4px;">-- Seleccione exactamente un colaborador --</option>
+        ${lista.map(t => `<option value="${t.identificacion}" data-nombre="${esc(t.nombreCompleto)}" data-trabajador="${esc(t.trabajador || '')}" style="padding:4px 6px;">${esc(t.nombreCompleto)} — C.C. ${t.identificacion}${t.cargo ? ' (' + esc(t.cargo) + ')' : ''}</option>`).join('')}
+      </select>
+      <div id="asisBadgeColabSeleccionado" style="display:none; margin-top:4px; padding:6px 10px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); color:#059669; border-radius:6px; font-size:.82rem; font-weight:600;"></div>
+    </div>
+  `;
+}
+
+function filtrarSelectColaboradorNovedad(q) {
+  const sel = document.getElementById('asisModalSelectColabNovedad');
+  if (!sel) return;
+  const term = (q || '').toLowerCase().trim();
+  const options = sel.querySelectorAll('option');
+  options.forEach((opt, idx) => {
+    if (idx === 0) return; // disabled header
+    const txt = (opt.textContent || '').toLowerCase();
+    opt.style.display = (!term || txt.includes(term)) ? '' : 'none';
+  });
+}
+
+function onSeleccionarColaboradorNovedad(val) {
+  const hiddenInput = document.getElementById('asisModalIdTrabajadorNovedad');
+  const badge = document.getElementById('asisBadgeColabSeleccionado');
+  const sel = document.getElementById('asisModalSelectColabNovedad');
+
+  if (hiddenInput) hiddenInput.value = val || '';
+
+  if (badge) {
+    if (val && sel) {
+      const opt = sel.options[sel.selectedIndex];
+      const nombre = opt?.getAttribute('data-nombre') || opt?.text || '';
+      badge.textContent = `✓ Seleccionado: ${nombre}`;
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BÚSQUEDA Y SELECCIÓN DE DIAGNÓSTICO CIE-10 (CONFIG_DIAGNOSTICO)
+// ══════════════════════════════════════════════════════════════════════════
+
+let _timerBusquedaDiag = null;
+
+function onBuscarDiagnosticoModal(modo) {
+  clearTimeout(_timerBusquedaDiag);
+  const inputId = modo === 'crear' ? 'asisModalBuscarDiag' : 'asisEditBuscarDiag';
+  const dropId = modo === 'crear' ? 'asisResultadosDiag' : 'asisEditResultadosDiag';
+  const hiddenCodId = modo === 'crear' ? 'asisModalCodDiag' : 'asisEditCodDiag';
+  const hiddenDiagId = modo === 'crear' ? 'asisModalDiag' : 'asisEditDiag';
+
+  const input = document.getElementById(inputId);
+  const drop = document.getElementById(dropId);
+  const hiddenCod = document.getElementById(hiddenCodId);
+  const hiddenDiag = document.getElementById(hiddenDiagId);
+
+  const q = (input?.value || '').trim();
+
+  if (!q || q.length < 2) {
+    if (drop) { drop.innerHTML = ''; drop.style.display = 'none'; }
+    if (hiddenCod) hiddenCod.value = '';
+    if (hiddenDiag) hiddenDiag.value = '';
+    return;
+  }
+
+  _timerBusquedaDiag = setTimeout(async () => {
+    try {
+      if (drop) {
+        drop.innerHTML = '<div style="padding:8px 12px; font-size:.82rem; color:var(--text-muted);">Buscando diagnósticos CIE-10...</div>';
+        drop.style.display = 'block';
+      }
+      const r = await fetch(`/nomina/api/asistencia/diagnosticos?usuario=${encodeURIComponent(usuario)}&q=${encodeURIComponent(q)}`);
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'Error al buscar diagnóstico');
+
+      const items = data.diagnosticos || [];
+      if (!items.length) {
+        drop.innerHTML = '<div style="padding:8px 12px; font-size:.82rem; color:var(--text-muted); font-style:italic;">No se encontraron diagnósticos que coincidan.</div>';
+        drop.style.display = 'block';
+        return;
+      }
+
+      drop.innerHTML = items.map(d => `
+        <div style="padding:7px 10px; font-size:.82rem; cursor:pointer; border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:baseline;"
+             onmouseover="this.style.background='var(--accent-soft, rgba(0,0,0,0.05))'"
+             onmouseout="this.style.background=''"
+             onclick="seleccionarDiagnosticoModal('${modo}', '${esc(d.cod)}', '${esc(d.descripcion)}')">
+          <strong style="color:var(--accent); min-width:48px;">${esc(d.cod)}</strong>
+          <span style="color:var(--text);">${esc(d.descripcion)}</span>
+        </div>
+      `).join('');
+      drop.style.display = 'block';
+    } catch (err) {
+      console.error('[asistencia] Error en onBuscarDiagnosticoModal:', err);
+      if (drop) {
+        drop.innerHTML = `<div style="padding:8px 12px; font-size:.82rem; color:#ef4444;">${esc(err.message)}</div>`;
+        drop.style.display = 'block';
+      }
+    }
+  }, 220);
+}
+
+function seleccionarDiagnosticoModal(modo, cod, descripcion) {
+  const inputId = modo === 'crear' ? 'asisModalBuscarDiag' : 'asisEditBuscarDiag';
+  const dropId = modo === 'crear' ? 'asisResultadosDiag' : 'asisEditResultadosDiag';
+  const hiddenCodId = modo === 'crear' ? 'asisModalCodDiag' : 'asisEditCodDiag';
+  const hiddenDiagId = modo === 'crear' ? 'asisModalDiag' : 'asisEditDiag';
+
+  const input = document.getElementById(inputId);
+  const drop = document.getElementById(dropId);
+  const hiddenCod = document.getElementById(hiddenCodId);
+  const hiddenDiag = document.getElementById(hiddenDiagId);
+
+  if (hiddenCod) hiddenCod.value = cod || '';
+  if (hiddenDiag) hiddenDiag.value = descripcion || '';
+  if (input) input.value = cod ? `${cod} - ${descripcion}` : '';
+  if (drop) { drop.innerHTML = ''; drop.style.display = 'none'; }
 }
 
 function calcularDiasNovedad() {
@@ -1263,11 +1571,25 @@ function calcularDiasNovedad() {
   const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
   if (diff <= 0) {
-    badge.textContent = 'Fecha fin debe ser posterior a inicio';
+    badge.textContent = 'Fecha fin debe ser posterior o igual a inicio';
     badge.style.color = '#ef4444';
   } else {
     badge.textContent = `${diff} día(s)`;
     badge.style.color = 'var(--text)';
+  }
+
+  // Si es Incapacidad, evaluar obligatoriedad de Historia Clínica si días >= 3
+  const novedad = document.getElementById('asisModalNovedad')?.value || '';
+  const esIncapacidad = novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad');
+  if (esIncapacidad) {
+    const badgeReq = document.getElementById('asisReqHistoriaBadge');
+    if (badgeReq) {
+      if (diff >= 3) {
+        badgeReq.innerHTML = '<span style="color:#ef4444; font-weight:700;">(Obligatorio por ser >= 3 días) *</span>';
+      } else {
+        badgeReq.innerHTML = '<span style="color:var(--text-muted); font-weight:normal;">(Opcional por ser < 3 días)</span>';
+      }
+    }
   }
 }
 
@@ -1276,18 +1598,47 @@ function onTipoNovedadModalChange() {
   if (!sel) return;
   const opt = sel.options[sel.selectedIndex];
   const novedad = sel.value;
-  const esIncapacidad = novedad.toLowerCase().includes('incapacidad');
+  const esIncapacidad = novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad');
+  const esRango = opt?.getAttribute('data-rango') === '1';
   const requiereSoporte = opt?.getAttribute('data-soporte') === '1';
+  const tipoDoc = Number(opt?.getAttribute('data-tipodoc') || 0);
   const descSoporte = opt?.getAttribute('data-descsop') || '';
 
-  const secIncapacidad = document.getElementById('asisSecIncapacidad');
-  if (secIncapacidad) secIncapacidad.style.display = esIncapacidad ? 'block' : 'none';
+  // 1. Visibilidad de Fecha Final
+  const wrapDiaFin = document.getElementById('asisWrapDiaFin');
+  const inputDiaInicio = document.getElementById('asisModalDiaInicio');
+  const inputDiaFin = document.getElementById('asisModalDiaFin');
 
+  if (wrapDiaFin) {
+    if (esRango) {
+      wrapDiaFin.style.display = 'block';
+    } else {
+      wrapDiaFin.style.display = 'none';
+      if (inputDiaInicio && inputDiaFin) {
+        inputDiaFin.value = inputDiaInicio.value;
+      }
+    }
+  }
+  calcularDiasNovedad();
+
+  // 2. Visibilidad de Incapacidad vs Soporte
+  const secIncapacidad = document.getElementById('asisSecIncapacidad');
   const secSoporte = document.getElementById('asisSecSoporte');
-  const descSopSpan = document.getElementById('asisDescSoporte');
-  if (secSoporte) {
-    secSoporte.style.display = (requiereSoporte || !esIncapacidad) ? 'block' : 'none';
-    if (descSopSpan) descSopSpan.textContent = descSoporte ? `(${descSoporte})` : '';
+  const labelSoporte = document.getElementById('asisLabelSoporte');
+
+  if (esIncapacidad) {
+    if (secIncapacidad) secIncapacidad.style.display = 'block';
+    if (secSoporte) secSoporte.style.display = 'none';
+  } else {
+    if (secIncapacidad) secIncapacidad.style.display = 'none';
+    if (requiereSoporte || tipoDoc !== 0) {
+      if (secSoporte) secSoporte.style.display = 'block';
+      if (labelSoporte) {
+        labelSoporte.textContent = (descSoporte || 'Adjuntar Documento de Soporte (PDF o Foto)') + ' *';
+      }
+    } else {
+      if (secSoporte) secSoporte.style.display = 'none';
+    }
   }
 }
 
@@ -1302,12 +1653,22 @@ async function guardarNovedadRango() {
   const area = document.getElementById('asisModalAreaNovedad')?.value || '';
   const novedadSel = document.getElementById('asisModalNovedad');
   const novedad = novedadSel?.value;
-  const prefijoNovedad = novedadSel?.options[novedadSel?.selectedIndex]?.getAttribute('data-prefijo') || 'NOV';
+  const optNov = novedadSel?.options[novedadSel?.selectedIndex];
+  const prefijoNovedad = optNov?.getAttribute('data-prefijo') || 'NOV';
+  const esRango = optNov?.getAttribute('data-rango') === '1';
+  const requiereSoporte = optNov?.getAttribute('data-soporte') === '1';
+  const tipoDoc = Number(optNov?.getAttribute('data-tipodoc') || 0);
+
   const diaInicio = document.getElementById('asisModalDiaInicio')?.value;
-  const diaFin = document.getElementById('asisModalDiaFin')?.value;
+  let diaFin = document.getElementById('asisModalDiaFin')?.value;
+  if (!esRango) {
+    diaFin = diaInicio;
+  }
+
   const codDiag = document.getElementById('asisModalCodDiag')?.value;
   const diag = document.getElementById('asisModalDiag')?.value;
-  const tipoInc = document.getElementById('asisModalTipoInc')?.value;
+  const tipoIncSel = document.getElementById('asisModalTipoInc');
+  const tipoInc = tipoIncSel?.value;
   const obs = document.getElementById('asisModalObsNovedad')?.value;
 
   if (!operacion) {
@@ -1326,9 +1687,49 @@ async function guardarNovedadRango() {
     alert('Por favor seleccione el tipo de novedad.');
     return;
   }
-  if (!diaInicio || !diaFin) {
-    alert('Por favor ingrese la fecha de inicio y la fecha fin.');
+  if (!diaInicio) {
+    alert('Por favor ingrese la fecha de inicio.');
     return;
+  }
+  if (esRango && !diaFin) {
+    alert('Por favor ingrese la fecha de fin.');
+    return;
+  }
+
+  const d1 = new Date(diaInicio + 'T12:00:00Z');
+  const d2 = new Date(diaFin + 'T12:00:00Z');
+  const diasTotales = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  if (diasTotales <= 0) {
+    alert('La fecha final debe ser igual o posterior a la fecha de inicio.');
+    return;
+  }
+
+  const esIncapacidad = novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad');
+
+  const fileSoporte = document.getElementById('asisFileSoporte')?.files[0];
+  const fileInc = document.getElementById('asisFileIncapacidad')?.files[0];
+  const fileHC = document.getElementById('asisFileHistoria')?.files[0];
+
+  // Validaciones estrictas de archivos
+  if (esIncapacidad) {
+    if (!tipoInc) {
+      alert('Por favor seleccione el Tipo de Incapacidad.');
+      return;
+    }
+    if (!fileInc) {
+      alert('Es obligatorio adjuntar el documento PDF de la incapacidad.');
+      return;
+    }
+    if (diasTotales >= 3 && !fileHC) {
+      alert('Para incapacidades iguales o superiores a 3 días, es obligatorio adjuntar la Historia Clínica.');
+      return;
+    }
+  } else if (requiereSoporte || tipoDoc !== 0) {
+    if (!fileSoporte) {
+      alert('Es obligatorio adjuntar el documento de soporte PDF.');
+      return;
+    }
   }
 
   const formData = new FormData();
@@ -1345,11 +1746,8 @@ async function guardarNovedadRango() {
   if (tipoInc) formData.append('tipoIncapacidad', tipoInc);
   if (obs) formData.append('observaciones', obs);
 
-  const fileSoporte = document.getElementById('asisFileSoporte')?.files[0];
   if (fileSoporte) formData.append('soporte', fileSoporte);
-  const fileInc = document.getElementById('asisFileIncapacidad')?.files[0];
   if (fileInc) formData.append('incapacidad', fileInc);
-  const fileHC = document.getElementById('asisFileHistoria')?.files[0];
   if (fileHC) formData.append('historiaClinica', fileHC);
 
   btn.disabled = true;
@@ -1398,7 +1796,7 @@ function abrirModalEditarAsistencia(idAsistencia) {
   if (errBox) errBox.style.display = 'none';
 
   document.getElementById('asisEditIdAsistencia').value = reg.idAsistencia;
-  document.getElementById('asisEditColaborador').value = `${reg.cedula || ''} - ${reg.trabajador || reg.nombre || ''}`;
+  document.getElementById('asisEditColaborador').value = `${reg.cedula || ''} - ${limpiarNombreColaborador(reg.trabajador || reg.nombre || '')}`;
   document.getElementById('asisEditDia').value = reg.dia || '';
   document.getElementById('asisEditOperacion').value = reg.operacion || '';
   document.getElementById('asisEditNovedad').value = reg.novedad || 'Asistencia';
@@ -1406,6 +1804,16 @@ function abrirModalEditarAsistencia(idAsistencia) {
   document.getElementById('asisEditHoraSalida').value = reg.horaSalida || '';
   document.getElementById('asisEditCodDiag').value = reg.codDiagnostico || '';
   document.getElementById('asisEditDiag').value = reg.diagnostico || '';
+
+  const inputBuscarDiag = document.getElementById('asisEditBuscarDiag');
+  if (inputBuscarDiag) {
+    if (reg.codDiagnostico || reg.diagnostico) {
+      inputBuscarDiag.value = [reg.codDiagnostico, reg.diagnostico].filter(Boolean).join(' - ');
+    } else {
+      inputBuscarDiag.value = '';
+    }
+  }
+
   document.getElementById('asisEditObs').value = reg.observaciones || '';
 
   onEditTipoNovedadChange();
@@ -1423,43 +1831,54 @@ function cerrarModalEditarAsistencia() {
 
 function onEditTipoNovedadChange() {
   const nov = document.getElementById('asisEditNovedad')?.value || '';
+  const wrapHorario = document.getElementById('asisEditWrapHorario');
   const wrapDiag = document.getElementById('asisEditWrapDiag');
-  if (wrapDiag) {
-    wrapDiag.style.display = nov.toLowerCase().includes('incapacidad') ? 'block' : 'none';
-  }
+
+  const esAsistencia = nov === 'Asistencia';
+  const esIncapacidad = nov.toLowerCase().includes('incapacidad');
+
+  if (wrapHorario) wrapHorario.style.display = esAsistencia ? 'contents' : 'none';
+  if (wrapDiag) wrapDiag.style.display = esIncapacidad ? 'block' : 'none';
 }
 
 async function guardarEdicionAsistencia() {
-  const idAsistencia = document.getElementById('asisEditIdAsistencia')?.value;
   const btn = document.getElementById('asisBtnGuardarEdicion');
   const errBox = document.getElementById('asisEditModalError');
   if (errBox) errBox.style.display = 'none';
 
+  const idAsistencia = document.getElementById('asisEditIdAsistencia')?.value;
+  const dia = document.getElementById('asisEditDia')?.value;
   const novedad = document.getElementById('asisEditNovedad')?.value;
-  const horaEntrada = document.getElementById('asisEditHoraEntrada')?.value;
-  const horaSalida = document.getElementById('asisEditHoraSalida')?.value;
-  const codDiag = document.getElementById('asisEditCodDiag')?.value;
-  const diag = document.getElementById('asisEditDiag')?.value;
-  const obs = document.getElementById('asisEditObs')?.value;
+  const horaEntrada = document.getElementById('asisEditHoraEntrada')?.value || null;
+  const horaSalida = document.getElementById('asisEditHoraSalida')?.value || null;
+  const codDiagnostico = document.getElementById('asisEditCodDiag')?.value || null;
+  const diagnostico = document.getElementById('asisEditDiag')?.value || null;
+  const observaciones = document.getElementById('asisEditObs')?.value || '';
 
-  btn.disabled = true;
-  btn.textContent = 'Guardando cambios...';
+  if (!idAsistencia || !dia || !novedad) {
+    alert('Faltan campos obligatorios para actualizar el registro.');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Guardando cambios...';
+  }
 
   try {
-    const payload = {
-      usuario,
-      novedad,
-      horaEntrada: horaEntrada || null,
-      horaSalida: horaSalida || null,
-      codDiagnostico: codDiag || null,
-      diagnostico: diag || null,
-      observaciones: obs || null
-    };
-
     const r = await fetch(`/nomina/api/asistencia/${idAsistencia}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        usuario,
+        dia,
+        novedad,
+        horaEntrada,
+        horaSalida,
+        codDiagnostico,
+        diagnostico,
+        observaciones
+      })
     });
     const data = await r.json();
 
@@ -1467,32 +1886,33 @@ async function guardarEdicionAsistencia() {
       throw new Error(data.error || 'No se pudo actualizar el registro');
     }
 
+    alert('Registro actualizado con éxito.');
     cerrarModalEditarAsistencia();
     await fetchAsistenciaData();
   } catch (err) {
-    console.error('[asistencia] Error al editar:', err);
+    console.error('[asistencia] Error guardarEdicionAsistencia:', err);
     if (errBox) {
-      errBox.textContent = err.message;
+      errBox.textContent = err.message || 'Error al actualizar el registro';
       errBox.style.display = 'block';
     } else {
       alert(`Error: ${err.message}`);
     }
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Guardar Cambios';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar Cambios';
+    }
   }
 }
 
 async function eliminarAsistenciaRegistro(idAsistencia) {
-  if (!confirm('¿Está seguro de que desea eliminar este registro de asistencia? Esta acción no se puede deshacer.')) {
+  if (!confirm('¿Está seguro de que desea eliminar este registro de asistencia/novedad? Esta acción no se puede deshacer.')) {
     return;
   }
 
   try {
-    const r = await fetch(`/nomina/api/asistencia/${idAsistencia}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario })
+    const r = await fetch(`/nomina/api/asistencia/${idAsistencia}?usuario=${encodeURIComponent(usuario)}`, {
+      method: 'DELETE'
     });
     const data = await r.json();
 
@@ -1500,19 +1920,29 @@ async function eliminarAsistenciaRegistro(idAsistencia) {
       throw new Error(data.error || 'No se pudo eliminar el registro.');
     }
 
+    alert('Registro eliminado con éxito.');
     await onAsistenciaFiltroChange();
   } catch (err) {
-    console.error('[asistencia] Error al eliminar:', err);
+    console.error('[asistencia] Error eliminarAsistenciaRegistro:', err);
     alert(`Error al eliminar: ${err.message}`);
   }
 }
 
-// Auto-inicialización cuando el DOM esté listo y el usuario tenga acceso a Asistencia
-document.addEventListener('DOMContentLoaded', () => {
-  const cfg = obtenerConfigAsistencia();
-  if (cfg && (cfg.sinFiltro || (cfg.operacionesFiltro && cfg.operacionesFiltro.length))) {
-    if (!_asisState.cargado) {
-      initAsistenciaNomina();
-    }
+// Cerrar listas flotantes de diagnósticos al hacer clic por fuera
+document.addEventListener('click', e => {
+  const dropCrear = document.getElementById('asisResultadosDiag');
+  if (dropCrear && !e.target.closest('#asisModalBuscarDiag') && !e.target.closest('#asisResultadosDiag')) {
+    dropCrear.style.display = 'none';
+  }
+  const dropEdit = document.getElementById('asisEditResultadosDiag');
+  if (dropEdit && !e.target.closest('#asisEditBuscarDiag') && !e.target.closest('#asisEditResultadosDiag')) {
+    dropEdit.style.display = 'none';
+  }
+});
+
+// Inicialización automática cuando la pestaña se activa
+window.addEventListener('DOMContentLoaded', () => {
+  if (window.location.search.includes('tab=asistenciaynovedades') || window.location.search.includes('tab=asistencia')) {
+    initAsistenciaNomina();
   }
 });

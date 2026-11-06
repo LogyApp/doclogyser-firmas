@@ -70,9 +70,25 @@ function calcularTiempoLaborado(horaEntrada, horaSalida) {
 }
 
 /**
+ * Obtiene la fecha actual en formato YYYY-MM-DD en la zona horaria de Colombia
+ */
+function obtenerHoyColombia() {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Obtiene el catálogo de novedades configuradas en Config_Asistencia
  */
-async function obtenerCatalogoNovedades() {
+async function obtenerCatalogoNovedades(rol = '') {
+  const paramsCfg = await obtenerParametrosAsistencia();
+  const rolNorm = (rol || '').toLowerCase().trim();
+  const rolesVerSistema = (paramsCfg.rolesVerNovedadesSistema || ['Sistema', 'Nomina']).map(r => r.toLowerCase().trim());
+  const puedeVerSistema = rolesVerSistema.includes(rolNorm);
+
   const [rows] = await pool.query(`
     SELECT 
       Id, 
@@ -80,22 +96,40 @@ async function obtenerCatalogoNovedades() {
       \`Prefijo Novedad\` AS prefijoNovedad, 
       \`Fecha Final\` AS requiereFechaFinal, 
       Evento, 
+      TipoDocumento,
       Color AS color,
       Soporte AS requiereSoporte, 
       \`Descripción Soporte\` AS descripcionSoporte
     FROM Config_Asistencia
     ORDER BY Evento ASC, Novedad ASC
   `);
-  return rows.map(r => ({
-    id: r.Id,
-    novedad: r.Novedad,
-    prefijoNovedad: r.prefijoNovedad || '',
-    esRangoFechas: String(r.requiereFechaFinal || '').trim().toUpperCase() === 'SI',
-    evento: r.Evento || 'Novedad',
-    color: r.color || '#FFFFFF',
-    requiereSoporte: String(r.requiereSoporte || '').trim().toUpperCase() === 'SI',
-    descripcionSoporte: r.descripcionSoporte || ''
-  }));
+
+  const novedades = [];
+  const incapacidades = [];
+
+  rows.forEach(r => {
+    const item = {
+      id: r.Id,
+      novedad: r.Novedad,
+      prefijoNovedad: r.prefijoNovedad || '',
+      esRangoFechas: String(r.requiereFechaFinal || '').trim().toUpperCase() === 'SI',
+      evento: r.Evento || 'Novedad',
+      tipoDocumento: Number(r.TipoDocumento || 0),
+      color: r.color || '#FFFFFF',
+      requiereSoporte: String(r.requiereSoporte || '').trim().toUpperCase() === 'SI' || Number(r.TipoDocumento || 0) !== 0,
+      descripcionSoporte: r.descripcionSoporte || ''
+    };
+
+    if (item.evento === 'Incapacidad') {
+      incapacidades.push(item);
+    } else if (item.evento === 'Novedad') {
+      novedades.push(item);
+    } else if (item.evento === 'Sistema' && puedeVerSistema) {
+      novedades.push(item);
+    }
+  });
+
+  return { novedades, incapacidades };
 }
 
 /**
@@ -110,7 +144,19 @@ async function obtenerParametrosAsistencia() {
     diasMaximosFuturosNovedades: 30,
     rolesEditarEliminarYellow: ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR'],
     rolesEditarEliminarTodosEstados: ['Sistema', 'Nomina'],
-    rolesRegistrarRetirados: ['Sistema', 'Nomina']
+    rolesRegistrarRetirados: ['Sistema', 'Nomina'],
+    rolesRegistrarDiasFuturos: ['Sistema', 'Nomina'],
+    rolesVerNovedadesSistema: ['Sistema', 'Nomina'],
+    cargosExcluidosAsistencia: [
+      'APRENDIZ',
+      'AUXILIAR ADMINISTRATIVO DE OPERACIÓN',
+      'AUXILIAR ADMINISTRATIVO REGIONAL',
+      'COORDINADOR LOGISTICO',
+      'COORDINADOR REGIONAL',
+      'AUXILIAR SST',
+      'ANALISTA DE SST'
+    ],
+    rolesExencionCargosAsistencia: ['Sistema', 'Nomina']
   };
   for (const r of rows) {
     if (r.Concepto === 'Dias_Maximos_Pasados') {
@@ -127,6 +173,18 @@ async function obtenerParametrosAsistencia() {
     }
     if (r.Concepto === 'Roles_Registrar_Retirados') {
       config.rolesRegistrarRetirados = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Registrar_Dias_Futuros') {
+      config.rolesRegistrarDiasFuturos = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Ver_Novedades_Sistema') {
+      config.rolesVerNovedadesSistema = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Cargos_Excluidos_Asistencia') {
+      config.cargosExcluidosAsistencia = (r.Parametro || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Exencion_Cargos_Asistencia') {
+      config.rolesExencionCargosAsistencia = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
     }
   }
   return config;
@@ -187,20 +245,25 @@ async function obtenerAreasOperacion(operacion) {
 /**
  * Busca trabajadores en Maestro_Vinculación filtrando por operación y área
  * Permite a roles autorizados (Sistema, Nómina) ver personas retiradas
+ * Permite excluir cargos no aplicables a asistencia según configuración
  */
 async function buscarTrabajadoresVinculacion({
   operacion = '',
   area = '',
   operacionesPermitidas = [],
   q = '',
-  puedeVerRetirados = false
+  puedeVerRetirados = false,
+  esApoyo = false,
+  tipoEvento = 'Asistencia',
+  puedeExcluirCargos = false,
+  cargosExcluidos = []
 }) {
   let sql = `
     SELECT 
       mv.\`Id Vinculación\` AS idVinculacion,
       mv.\`Identificación\` AS identificacion,
       COALESCE(ms.Trabajador, mv.Trabajador) AS trabajador,
-      COALESCE(ms.Trabajador, mv.Trabajador) AS nombreCompleto,
+      TRIM(SUBSTRING_INDEX(COALESCE(ms.Trabajador, mv.Trabajador, ''), '**', -1)) AS nombreCompleto,
       mv.\`Operación\` AS operacion,
       mv.Area AS area,
       mv.Cargo AS cargo,
@@ -219,7 +282,8 @@ async function buscarTrabajadoresVinculacion({
     params.push(...operacionesPermitidas);
   }
 
-  if (area) {
+  // Si no es apoyo a otra operación, se filtra por área
+  if (area && !esApoyo) {
     sql += ' AND mv.Area = ?';
     params.push(area);
   }
@@ -228,6 +292,12 @@ async function buscarTrabajadoresVinculacion({
     sql += " AND mv.Estado IN ('Activo', 'Retirado')";
   } else {
     sql += " AND mv.Estado = 'Activo'";
+  }
+
+  // Exclusión de cargos administrativos en Asistencia directa (no aplica para Novedades ni Apoyo)
+  if (tipoEvento === 'Asistencia' && !esApoyo && !puedeExcluirCargos && cargosExcluidos && cargosExcluidos.length) {
+    sql += ` AND UPPER(TRIM(mv.Cargo)) NOT IN (${cargosExcluidos.map(() => '?').join(',')})`;
+    params.push(...cargosExcluidos.map(c => c.trim().toUpperCase()));
   }
 
   if (q && q.trim()) {
@@ -249,7 +319,7 @@ const buscarTrabajadoresSegmentacion = buscarTrabajadoresVinculacion;
  * Inserta registro en Maestro_docTrabajador cuando se adjunta un PDF de soporte
  */
 async function registrarDocumentoSoporte(conn, {
-  idReferencia, regional, operacion, identificacion, estadoVinc, fechaIngresoVinc, tipoDoc, urlDoc, fechaReg, usuario
+  idReferencia, regional, operacion, identificacion, estadoVinc, fechaIngresoVinc, tipoDoc, urlDoc, fechaReg, usuario, observaciones
 }) {
   let prefijo = 'SOP';
   try {
@@ -268,11 +338,11 @@ async function registrarDocumentoSoporte(conn, {
     INSERT INTO Maestro_docTrabajador (
       id, Validación, Regional, \`Operación\`, Identificación, 
       Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, 
-      Visualizar, FechaRegistro, Usuario
+      Observaciones, Visualizar, FechaRegistro, Usuario
     ) VALUES (
       UUID(), 'PEND', ?, ?, ?, 
       ?, ?, ?, ?, ?, 
-      'SI', ?, ?
+      ?, 'SI', ?, ?
     )
   `, [
     regional || null,
@@ -283,6 +353,7 @@ async function registrarDocumentoSoporte(conn, {
     tipoDoc,
     prefijo,
     urlDoc,
+    observaciones || null,
     fechaReg,
     usuario
   ]);
@@ -308,6 +379,16 @@ async function registrarAsistenciaDiaria({
 }) {
   if (!operacion || !dia || !trabajadoresIds || !trabajadoresIds.length) {
     throw new Error('Faltan datos obligatorios para registrar la asistencia (operación, día o trabajadores).');
+  }
+
+  // Validación de permisos de fechas futuras
+  const paramsCfg = await obtenerParametrosAsistencia();
+  const puedeDiasFuturos = (paramsCfg.rolesRegistrarDiasFuturos || ['Sistema', 'Nomina'])
+    .map(r => r.toLowerCase().trim())
+    .includes((rol || '').toLowerCase().trim());
+  const hoy = obtenerHoyColombia();
+  if (!puedeDiasFuturos && dia > hoy) {
+    throw new Error(`No tiene permisos para registrar asistencia en fechas futuras (${dia}).`);
   }
 
   // Validación de Bloqueo de Nómina
@@ -363,7 +444,7 @@ async function registrarAsistenciaDiaria({
       )
     `, [
       idRegistro,
-      apoyoOtraOperacion === 'SI' ? operacion : null,
+      apoyoOtraOperacion === 'SI' ? operacionApoya : null,
       area || null,
       novedad,
       apoyoOtraOperacion || 'NO',
@@ -382,7 +463,7 @@ async function registrarAsistenciaDiaria({
     trabRows.forEach((t, idx) => {
       const pos = idx + 1;
       const idAsistencia = `${idRegistro}_T${pos}`;
-      const opEfectiva = apoyoOtraOperacion === 'SI' ? (operacion || operacion) : operacion;
+      const opEfectiva = apoyoOtraOperacion === 'SI' ? (operacionApoya || operacion) : operacion;
 
       rowsToInsert.push([
         idAsistencia,
@@ -406,7 +487,6 @@ async function registrarAsistenciaDiaria({
         usuario,
         area || null, // Disponible1
         'Yellow', // Estado
-        quincena,
         observaciones || null
       ]);
     });
@@ -418,7 +498,7 @@ async function registrarAsistenciaDiaria({
         Día, Area, Trabajador, Cédula, Nombre,
         \`Hora Llegada\`, \`Hora Salida\`, \`Tiempo Laborado\`, \`Valor Destajo\`,
         \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`, Origen,
-        \`Fecha Registro\`, Usuario, Disponible1, Estado, Quincena, Observaciones
+        \`Fecha Registro\`, Usuario, Disponible1, Estado, Observaciones
       ) VALUES ?
     `, [rowsToInsert]);
 
@@ -460,6 +540,16 @@ async function registrarNovedadPorRango({
 }) {
   if (!trabajadorIdentificacion || !diaInicio || !diaFin || !novedad) {
     throw new Error('Faltan datos obligatorios para registrar la novedad (trabajador, fechas o novedad).');
+  }
+
+  // Validación de permisos de fechas futuras
+  const paramsCfg = await obtenerParametrosAsistencia();
+  const puedeDiasFuturos = (paramsCfg.rolesRegistrarDiasFuturos || ['Sistema', 'Nomina'])
+    .map(r => r.toLowerCase().trim())
+    .includes((rol || '').toLowerCase().trim());
+  const hoy = obtenerHoyColombia();
+  if (!puedeDiasFuturos && diaInicio > hoy) {
+    throw new Error(`No tiene permisos para iniciar novedades en fechas futuras (${diaInicio}).`);
   }
 
   // Validación de Bloqueo de Nómina
@@ -504,12 +594,38 @@ async function registrarNovedadPorRango({
   const trab = tRows[0];
   const opFinal = operacion || trab.operacion;
 
-  const idRegistro = generarIdRegistro(prefijoNovedad, diaInicio);
+  // Si es Incapacidad con sub-tipo, obtener prefijo de Config_Asistencia
+  let prefijoEfectivo = prefijoNovedad || 'NOV';
+  let tipoDocIncapacidad = '31';
+  if ((novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) && tipoIncapacidad) {
+    const [incRows] = await pool.query(
+      "SELECT `Prefijo Novedad` AS prefijo, TipoDocumento FROM Config_Asistencia WHERE Novedad = ? AND Evento = 'Incapacidad' LIMIT 1",
+      [tipoIncapacidad]
+    );
+    if (incRows.length && incRows[0].prefijo) {
+      prefijoEfectivo = incRows[0].prefijo;
+    }
+    if (incRows.length && incRows[0].TipoDocumento) {
+      tipoDocIncapacidad = String(incRows[0].TipoDocumento);
+    }
+  }
+  const idRegistro = generarIdRegistro(prefijoEfectivo, diaInicio);
   const fechaRegistro = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+
+    // Validar codDiagnostico contra Config_Diagnostico (Foreign Key)
+    let codDiagValido = null;
+    let diagValido = diagnostico ? diagnostico.substring(0, 300) : null;
+    if (codDiagnostico && codDiagnostico.trim()) {
+      const [cdRows] = await conn.execute('SELECT Cod, `Descripción` FROM Config_Diagnostico WHERE Cod = ? LIMIT 1', [codDiagnostico.trim().toUpperCase()]);
+      if (cdRows.length) {
+        codDiagValido = cdRows[0].Cod;
+        if (!diagValido) diagValido = cdRows[0]['Descripción'] ? cdRows[0]['Descripción'].substring(0, 300) : null;
+      }
+    }
 
     // 1. Insertar cabecera en Dynamic_Registro_Asistencia con Disponible = 1
     await conn.execute(`
@@ -526,14 +642,14 @@ async function registrarNovedadPorRango({
       )
     `, [
       idRegistro,
-      opFinal,
+      null, // En Dynamic_Registro_Asistencia la operacion principal es Origen; Operación solo se usa si hay apoyo
       area || null,
       novedad,
       trab.trabajador,
       diaInicio,
       diaFin,
       tipoIncapacidad || null,
-      codDiagnostico || null,
+      codDiagValido,
       diagnostico || null,
       urlIncapacidad || '',
       urlHistoriaClinica || '',
@@ -542,6 +658,7 @@ async function registrarNovedadPorRango({
       fechaRegistro,
       usuario
     ]);
+
 
     // 2. Generar filas para cada día en Dynamic_Asistencia
     const rowsToInsert = [];
@@ -556,8 +673,8 @@ async function registrarNovedadPorRango({
         idAsistencia,
         idRegistro,
         opFinal,
-        novedad,
-        prefijoNovedad,
+        (novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) ? 'Incapacidad' : novedad,
+        prefijoEfectivo,
         diaStr,
         area || null,
         trab.trabajador,
@@ -569,8 +686,8 @@ async function registrarNovedadPorRango({
         null, // Valor Destajo
         'NO',
         null,
-        codDiagnostico || null,
-        diagnostico ? diagnostico.substring(0, 300) : null,
+        codDiagValido,
+        diagValido,
         observaciones || null,
         urlSoporte || null,
         urlIncapacidad || null,
@@ -579,11 +696,7 @@ async function registrarNovedadPorRango({
         fechaRegistro,
         usuario,
         area || null, // Disponible1
-        urlSoporte || null,
-        urlIncapacidad || null,
-        urlHistoriaClinica || null,
         'Yellow',
-        quincena,
         tipoIncapacidad || null
       ]);
 
@@ -600,8 +713,7 @@ async function registrarNovedadPorRango({
         \`Cod Diagnostico\`, Diagnostico, Observaciones,
         \`Archivo Soporte\`, \`Archivo Incapacidad\`, \`Archivo Historia Clinica\`,
         Origen, \`Fecha Registro\`, Usuario, Disponible1,
-        \`Url Soporte\`, \`Url Incapacidad\`, \`Url Historia Clinica\`,
-        Estado, Quincena, \`Tipo Incapacidad\`
+        Estado, \`Tipo Incapacidad\`
       ) VALUES ?
     `, [rowsToInsert]);
 
@@ -618,26 +730,35 @@ async function registrarNovedadPorRango({
       if (urlIncapacidad) {
         await registrarDocumentoSoporte(conn, {
           idReferencia: idRegistro, regional, operacion: opFinal, identificacion: trab.identificacion,
-          estadoVinc, fechaIngresoVinc, tipoDoc: '31', urlDoc: urlIncapacidad, fechaReg: fechaRegistro, usuario
+          estadoVinc, fechaIngresoVinc, tipoDoc: tipoDocIncapacidad || '31', urlDoc: urlIncapacidad, fechaReg: fechaRegistro, usuario,
+          observaciones: tipoIncapacidad || novedad
         });
       }
       if (urlHistoriaClinica) {
         await registrarDocumentoSoporte(conn, {
           idReferencia: idRegistro, regional, operacion: opFinal, identificacion: trab.identificacion,
-          estadoVinc, fechaIngresoVinc, tipoDoc: '62', urlDoc: urlHistoriaClinica, fechaReg: fechaRegistro, usuario
+          estadoVinc, fechaIngresoVinc, tipoDoc: '62', urlDoc: urlHistoriaClinica, fechaReg: fechaRegistro, usuario,
+          observaciones: tipoIncapacidad || novedad
         });
       }
       if (urlSoporte) {
         let tipoDocSoporte = '41';
-        if (novedad === 'Licencia de Luto') tipoDocSoporte = '37';
-        else if (novedad === 'Calamidad') tipoDocSoporte = '42';
-        else if (['Día de Familia', 'Permiso No Remunerado', 'Permiso Remunerado', 'Licencia No Remunerada'].includes(novedad)) tipoDocSoporte = '44';
-        else if (['Licencia Maternidad', 'Licencia Paternidad'].includes(novedad)) tipoDocSoporte = '64';
-        else if (novedad === 'Vacaciones') tipoDocSoporte = '63';
+        try {
+          const [caRows] = await conn.execute(
+            'SELECT TipoDocumento FROM Config_Asistencia WHERE Novedad = ? LIMIT 1',
+            [novedad]
+          );
+          if (caRows.length && caRows[0].TipoDocumento && Number(caRows[0].TipoDocumento) !== 0) {
+            tipoDocSoporte = String(caRows[0].TipoDocumento);
+          }
+        } catch (eDoc) {
+          console.warn('[asistenciaService] Error consultando TipoDocumento en Config_Asistencia:', eDoc.message);
+        }
 
         await registrarDocumentoSoporte(conn, {
           idReferencia: idRegistro, regional, operacion: opFinal, identificacion: trab.identificacion,
-          estadoVinc, fechaIngresoVinc, tipoDoc: tipoDocSoporte, urlDoc: urlSoporte, fechaReg: fechaRegistro, usuario
+          estadoVinc, fechaIngresoVinc, tipoDoc: tipoDocSoporte, urlDoc: urlSoporte, fechaReg: fechaRegistro, usuario,
+          observaciones: novedad
         });
       }
     }
@@ -757,9 +878,9 @@ async function listarAsistencias({
       DATE_FORMAT(da.\`Día\`, '%Y-%m-%d') AS dia,
       da.Area AS area,
       COALESCE(carea.AREA, da.Area) AS areaNombre,
-      COALESCE(ms.Trabajador, da.Trabajador, da.Nombre, '') AS trabajador,
+      TRIM(SUBSTRING_INDEX(COALESCE(ms.Trabajador, da.Nombre, da.Trabajador, ''), '**', -1)) AS trabajador,
       COALESCE(ms.Identificación, da.Cédula) AS cedula,
-      COALESCE(ms.Trabajador, da.Nombre, da.Trabajador, '') AS nombre,
+      TRIM(SUBSTRING_INDEX(COALESCE(ms.Trabajador, da.Nombre, da.Trabajador, ''), '**', -1)) AS nombre,
       TIME_FORMAT(da.\`Hora Llegada\`, '%H:%i') AS horaLlegada,
       TIME_FORMAT(da.\`Hora Salida\`, '%H:%i') AS horaSalida,
       TIME_FORMAT(da.\`Tiempo Laborado\`, '%H:%i') AS tiempoLaborado,
@@ -951,7 +1072,7 @@ async function obtenerMetricasAsistencia({
  */
 async function eliminarRegistroAsistencia({ idAsistencia, usuario, rol, operacionesPermitidas = [], sinFiltro = false }) {
   const [rows] = await pool.query(
-    'SELECT IdAsistencia, `Operación` as operacion, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    'SELECT IdAsistencia, `Operación` as operacion, Novedad as novedad, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
     [idAsistencia]
   );
   if (!rows.length) throw new Error('El registro no existe.');
@@ -966,20 +1087,22 @@ async function eliminarRegistroAsistencia({ idAsistencia, usuario, rol, operacio
   const puedeTodos = paramsCfg.rolesEditarEliminarTodosEstados.map(r => r.toLowerCase().trim()).includes(rolNorm);
   const puedeYellow = paramsCfg.rolesEditarEliminarYellow.map(r => r.toLowerCase().trim()).includes(rolNorm);
 
-  if (rec.estado === 'Green' && !puedeTodos) {
-    throw new Error('Este registro está bloqueado en estado Green por Nómina y no puede ser eliminado.');
-  }
-  if (rec.estado === 'Yellow' && !puedeYellow && !puedeTodos) {
-    throw new Error('Tu rol no tiene permiso para eliminar registros en estado Yellow.');
-  }
+  const esAsistencia = (rec.novedad || '').trim().toLowerCase() === 'asistencia';
+  const esYellow = (rec.estado || '').toLowerCase() === 'yellow';
 
   if (!puedeTodos) {
+    if (!esYellow || !puedeYellow) {
+      throw new Error('Solo los roles de Nómina y Sistema pueden eliminar registros en este estado.');
+    }
+    if (esAsistencia) {
+      throw new Error('Solo los roles de Nómina y Sistema pueden eliminar registros de Asistencia.');
+    }
     const b = await verificarBloqueoNomina(rec.operacion, rec.dia, rol);
     if (b.bloqueado) throw new Error(b.mensaje);
   }
 
   await pool.query('DELETE FROM Dynamic_Asistencia WHERE IdAsistencia = ?', [idAsistencia]);
-  return { ok: true };
+  return { ok: true, idAsistencia };
 }
 
 /**
@@ -1004,7 +1127,7 @@ async function editarRegistroAsistencia({
   observaciones
 }) {
   const [rows] = await pool.query(
-    'SELECT IdAsistencia, `Operación` as operacion, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    'SELECT IdAsistencia, `Operación` as operacion, Novedad as novedad, TIME_FORMAT(`Hora Llegada`, "%H:%i") as horaLlegada, TIME_FORMAT(`Hora Salida`, "%H:%i") as horaSalida, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
     [idAsistencia]
   );
   if (!rows.length) throw new Error('El registro no existe.');
@@ -1018,11 +1141,15 @@ async function editarRegistroAsistencia({
   const rolNorm = (rol || '').toLowerCase().trim();
   const puedeTodos = paramsCfg.rolesEditarEliminarTodosEstados.map(r => r.toLowerCase().trim()).includes(rolNorm);
   const puedeYellow = paramsCfg.rolesEditarEliminarYellow.map(r => r.toLowerCase().trim()).includes(rolNorm);
+  const esYellow = (rec.estado || '').toLowerCase() === 'yellow';
 
   if (rec.estado === 'Green' && !puedeTodos) {
     throw new Error('Este registro está bloqueado en estado Green por Nómina y no puede ser editado.');
   }
-  if (rec.estado === 'Yellow' && !puedeYellow && !puedeTodos) {
+  if (!esYellow && !puedeTodos) {
+    throw new Error('No tiene permiso para editar registros en este estado.');
+  }
+  if (esYellow && !puedeYellow && !puedeTodos) {
     throw new Error('Tu rol no tiene permiso para editar registros en estado Yellow.');
   }
 
@@ -1031,16 +1158,47 @@ async function editarRegistroAsistencia({
     if (b.bloqueado) throw new Error(b.mensaje);
   }
 
+  // Resolver prefijo de novedad si cambió la novedad
+  let nuevoPrefijo = prefijoNovedad;
+  if (novedad && !nuevoPrefijo) {
+    const [pRows] = await pool.query('SELECT `Prefijo Novedad` as pref FROM Config_Asistencia WHERE Novedad = ? LIMIT 1', [novedad]);
+    if (pRows.length && pRows[0].pref) nuevoPrefijo = pRows[0].pref;
+  }
+
+  // Diagnóstico CIE-10: resolver descripción desde Config_Diagnostico si se envía el código
+  let diagFinal = diagnostico ? diagnostico.trim() : null;
+  let codDiagFinal = codDiagnostico ? codDiagnostico.trim().toUpperCase() : null;
+  if (codDiagFinal) {
+    const [cdRows] = await pool.query('SELECT Cod, `Descripción` as descr FROM Config_Diagnostico WHERE Cod = ? LIMIT 1', [codDiagFinal]);
+    if (cdRows.length) {
+      codDiagFinal = cdRows[0].Cod;
+      if (!diagFinal) diagFinal = cdRows[0].descr ? cdRows[0].descr.substring(0, 280) : null;
+    }
+  }
+
+  // TODO: Cuando se retire AppSheet, eliminar la columna 'Diagnostico' de Dynamic_Asistencia y Dynamic_Registro_Asistencia
+  // ya que el dato se resuelve únicamente mediante 'Cod Diagnostico' (JOIN con Config_Diagnostico.Cod).
+
+  // Calcular tiempo laborado y limpiar horarios si la novedad deja de ser Asistencia
+  const novFinal = novedad || rec.novedad;
+  const esAsistencia = novFinal.toLowerCase() === 'asistencia';
+  let horaEntradaFinal = null;
+  let horaSalidaFinal = null;
   let tiempoLaborado = null;
-  if (horaEntrada && horaSalida) {
-    tiempoLaborado = calcularTiempoLaborado(horaEntrada, horaSalida);
+
+  if (esAsistencia) {
+    horaEntradaFinal = horaEntrada !== undefined ? (horaEntrada || null) : rec.horaLlegada;
+    horaSalidaFinal = horaSalida !== undefined ? (horaSalida || null) : rec.horaSalida;
+    if (horaEntradaFinal && horaSalidaFinal) {
+      tiempoLaborado = calcularTiempoLaborado(horaEntradaFinal, horaSalidaFinal);
+    }
   }
 
   await pool.query(`
     UPDATE Dynamic_Asistencia SET
-      \`Hora Llegada\` = COALESCE(?, \`Hora Llegada\`),
-      \`Hora Salida\` = COALESCE(?, \`Hora Salida\`),
-      \`Tiempo Laborado\` = COALESCE(?, \`Tiempo Laborado\`),
+      \`Hora Llegada\` = ?,
+      \`Hora Salida\` = ?,
+      \`Tiempo Laborado\` = ?,
       Novedad = COALESCE(?, Novedad),
       \`Prefijo Novedad\` = COALESCE(?, \`Prefijo Novedad\`),
       Area = COALESCE(?, Area),
@@ -1052,22 +1210,22 @@ async function editarRegistroAsistencia({
       Observaciones = ?
     WHERE IdAsistencia = ?
   `, [
-    horaEntrada || null,
-    horaSalida || null,
+    horaEntradaFinal,
+    horaSalidaFinal,
     tiempoLaborado,
     novedad || null,
-    prefijoNovedad || null,
+    nuevoPrefijo || null,
     area || null,
     apoyoOtraOperacion || null,
     operacionApoya || null,
     tipoIncapacidad || null,
-    codDiagnostico || null,
-    diagnostico || null,
-    observaciones || null,
+    codDiagFinal,
+    diagFinal,
+    observaciones !== undefined ? observaciones : null,
     idAsistencia
   ]);
 
-  return { ok: true };
+  return { ok: true, idAsistencia };
 }
 
 module.exports = {

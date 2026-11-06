@@ -1103,13 +1103,13 @@
     .zona-archivo-caja:hover { border-color: var(--accent) !important; }
 
     /* Botones de Selección de Área */
-    .asis-area-btn {
+    .asis-area-btn, .asis-op-btn {
       padding: 5px 12px; font-size: 0.76rem; font-weight: 600; border: 1px solid var(--border);
       background: var(--bg-elevated); color: var(--text); border-radius: 6px; cursor: pointer;
       display: inline-flex; align-items: center; transition: all .15s ease;
     }
-    .asis-area-btn:hover { border-color: var(--accent); }
-    .asis-area-btn.active {
+    .asis-area-btn:hover, .asis-op-btn:hover { border-color: var(--accent); }
+    .asis-area-btn.active, .asis-op-btn.active {
       background: var(--accent) !important; color: #ffffff !important; border-color: var(--accent) !important;
       box-shadow: 0 1px 3px rgba(0,0,0,0.15);
     }
@@ -2103,13 +2103,11 @@
           <table class="retiros-table" id="asistenciaTable">
             <thead>
               <tr>
-                <th style="width:85px">Estado</th>
-                <th style="width:105px">Día</th>
+                <th style="width:110px">Día</th>
                 <th style="width:125px">Quincena</th>
-                <th style="width:110px">Regional</th>
                 <th style="width:140px">Operación</th>
                 <th style="width:120px">Área</th>
-                <th style="width:220px">Colaborador</th>
+                <th style="width:230px">Colaborador</th>
                 <th style="width:160px">Novedad</th>
                 <th style="width:95px">Horario</th>
                 <th style="width:80px">Tiempo</th>
@@ -2165,9 +2163,8 @@
         <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom:16px;">
           <div class="filtro-field">
             <label>Operación *</label>
-            <select id="asisModalOpDiaria" onchange="onOpDiariaChange()">
-              <option value="">Seleccione una operación...</option>
-            </select>
+            <input type="hidden" id="asisModalOpDiaria" value="">
+            <div id="asisModalOpDiariaContainer" style="margin-top:4px; min-height:36px; display:flex; align-items:center;"></div>
           </div>
           <div class="filtro-field" style="grid-column: 1 / -1;">
             <label>Área * <span style="font-size:.76rem; font-weight:normal; color:var(--text-muted);">(Escoja un área para habilitar los colaboradores activos)</span></label>
@@ -2201,10 +2198,10 @@
         <div style="margin-bottom:16px; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:.85rem; font-weight:600;">
             <input type="checkbox" id="asisModalChkApoyo" onchange="onToggleApoyoOperacion()">
-            ¿Es apoyo a otra operación?
+            ¿Es apoyo de otra operación?
           </label>
           <div id="asisWrapOpApoya" style="display:none; margin-top:10px;">
-            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">Operación a la que apoya:</label>
+            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">Escoge la operación que apoya:</label>
             <select id="asisModalOpApoya" style="width:100%; margin-top:4px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
               <option value="">Seleccione operación destino...</option>
             </select>
@@ -2247,29 +2244,31 @@
 
       <!-- ════════ FORMULARIO: NOVEDAD POR RANGO DE FECHAS ════════ -->
       <div id="asisFormNovedad" style="display:none;">
-        <!-- Buscador de Colaborador -->
-        <div class="filtro-field" style="margin-bottom:14px; position:relative;">
-          <label>Colaborador * (Buscar por nombre o cédula)</label>
-          <input type="search" id="asisModalBuscarColabNovedad" placeholder="&#128269; Escriba cédula o nombre..." oninput="onBuscarColabNovedad()" autocomplete="off" disabled title="Escoja primero operación y área">
-          <input type="hidden" id="asisModalIdTrabajadorNovedad" value="">
-          <div id="asisResultadosColabNovedad" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:100; background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:6px; max-height:180px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
-          <div id="asisBadgeColabSeleccionado" style="display:none; margin-top:6px; padding:6px 10px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); color:#059669; border-radius:6px; font-size:.82rem;"></div>
-        </div>
-
-        <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:14px;">
+        <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom:14px;">
           <div class="filtro-field">
             <label>Operación *</label>
-            <select id="asisModalOpNovedad" onchange="onOpNovedadChange()">
-              <option value="">Seleccione una operación...</option>
-            </select>
+            <input type="hidden" id="asisModalOpNovedad" value="">
+            <div id="asisModalOpNovedadContainer" style="margin-top:4px; min-height:36px; display:flex; align-items:center;"></div>
           </div>
-          <div class="filtro-field" style="grid-column: span 2;">
+          <div class="filtro-field" style="grid-column: 1 / -1;">
             <label>Área * <span style="font-size:.76rem; font-weight:normal; color:var(--text-muted);">(Escoja un área para habilitar colaboradores)</span></label>
             <input type="hidden" id="asisModalAreaNovedad" value="">
             <div id="asisModalAreaNovedadContainer" style="margin-top:4px; min-height:36px; display:flex; align-items:center;">
               <span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación.</span>
             </div>
           </div>
+        </div>
+
+        <!-- Selección de Colaborador (Uno solo según Operación y Área) -->
+        <div class="filtro-field" style="margin-bottom:14px;">
+          <label>Colaborador * <span style="font-size:.76rem; font-weight:normal; color:var(--text-muted);">(Seleccione exactamente un colaborador)</span></label>
+          <input type="hidden" id="asisModalIdTrabajadorNovedad" value="">
+          <div id="asisModalColabNovedadContainer" style="margin-top:4px;">
+            <span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación y un área para cargar los colaboradores.</span>
+          </div>
+        </div>
+
+        <div class="filtros-grid" style="grid-template-columns: 1fr; margin-bottom:14px;">
           <div class="filtro-field">
             <label>Tipo de Novedad *</label>
             <select id="asisModalNovedad" onchange="onTipoNovedadModalChange()">
@@ -2307,12 +2306,12 @@
                 <option value="Maternidad/Paternidad">Maternidad / Paternidad</option>
               </select>
             </div>
-            <div class="filtro-field">
-              <label>Código CIE-10 / Diagnóstico</label>
-              <div style="display:flex; gap:8px;">
-                <input type="text" id="asisModalCodDiag" placeholder="Ej: J00, M545..." style="width:110px;">
-                <input type="text" id="asisModalDiag" placeholder="Descripción del diagnóstico..." style="flex:1;">
-              </div>
+            <div class="filtro-field" style="position:relative;">
+              <label>Diagnóstico CIE-10 (Código o Descripción) *</label>
+              <input type="text" id="asisModalBuscarDiag" placeholder="&#128269; Buscar código CIE-10 (ej: J00) o descripción..." oninput="onBuscarDiagnosticoModal('crear')" autocomplete="off" style="width:100%;">
+              <input type="hidden" id="asisModalCodDiag" value="">
+              <input type="hidden" id="asisModalDiag" value="">
+              <div id="asisResultadosDiag" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:120; background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:6px; max-height:200px; overflow-y:auto; box-shadow:0 6px 16px rgba(0,0,0,0.18);"></div>
             </div>
           </div>
           <div class="filtros-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
@@ -2383,20 +2382,22 @@
           <label>Novedad / Evento *</label>
           <select id="asisEditNovedad" onchange="onEditTipoNovedadChange()"></select>
         </div>
-        <div class="filtro-field">
-          <label>Hora Entrada</label>
-          <input type="time" id="asisEditHoraEntrada">
-        </div>
-        <div class="filtro-field">
-          <label>Hora Salida</label>
-          <input type="time" id="asisEditHoraSalida">
-        </div>
-        <div class="filtro-field" style="grid-column: 1 / -1;" id="asisEditWrapDiag">
-          <label>Código CIE-10 / Diagnóstico</label>
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="asisEditCodDiag" placeholder="CIE-10" style="width:100px;">
-            <input type="text" id="asisEditDiag" placeholder="Descripción diagnóstica" style="flex:1;">
+        <div id="asisEditWrapHorario" style="display:contents;">
+          <div class="filtro-field">
+            <label>Hora Entrada</label>
+            <input type="time" id="asisEditHoraEntrada">
           </div>
+          <div class="filtro-field">
+            <label>Hora Salida</label>
+            <input type="time" id="asisEditHoraSalida">
+          </div>
+        </div>
+        <div class="filtro-field" style="grid-column: 1 / -1; position:relative;" id="asisEditWrapDiag">
+          <label>Diagnóstico CIE-10 (Código o Descripción)</label>
+          <input type="text" id="asisEditBuscarDiag" placeholder="&#128269; Buscar código CIE-10 (ej: J00) o descripción..." oninput="onBuscarDiagnosticoModal('editar')" autocomplete="off" style="width:100%;">
+          <input type="hidden" id="asisEditCodDiag" value="">
+          <input type="hidden" id="asisEditDiag" value="">
+          <div id="asisEditResultadosDiag" style="display:none; position:absolute; left:0; right:0; top:100%; z-index:120; background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:6px; max-height:200px; overflow-y:auto; box-shadow:0 6px 16px rgba(0,0,0,0.18);"></div>
         </div>
         <div class="filtro-field" style="grid-column: 1 / -1;">
           <label>Observaciones</label>
