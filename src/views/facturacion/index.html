@@ -2452,7 +2452,6 @@
           <table class="data-table" id="tabla-maestro-clientes">
             <thead>
               <tr>
-                <th style="width: 80px; text-align: center;">Acciones</th>
                 <th style="width: 110px;" data-sort="solicitarActualizacion">Actualización<span id="mcliSort-solicitarActualizacion" class="sort-indicator"></span></th>
                 <th style="width: 130px;" data-sort="codigo">Código / NIT<span id="mcliSort-codigo" class="sort-indicator"></span></th>
                 <th style="width: 260px;" data-sort="razonSocial">Razón Social<span id="mcliSort-razonSocial" class="sort-indicator"></span></th>
@@ -2472,7 +2471,7 @@
               </tr>
             </thead>
             <tbody id="tabla-maestro-clientes-body">
-              <tr><td colspan="17" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
+              <tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
             </tbody>
           </table>
         </div>
@@ -3525,14 +3524,14 @@
   <!-- ══════════════════════════════════════════════════════════
        MODAL: EDITAR CLIENTE (Maestro_Clientes)
   ══════════════════════════════════════════════════════════ -->
-  <div class="modal-overlay" id="modal-editar-cliente-overlay">
+  <div class="modal-overlay" id="modal-editar-maestro-cliente-overlay">
     <div class="modal-card" style="max-width: 620px;">
       <div class="modal-header">
         <span>✏️ Editar Cliente</span>
-        <button type="button" class="modal-close-btn" onclick="cerrarModalEditarCliente()">&times;</button>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalEditarMaestroCliente()">&times;</button>
       </div>
-      <div class="modal-body" style="padding: 20px;">
-        <form id="form-editar-cliente" onsubmit="submitEditarCliente(event)">
+      <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+        <form id="form-editar-maestro-cliente" onsubmit="submitEditarMaestroCliente(event)">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
             <div>
               <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Código / NIT</label>
@@ -3551,6 +3550,23 @@
             <div>
               <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Correo F.E. *</label>
               <input type="email" id="mcli-edit-correofe" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px;">
+            </div>
+          </div>
+          <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">📍 Ubicación</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <div>
+                <label style="display:block; font-size: 0.72rem; color: var(--text-muted);">Depto / Estado</label>
+                <input type="text" id="mcli-edit-depto" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem; color: var(--text-muted);">Ciudad</label>
+                <input type="text" id="mcli-edit-ciudad" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem; color: var(--text-muted);">Dirección 1</label>
+                <input type="text" id="mcli-edit-direccion" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+              </div>
             </div>
           </div>
           <div id="mcli-edit-wrap-retenciones" style="display: none; background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
@@ -3586,9 +3602,13 @@
           <div id="mcli-edit-doc-link-wrap" style="display: none; margin-bottom: 14px; font-size: 0.82rem;">
             <span style="font-weight: 600;">Rut Cliente:</span> <a id="mcli-edit-doc-link" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">📄 Ver archivo cargado</a>
           </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Adjuntar Rut Cliente (jpg, png o pdf; reemplaza el actual)</label>
+            <input type="file" id="mcli-edit-documento" accept=".jpg,.jpeg,.png,.pdf" style="width: 100%; padding: 8px; border: 1.5px dashed var(--border); border-radius: 8px; font-size: 0.82rem; background: var(--bg-surface);">
+          </div>
           <div id="mcli-edit-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;"></div>
           <div class="modal-footer" style="display:flex; justify-content:flex-end; gap: 8px; padding-top: 10px;">
-            <button type="button" class="btn-reset" onclick="cerrarModalEditarCliente()">Cancelar</button>
+            <button type="button" class="btn-reset" onclick="cerrarModalEditarMaestroCliente()">Cancelar</button>
             <button type="submit" class="btn-primary" id="btn-submit-edit-cliente">💾 Guardar Cambios</button>
           </div>
         </form>
@@ -5430,12 +5450,12 @@
           const msg = resp.status === 404
             ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
             : 'Error al cargar clientes. Por favor recarga la página.';
-          if (tbody) tbody.innerHTML = `<tr><td colspan="17" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
       } catch (e) {
         console.error('Error cargando Maestro_Clientes:', e);
         const tbody = document.getElementById('tabla-maestro-clientes-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
       }
     }
 
@@ -5500,7 +5520,9 @@
     }
 
     function renderMaestroClientesTable() {
-      const q = (document.getElementById('mcli-filtro-q')?.value || '').toLowerCase().trim();
+      // Búsqueda sin distinguir mayúsculas ni tildes; varias palabras deben aparecer todas (en cualquier campo)
+      const q = normalizarBusqueda(document.getElementById('mcli-filtro-q')?.value);
+      const palabrasQ = q.split(/\s+/).filter(Boolean);
       const fAct = document.getElementById('mcli-filtro-actualizacion')?.value || '';
       const fCond = (document.getElementById('mcli-filtro-condicion')?.value || '').toUpperCase();
       const fDepto = document.getElementById('mcli-filtro-depto')?.value || '';
@@ -5543,17 +5565,11 @@
         if (fRet === 'RTSERVIC' && !tieneRtserv) return false;
         if (fRet === 'NINGUNA' && (tieneRtica || tieneRtiva || tieneRtserv)) return false;
 
-        if (q) {
-          const cod = String(c.codigo || '').toLowerCase();
-          const rs = (c.razonSocial || '').toLowerCase();
-          const tel = (c.telefono || '').toLowerCase();
-          const cor = (c.correoFE || '').toLowerCase();
-          const ciu = (c.ciudad || '').toLowerCase();
-          const dep = (c.deptoEstado || '').toLowerCase();
-          const dir = (c.direccion1 || '').toLowerCase();
-          const usr = (c.usuario || '').toLowerCase();
-          const obs = (c.observaciones || '').toLowerCase();
-          if (!cod.includes(q) && !rs.includes(q) && !tel.includes(q) && !cor.includes(q) && !ciu.includes(q) && !dep.includes(q) && !dir.includes(q) && !usr.includes(q) && !obs.includes(q)) return false;
+        if (palabrasQ.length) {
+          const texto = normalizarBusqueda([
+            c.codigo, c.razonSocial, c.telefono, c.correoFE, c.ciudad, c.deptoEstado, c.direccion1, c.usuario, c.observaciones,
+          ].filter(v => v != null && v !== '').join(' '));
+          if (!palabrasQ.every(w => texto.includes(w))) return false;
         }
         return true;
       });
@@ -5606,11 +5622,13 @@
           const rtBadge = (v) => String(v || '').trim().toUpperCase() === 'V'
             ? '<span class="badge badge-desbloq" style="font-weight:700;">V</span>'
             : '<span style="color:var(--text-muted)">—</span>';
-          const btnEditarCli = PUEDE_GESTIONAR_MAESTROS
-            ? `<button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" title="Editar cliente" onclick="abrirModalEditarCliente(${Number(c.codigo)})">✏️</button>`
-            : '—';
+          // Clic en la fila: edita los campos a los que el rol tiene acceso
+          if (PUEDE_GESTIONAR_MAESTROS) {
+            tr.style.cursor = 'pointer';
+            tr.title = 'Clic para editar el cliente';
+            tr.addEventListener('click', () => abrirModalEditarMaestroCliente(c.codigo));
+          }
           tr.innerHTML = `
-            <td style="text-align: center; white-space: nowrap;">${btnEditarCli}</td>
             <td>${actBadge}</td>
             <td class="dato-destacado" style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
             <td style="font-weight: 600;">${esc(c.razonSocial) || '—'}</td>
@@ -5760,7 +5778,7 @@
       }
     }
 
-    function abrirModalEditarCliente(codigo) {
+    function abrirModalEditarMaestroCliente(codigo) {
       const c = allMaestroClientes.find(x => Number(x.codigo) === Number(codigo));
       if (!c) return;
 
@@ -5769,6 +5787,10 @@
       document.getElementById('mcli-edit-telefono').value = c.telefono || '';
       document.getElementById('mcli-edit-correofe').value = c.correoFE || '';
       document.getElementById('mcli-edit-observaciones').value = c.observaciones || '';
+      document.getElementById('mcli-edit-depto').value = c.deptoEstado || '';
+      document.getElementById('mcli-edit-ciudad').value = c.ciudad || '';
+      document.getElementById('mcli-edit-direccion').value = c.direccion1 || '';
+      document.getElementById('mcli-edit-documento').value = '';
 
       const wrapRet = document.getElementById('mcli-edit-wrap-retenciones');
       if (wrapRet) {
@@ -5795,16 +5817,16 @@
       const errEl = document.getElementById('mcli-edit-error');
       if (errEl) errEl.style.display = 'none';
 
-      const overlay = document.getElementById('modal-editar-cliente-overlay');
+      const overlay = document.getElementById('modal-editar-maestro-cliente-overlay');
       overlay.classList.add('open');
       if (typeof registrarModalBack === 'function') {
-        overlay._backEntry = registrarModalBack(() => cerrarModalEditarCliente());
+        overlay._backEntry = registrarModalBack(() => cerrarModalEditarMaestroCliente());
       }
       setTimeout(() => document.getElementById('mcli-edit-razonsocial')?.focus(), 100);
     }
 
-    function cerrarModalEditarCliente() {
-      const overlay = document.getElementById('modal-editar-cliente-overlay');
+    function cerrarModalEditarMaestroCliente() {
+      const overlay = document.getElementById('modal-editar-maestro-cliente-overlay');
       overlay.classList.remove('open');
       if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
         cerrarModalBack(overlay._backEntry);
@@ -5812,7 +5834,7 @@
       }
     }
 
-    async function submitEditarCliente(e) {
+    async function submitEditarMaestroCliente(e) {
       if (e) e.preventDefault();
       const errEl = document.getElementById('mcli-edit-error');
       const mostrarError = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
@@ -5832,6 +5854,9 @@
         razonSocial,
         telefono,
         correoFE,
+        deptoEstado: (document.getElementById('mcli-edit-depto').value || '').trim(),
+        ciudad: (document.getElementById('mcli-edit-ciudad').value || '').trim(),
+        direccion1: (document.getElementById('mcli-edit-direccion').value || '').trim(),
         observaciones: observaciones || null
       };
 
@@ -5841,6 +5866,12 @@
         payload.rtservic = document.getElementById('mcli-edit-rtservic').value || null;
       }
 
+      // Multipart para poder adjuntar el Rut Cliente
+      const fd = new FormData();
+      Object.entries(payload).forEach(([k, v]) => fd.append(k, v == null ? '' : v));
+      const fileInput = document.getElementById('mcli-edit-documento');
+      if (fileInput && fileInput.files && fileInput.files[0]) fd.append('documento', fileInput.files[0]);
+
       const btn = document.getElementById('btn-submit-edit-cliente');
       btn.disabled = true;
       btn.textContent = 'Guardando...';
@@ -5848,8 +5879,7 @@
       try {
         const resp = await fetch(`/facturacion/api/maestro-clientes/actualizar?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: fd
         });
         const data = await resp.json();
         if (resp.ok && data.ok) {
@@ -5859,13 +5889,17 @@
             c.telefono = telefono;
             c.correoFE = correoFE;
             c.observaciones = payload.observaciones;
+            c.deptoEstado = payload.deptoEstado || null;
+            c.ciudad = payload.ciudad || null;
+            c.direccion1 = payload.direccion1 || null;
+            if (data.documento) c.documento = data.documento;
             if (PUEDE_EDITAR_RETENCIONES) {
               c.rtica = payload.rtica;
               c.rtiva = payload.rtiva;
               c.rtservic = payload.rtservic;
             }
           }
-          cerrarModalEditarCliente();
+          cerrarModalEditarMaestroCliente();
           sortAndRenderMaestroClientes();
           alert(`✅ Cliente ${codigo} actualizado.`);
         } else {

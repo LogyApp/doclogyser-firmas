@@ -699,38 +699,45 @@ async function handleActualizarCliente(req, res) {
 
     const puedeRet = await puedeEditarRetenciones(acceso.rol);
     const buscarCliente = `${codigo} ** ${razonSocial}`;
-    const observaciones = req.body.observaciones !== undefined ? (req.body.observaciones ? String(req.body.observaciones).trim() : null) : null;
+    const textoONull = (v) => (v ? String(v).trim() : null) || null;
+    const observaciones = req.body.observaciones !== undefined ? textoONull(req.body.observaciones) : null;
 
+    const sets = ['`Raz\u00f3n social` = ?', '`Telefono` = ?', '`Correo F.E.` = ?', '`Buscar Cliente` = ?', '`Observaciones` = ?'];
+    const params = [razonSocial, telefono, correoFE, buscarCliente, observaciones];
+    // Ubicación: solo si el formulario la envía (se conserva la actual si no viene)
+    [['deptoEstado', '`Depto/Estado`'], ['ciudad', '`Ciudad`'], ['direccion1', '`Dirección 1`']].forEach(([k, col]) => {
+      if (req.body[k] !== undefined) { sets.push(`${col} = ?`); params.push(textoONull(req.body[k])); }
+    });
+    // Retenciones: solo 'Roles que pueden editar retenciones de Clientes' (Config_Parametros facturacion / Clientes)
     if (puedeRet) {
-      const rtica = req.body.rtica !== undefined ? (req.body.rtica ? String(req.body.rtica).trim() : null) : null;
-      const rtiva = req.body.rtiva !== undefined ? (req.body.rtiva ? String(req.body.rtiva).trim() : null) : null;
-      const rtservic = req.body.rtservic !== undefined ? (req.body.rtservic ? String(req.body.rtservic).trim() : null) : null;
-
-      await pool.execute(
-        `UPDATE Maestro_Clientes
-         SET \`Raz\u00f3n social\` = ?, \`Telefono\` = ?, \`Correo F.E.\` = ?,
-             \`Buscar Cliente\` = ?, \`RTICA\` = ?, \`RTIVA\` = ?, \`RTSERVIC\` = ?, \`Observaciones\` = ?
-         WHERE \`Código\` = ?`,
-        [razonSocial, telefono, correoFE, buscarCliente, rtica, rtiva, rtservic, observaciones, codigo]
-      );
-    } else {
-      await pool.execute(
-        `UPDATE Maestro_Clientes
-         SET \`Raz\u00f3n social\` = ?, \`Telefono\` = ?, \`Correo F.E.\` = ?,
-             \`Buscar Cliente\` = ?, \`Observaciones\` = ?
-         WHERE \`Código\` = ?`,
-        [razonSocial, telefono, correoFE, buscarCliente, observaciones, codigo]
-      );
+      [['rtica', '`RTICA`'], ['rtiva', '`RTIVA`'], ['rtservic', '`RTSERVIC`']].forEach(([k, col]) => {
+        if (req.body[k] !== undefined) { sets.push(`${col} = ?`); params.push(textoONull(req.body[k])); }
+      });
+    }
+    // Rut Cliente opcional: reemplaza el documento actual
+    let documentoPath = null;
+    if (req.file && req.file.buffer) {
+      try {
+        documentoPath = await subirDocumentoCliente(codigo, req.file, formatearAhoraBogota());
+      } catch (storageErr) {
+        console.error('[facturacion] Error guardando archivo de Rut Cliente en storage:', storageErr.message);
+        return res.status(500).json({ error: 'No se pudo subir el documento del cliente.' });
+      }
+      sets.push('`Documento` = ?');
+      params.push(documentoPath);
     }
 
-    res.json({ ok: true, codigo, razonSocial, telefono, correoFE, buscarCliente });
+    params.push(codigo);
+    await pool.execute(`UPDATE Maestro_Clientes SET ${sets.join(', ')} WHERE \`Código\` = ?`, params);
+
+    res.json({ ok: true, codigo, razonSocial, telefono, correoFE, buscarCliente, documento: documentoPath });
   } catch (err) {
     console.error('[facturacion] UPDATE maestro-clientes:', err);
     res.status(500).json({ error: err.message });
   }
 }
-router.put('/api/maestro-clientes/:codigo', handleActualizarCliente);
-router.post('/api/maestro-clientes/actualizar', handleActualizarCliente);
+router.put('/api/maestro-clientes/:codigo', uploadServicio.single('documento'), handleActualizarCliente);
+router.post('/api/maestro-clientes/actualizar', uploadServicio.single('documento'), handleActualizarCliente);
 
 // ── GET /api/maestro-transportadoras (Listado de Maestro_Transportadora) ───
 router.get('/api/maestro-transportadoras', async (req, res) => {

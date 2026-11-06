@@ -123,7 +123,7 @@ function armarCuestionarioHtml(ev, p9Selections) {
       opt(ev.p5 === 'c', 'c. Ninguna de las anteriores.'),
     ].join('')),
     preg('6. ¿Cuál es su ARL y en cuánto tiempo se reporta un accidente de trabajo?', [
-      opt(ev.p6 === 'a', 'a. ARL: Seguros Bolívar, reporte en 48 horas.'),
+      opt(ev.p6 === 'a', 'a. ARL: Seguros Sura, reporte en 48 horas.'),
       opt(ev.p6 === 'b', 'b. ARL: Sura, reporte en 15 días.'),
       opt(ev.p6 === 'c', 'c. ARL: Colmena, reporte en 30 días.'),
       opt(ev.p6 === 'd', 'd. ARL: Positiva, reporte 48 días'),
@@ -447,7 +447,7 @@ async function renderPDF(ev, vin, evaluadorNombre) {
   <div class="question">
     <div class="question-title">6. ¿Cuál es su ARL y en cuánto tiempo se reporta un accidente de trabajo?</div>
     <div class="options">
-      <div class="option">${box(ev.p6 === 'a')} a. ARL: Seguros Bolívar, reporte en 48 horas.</div>
+      <div class="option">${box(ev.p6 === 'a')} a. ARL: Seguros Sura, reporte en 48 horas.</div>
       <div class="option">${box(ev.p6 === 'b')} b. ARL: Sura, reporte en 15 días.</div>
       <div class="option">${box(ev.p6 === 'c')} c. ARL: Colmena, reporte en 30 días.</div>
       <div class="option">${box(ev.p6 === 'd')} d. ARL: Positiva, reporte 48 días</div>
