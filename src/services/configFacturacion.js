@@ -111,6 +111,11 @@ const PR = {
   VER_RECIBO_MODALIDAD:  'Roles que ven el Recibo del Cliente en cualquier modalidad',
   VER_SERVICIO_FPAGO:    'Roles que ven el registro del servicio en cualquier forma de pago',
   VER_SERVICIO_SIN_TEL:  'Roles que ven el registro del servicio sin teléfono',
+  VERDE_SIN_FOTO_TRANSF: 'Roles que pueden pasar a verde un servicio por Transferencia sin Foto de Transferencia',
+  // Aviso a los responsables de la operación cuando se pasa un servicio a Transferencia sin foto
+  HABILITAR_AVISO_TRANSF: 'Habilitar notificaciones de correo en Foto de Transferencia pendiente',
+  AVISO_TRANSF_ORIGEN:    'Roles que generan aviso de Foto de Transferencia pendiente',
+  AVISO_TRANSF_DESTINO:   'Roles que reciben aviso de Foto de Transferencia pendiente',
 };
 const DEFAULTS_RECIBOS = {
   [PR.CREAR]:          'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR, Lider',
@@ -127,6 +132,10 @@ const DEFAULTS_RECIBOS = {
   [PR.VER_RECIBO_MODALIDAD]: '',
   [PR.VER_SERVICIO_FPAGO]:   '',
   [PR.VER_SERVICIO_SIN_TEL]: '',
+  [PR.VERDE_SIN_FOTO_TRANSF]: '',
+  [PR.HABILITAR_AVISO_TRANSF]: '0',
+  [PR.AVISO_TRANSF_ORIGEN]:   'Facturación',
+  [PR.AVISO_TRANSF_DESTINO]:  'Coordinador, CoordinadorR, Auxiliar, AuxiliarR',
 };
 
 async function obtenerParametrosRecibos() {
@@ -168,6 +177,19 @@ async function obtenerPermisosRecibos(rol) {
     verReciboCualquierModalidad:   tiene(PR.VER_RECIBO_MODALIDAD),
     verServicioCualquierFormaPago: tiene(PR.VER_SERVICIO_FPAGO),
     verServicioSinTelefono:        tiene(PR.VER_SERVICIO_SIN_TEL),
+    // Al editar: pasar a verde con Transferencia aunque no tenga la Foto de Transferencia
+    verdeSinFotoTransferencia:     tiene(PR.VERDE_SIN_FOTO_TRANSF),
+  };
+}
+
+// Aviso de Foto de Transferencia pendiente: si quien edita (rol) genera el aviso, los roles que
+// lo reciben (Coordinador/Auxiliar por operación, CoordinadorR/AuxiliarR por regional).
+async function obtenerAvisoFotoTransferencia(rol) {
+  const p = await obtenerParametrosRecibos();
+  const habilitado = ['1', 'true', 'si', 'habilitado'].includes(normalizarTexto(valorRecibos(p, PR.HABILITAR_AVISO_TRANSF)));
+  return {
+    aplica: habilitado && enLista(valorRecibos(p, PR.AVISO_TRANSF_ORIGEN), rol),
+    rolesDestino: lista(valorRecibos(p, PR.AVISO_TRANSF_DESTINO)),
   };
 }
 
@@ -289,6 +311,7 @@ module.exports = {
   obtenerConfigServiciosMasivo,
   obtenerTopeValorBaseServicio,
   obtenerPermisosRecibos,
+  obtenerAvisoFotoTransferencia,
   obtenerNitsRetencionObligatoria,
   PARAMETROS_FACTURACION_RECIBOS: PR,
   puedeDepurarMaestros,

@@ -18,6 +18,7 @@ const { puedeGestionarClientesCredito } = require('../services/configBloqueo');
 const configServicios = require('../services/configServicios');
 const periodoServicios = require('../services/periodoServicios');
 const { buscarTarifa } = require('../services/tarifasServicio');
+const { avisarFotoTransferenciaPendiente } = require('../services/avisoFotoTransferencia');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
   area: 'area', actividad: 'actividad', vehiculo: 'vehiculo', unidad: 'unidad', remolque: 'remolque',
@@ -5825,12 +5826,13 @@ async function calcularHorasServicio({ horaInicioRaw, duracion, horaFinalRaw }) 
 }
 
 // Estado solo puede pasar a 'Green' si Cantidad, Valor Unitario y Forma De Pago tienen valor,
-// y si Forma De Pago = 2 (Transferencia) además se exige Foto Transferencia.
-function puedeMarcarGreen({ cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl }) {
+// y si Forma De Pago = 2 (Transferencia) además se exige Foto Transferencia, salvo al editar con
+// un rol de 'Roles que pueden pasar a verde un servicio por Transferencia sin Foto de Transferencia'.
+function puedeMarcarGreen({ cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl, sinFotoTransferencia = false }) {
   if (cantidad === null || cantidad === undefined) return false;
   if (valorUnitario === null || valorUnitario === undefined) return false;
   if (!formaDePago) return false;
-  if (Number(formaDePago) === 2 && !fotoTransferenciaUrl) return false;
+  if (Number(formaDePago) === 2 && !fotoTransferenciaUrl && !sinFotoTransferencia) return false;
   return true;
 }
 
@@ -6334,7 +6336,8 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       configServicios.CAMPOS.Servicio.forEach((c) => {
         if (!editables.has(c.bodyKey)) { delete body[c.bodyKey]; delete files[c.bodyKey]; }
       });
-      ['estado', 'formaDePago', 'fechaTransferencia', 'fotoTransferencia'].forEach((k) => { delete body[k]; delete files[k]; });
+      // Foto Transferencia solo si está marcada "Editable en verde" (ya se quitó arriba si no lo está)
+      ['estado', 'formaDePago', 'fechaTransferencia'].forEach((k) => { delete body[k]; delete files[k]; });
       if (!editables.has('horaInicio') && !editables.has('duracion')) delete body.horaFinal;
     }
     const errorAjustes = await configServicios.aplicarConfig({
@@ -6399,7 +6402,9 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
 
     let estado = (typeof body.estado !== 'undefined') ? body.estado : existente.Estado;
     if (!['Green', 'Yellow', 'Red'].includes(estado)) estado = 'Yellow';
-    if (estado === 'Green' && !puedeMarcarGreen({ cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl })) {
+    if (estado === 'Green' && !puedeMarcarGreen({
+      cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl, sinFotoTransferencia: permisosRecibos.verdeSinFotoTransferencia,
+    })) {
       return res.status(400).json({ error: 'Para marcar el servicio en Verde debe tener Cantidad, Valor Unitario y Forma de Pago; si la Forma de Pago es Transferencia, también la Foto de Transferencia.' });
     }
     const edicion = (estado === 'Green') ? 'Completado' : 'Pendiente';
@@ -6476,6 +6481,12 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
         idServicio
       ]
     );
+
+    // Pasó a Transferencia y quedó sin foto: aviso a los responsables de la operación (no frena el guardado)
+    if (formaDePago === 2 && Number(existente['Forma De Pago']) !== 2 && !fotoTransferenciaUrl) {
+      avisarFotoTransferenciaPendiente({ idServicio, acceso })
+        .catch((err) => console.error('[facturacion] Aviso de Foto de Transferencia pendiente:', err.message));
+    }
 
     res.json({ ok: true, idServicio });
   } catch (err) {

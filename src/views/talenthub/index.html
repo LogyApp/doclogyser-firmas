@@ -2033,9 +2033,9 @@
             <span class="filtros-badge" id="lblFiltrosActivosCountAsp"></span>
           </span>
           <input type="search" class="filtros-busqueda" id="filtroAspQ" placeholder="&#128269; Buscar nombre, cédula, teléfono, correo o cargo..." aria-label="Buscador de Aspirantes" oninput="clearTimeout(window._thBusq); window._thBusq = setTimeout(aplicarFiltrosAspirantes, 450)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter') aplicarFiltrosAspirantes()">
-          <span class="filtros-chevron open" id="iconToggleFiltrosAsp">▸</span>
+          <span class="filtros-chevron" id="iconToggleFiltrosAsp">▸</span>
         </div>
-        <div class="filter-panel-body" id="bodyFiltrosAspirantes">
+        <div class="filter-panel-body" id="bodyFiltrosAspirantes" style="display:none;">
 
           <!-- Filtro Principal: Estado (Chips Dinámicos con Conteos) -->
           <div class="estado-filter-section">
@@ -7284,8 +7284,9 @@
         <tr onclick="abrirFichaAspirante('${esc(aspId)}')" style="cursor:pointer;">
           <td style="text-align:center; ${indentStyle}" onclick="event.stopPropagation()">
             <div style="display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap;">
-              <a href="/seleccion/portal/${encodeURIComponent(aspId)}" target="_blank" rel="noopener" class="btn btn-outline" style="padding:3px 7px; font-size:0.72rem; text-decoration:none;" title="Abrir el portal del aspirante">
-                <span>🌐 Portal</span>
+              ${a.pdf_public_url ? `<a href="${esc(a.pdf_public_url)}" target="_blank" rel="noopener" class="btn btn-outline" style="padding:3px 6px; font-size:0.78rem; text-decoration:none;" title="Ver hoja de vida (PDF)" aria-label="Ver hoja de vida"><span>📄</span></a>` : ''}
+              <a href="/seleccion/portal/${encodeURIComponent(aspId)}" target="_blank" rel="noopener" class="btn btn-outline" style="padding:3px 6px; font-size:0.78rem; text-decoration:none;" title="Abrir el portal del aspirante" aria-label="Portal del aspirante">
+                <span>🌐</span>
               </a>
               <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.72rem;" onclick="copiarLinkPortalAspirante('${esc(aspId)}')" title="Copiar enlace de acceso al portal del aspirante">
                 <span>🔗</span>
@@ -7293,8 +7294,8 @@
               <button type="button" class="btn btn-outline asp-wa-btn" style="padding:3px 6px; font-size:0.72rem;" ${waTel ? '' : 'disabled'} onclick="enviarPortalWhatsAppAspirante('${esc(aspId)}')" title="${waTel ? 'Enviar el enlace del portal por WhatsApp' : 'El aspirante no tiene teléfono'}" aria-label="Enviar por WhatsApp">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.04 2C6.5 2 2 6.5 2 12.04c0 1.77.46 3.5 1.34 5.02L2 22l5.07-1.33a10 10 0 0 0 4.97 1.27h.01C17.55 21.94 22 17.44 22 11.9 22 6.5 17.5 2 12.04 2zm0 18.2h-.01a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.01.79.8-2.93-.2-.3a8.2 8.2 0 1 1 6.9 3.76z"/></svg>
               </button>
-              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" onclick="event.preventDefault(); abrirAdminAspirante('${esc(aspId)}')" class="btn btn-primary" style="padding:3px 7px; font-size:0.72rem; text-decoration:none;" title="Abrir Panel Admin">
-                <span>⚙️ Admin</span>
+              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" onclick="event.preventDefault(); abrirAdminAspirante('${esc(aspId)}')" class="btn btn-primary" style="padding:3px 6px; font-size:0.78rem; text-decoration:none;" title="Abrir Panel Admin" aria-label="Panel Admin">
+                <span>⚙️</span>
               </a>
             </div>
           </td>
@@ -7327,7 +7328,7 @@
           <td>
             <span class="tag-badge" style="background:var(--bg-elevated); color:var(--text); font-size:0.72rem;">${medio}</span>
           </td>
-          <td style="text-align:center;">${docsHtml}</td>
+          <td style="text-align:center; cursor:pointer;" onclick="event.stopPropagation(); abrirFichaAspirante('${esc(aspId)}', 'Docs')" title="Clic para ver los documentos">${docsHtml}</td>
           <td>
             <span class="status-badge ${badgeClase}">${esc(a.estado_proceso || 'Registro')}</span>
           </td>
@@ -7427,7 +7428,7 @@
 
     async function abrirFichaAspirante(idAspirante, subTabInicial) {
       if (!idAspirante) return;
-      if (subTabInicial) _aspSubTabActiva = subTabInicial;
+      _aspSubTabActiva = subTabInicial || 'Datos';
       const modal = document.getElementById('modalFichaAspirante');
       if (!modal) return;
 

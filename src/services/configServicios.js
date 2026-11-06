@@ -43,6 +43,8 @@ const CAMPOS = {
     { columna: 'Notas', etiqueta: 'Notas', tipo: 'texto', bodyKey: 'notas' },
     { columna: 'Foto Documento', etiqueta: 'Foto Documento', tipo: 'archivo', bodyKey: 'fotoDocumento' },
     { columna: 'Foto Evidencia', etiqueta: 'Foto Evidencia', tipo: 'archivo', bodyKey: 'fotoEvidencia' },
+    // Se muestra según la Forma de Pago (Transferencia): aquí solo cuenta "Editable en verde"
+    { columna: 'Foto Transferencia', etiqueta: 'Foto Transferencia', tipo: 'archivo', bodyKey: 'fotoTransferencia', soloEditableValidado: true },
     { columna: 'Telefono', etiqueta: 'Teléfono', tipo: 'texto', bodyKey: 'telefono' },
     { columna: 'Observaciones', etiqueta: 'Observaciones', tipo: 'texto', bodyKey: 'observaciones' },
   ],
@@ -124,10 +126,11 @@ async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {
     const paraRol = !roles.length || roles.some((r) => normalizar(r) === rolNorm);
     const aplica = cumpleCondicion(f, contexto);
     const esLista = !!campo.tipoDato && normalizar(f.tipo_dato) === 'lista'; // Etapa y Muelle con opciones
+    const soloVerde = !!campo.soloEditableValidado; // no se oculta ni se vuelve obligatorio
     config[columna] = {
       etiqueta: String(f.etiqueta_columna || '').trim() || campo.etiqueta,
-      visible: Number(f.visible) === 1 && paraRol && aplica,
-      obligatorio: Number(f.obligatorio) === 1 && aplica,
+      visible: (soloVerde || Number(f.visible) === 1) && paraRol && aplica,
+      obligatorio: !soloVerde && Number(f.obligatorio) === 1 && aplica,
       habilitados: (campo.tipo === 'lista' || esLista) ? lista(f.datos_habilitados) : [],
       lista: esLista,
       defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',

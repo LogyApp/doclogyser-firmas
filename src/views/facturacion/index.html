@@ -4034,7 +4034,7 @@
           <label>Etiqueta en el formulario</label>
           <input type="text" id="aj-etiqueta" maxlength="100" placeholder="Vacío = el nombre de siempre">
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div id="aj-visible-obligatorio-wrap" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="form-group">
             <label>Visible</label>
             <div class="btn-grupo">
@@ -9358,7 +9358,7 @@
       if (vacio(s.Cantidad)) faltan.push('Cantidad');
       if (vacio(s['Valor Unitario'])) faltan.push('Valor Unitario');
       if (vacio(s['Forma De Pago'])) faltan.push('Forma de Pago');
-      else if (Number(s['Forma De Pago']) === 2 && vacio(s['Foto Transferencia'])) faltan.push('Foto de Transferencia');
+      else if (Number(s['Forma De Pago']) === 2 && vacio(s['Foto Transferencia']) && !PERMISOS_RECIBOS.verdeSinFotoTransferencia) faltan.push('Foto de Transferencia');
       if (faltan.length) {
         return alert('Para pasar el servicio a Verde falta:\n\n• ' + faltan.join('\n• ') + '\n\nComplételo con ✏️ Editar.');
       }
@@ -11335,6 +11335,8 @@
       selModalidad.disabled = esModalidad || !ajPuede('editar');
 
       document.getElementById('aj-tipo-dato-wrap').style.display = campo.tipoDato ? '' : 'none';
+      // Foto Transferencia: aparece según la Forma de Pago; aquí solo se ajusta "Editable en verde"
+      document.getElementById('aj-visible-obligatorio-wrap').style.display = campo.soloEditableValidado ? 'none' : 'grid';
       habWrap.style.display = campo.tipo === 'lista' ? '' : 'none';
       defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto') ? '' : 'none';
       defSel.style.display = campo.tipo === 'lista' ? '' : 'none';
@@ -11998,8 +12000,10 @@
         ['ms-foto-documento', 'ms-foto-evidencia', 'ms-foto-transferencia'].forEach(actualizarZonaArchivoServicio);
         return;
       }
+      // Foto Transferencia no está en CAMPOS_FORM_AJUSTES (su visibilidad la decide la Forma de Pago)
+      const idCampo = (col) => CAMPOS_FORM_AJUSTES.Servicio[col] || (col === 'Foto Transferencia' ? 'ms-foto-transferencia' : null);
       const permitidos = Object.entries(msAjustes).filter(([, c]) => c.editableValidado && c.visible)
-        .map(([col]) => grupoCampoFormulario(document.getElementById(CAMPOS_FORM_AJUSTES.Servicio[col]))).filter(Boolean);
+        .map(([col]) => grupoCampoFormulario(document.getElementById(idCampo(col)))).filter(Boolean);
       form.querySelectorAll('input, select, textarea, button').forEach(el => {
         if (el.disabled || el.id === 'ms-foto-camara' || permitidos.some(g => g.contains(el))) return;
         el.disabled = true;
@@ -12568,7 +12572,9 @@
         if (cantidadVal === '' || valorUnitarioVal === '' || !formaDePago) {
           return alert('Para marcar el servicio en Verde debe diligenciar Cantidad, Valor Unitario y Forma de Pago.');
         }
-        if (Number(formaDePago) === 2) {
+        // Al editar, los roles de Config_Parametros pueden pasar a verde sin la foto
+        const exentoFoto = modalServicio.modo === 'editar' && PERMISOS_RECIBOS.verdeSinFotoTransferencia;
+        if (Number(formaDePago) === 2 && !exentoFoto) {
           const hayFotoNueva = document.getElementById('ms-foto-transferencia').files.length > 0;
           const hayFotoActual = msServicioExistente && msServicioExistente['Foto Transferencia'];
           if (!hayFotoNueva && !hayFotoActual) {
