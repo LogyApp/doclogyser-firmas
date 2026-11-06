@@ -63,6 +63,15 @@ async function obtenerContactoTrabajador(identificacion) {
   };
 }
 
+// Estado del trabajador según su vinculación más reciente: a un Retirado no se le envía el correo del acta.
+async function trabajadorRetirado(identificacion) {
+  const [[row]] = await pool.execute(
+    'SELECT Estado FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+    [identificacion]
+  );
+  return !!row && String(row.Estado || '').trim().toLowerCase() === 'retirado';
+}
+
 // Actualiza Email/Celular en Maestro_Segmentación (tabla maestra compartida del trabajador).
 async function actualizarContactoTrabajador(identificacion, email, celular) {
   if (!identificacion) return;
@@ -791,11 +800,7 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
     if (errCreacion) return res.status(403).json({ error: errCreacion });
 
     // Validar si el trabajador está retirado y si el rol del usuario puede generarle actas
-    const [[vincEstadoRow]] = await pool.execute(
-      'SELECT Estado FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [identificacion]
-    );
-    const esRetirado = vincEstadoRow && String(vincEstadoRow.Estado || '').trim().toLowerCase() === 'retirado';
+    const esRetirado = await trabajadorRetirado(identificacion);
     if (esRetirado) {
       const accesoUser = await computarAccesoActas(usuario);
       const cfgActas = await obtenerConfigActas(accesoUser ? accesoUser.rol : '');
@@ -872,7 +877,8 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
     await conn.commit();
 
     // Post-commit, en segundo plano: actualiza el contacto, sincroniza Fecha_Ultima_Entrega si es DOTACIÓN,
-    // genera el enlace de firma (48h) y notifica por correo al trabajador si tiene correo registrado y el envío está activo.
+    // genera el enlace de firma (48h) y notifica por correo al trabajador si tiene correo registrado, el envío está activo
+    // y el trabajador no está Retirado.
     (async () => {
       try {
         if (normalizarTexto(categoria) === 'dotacion') {
@@ -891,7 +897,7 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
         const contacto = await obtenerContactoTrabajador(parseInt(identificacion));
         const emailDestino = (email && email.trim()) || contacto.email;
         // "Habilitar notificaciones de correo en Actas" (Config_Parametros, inventario / Actas)
-        if (!emailDestino || !(await correoActasHabilitado())) return;
+        if (!emailDestino || esRetirado || !(await correoActasHabilitado())) return;
 
         // "Horas de vigencia del enlace de firma de actas"
         const token = await generarToken('Dynamic_Actas', 'IdActa', idActa, 'token_firma', 'token_expira', await horasVigenciaEnlaceActas());
@@ -1141,6 +1147,9 @@ router.post('/api/acta/:id/correo', async (req, res) => {
     }
 
     await actualizarContactoTrabajador(acta.identificacion, email, celular);
+    if (await trabajadorRetirado(acta.identificacion)) {
+      return res.json({ ok: true, enviado: false, motivo: 'El trabajador está Retirado: no se le envía el correo del acta.' });
+    }
     const contacto = await obtenerContactoTrabajador(acta.identificacion);
     const emailDestino = (email && email.trim()) || contacto.email;
     if (!emailDestino) {
