@@ -4439,7 +4439,9 @@ router.get('/api/servicios/:idServicio', async (req, res) => {
         mt.Transportadora as transportadoraNombre,
         mf.Quincena as quincenaNombre,
         mo.REGIONAL as regionalNombre,
-        mc.\`Razón social\` as razonSocial
+        mc.\`Razón social\` as razonSocial,
+        (SELECT GROUP_CONCAT(mprov.Proveedor ORDER BY FIND_IN_SET(mprov.ID, s.Proveedor) SEPARATOR ', ')
+         FROM Maestro_Proveedor mprov WHERE FIND_IN_SET(mprov.ID, s.Proveedor)) as proveedorNombres
       FROM Dynamic_Servicios s
       LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
       LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID

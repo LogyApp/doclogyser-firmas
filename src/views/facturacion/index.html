@@ -1016,6 +1016,11 @@
       border-radius: 10px;
       padding: 18px;
     }
+    /* Detalle del Servicio: tono azul (--info-soft, cambia con el tema) para no confundirlo con el del Recibo */
+    #servicios-vista-detalle .detail-section {
+      background: var(--info-soft);
+      border-left: 4px solid var(--info);
+    }
     .detail-section-title {
       font-size: 0.9rem;
       font-weight: 700;
@@ -1807,9 +1812,11 @@
           </div>
 
           <div id="det-serv-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid #2563eb; background:rgba(37, 99, 235, 0.12); color:#2563eb; text-decoration:none;">
+            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" title="Ver Servicio / Firma del Cliente" aria-label="Ver Servicio / Firma del Cliente" style="display:none; align-items:center; justify-content:center; gap:8px; padding: 9px 12px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid #2563eb; background:rgba(37, 99, 235, 0.12); color:#2563eb; text-decoration:none;">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 17c1.2-1.6 2-1.6 2.6 0 .5 1.3 1.2 1.3 2 .2.6-.8 1.3-.9 2.4-.2"></path></svg>
-              Ver Servicio / Firma del Cliente
+            </a>
+            <a id="btn-whatsapp-servicio" href="#" target="_blank" rel="noopener" title="Enviar el servicio por WhatsApp" aria-label="Enviar el servicio por WhatsApp" style="display:none; align-items:center; justify-content:center; gap:8px; padding: 9px 12px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:#ffffff; text-decoration:none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.05 21.5h-.01a9.43 9.43 0 0 1-4.8-1.32l-.35-.2-3.57.94.95-3.48-.22-.36a9.4 9.4 0 0 1-1.44-5.02c0-5.2 4.24-9.43 9.45-9.43 2.52 0 4.89.98 6.67 2.77a9.37 9.37 0 0 1 2.76 6.67c0 5.2-4.24 9.43-9.44 9.43zm8.03-17.47A11.3 11.3 0 0 0 12.05.7C5.79.7.7 5.79.7 12.04c0 2 .52 3.95 1.51 5.67L.6 23.3l5.73-1.5a11.3 11.3 0 0 0 5.71 1.46h.01c6.25 0 11.34-5.09 11.35-11.34a11.27 11.27 0 0 0-3.32-8.02z"/></svg>
             </a>
           </div>
 
@@ -9150,6 +9157,18 @@
           btnVerServicio.style.display = 'none';
         }
 
+        // WhatsApp del servicio: con las mismas reglas del botón anterior y un teléfono para enviarlo.
+        // Verde si el servicio está validado, amarillo si no.
+        const btnWhatsappServ = document.getElementById('btn-whatsapp-servicio');
+        const telWhatsapp = telefonoWhatsApp(telefonoServicio);
+        if (formaPagoOk && telWhatsapp) {
+          btnWhatsappServ.href = `https://wa.me/${telWhatsapp}?text=${encodeURIComponent(construirMensajeWhatsAppServicio(s, idServicio))}`;
+          btnWhatsappServ.style.background = (s.Estado === 'Green') ? 'var(--success)' : 'var(--warning)';
+          btnWhatsappServ.style.display = 'inline-flex';
+        } else {
+          btnWhatsappServ.style.display = 'none';
+        }
+
         // Sección 2
         document.getElementById('det-hora-inicio').textContent = formatFechaBogota(s['Hora Inicio']);
         document.getElementById('det-hora-final').textContent = formatFechaBogota(s['Hora Final']);
@@ -12845,6 +12864,37 @@
         `- *Fecha:* ${fechaTexto}\n` +
         `- *Recibo:* ${recibo}\n` +
         '*Estado:* *PENDIENTE* 🚫';
+    }
+
+    // Teléfono para wa.me: solo dígitos y con el indicativo 57 si viene el celular de 10 dígitos
+    function telefonoWhatsApp(tel) {
+      const d = String(tel || '').replace(/\D/g, '');
+      if (!d) return '';
+      return (d.length === 10) ? '57' + d : d;
+    }
+
+    // Mensaje de WhatsApp del servicio (antes, fórmula de AppSheet). El enlace va solo en su
+    // línea, con espacio antes y salto después, para que WhatsApp lo reconozca como enlace.
+    function construirMensajeWhatsAppServicio(s, idServicio) {
+      const linea = (etiqueta, valor) => (valor === null || valor === undefined || String(valor).trim() === '')
+        ? '' : `- *${etiqueta}:* _${String(valor).trim()}_\n`;
+      const pesos = (n) => '$ ' + formatMiles(Math.round(Number(n) || 0));
+      const encabezado = [s.modalidad || 'CREDITO', s.clienteAFacturar].filter(Boolean).join(' - ');
+      return '🟦🟧 *LOGYSER Nit: 900.318.733-1*\n\n' +
+        'Hola, este es el detalle de tu servicio:\n\n' +
+        `🔗 https://digital.logyser.com/servicio/${idServicio}\n\n` +
+        `*${encabezado}*\n` +
+        linea('No. Servicio', idServicio) +
+        linea('Recibo', s.consecutivoRecibo) +
+        linea('Operación', s.operacion) +
+        linea('Placa', s.placaNombre || s.reciboPlaca) +
+        linea('Fecha', s['Hora Inicio'] ? formatFechaCorta(s['Hora Inicio']) : '') +
+        linea('Proveedor', s.proveedorNombres || s['Proveedor Texto'] || s.Proveedor) + // en CREDITO, Proveedor ya es el nombre
+        linea('Actividad', s.actividadNombre) +
+        linea('Unidad', s.Unidad) +
+        linea('Cantidad', s.Cantidad != null ? formatMiles(Math.round(Number(s.Cantidad))) : '') +
+        linea('V. Unitario', s['Valor Unitario'] != null ? pesos(s['Valor Unitario']) : '') +
+        `✅ *Neto: ${pesos(s.valorBase)}*`;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
