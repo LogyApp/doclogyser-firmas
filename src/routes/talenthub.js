@@ -746,6 +746,11 @@ router.post('/api/integridad/modificar', async (req, res) => {
         'UPDATE `Dynamic_hv_documentos` SET `gcs_path` = REPLACE(`gcs_path`, ?, ?) WHERE `gcs_path` LIKE ?',
         [oldIdentificacion, newIdentificacion, `%${oldIdentificacion}%`]
       );
+      // La versión propia de la Hoja de Vida guarda su ruta en observaciones ("Versión del aspirante: <ruta>")
+      await conn.execute(
+        "UPDATE `Dynamic_hv_documentos` SET `observaciones` = REPLACE(`observaciones`, ?, ?) WHERE `observaciones` LIKE ?",
+        [oldIdentificacion, newIdentificacion, `Versión del aspirante:%${oldIdentificacion}%`]
+      );
 
       await conn.execute('SET foreign_key_checks = 1');
       await conn.commit();

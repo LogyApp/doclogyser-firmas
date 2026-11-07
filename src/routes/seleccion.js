@@ -14,7 +14,7 @@ const {
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
-const { obtenerDocsSeleccion, ID_HOJA_VIDA } = require('../services/docsSeleccion');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante } = require('../services/docsSeleccion');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -337,7 +337,7 @@ router.get('/portal/:uuid', async (req, res) => {
   try {
     const [ [aspiranteRows], [cargados], docsSel ] = await Promise.all([
       pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso, IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
-      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
       obtenerDocsSeleccion()
     ]);
 
@@ -376,7 +376,9 @@ router.get('/portal/:uuid', async (req, res) => {
     });
 
     const docHv = docsSel.aspirante.find(d => d.id === ID_HOJA_VIDA);
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion, docHv ? docHv.etiqueta : undefined));
+    const filaHv = cargados.find(c => Number(c.id_config_doc) === ID_HOJA_VIDA);
+    const hvPropiaPath = filaHv ? rutaHvAspirante(filaHv.observaciones) : null;
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion, docHv ? docHv.etiqueta : undefined, hvPropiaPath));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -399,7 +401,7 @@ router.get('/admin/:uuid', async (req, res) => {
          FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`, 
         [uuid]
       ),
-      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
       pool.execute(`
         SELECT IdRequisicion, \`Requisición\`, \`Operación\`, \`Cargo Requerido\`, \`N° Personas Requeridas\`, Estado 
         FROM Dynamic_Requisiciones 
@@ -447,7 +449,7 @@ router.get('/admin/:uuid', async (req, res) => {
     const docsFirmar = await obtenerDocsFirmaParaOperacion(operacionSugerida);
 
     const mapaDocs = {};
-    cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path }; });
+    cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path, rutaPropia: rutaHvAspirante(c.observaciones) }; });
 
     res.send(generarHtmlAdmin(
       uuid,
@@ -722,6 +724,26 @@ router.post('/delete-doc', async (req, res) => {
   const { id_aspirante, id_config_doc } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
   try {
+    // Hoja de Vida: desde el portal solo se elimina la versión propia del aspirante;
+    // la que genera el sistema nunca se borra aquí.
+    if (Number(id_config_doc) === ID_HOJA_VIDA) {
+      const [hvRows] = await pool.execute(
+        'SELECT gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+        [id_aspirante, ID_HOJA_VIDA]
+      );
+      const rutaPropia = hvRows.length ? rutaHvAspirante(hvRows[0].observaciones) : null;
+      if (rutaPropia) {
+        await getBucketAspirantes().file(rutaPropia).delete().catch(() => console.warn(`Archivo no encontrado en GCS (HV propia): ${rutaPropia}`));
+        if (hvRows[0].gcs_path === rutaPropia) {
+          await pool.execute('DELETE FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?', [id_aspirante, ID_HOJA_VIDA]);
+        } else {
+          await pool.execute('UPDATE Dynamic_hv_documentos SET observaciones = NULL WHERE id_aspirante = ? AND id_config_doc = ?', [id_aspirante, ID_HOJA_VIDA]);
+        }
+        return res.redirect(`/seleccion/portal/${id_aspirante}?usuario=${usuario}&msg=deleted`);
+      }
+      return res.redirect(`/seleccion/portal/${id_aspirante}?usuario=${usuario}`);
+    }
+
     const [rows] = await pool.execute(
       'SELECT gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
       [id_aspirante, id_config_doc]
@@ -1009,6 +1031,33 @@ router.post('/api/confirm-doc', async (req, res) => {
 
     const { identificacion } = aspRows[0];
     const { Prefijo } = configRows[0];
+
+    // Hoja de Vida (Id 30): la versión propia del aspirante va en un archivo aparte
+    // para no sobrescribir la que genera el sistema, y se marca en `observaciones`.
+    if (idDoc === ID_HOJA_VIDA) {
+      const bucketHv = getBucketAspirantes();
+      const rutaPropia = `${identificacion}/${identificacion}.${Prefijo}.${id_aspirante}.ASPIRANTE${extension}`;
+      const [hvRows] = await pool.execute(
+        'SELECT observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+        [id_aspirante, idDoc]
+      );
+      const rutaAnterior = hvRows.length ? rutaHvAspirante(hvRows[0].observaciones) : null;
+
+      await bucketHv.file(temp_gcs_path).copy(bucketHv.file(rutaPropia));
+      await bucketHv.file(temp_gcs_path).delete().catch(err => console.warn('No se pudo borrar temporal:', err));
+      if (rutaAnterior && rutaAnterior !== rutaPropia) {
+        await bucketHv.file(rutaAnterior).delete().catch(() => {});
+      }
+
+      // Si no existe el registro de la HV del sistema, la versión propia ocupa el registro.
+      await pool.execute(
+        `INSERT INTO Dynamic_hv_documentos (id_aspirante, id_config_doc, gcs_path, estado, fuente, observaciones)
+         VALUES (?, ?, ?, 'Pendiente', 'Carga Manual', ?)
+         ON DUPLICATE KEY UPDATE observaciones = VALUES(observaciones), fecha_actualizacion = CURRENT_TIMESTAMP`,
+        [id_aspirante, idDoc, rutaPropia, `${MARCA_HV_ASPIRANTE}: ${rutaPropia}`]
+      );
+      return res.json({ ok: true });
+    }
 
     const destPath = `${identificacion}/${identificacion}.${Prefijo}.${id_aspirante}${extension}`;
 
@@ -1334,14 +1383,27 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const srcBucket = getBucketAspirantes();
     const destBucket = getBucketEmpleados();
 
-    for (const doc of docs) {
-      await srcBucket.file(doc.gcs_path).copy(destBucket.file(doc.gcs_path)).catch(e => console.error("Error GCS Copy:", e));
-
-      await connection.query(`
+    const sqlDocTrabajador = `
         INSERT INTO Maestro_docTrabajador 
-        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Usuario)
-        VALUES (UUID(), 'PEND', ?, ?, ?, 'Activo', ?, ?, ?, ?, ?)
-      `, [regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario]);
+        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Usuario, Observaciones)
+        VALUES (UUID(), 'PEND', ?, ?, ?, 'Activo', ?, ?, ?, ?, ?, ?)`;
+
+    for (const doc of docs) {
+      // Hoja de Vida: si el aspirante subió su propia versión, también se traslada (marcada en Observaciones)
+      const rutaPropiaHv = Number(doc.id_config_doc) === ID_HOJA_VIDA ? rutaHvAspirante(doc.observaciones) : null;
+
+      await srcBucket.file(doc.gcs_path).copy(destBucket.file(doc.gcs_path)).catch(e => console.error("Error GCS Copy:", e));
+      await connection.query(sqlDocTrabajador, [
+        regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario,
+        rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null
+      ]);
+
+      if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path) {
+        await srcBucket.file(rutaPropiaHv).copy(destBucket.file(rutaPropiaHv)).catch(e => console.error("Error GCS Copy (HV aspirante):", e));
+        await connection.query(sqlDocTrabajador, [
+          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaPropiaHv, nombreUsuario, MARCA_HV_ASPIRANTE
+        ]);
+      }
     }
 
     // 8. Bloquear proceso del aspirante y guardar el usuario creador en Dynamic_hv_aspirante
@@ -1377,7 +1439,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida') {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null) {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -1467,7 +1529,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   // Bloque de la Hoja de Vida: la que genera el sistema (ver / editar) y, opcional,
   // la versión propia del aspirante (Config_Doc_Trabajador Id 30, solo informativa).
   const renderBloqueHojaVida = () => {
-    const propia = mapaDocs[ID_HOJA_VIDA];
+    // Solo cuenta como subida si el registro de la HV tiene la marca "Versión del aspirante"
+    const propia = hvPropiaPath ? { path: hvPropiaPath } : null;
     return `
     <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100 mb-8">
       <div class="p-6 md:p-8">
@@ -1496,7 +1559,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
             <div class="flex items-center gap-2">
               ${propia ? `
                 <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${propia.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
-                ${propia.estado !== 'Aprobado' ? `<button type="button" onclick="confirmarEliminar('${ID_HOJA_VIDA}', 'tu versión de la hoja de vida')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>'}
+                <button type="button" onclick="confirmarEliminar('${ID_HOJA_VIDA}', 'tu versión de la hoja de vida')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>
               ` : `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${ID_HOJA_VIDA}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`}
             </div>
           </div>
@@ -2735,8 +2798,9 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
                   <span class="text-[11px] font-bold text-slate-600">${nombreDoc}</span>
                 </div>
                 <div class="flex gap-2 items-center">
-                  ${d ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
-                  ${d && d.estado !== 'Aprobado' && !bloqueado ? 
+                  ${d && !(id === ID_HOJA_VIDA && d.rutaPropia === d.path) ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
+                  ${d && id === ID_HOJA_VIDA && d.rutaPropia ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.rutaPropia}" target="_blank" class="text-[10px] font-bold text-indigo-600 hover:underline" title="Versión que subió el aspirante">VER VERSIÓN ASPIRANTE</a>` : ''}
+                  ${d && d.estado !== 'Aprobado' && !bloqueado && id !== ID_HOJA_VIDA ? 
                     `<button type="button" onclick="eliminar(${id}, '${jsAttr(nombreDoc)}')" class="text-[10px] text-red-400 italic font-bold">BORRAR</button>` 
                     : (d?.estado === 'Aprobado' ? '<span class="text-[10px] font-black text-green-600 uppercase">✓ APROBADO</span>' : '')
                   }

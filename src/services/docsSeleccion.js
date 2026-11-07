@@ -1,7 +1,7 @@
 const pool = require('./db');
 
 // ── Documentos del proceso de selección (Portal del aspirante y Panel Admin) ──
-// Las listas salen de Config_Doc_Trabajador según su Clasificacion:
+// Las listas salen de Config_Doc_Trabajador (solo tipo_doc = 'Trabajador') según su Clasificacion:
 //   "1. Documentos Aspirante"   → bloque del aspirante
 //   "2. Documentos Técnicos"    → bloque técnico (lo carga Selección)
 //   "3. Documentos para Firmas" → documentos que el aspirante firma digitalmente
@@ -10,6 +10,19 @@ const pool = require('./db');
 
 const ID_HOJA_VIDA = 30;   // "Hoja de Vida": en el portal va en su propio bloque (opcional)
 const ID_CEDULA = 11;
+
+// Versión propia de la Hoja de Vida que sube el aspirante (opcional). La del sistema
+// ocupa el registro de Id 30 en Dynamic_hv_documentos (solo se permite uno por
+// aspirante y documento), así que la versión propia va en un archivo aparte y se
+// marca en `observaciones` con: "Versión del aspirante: <ruta del archivo>".
+const MARCA_HV_ASPIRANTE = 'Versión del aspirante';
+
+function rutaHvAspirante(observaciones) {
+  const obs = (observaciones || '').toString().trim();
+  if (!obs.toLowerCase().startsWith(MARCA_HV_ASPIRANTE.toLowerCase())) return null;
+  const ruta = obs.slice(MARCA_HV_ASPIRANTE.length).replace(/^\s*:\s*/, '').trim();
+  return ruta || null;
+}
 
 const CLASIFICACIONES = { aspirante: '1.', tecnicos: '2.', firmas: '3.' };
 
@@ -107,7 +120,8 @@ async function obtenerDocsSeleccion() {
   try {
     const [rows] = await pool.execute(
       `SELECT Id, Prefijo, Documento, Clasificacion FROM Config_Doc_Trabajador
-       WHERE Clasificacion LIKE '1.%' OR Clasificacion LIKE '2.%' OR Clasificacion LIKE '3.%'`
+       WHERE tipo_doc = 'Trabajador'
+         AND (Clasificacion LIKE '1.%' OR Clasificacion LIKE '2.%' OR Clasificacion LIKE '3.%')`
     );
     filas = rows;
   } catch (err) {
@@ -174,6 +188,8 @@ async function obtenerDocFirma(idConfigDoc) {
 module.exports = {
   ID_HOJA_VIDA,
   ID_CEDULA,
+  MARCA_HV_ASPIRANTE,
+  rutaHvAspirante,
   obtenerDocsSeleccion,
   obtenerDocsFirmaParaOperacion,
   obtenerDocFirma
