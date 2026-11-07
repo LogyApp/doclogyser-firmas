@@ -49,11 +49,12 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     }
   }
 
-  // Validación: Documento 33 (Formatos Italcol) solo para "Italcol La Estrella"
-  if (Number(idConfigDoc) === 33) {
-    const esItalcol = (operacion || '').toString().trim().toLowerCase() === 'italcol la estrella';
-    if (!esItalcol) {
-      throw new Error("El documento Formatos Italcol solo aplica para la operación 'Italcol La Estrella'");
+  // Validación: el documento debe aplicar a la operación de la requisición
+  // (regla en Config_Parametros talenthub/Aspirantes; ej. Formatos Italcol solo en "Italcol La Estrella")
+  if (docItem) {
+    const aplicables = await obtenerDocsFirmaParaOperacion(operacion);
+    if (!aplicables.some(d => d.id === docItem.id)) {
+      throw new Error(`El documento ${docItem.etiqueta || docItem.nombre} no aplica para la operación '${operacion || 'sin operación'}'`);
     }
   }
 

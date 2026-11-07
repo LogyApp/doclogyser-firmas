@@ -295,6 +295,29 @@ async function guardarArchivo(id_aspirante, id_config_doc, file) {
 
   const { identificacion, Prefijo, Documento } = datos[0];
   const extension = path.extname(file.originalname);
+
+  // Hoja de Vida (Id 30): la que se carga a mano es la versión del aspirante. Va en un
+  // archivo aparte para no sobrescribir la que genera el sistema y se marca en observaciones.
+  if (Number(id_config_doc) === ID_HOJA_VIDA) {
+    const nombrePropio = `${identificacion}.${Prefijo}.${id_aspirante}.ASPIRANTE${extension}`;
+    const rutaPropia = `${identificacion}/${nombrePropio}`;
+    const bucketHv = getBucketAspirantes();
+    const [hvRows] = await pool.execute(
+      'SELECT observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+      [id_aspirante, id_config_doc]
+    );
+    const rutaAnterior = hvRows.length ? rutaHvAspirante(hvRows[0].observaciones) : null;
+    await bucketHv.file(rutaPropia).save(file.buffer, { contentType: file.mimetype || 'application/pdf' });
+    if (rutaAnterior && rutaAnterior !== rutaPropia) await bucketHv.file(rutaAnterior).delete().catch(() => {});
+    await pool.execute(
+      `INSERT INTO Dynamic_hv_documentos (id_aspirante, id_config_doc, gcs_path, estado, fuente, observaciones)
+       VALUES (?, ?, ?, 'Pendiente', 'Carga Manual', ?)
+       ON DUPLICATE KEY UPDATE observaciones = VALUES(observaciones), fecha_actualizacion = CURRENT_TIMESTAMP`,
+      [id_aspirante, id_config_doc, rutaPropia, `${MARCA_HV_ASPIRANTE}: ${rutaPropia}`]
+    );
+    return nombrePropio;
+  }
+
   const nombreArchivo = `${identificacion}.${Prefijo}.${id_aspirante}${extension}`;
   const gcsPath = `${identificacion}/${nombreArchivo}`; 
 
@@ -2784,32 +2807,52 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="p-4 bg-blue-600 text-white font-bold text-xs tracking-widest uppercase text-center">1. Validar Aspirante</div>
-          <div class="p-4 space-y-3">
+        <form action="/seleccion/upload-multiple?usuario=${usuario}" method="POST" enctype="multipart/form-data"
+          class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-fit">
+          <input type="hidden" name="id_aspirante" value="${uuid}">
+          <input type="hidden" name="origen" value="admin">
+          <div class="p-4 bg-blue-600 text-white font-bold text-xs tracking-widest uppercase text-center">1. Documentos del Aspirante</div>
+          <div class="p-2">
             ${docsAsp.map(doc => {
               const id = doc.id;
               const d = mapa[id];
+              const esHv = id === ID_HOJA_VIDA;
               const nombreDoc = doc.nombre;
+              // En la Hoja de Vida, la del sistema siempre existe; lo que se carga aquí es la versión del aspirante
+              const tieneArchivoPropio = esHv ? !!(d && d.rutaPropia) : !!d;
+              const aprobado = d?.estado === 'Aprobado';
               return `
-              <div class="p-3 border rounded-2xl flex justify-between items-center ${d?.estado === 'Aprobado' ? 'bg-green-50 border-green-200' : 'bg-white border-slate-100'}">
-                <div class="flex items-center gap-2">
-                  ${d && d.estado !== 'Aprobado' ? `<input type="checkbox" class="doc-check w-4 h-4 rounded text-blue-600" value="${id}">` : ''}
-                  <span class="text-[11px] font-bold text-slate-600">${nombreDoc}</span>
+              <div class="p-3 border-b border-slate-100 last:border-0 ${aprobado ? 'bg-green-50/60' : ''}">
+                <div class="flex justify-between items-center ${!tieneArchivoPropio && !bloqueado ? 'mb-2' : ''}">
+                  <div class="flex items-center gap-1.5 flex-1 pr-2">
+                    ${d && !aprobado ? `<input type="checkbox" class="doc-check w-4 h-4 rounded text-blue-600" value="${id}">` : ''}
+                    <span class="text-[11px] font-bold text-slate-700 uppercase">${nombreDoc}</span>
+                    ${doc.prefijo ? `<span class="text-[9px] text-slate-400 font-mono font-bold">(${doc.prefijo})</span>` : ''}
+                  </div>
+                  <div class="flex gap-2 items-center shrink-0">
+                    ${d && !(esHv && d.rutaPropia === d.path) ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
+                    ${esHv && d && d.rutaPropia ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.rutaPropia}" target="_blank" class="text-[10px] font-bold text-indigo-600 hover:underline" title="Versión que subió el aspirante">VER VERSIÓN ASPIRANTE</a>` : ''}
+                    ${aprobado ? '<span class="text-[9px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-md uppercase">✓ Aprobado</span>' : ''}
+                    ${d && !aprobado && !bloqueado && !esHv ? `<button type="button" onclick="eliminar(${id}, '${jsAttr(nombreDoc)}')" class="text-[10px] text-red-400 italic font-bold hover:text-red-600">BORRAR</button>` : ''}
+                    ${!d ? '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic">Pendiente</span>' : ''}
+                  </div>
                 </div>
-                <div class="flex gap-2 items-center">
-                  ${d && !(id === ID_HOJA_VIDA && d.rutaPropia === d.path) ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
-                  ${d && id === ID_HOJA_VIDA && d.rutaPropia ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.rutaPropia}" target="_blank" class="text-[10px] font-bold text-indigo-600 hover:underline" title="Versión que subió el aspirante">VER VERSIÓN ASPIRANTE</a>` : ''}
-                  ${d && d.estado !== 'Aprobado' && !bloqueado && id !== ID_HOJA_VIDA ? 
-                    `<button type="button" onclick="eliminar(${id}, '${jsAttr(nombreDoc)}')" class="text-[10px] text-red-400 italic font-bold">BORRAR</button>` 
-                    : (d?.estado === 'Aprobado' ? '<span class="text-[10px] font-black text-green-600 uppercase">✓ APROBADO</span>' : '')
-                  }
-                </div>
+                ${!tieneArchivoPropio && !bloqueado ? `
+                  <div class="relative border-2 border-dashed border-slate-200 rounded-lg p-2 hover:border-blue-400 transition-colors bg-slate-50">
+                    <input type="file" name="file_${id}" accept=".pdf,.jpg,.jpeg,.png"
+                           onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name; this.parentElement.classList.add('bg-blue-50', 'border-blue-400')"
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <p class="text-[9px] text-center text-slate-400 file-name">${esHv ? 'Opcional: arrastra o haz clic para subir la versión del aspirante' : 'Arrastra o haz clic para subir el documento'}</p>
+                  </div>
+                ` : ''}
               </div>`;
             }).join('')}
-            <button onclick="aprobarMasivo()" class="w-full mt-4 bg-green-600 text-white py-3 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 shadow-md">Aprobar Seleccionados</button>
           </div>
-        </div>
+          <div class="p-4 space-y-2">
+            ${!bloqueado ? `<button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-xs hover:bg-blue-700 transition-all shadow-md">CARGAR DOCUMENTOS DEL ASPIRANTE</button>` : ''}
+            <button type="button" onclick="aprobarMasivo()" class="w-full bg-green-600 text-white py-3 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 shadow-md">Aprobar Seleccionados</button>
+          </div>
+        </form>
 
         <form action="/seleccion/upload-multiple?usuario=${usuario}" method="POST" enctype="multipart/form-data" 
           class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-fit">
