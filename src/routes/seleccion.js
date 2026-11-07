@@ -9,12 +9,12 @@ const crypto = require('crypto');
 const { notificarBloqueoAspirante, enviarCorreoPortalAspirante } = require('../services/email');
 const { notificarNuevoIngreso } = require('../services/notificacionIngreso');
 const {
-  DOCS_FIRMA_SELECCION,
   obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA } = require('../services/docsSeleccion');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -333,26 +333,23 @@ router.get('/portal/:uuid', async (req, res) => {
   const { uuid } = req.params;
   const usuario = req.query.usuario || '';
   
-  const docsAspirante = [
-    { id: 11, nombre: "Copia de la cédula ampliada al 150%" },
-    { id: 5,  nombre: "Antecedentes (Policía, Procuraduría, Contraloría)" },
-    { id: 15, nombre: "Certificado de EPS" },
-    { id: 3,  nombre: "ADRES (Si no tiene EPS)" },
-    { id: 14, nombre: "Certificado de Pensión" },
-    { id: 13, nombre: "Certificado de Estudio" },
-    { id: 17, nombre: "Certificado Laboral" },
-    { id: 10, nombre: "Certificación Bancaria" }
-  ];
 
   try {
-    const [ [aspiranteRows], [cargados] ] = await Promise.all([
+    const [ [aspiranteRows], [cargados], docsSel ] = await Promise.all([
       pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso, IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
-      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid])
+      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      obtenerDocsSeleccion()
     ]);
 
     if (aspiranteRows.length === 0) {
       return res.status(404).send("Aspirante no encontrado");
     }
+
+    // Documentos del aspirante (Config_Doc_Trabajador "1.") con la etiqueta del portal.
+    // La Hoja de Vida va aparte, en su propio bloque opcional al final.
+    const docsAspirante = docsSel.aspirante
+      .filter(d => d.id !== ID_HOJA_VIDA)
+      .map(d => ({ id: d.id, nombre: d.etiqueta }));
 
     const asp = aspiranteRows[0];
     const nombre = asp.primer_nombre || 'Aspirante';
@@ -370,14 +367,16 @@ router.get('/portal/:uuid', async (req, res) => {
       }
     }
 
-    const docsFirmaFiltrados = obtenerDocsFirmaParaOperacion(operacionAspirante);
+    const docsFirmaFiltrados = (await obtenerDocsFirmaParaOperacion(operacionAspirante))
+      .map(d => ({ ...d, nombre: d.etiqueta }));
 
     const mapaDocs = {};
     cargados.forEach(c => {
       mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path };
     });
 
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion));
+    const docHv = docsSel.aspirante.find(d => d.id === ID_HOJA_VIDA);
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion, docHv ? docHv.etiqueta : undefined));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -390,18 +389,9 @@ router.get('/admin/:uuid', async (req, res) => {
   const { uuid } = req.params;
   const usuario = req.query.usuario || '';
 
-  const nombresAsp = { 11: "Cédula 150%", 5: "Antecedentes", 15: "EPS", 3: "ADRES", 14: "Pensión", 13: "Estudio", 17: "Cert. Laboral", 10: "Bancaria" };
-  const docsAspiranteIds = [11, 5, 15, 3, 14, 13, 17, 10];
-  const docsTecnicos = [
-    { id: 24, nombre: "Examen médico" }, 
-    { id: 28, nombre: "Estudio seguridad" }, 
-    { id: 27, nombre: "Entrevista" }, 
-    { id: 8, nombre: "Manipulación alimentos" }, 
-    { id: 53, nombre: "Verificación referencias" }
-  ];
 
   try {
-    const [[aspiranteRows], [cargados], [todasRequisiciones]] = await Promise.all([
+    const [[aspiranteRows], [cargados], [todasRequisiciones], docsSel] = await Promise.all([
       pool.execute(
         `SELECT primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, 
                 identificacion, estado_proceso, IdRequisicion, pdf_public_url,
@@ -415,7 +405,8 @@ router.get('/admin/:uuid', async (req, res) => {
         FROM Dynamic_Requisiciones 
         WHERE UPPER(TRIM(Estado)) = 'EN PROCESO'
         ORDER BY \`Fecha Requisición\` DESC, IdRequisicion DESC
-      `)
+      `),
+      obtenerDocsSeleccion()
     ]);
 
     if (aspiranteRows.length === 0) return res.status(404).send("Aspirante no encontrado");
@@ -452,7 +443,8 @@ router.get('/admin/:uuid', async (req, res) => {
       }
     }
 
-    const docsFirmar = obtenerDocsFirmaParaOperacion(operacionSugerida);
+    // Panel Admin: nombres oficiales de Config_Doc_Trabajador
+    const docsFirmar = await obtenerDocsFirmaParaOperacion(operacionSugerida);
 
     const mapaDocs = {};
     cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path }; });
@@ -471,7 +463,7 @@ router.get('/admin/:uuid', async (req, res) => {
         telefono: a.telefono || '',
         correoElectronico: a.correo_electronico || ''
       },
-      docsAspiranteIds, nombresAsp, docsTecnicos, docsFirmar, mapaDocs, 
+      docsSel.aspirante, docsSel.tecnicos, docsFirmar, mapaDocs, 
       a.estado_proceso === 'contratado',
       usuario,
       todasRequisiciones
@@ -1385,7 +1377,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida') {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -1472,6 +1464,47 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     </div>`;
   };
 
+  // Bloque de la Hoja de Vida: la que genera el sistema (ver / editar) y, opcional,
+  // la versión propia del aspirante (Config_Doc_Trabajador Id 30, solo informativa).
+  const renderBloqueHojaVida = () => {
+    const propia = mapaDocs[ID_HOJA_VIDA];
+    return `
+    <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100 mb-8">
+      <div class="p-6 md:p-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-2xl bg-slate-100 text-slate-600 text-lg flex items-center justify-center shrink-0">📄</div>
+          <div>
+            <h3 class="text-lg md:text-xl font-black text-slate-800 uppercase italic tracking-tight">Hoja de Vida</h3>
+            <p class="text-xs text-slate-400 font-medium">La hoja de vida que generó el sistema con tus datos. Subir tu propia versión es opcional e informativo.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border border-slate-100 bg-white rounded-2xl shadow-sm gap-2">
+            <span class="text-sm font-semibold text-slate-700">Hoja de vida generada por el sistema</span>
+            <div class="flex flex-wrap items-center gap-3">
+              <a href="https://curriculum-compact-594761951101.europe-west1.run.app" target="_blank" class="text-xs font-bold text-blue-600 hover:underline">📝 Revisar o editar</a>
+              ${pdfUrl ? `<a href="${pdfUrl}" target="_blank" class="text-xs font-bold text-slate-600 hover:underline">Ver PDF ↗</a>` : ''}
+            </div>
+          </div>
+
+          <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${propia ? 'border-blue-100 bg-blue-50/30' : 'border-dashed border-slate-200 bg-slate-50/50'} rounded-2xl gap-2">
+            <div>
+              <span class="text-sm font-semibold text-slate-700 block">${ETIQUETA_HV_PROPIA}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Opcional</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${propia ? `
+                <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${propia.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+                ${propia.estado !== 'Aprobado' ? `<button type="button" onclick="confirmarEliminar('${ID_HOJA_VIDA}', 'tu versión de la hoja de vida')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>'}
+              ` : `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${ID_HOJA_VIDA}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  };
+
   const renderDocFirma = (doc, idx) => {
     const data = mapaDocs[doc.id];
     const estaFirmado = data && data.estado === 'Firmado';
@@ -1537,16 +1570,6 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     <div class="max-w-3xl mx-auto">
       <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-20 w-auto object-contain">
-        <div class="flex flex-col items-end gap-1.5">
-          <a href="https://curriculum-compact-594761951101.europe-west1.run.app" target="_blank" class="text-blue-600 font-semibold text-xs md:text-sm hover:underline">
-            📝 Revisar o Editar mi Hoja de Vida
-          </a>
-          ${pdfUrl ? `
-          <a href="${pdfUrl}" target="_blank" class="text-slate-600 font-semibold text-xs md:text-sm hover:underline">
-            📄 Ver PDF de mi Hoja de Vida
-          </a>
-          ` : ``}
-        </div>
       </div>
 
       <!-- Saludo Superior Permanente -->
@@ -1699,6 +1722,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         </p>
       </div>
       `}
+
+      ${renderBloqueHojaVida()}
     </div>
     </div>
 
@@ -2411,7 +2436,9 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   </html>`;
 }
 
-function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa, bloqueado, usuario, requisiciones = []) {
+function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado, usuario, requisiciones = []) {
+  // Texto seguro dentro de onclick="...('texto')" (los nombres oficiales pueden traer comillas)
+  const jsAttr = (t) => String(t || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   const renderOpcionReq = (r) => {
     const isSelected = String(r.IdRequisicion) === String(asp.IdRequisicion);
     const nPersonas = (r['N° Personas Requeridas'] !== null && r['N° Personas Requeridas'] !== undefined) ? ` - ${r['N° Personas Requeridas']}` : '';
@@ -2435,7 +2462,7 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
               ? '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ FIRMADO</span>' 
               : '<span class="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">CARGADO</span>'}
             <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
-            ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${doc.nombre}')" class="text-[10px] text-red-400 font-bold italic hover:text-red-600">ELIMINAR</button>` : ''}
+            ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${jsAttr(doc.nombre)}')" class="text-[10px] text-red-400 font-bold italic hover:text-red-600">ELIMINAR</button>` : ''}
           </div>
         ` : '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic shrink-0">Pendiente</span>'}
       </div>
@@ -2452,7 +2479,21 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
 
   const scriptFeedback = `
     <script>
-      const params = new URLSearchParams(window.location.search);
+      // Dentro de TalentHub (iframe): si se llega a esta página con el botón "atrás",
+      // se avisa a la pestaña Aspirantes para que vuelva al listado (sin repetir alertas).
+      const volvioConAtras = (function () {
+        try {
+          if (window.self === window.top) return false;
+          const nav = performance.getEntriesByType('navigation')[0];
+          if (nav && nav.type === 'back_forward') {
+            window.parent.postMessage({ tipo: 'adminAspiranteAtras' }, window.location.origin);
+            return true;
+          }
+        } catch (e) { /* sin acceso: no se hace nada */ }
+        return false;
+      })();
+
+      const params = new URLSearchParams(volvioConAtras ? '' : window.location.search);
       if (params.get('msg') === 'success') {
         const info = params.get('info') || 'Proceso completado';
         alert(info);
@@ -2683,9 +2724,10 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="p-4 bg-blue-600 text-white font-bold text-xs tracking-widest uppercase text-center">1. Validar Aspirante</div>
           <div class="p-4 space-y-3">
-            ${idsAsp.map(id => {
+            ${docsAsp.map(doc => {
+              const id = doc.id;
               const d = mapa[id];
-              const nombreDoc = nombresAsp[id];
+              const nombreDoc = doc.nombre;
               return `
               <div class="p-3 border rounded-2xl flex justify-between items-center ${d?.estado === 'Aprobado' ? 'bg-green-50 border-green-200' : 'bg-white border-slate-100'}">
                 <div class="flex items-center gap-2">
@@ -2695,7 +2737,7 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
                 <div class="flex gap-2 items-center">
                   ${d ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
                   ${d && d.estado !== 'Aprobado' && !bloqueado ? 
-                    `<button type="button" onclick="eliminar(${id}, '${nombreDoc}')" class="text-[10px] text-red-400 italic font-bold">BORRAR</button>` 
+                    `<button type="button" onclick="eliminar(${id}, '${jsAttr(nombreDoc)}')" class="text-[10px] text-red-400 italic font-bold">BORRAR</button>` 
                     : (d?.estado === 'Aprobado' ? '<span class="text-[10px] font-black text-green-600 uppercase">✓ APROBADO</span>' : '')
                   }
                 </div>

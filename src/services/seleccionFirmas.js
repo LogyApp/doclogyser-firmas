@@ -5,29 +5,10 @@ const { generarPDFDesdeHTML } = require('./renderer');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
 const { reemplazarVariables } = require('./plantilla');
 
-const DOCS_FIRMA_SELECCION = [
-  { id: 2,  prefijo: 'ACTCON', nombre: 'Acta de Condiciones / Vinculación' },
-  { id: 7,  prefijo: 'ARO',    nombre: 'Análisis de Riesgo por Oficio' },
-  { id: 16, prefijo: 'CHC',    nombre: 'Consentimiento de Historia Clínica' },
-  { id: 19, prefijo: 'CPC',    nombre: 'Consentimiento Prueba de Polígrafo' },
-  { id: 20, prefijo: 'CS',     nombre: 'Declaración Condiciones de Salud' },
-  { id: 29, prefijo: 'EVIN',   nombre: 'Evaluación de Inducción' },
-  { id: 32, prefijo: 'INGE',   nombre: 'Comprobante de Inducción General' },
-  { id: 39, prefijo: 'MF',     nombre: 'Manual de Funciones y Responsabilidades' },
-  { id: 48, prefijo: 'SEOP',   nombre: 'Normas de Seguridad en la Operación' },
-  { id: 49, prefijo: 'TD',     nombre: 'Tratamiento de Datos Personales' },
-  { id: 33, prefijo: 'ITAL',   nombre: 'Formatos Específicos Operación (Italcol)' }
-];
-
-function obtenerDocsFirmaParaOperacion(operacion) {
-  const esItalcolLaEstrella = (operacion || '').toString().trim().toLowerCase() === 'italcol la estrella';
-  return DOCS_FIRMA_SELECCION.filter(d => {
-    if (d.id === 33) {
-      return esItalcolLaEstrella;
-    }
-    return true;
-  });
-}
+// La lista de documentos para firma sale de Config_Doc_Trabajador (Clasificacion
+// "3. Documentos para Firmas") y la regla por operación de Config_Parametros:
+// ver services/docsSeleccion.js.
+const { obtenerDocsFirmaParaOperacion, obtenerDocFirma } = require('./docsSeleccion');
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -49,7 +30,7 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     throw new Error("El aspirante no se encuentra en estado 'En proceso'.");
   }
 
-  const docItem = DOCS_FIRMA_SELECCION.find(d => d.id === Number(idConfigDoc));
+  const docItem = await obtenerDocFirma(idConfigDoc);
   const prefijo = docItem ? docItem.prefijo : null;
 
   // Requisición
@@ -153,7 +134,7 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
     ? `https://storage.googleapis.com/${bucketAspirantes}/${docActual.gcs_path}`
     : null;
 
-  const nombreDoc = docItem ? docItem.nombre : 'Documento';
+  const nombreDoc = docItem ? (docItem.etiqueta || docItem.nombre) : 'Documento';
   const nombreAspirante = [aspirante.primer_nombre, aspirante.primer_apellido].filter(Boolean).join(' ');
 
   return `<!DOCTYPE html>
@@ -591,7 +572,6 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
 }
 
 module.exports = {
-  DOCS_FIRMA_SELECCION,
   obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
   generarHtmlVistaFirma,

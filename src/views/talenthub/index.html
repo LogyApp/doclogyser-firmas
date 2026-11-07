@@ -7545,27 +7545,95 @@
       if (id) abrirAdminAspirante(id);
     }
 
-    // Vista a pantalla completa dentro de la pestaña (como Nueva Acta en Inventario)
-    function abrirAdminAspirante(aspId) {
+    // Vista a pantalla completa dentro de la pestaña (como Nueva Acta en Inventario).
+    // Se agrega una entrada al historial para que el botón "atrás" del celular
+    // vuelva al listado en vez de salir del módulo.
+    let _adminNavsIframe = 0;   // navegaciones dentro del iframe (cargues, aprobaciones...)
+
+    function urlListadoAspirantes() {
+      return `${window.location.pathname}?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=Aspirantes`;
+    }
+
+    // Cambia la página del iframe sin crear entradas nuevas en el historial
+    function cargarFrameAdmin(url) {
+      const frame = document.getElementById('frameAdminAspirante');
+      try {
+        if (frame.contentWindow) {
+          frame.contentWindow.location.replace(url);
+          return;
+        }
+      } catch (e) { /* sin acceso al iframe: se usa src */ }
+      frame.src = url;
+    }
+
+    function abrirAdminAspirante(aspId, opciones = {}) {
       if (!aspId) return;
       if (CONFIG.activeTab !== 'Aspirantes') switchTab('Aspirantes');
-      const fila = _aspirantes.find(x => String(x.id_aspirante || x.IdAspirante) === String(aspId));
-      const nombre = fila ? (fila.nombre_completo || '') : (_aspActualDetalle?.aspirante?.nombre_completo || '');
-      document.getElementById('aspAdminTitulo').textContent = `⚙️ Panel Admin${nombre ? ' — ' + nombre : ''}`;
-      document.getElementById('frameAdminAspirante').src = `/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('aspAdminTitulo').textContent = '⚙️ Panel Admin del Aspirante';
+      _adminNavsIframe = -1;   // el primer "load" es el cargue inicial
+      cargarFrameAdmin(`/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
       document.getElementById('aspVistaListado').style.display = 'none';
       document.getElementById('aspVistaAdmin').style.display = 'block';
-      window.history.replaceState({}, '', `${window.location.pathname}?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=Aspirantes&subtab=Admin&asp=${encodeURIComponent(aspId)}`);
+      if (!opciones.sinHistorial) {
+        const urlAdmin = `${urlListadoAspirantes()}&subtab=Admin&asp=${encodeURIComponent(aspId)}`;
+        const estado = { aspAdmin: String(aspId) };
+        if (window.history.state && window.history.state.aspAdmin) {
+          window.history.replaceState(estado, '', urlAdmin);
+        } else {
+          // Si se entró directo por enlace, el listado queda como paso anterior
+          window.history.replaceState(null, '', urlListadoAspirantes());
+          window.history.pushState(estado, '', urlAdmin);
+        }
+      }
       window.scrollTo(0, 0);
     }
 
-    function cerrarAdminAspirante() {
-      document.getElementById('frameAdminAspirante').src = 'about:blank';
-      document.getElementById('aspVistaAdmin').style.display = 'none';
+    // Oculta el panel y muestra el listado (sin tocar el historial)
+    function ocultarVistaAdminAspirante() {
+      const vista = document.getElementById('aspVistaAdmin');
+      if (!vista || vista.style.display === 'none') return;
+      cargarFrameAdmin('about:blank');
+      vista.style.display = 'none';
       document.getElementById('aspVistaListado').style.display = 'block';
-      window.history.replaceState({}, '', `${window.location.pathname}?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=Aspirantes`);
       cargarAspirantes();
     }
+
+    // Botón "Volver al listado"
+    function cerrarAdminAspirante() {
+      if (window.history.state && window.history.state.aspAdmin && _adminNavsIframe <= 0) {
+        window.history.back();   // el evento popstate oculta el panel
+        return;
+      }
+      ocultarVistaAdminAspirante();
+      window.history.replaceState(null, '', urlListadoAspirantes());
+    }
+
+    // Botón atrás / adelante del navegador o del celular
+    window.addEventListener('popstate', (ev) => {
+      const estado = ev.state || {};
+      const vistaAdmin = document.getElementById('aspVistaAdmin');
+      const adminVisible = vistaAdmin && vistaAdmin.style.display !== 'none';
+      if (estado.aspAdmin && !adminVisible) {
+        abrirAdminAspirante(estado.aspAdmin, { sinHistorial: true });
+      } else if (!estado.aspAdmin && adminVisible) {
+        ocultarVistaAdminAspirante();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const frame = document.getElementById('frameAdminAspirante');
+      if (frame) frame.addEventListener('load', () => { _adminNavsIframe++; });
+    });
+
+    // Si dentro del panel se presiona "atrás" (después de cargar o aprobar documentos),
+    // la página del panel avisa y se vuelve al listado.
+    window.addEventListener('message', (ev) => {
+      if (ev.origin !== window.location.origin) return;
+      if (ev.data && ev.data.tipo === 'adminAspiranteAtras') {
+        ocultarVistaAdminAspirante();
+        window.history.replaceState(null, '', urlListadoAspirantes());
+      }
+    });
 
     function renderSubTabFichaAspirante(tabName) {
       const cuerpo = document.getElementById('cuerpoFichaAspirante');
