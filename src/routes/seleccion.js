@@ -9,12 +9,14 @@ const crypto = require('crypto');
 const { notificarBloqueoAspirante, enviarCorreoPortalAspirante } = require('../services/email');
 const { notificarNuevoIngreso } = require('../services/notificacionIngreso');
 const {
-  DOCS_FIRMA_SELECCION,
   obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar } = require('../services/docsSeleccion');
+const { motivoBloqueoFirma } = require('../services/seleccionFirmas');
+const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -295,6 +297,29 @@ async function guardarArchivo(id_aspirante, id_config_doc, file) {
 
   const { identificacion, Prefijo, Documento } = datos[0];
   const extension = path.extname(file.originalname);
+
+  // Hoja de Vida (Id 30): la que se carga a mano es la versión del aspirante. Va en un
+  // archivo aparte para no sobrescribir la que genera el sistema y se marca en observaciones.
+  if (Number(id_config_doc) === ID_HOJA_VIDA) {
+    const nombrePropio = `${identificacion}.${Prefijo}.${id_aspirante}.ASPIRANTE${extension}`;
+    const rutaPropia = `${identificacion}/${nombrePropio}`;
+    const bucketHv = getBucketAspirantes();
+    const [hvRows] = await pool.execute(
+      'SELECT observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+      [id_aspirante, id_config_doc]
+    );
+    const rutaAnterior = hvRows.length ? rutaHvAspirante(hvRows[0].observaciones) : null;
+    await bucketHv.file(rutaPropia).save(file.buffer, { contentType: file.mimetype || 'application/pdf' });
+    if (rutaAnterior && rutaAnterior !== rutaPropia) await bucketHv.file(rutaAnterior).delete().catch(() => {});
+    await pool.execute(
+      `INSERT INTO Dynamic_hv_documentos (id_aspirante, id_config_doc, gcs_path, estado, fuente, observaciones)
+       VALUES (?, ?, ?, 'Pendiente', 'Carga Manual', ?)
+       ON DUPLICATE KEY UPDATE observaciones = VALUES(observaciones), fecha_actualizacion = CURRENT_TIMESTAMP`,
+      [id_aspirante, id_config_doc, rutaPropia, `${MARCA_HV_ASPIRANTE}: ${rutaPropia}`]
+    );
+    return nombrePropio;
+  }
+
   const nombreArchivo = `${identificacion}.${Prefijo}.${id_aspirante}${extension}`;
   const gcsPath = `${identificacion}/${nombreArchivo}`; 
 
@@ -333,26 +358,23 @@ router.get('/portal/:uuid', async (req, res) => {
   const { uuid } = req.params;
   const usuario = req.query.usuario || '';
   
-  const docsAspirante = [
-    { id: 11, nombre: "Copia de la cédula ampliada al 150%" },
-    { id: 5,  nombre: "Antecedentes (Policía, Procuraduría, Contraloría)" },
-    { id: 15, nombre: "Certificado de EPS" },
-    { id: 3,  nombre: "ADRES (Si no tiene EPS)" },
-    { id: 14, nombre: "Certificado de Pensión" },
-    { id: 13, nombre: "Certificado de Estudio" },
-    { id: 17, nombre: "Certificado Laboral" },
-    { id: 10, nombre: "Certificación Bancaria" }
-  ];
 
   try {
-    const [ [aspiranteRows], [cargados] ] = await Promise.all([
+    const [ [aspiranteRows], [cargados], docsSel ] = await Promise.all([
       pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso, IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
-      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid])
+      pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      obtenerDocsSeleccion()
     ]);
 
     if (aspiranteRows.length === 0) {
       return res.status(404).send("Aspirante no encontrado");
     }
+
+    // Documentos del aspirante (Config_Doc_Trabajador "1.") con la etiqueta del portal.
+    // La Hoja de Vida va aparte, en su propio bloque opcional al final.
+    const docsAspirante = docsSel.aspirante
+      .filter(d => d.id !== ID_HOJA_VIDA)
+      .map(d => ({ id: d.id, nombre: d.etiqueta }));
 
     const asp = aspiranteRows[0];
     const nombre = asp.primer_nombre || 'Aspirante';
@@ -370,14 +392,18 @@ router.get('/portal/:uuid', async (req, res) => {
       }
     }
 
-    const docsFirmaFiltrados = obtenerDocsFirmaParaOperacion(operacionAspirante);
+    const docsFirmaFiltrados = (await obtenerDocsFirmaParaOperacion(operacionAspirante))
+      .map(d => ({ ...d, nombre: d.etiqueta }));
 
     const mapaDocs = {};
     cargados.forEach(c => {
       mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path };
     });
 
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion));
+    const docHv = docsSel.aspirante.find(d => d.id === ID_HOJA_VIDA);
+    const filaHv = cargados.find(c => Number(c.id_config_doc) === ID_HOJA_VIDA);
+    const hvPropiaPath = filaHv ? rutaHvAspirante(filaHv.observaciones) : null;
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion, docHv ? docHv.etiqueta : undefined, hvPropiaPath));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -390,18 +416,9 @@ router.get('/admin/:uuid', async (req, res) => {
   const { uuid } = req.params;
   const usuario = req.query.usuario || '';
 
-  const nombresAsp = { 11: "Cédula 150%", 5: "Antecedentes", 15: "EPS", 3: "ADRES", 14: "Pensión", 13: "Estudio", 17: "Cert. Laboral", 10: "Bancaria" };
-  const docsAspiranteIds = [11, 5, 15, 3, 14, 13, 17, 10];
-  const docsTecnicos = [
-    { id: 24, nombre: "Examen médico" }, 
-    { id: 28, nombre: "Estudio seguridad" }, 
-    { id: 27, nombre: "Entrevista" }, 
-    { id: 8, nombre: "Manipulación alimentos" }, 
-    { id: 53, nombre: "Verificación referencias" }
-  ];
 
   try {
-    const [[aspiranteRows], [cargados], [todasRequisiciones]] = await Promise.all([
+    const [[aspiranteRows], [cargados], [todasRequisiciones], docsSel] = await Promise.all([
       pool.execute(
         `SELECT primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, 
                 identificacion, estado_proceso, IdRequisicion, pdf_public_url,
@@ -409,13 +426,14 @@ router.get('/admin/:uuid', async (req, res) => {
          FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`, 
         [uuid]
       ),
-      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
       pool.execute(`
         SELECT IdRequisicion, \`Requisición\`, \`Operación\`, \`Cargo Requerido\`, \`N° Personas Requeridas\`, Estado 
         FROM Dynamic_Requisiciones 
         WHERE UPPER(TRIM(Estado)) = 'EN PROCESO'
         ORDER BY \`Fecha Requisición\` DESC, IdRequisicion DESC
-      `)
+      `),
+      obtenerDocsSeleccion()
     ]);
 
     if (aspiranteRows.length === 0) return res.status(404).send("Aspirante no encontrado");
@@ -452,10 +470,11 @@ router.get('/admin/:uuid', async (req, res) => {
       }
     }
 
-    const docsFirmar = obtenerDocsFirmaParaOperacion(operacionSugerida);
+    // Panel Admin: nombres oficiales de Config_Doc_Trabajador
+    const docsFirmar = await obtenerDocsFirmaParaOperacion(operacionSugerida);
 
     const mapaDocs = {};
-    cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path }; });
+    cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path, rutaPropia: rutaHvAspirante(c.observaciones) }; });
 
     res.send(generarHtmlAdmin(
       uuid,
@@ -471,7 +490,7 @@ router.get('/admin/:uuid', async (req, res) => {
         telefono: a.telefono || '',
         correoElectronico: a.correo_electronico || ''
       },
-      docsAspiranteIds, nombresAsp, docsTecnicos, docsFirmar, mapaDocs, 
+      docsSel.aspirante, docsSel.tecnicos, docsFirmar, mapaDocs, 
       a.estado_proceso === 'contratado',
       usuario,
       todasRequisiciones
@@ -602,6 +621,11 @@ router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
     if (datos.aspirante.estado_proceso === 'bloqueado') {
       return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}`);
     }
+    // Firma bloqueada: aspirante contratado, fase de firmas no habilitada o documento ya aprobado
+    const motivoBloqueo = motivoBloqueoFirma(datos.aspirante, datos.docActual);
+    if (motivoBloqueo) {
+      return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}&msg=firma_bloqueada&info=${encodeURIComponent(motivoBloqueo)}`);
+    }
 
     const { reemplazarVariables } = require('../services/plantilla');
     const contenidoHtmlConVariables = reemplazarVariables(datos.contenidoHtml, {
@@ -636,16 +660,32 @@ router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async
   }
 
   try {
+    // Estado previo del documento: el aviso de "firmas completas" solo sale cuando
+    // esta firma completa el paquete (no al volver a firmar uno ya firmado)
+    const [previo] = await pool.execute(
+      'SELECT estado FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+      [uuid, idConfigDoc]
+    );
+    const yaEstabaFirmado = previo.length > 0 && ['firmado', 'aprobado'].includes(String(previo[0].estado || '').toLowerCase());
+
     const resultado = await procesarFirmaDocumento({
       idAspirante: uuid,
       idConfigDoc,
       firmaBase64: firma_base64,
       esNuevaFirma: !!es_nueva_firma,
-      bucketAspirantes: BUCKET_ASPIRANTES
+      bucketAspirantes: BUCKET_ASPIRANTES,
+      ip: req.headers['x-forwarded-for'] || req.ip || req.socket?.remoteAddress,
+      dispositivo: req.get('user-agent')
     });
 
+    if (!yaEstabaFirmado) {
+      setImmediate(() => avisarFirmasCompletas({ idAspirante: uuid }));
+    }
     res.json(resultado);
   } catch (err) {
+    if (err.bloqueado) {
+      return res.status(403).json({ ok: false, error: err.message });
+    }
     console.error('Error al procesar firma de selección:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -662,20 +702,34 @@ router.post('/cambiar-estado-proceso', async (req, res) => {
       return res.status(400).send('Estado no permitido');
     }
 
+    let estadoAnterior = null;
     if (nuevo_estado === 'En proceso') {
       const [aspRows] = await pool.execute(
-        'SELECT IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
+        'SELECT IdRequisicion, estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
         [id_aspirante]
       );
       if (!aspRows.length || !aspRows[0].IdRequisicion) {
         return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible pasar a "En proceso": El aspirante no tiene una requisición vinculada.')}`);
       }
+      estadoAnterior = aspRows[0].estado_proceso;
+
+      // Regla configurable: documentos obligatorios aprobados (Config_Parametros talenthub/Aspirantes)
+      const validacion = await validarPasoEnProceso(id_aspirante);
+      if (!validacion.ok) {
+        return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible pasar a "En proceso". Faltan documentos aprobados: ' + validacion.faltantes.join(', ') + '.')}`);
+      }
     }
 
-    await pool.execute(
+    const [resultado] = await pool.execute(
       'UPDATE Dynamic_hv_aspirante SET estado_proceso = ? WHERE id_aspirante = ? AND estado_proceso != "contratado"',
       [nuevo_estado, id_aspirante]
     );
+
+    // Aviso al aspirante (si está activo en Config_Parametros) solo cuando realmente pasa a "En proceso"
+    if (nuevo_estado === 'En proceso' && estadoAnterior !== 'En proceso' && resultado.affectedRows > 0) {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      setImmediate(() => avisarFaseFirmas({ idAspirante: id_aspirante, usuario, baseUrl }));
+    }
 
     res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent('Estado del aspirante actualizado a ' + nuevo_estado)}`);
   } catch (error) {
@@ -730,6 +784,26 @@ router.post('/delete-doc', async (req, res) => {
   const { id_aspirante, id_config_doc } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
   try {
+    // Hoja de Vida: desde el portal solo se elimina la versión propia del aspirante;
+    // la que genera el sistema nunca se borra aquí.
+    if (Number(id_config_doc) === ID_HOJA_VIDA) {
+      const [hvRows] = await pool.execute(
+        'SELECT gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+        [id_aspirante, ID_HOJA_VIDA]
+      );
+      const rutaPropia = hvRows.length ? rutaHvAspirante(hvRows[0].observaciones) : null;
+      if (rutaPropia) {
+        await getBucketAspirantes().file(rutaPropia).delete().catch(() => console.warn(`Archivo no encontrado en GCS (HV propia): ${rutaPropia}`));
+        if (hvRows[0].gcs_path === rutaPropia) {
+          await pool.execute('DELETE FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?', [id_aspirante, ID_HOJA_VIDA]);
+        } else {
+          await pool.execute('UPDATE Dynamic_hv_documentos SET observaciones = NULL WHERE id_aspirante = ? AND id_config_doc = ?', [id_aspirante, ID_HOJA_VIDA]);
+        }
+        return res.redirect(`/seleccion/portal/${id_aspirante}?usuario=${usuario}&msg=deleted`);
+      }
+      return res.redirect(`/seleccion/portal/${id_aspirante}?usuario=${usuario}`);
+    }
+
     const [rows] = await pool.execute(
       'SELECT gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
       [id_aspirante, id_config_doc]
@@ -1018,6 +1092,33 @@ router.post('/api/confirm-doc', async (req, res) => {
     const { identificacion } = aspRows[0];
     const { Prefijo } = configRows[0];
 
+    // Hoja de Vida (Id 30): la versión propia del aspirante va en un archivo aparte
+    // para no sobrescribir la que genera el sistema, y se marca en `observaciones`.
+    if (idDoc === ID_HOJA_VIDA) {
+      const bucketHv = getBucketAspirantes();
+      const rutaPropia = `${identificacion}/${identificacion}.${Prefijo}.${id_aspirante}.ASPIRANTE${extension}`;
+      const [hvRows] = await pool.execute(
+        'SELECT observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+        [id_aspirante, idDoc]
+      );
+      const rutaAnterior = hvRows.length ? rutaHvAspirante(hvRows[0].observaciones) : null;
+
+      await bucketHv.file(temp_gcs_path).copy(bucketHv.file(rutaPropia));
+      await bucketHv.file(temp_gcs_path).delete().catch(err => console.warn('No se pudo borrar temporal:', err));
+      if (rutaAnterior && rutaAnterior !== rutaPropia) {
+        await bucketHv.file(rutaAnterior).delete().catch(() => {});
+      }
+
+      // Si no existe el registro de la HV del sistema, la versión propia ocupa el registro.
+      await pool.execute(
+        `INSERT INTO Dynamic_hv_documentos (id_aspirante, id_config_doc, gcs_path, estado, fuente, observaciones)
+         VALUES (?, ?, ?, 'Pendiente', 'Carga Manual', ?)
+         ON DUPLICATE KEY UPDATE observaciones = VALUES(observaciones), fecha_actualizacion = CURRENT_TIMESTAMP`,
+        [id_aspirante, idDoc, rutaPropia, `${MARCA_HV_ASPIRANTE}: ${rutaPropia}`]
+      );
+      return res.json({ ok: true });
+    }
+
     const destPath = `${identificacion}/${identificacion}.${Prefijo}.${id_aspirante}${extension}`;
 
     // Copiar archivo a la ruta definitiva y borrar el temporal
@@ -1211,7 +1312,26 @@ router.get('/api/operaciones/:regional', async (req, res) => {
 router.post('/finalizar-contratacion', async (req, res) => {
   const { id_aspirante, regional, operacion, fecha_ingreso } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
-  
+
+  // Regla configurable: todas las firmas completas (según la operación de la requisición,
+  // que es la que definió qué documentos debía firmar el aspirante)
+  try {
+    const [reqOp] = await pool.execute(
+      `SELECT r.\`Operación\` AS operacion FROM Dynamic_hv_aspirante a
+       LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+       WHERE a.id_aspirante = ? LIMIT 1`,
+      [id_aspirante]
+    );
+    const operacionFirmas = reqOp.length && reqOp[0].operacion ? reqOp[0].operacion : operacion;
+    const validacion = await validarFirmasParaContratar(id_aspirante, operacionFirmas);
+    if (!validacion.ok) {
+      return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible finalizar la contratación. Faltan documentos por firmar: ' + validacion.faltantes.join(', ') + '.')}`);
+    }
+  } catch (errVal) {
+    console.error('Error validando firmas para contratar:', errVal);
+    return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No se pudo validar las firmas del aspirante. Intenta de nuevo.')}`);
+  }
+
   const connection = await pool.getConnection();
 
   try {
@@ -1342,14 +1462,27 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const srcBucket = getBucketAspirantes();
     const destBucket = getBucketEmpleados();
 
-    for (const doc of docs) {
-      await srcBucket.file(doc.gcs_path).copy(destBucket.file(doc.gcs_path)).catch(e => console.error("Error GCS Copy:", e));
-
-      await connection.query(`
+    const sqlDocTrabajador = `
         INSERT INTO Maestro_docTrabajador 
-        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Usuario)
-        VALUES (UUID(), 'PEND', ?, ?, ?, 'Activo', ?, ?, ?, ?, ?)
-      `, [regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario]);
+        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Usuario, Observaciones)
+        VALUES (UUID(), 'PEND', ?, ?, ?, 'Activo', ?, ?, ?, ?, ?, ?)`;
+
+    for (const doc of docs) {
+      // Hoja de Vida: si el aspirante subió su propia versión, también se traslada (marcada en Observaciones)
+      const rutaPropiaHv = Number(doc.id_config_doc) === ID_HOJA_VIDA ? rutaHvAspirante(doc.observaciones) : null;
+
+      await srcBucket.file(doc.gcs_path).copy(destBucket.file(doc.gcs_path)).catch(e => console.error("Error GCS Copy:", e));
+      await connection.query(sqlDocTrabajador, [
+        regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario,
+        rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null
+      ]);
+
+      if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path) {
+        await srcBucket.file(rutaPropiaHv).copy(destBucket.file(rutaPropiaHv)).catch(e => console.error("Error GCS Copy (HV aspirante):", e));
+        await connection.query(sqlDocTrabajador, [
+          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaPropiaHv, nombreUsuario, MARCA_HV_ASPIRANTE
+        ]);
+      }
     }
 
     // 8. Bloquear proceso del aspirante y guardar el usuario creador en Dynamic_hv_aspirante
@@ -1385,7 +1518,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null) {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -1427,6 +1560,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
       if (params.get('msg') === 'deleted') alert('Documento eliminado correctamente.');
       if (params.get('msg') === 'uploaded') alert('Documento guardado y cargado correctamente.');
       if (params.get('msg') === 'firmado') alert('¡Documento firmado y generado con éxito!');
+      if (params.get('msg') === 'firma_bloqueada') alert(params.get('info') || 'Este documento no se puede firmar en este momento.');
     </script>
   `;
 
@@ -1434,7 +1568,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   const estadoHabilitado = (estadoProceso === 'En proceso' || estadoProceso === 'contratado') && tieneRequisicion;
   const allUploaded = docs.every(doc => mapaDocs[doc.id]);
   const totalCargados = docs.filter(d => mapaDocs[d.id]).length;
-  const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length;
+  const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && ['Firmado', 'Aprobado'].includes(mapaDocs[d.id].estado)).length;
 
   const renderDocSoporte = (doc) => {
     const data = mapaDocs[doc.id];
@@ -1472,10 +1606,57 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     </div>`;
   };
 
+  // Bloque de la Hoja de Vida: la que genera el sistema (ver / editar) y, opcional,
+  // la versión propia del aspirante (Config_Doc_Trabajador Id 30, solo informativa).
+  const renderBloqueHojaVida = () => {
+    // Solo cuenta como subida si el registro de la HV tiene la marca "Versión del aspirante"
+    const propia = hvPropiaPath ? { path: hvPropiaPath } : null;
+    return `
+    <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100 mb-8">
+      <div class="p-6 md:p-8">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-2xl bg-slate-100 text-slate-600 text-lg flex items-center justify-center shrink-0">📄</div>
+          <div>
+            <h3 class="text-lg md:text-xl font-black text-slate-800 uppercase italic tracking-tight">Hoja de Vida</h3>
+            <p class="text-xs text-slate-400 font-medium">La hoja de vida que generó el sistema con tus datos. Subir tu propia versión es opcional e informativo.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border border-slate-100 bg-white rounded-2xl shadow-sm gap-2">
+            <span class="text-sm font-semibold text-slate-700">Hoja de vida generada por el sistema</span>
+            <div class="flex flex-wrap items-center gap-3">
+              <a href="https://curriculum-compact-594761951101.europe-west1.run.app" target="_blank" class="text-xs font-bold text-blue-600 hover:underline">📝 Revisar o editar</a>
+              ${pdfUrl ? `<a href="${pdfUrl}" target="_blank" class="text-xs font-bold text-slate-600 hover:underline">Ver PDF ↗</a>` : ''}
+            </div>
+          </div>
+
+          <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${propia ? 'border-blue-100 bg-blue-50/30' : 'border-dashed border-slate-200 bg-slate-50/50'} rounded-2xl gap-2">
+            <div>
+              <span class="text-sm font-semibold text-slate-700 block">${ETIQUETA_HV_PROPIA}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Opcional</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${propia ? `
+                <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${propia.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+                <button type="button" onclick="confirmarEliminar('${ID_HOJA_VIDA}', 'tu versión de la hoja de vida')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>
+              ` : `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${ID_HOJA_VIDA}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  // Firmar o volver a firmar solo en "En proceso"; si el documento está aprobado o el aspirante
+  // ya fue contratado, queda solo para ver.
+  const firmasAbiertas = estadoProceso === 'En proceso';
   const renderDocFirma = (doc, idx) => {
     const data = mapaDocs[doc.id];
-    const estaFirmado = data && data.estado === 'Firmado';
+    const estaAprobado = data && data.estado === 'Aprobado';
+    const estaFirmado = data && (data.estado === 'Firmado' || estaAprobado);
     const estaCargado = data && !estaFirmado;
+    const puedeFirmar = firmasAbiertas && !estaAprobado;
 
     return `
     <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaFirmado ? 'border-emerald-200 bg-emerald-50/50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} rounded-2xl shadow-xs transition-all hover:border-slate-200">
@@ -1491,31 +1672,31 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 
       <div class="flex items-center gap-2 mt-3 md:mt-0">
         ${estaFirmado ? `
-          <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">✓ Firmado</span>
+          <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">${estaAprobado ? '✓ Aprobado' : '✓ Firmado'}</span>
           <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver PDF ↗
           </a>
-          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+          ${puedeFirmar ? `<a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">
             Volver a firmar
-          </a>
+          </a>` : ''}
         ` : (estaCargado ? `
           <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
           <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver ↗
           </a>
-          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+          ${puedeFirmar ? `<a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs">
             Firmar Digitalmente →
-          </a>
-        ` : `
+          </a>` : ''}
+        ` : (puedeFirmar ? `
           <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5">
             <span>✍️</span> Abrir y Firmar →
           </a>
-        `)}
+        ` : `<span class="text-[10px] font-bold text-slate-400 italic">Pendiente</span>`))}
       </div>
     </div>`;
   };
@@ -1537,16 +1718,6 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     <div class="max-w-3xl mx-auto">
       <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-20 w-auto object-contain">
-        <div class="flex flex-col items-end gap-1.5">
-          <a href="https://curriculum-compact-594761951101.europe-west1.run.app" target="_blank" class="text-blue-600 font-semibold text-xs md:text-sm hover:underline">
-            📝 Revisar o Editar mi Hoja de Vida
-          </a>
-          ${pdfUrl ? `
-          <a href="${pdfUrl}" target="_blank" class="text-slate-600 font-semibold text-xs md:text-sm hover:underline">
-            📄 Ver PDF de mi Hoja de Vida
-          </a>
-          ` : ``}
-        </div>
       </div>
 
       <!-- Saludo Superior Permanente -->
@@ -1699,6 +1870,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         </p>
       </div>
       `}
+
+      ${renderBloqueHojaVida()}
     </div>
     </div>
 
@@ -2411,7 +2584,9 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   </html>`;
 }
 
-function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa, bloqueado, usuario, requisiciones = []) {
+function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado, usuario, requisiciones = []) {
+  // Texto seguro dentro de onclick="...('texto')" (los nombres oficiales pueden traer comillas)
+  const jsAttr = (t) => String(t || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   const renderOpcionReq = (r) => {
     const isSelected = String(r.IdRequisicion) === String(asp.IdRequisicion);
     const nPersonas = (r['N° Personas Requeridas'] !== null && r['N° Personas Requeridas'] !== undefined) ? ` - ${r['N° Personas Requeridas']}` : '';
@@ -2431,11 +2606,13 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
         </div>
         ${data ? `
           <div class="flex items-center gap-1.5 shrink-0">
-            ${estaFirmado 
+            ${data.estado === 'Aprobado'
+              ? '<span class="text-[9px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ APROBADO</span>'
+              : estaFirmado 
               ? '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ FIRMADO</span>' 
               : '<span class="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">CARGADO</span>'}
             <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
-            ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${doc.nombre}')" class="text-[10px] text-red-400 font-bold italic hover:text-red-600">ELIMINAR</button>` : ''}
+            ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${jsAttr(doc.nombre)}')" class="text-[10px] text-red-400 font-bold italic hover:text-red-600">ELIMINAR</button>` : ''}
           </div>
         ` : '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic shrink-0">Pendiente</span>'}
       </div>
@@ -2452,7 +2629,21 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
 
   const scriptFeedback = `
     <script>
-      const params = new URLSearchParams(window.location.search);
+      // Dentro de TalentHub (iframe): si se llega a esta página con el botón "atrás",
+      // se avisa a la pestaña Aspirantes para que vuelva al listado (sin repetir alertas).
+      const volvioConAtras = (function () {
+        try {
+          if (window.self === window.top) return false;
+          const nav = performance.getEntriesByType('navigation')[0];
+          if (nav && nav.type === 'back_forward') {
+            window.parent.postMessage({ tipo: 'adminAspiranteAtras' }, window.location.origin);
+            return true;
+          }
+        } catch (e) { /* sin acceso: no se hace nada */ }
+        return false;
+      })();
+
+      const params = new URLSearchParams(volvioConAtras ? '' : window.location.search);
       if (params.get('msg') === 'success') {
         const info = params.get('info') || 'Proceso completado';
         alert(info);
@@ -2466,7 +2657,7 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
     </script>
   `;
 
-  const totalFirmados = docsFir.filter(d => mapa[d.id] && mapa[d.id].estado === 'Firmado').length;
+  const totalFirmados = docsFir.filter(d => mapa[d.id] && ['Firmado', 'Aprobado'].includes(mapa[d.id].estado)).length;
 
   return `
   <!DOCTYPE html>
@@ -2680,30 +2871,52 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="p-4 bg-blue-600 text-white font-bold text-xs tracking-widest uppercase text-center">1. Validar Aspirante</div>
-          <div class="p-4 space-y-3">
-            ${idsAsp.map(id => {
+        <form action="/seleccion/upload-multiple?usuario=${usuario}" method="POST" enctype="multipart/form-data"
+          class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-fit">
+          <input type="hidden" name="id_aspirante" value="${uuid}">
+          <input type="hidden" name="origen" value="admin">
+          <div class="p-4 bg-blue-600 text-white font-bold text-xs tracking-widest uppercase text-center">1. Documentos del Aspirante</div>
+          <div class="p-2">
+            ${docsAsp.map(doc => {
+              const id = doc.id;
               const d = mapa[id];
-              const nombreDoc = nombresAsp[id];
+              const esHv = id === ID_HOJA_VIDA;
+              const nombreDoc = doc.nombre;
+              // En la Hoja de Vida, la del sistema siempre existe; lo que se carga aquí es la versión del aspirante
+              const tieneArchivoPropio = esHv ? !!(d && d.rutaPropia) : !!d;
+              const aprobado = d?.estado === 'Aprobado';
               return `
-              <div class="p-3 border rounded-2xl flex justify-between items-center ${d?.estado === 'Aprobado' ? 'bg-green-50 border-green-200' : 'bg-white border-slate-100'}">
-                <div class="flex items-center gap-2">
-                  ${d && d.estado !== 'Aprobado' ? `<input type="checkbox" class="doc-check w-4 h-4 rounded text-blue-600" value="${id}">` : ''}
-                  <span class="text-[11px] font-bold text-slate-600">${nombreDoc}</span>
+              <div class="p-3 border-b border-slate-100 last:border-0 ${aprobado ? 'bg-green-50/60' : ''}">
+                <div class="flex justify-between items-center ${!tieneArchivoPropio && !bloqueado ? 'mb-2' : ''}">
+                  <div class="flex items-center gap-1.5 flex-1 pr-2">
+                    ${d && !aprobado ? `<input type="checkbox" class="doc-check w-4 h-4 rounded text-blue-600" value="${id}">` : ''}
+                    <span class="text-[11px] font-bold text-slate-700 uppercase">${nombreDoc}</span>
+                    ${doc.prefijo ? `<span class="text-[9px] text-slate-400 font-mono font-bold">(${doc.prefijo})</span>` : ''}
+                  </div>
+                  <div class="flex gap-2 items-center shrink-0">
+                    ${d && !(esHv && d.rutaPropia === d.path) ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
+                    ${esHv && d && d.rutaPropia ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.rutaPropia}" target="_blank" class="text-[10px] font-bold text-indigo-600 hover:underline" title="Versión que subió el aspirante">VER VERSIÓN ASPIRANTE</a>` : ''}
+                    ${aprobado ? '<span class="text-[9px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-md uppercase">✓ Aprobado</span>' : ''}
+                    ${d && !aprobado && !bloqueado && !esHv ? `<button type="button" onclick="eliminar(${id}, '${jsAttr(nombreDoc)}')" class="text-[10px] text-red-400 italic font-bold hover:text-red-600">BORRAR</button>` : ''}
+                    ${!d ? '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic">Pendiente</span>' : ''}
+                  </div>
                 </div>
-                <div class="flex gap-2 items-center">
-                  ${d ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
-                  ${d && d.estado !== 'Aprobado' && !bloqueado ? 
-                    `<button type="button" onclick="eliminar(${id}, '${nombreDoc}')" class="text-[10px] text-red-400 italic font-bold">BORRAR</button>` 
-                    : (d?.estado === 'Aprobado' ? '<span class="text-[10px] font-black text-green-600 uppercase">✓ APROBADO</span>' : '')
-                  }
-                </div>
+                ${!tieneArchivoPropio && !bloqueado ? `
+                  <div class="relative border-2 border-dashed border-slate-200 rounded-lg p-2 hover:border-blue-400 transition-colors bg-slate-50">
+                    <input type="file" name="file_${id}" accept=".pdf,.jpg,.jpeg,.png"
+                           onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name; this.parentElement.classList.add('bg-blue-50', 'border-blue-400')"
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <p class="text-[9px] text-center text-slate-400 file-name">${esHv ? 'Opcional: arrastra o haz clic para subir la versión del aspirante' : 'Arrastra o haz clic para subir el documento'}</p>
+                  </div>
+                ` : ''}
               </div>`;
             }).join('')}
-            <button onclick="aprobarMasivo()" class="w-full mt-4 bg-green-600 text-white py-3 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 shadow-md">Aprobar Seleccionados</button>
           </div>
-        </div>
+          <div class="p-4 space-y-2">
+            ${!bloqueado ? `<button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold text-xs hover:bg-blue-700 transition-all shadow-md">CARGAR DOCUMENTOS DEL ASPIRANTE</button>` : ''}
+            <button type="button" onclick="aprobarMasivo()" class="w-full bg-green-600 text-white py-3 rounded-xl text-[10px] font-black uppercase hover:bg-green-700 shadow-md">Aprobar Seleccionados</button>
+          </div>
+        </form>
 
         <form action="/seleccion/upload-multiple?usuario=${usuario}" method="POST" enctype="multipart/form-data" 
           class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden h-fit">

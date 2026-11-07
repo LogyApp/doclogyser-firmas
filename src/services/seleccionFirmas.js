@@ -1,33 +1,14 @@
 const path = require('path');
-const fs = require('fs');
+const crypto = require('crypto');
 const pool = require('./db');
 const { generarPDFDesdeHTML } = require('./renderer');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
 const { reemplazarVariables } = require('./plantilla');
 
-const DOCS_FIRMA_SELECCION = [
-  { id: 2,  prefijo: 'ACTCON', nombre: 'Acta de Condiciones / Vinculación' },
-  { id: 7,  prefijo: 'ARO',    nombre: 'Análisis de Riesgo por Oficio' },
-  { id: 16, prefijo: 'CHC',    nombre: 'Consentimiento de Historia Clínica' },
-  { id: 19, prefijo: 'CPC',    nombre: 'Consentimiento Prueba de Polígrafo' },
-  { id: 20, prefijo: 'CS',     nombre: 'Declaración Condiciones de Salud' },
-  { id: 29, prefijo: 'EVIN',   nombre: 'Evaluación de Inducción' },
-  { id: 32, prefijo: 'INGE',   nombre: 'Comprobante de Inducción General' },
-  { id: 39, prefijo: 'MF',     nombre: 'Manual de Funciones y Responsabilidades' },
-  { id: 48, prefijo: 'SEOP',   nombre: 'Normas de Seguridad en la Operación' },
-  { id: 49, prefijo: 'TD',     nombre: 'Tratamiento de Datos Personales' },
-  { id: 33, prefijo: 'ITAL',   nombre: 'Formatos Específicos Operación (Italcol)' }
-];
-
-function obtenerDocsFirmaParaOperacion(operacion) {
-  const esItalcolLaEstrella = (operacion || '').toString().trim().toLowerCase() === 'italcol la estrella';
-  return DOCS_FIRMA_SELECCION.filter(d => {
-    if (d.id === 33) {
-      return esItalcolLaEstrella;
-    }
-    return true;
-  });
-}
+// La lista de documentos para firma sale de Config_Doc_Trabajador (Clasificacion
+// "3. Documentos para Firmas") y la regla por operación de Config_Parametros:
+// ver services/docsSeleccion.js.
+const { obtenerDocsFirmaParaOperacion, obtenerDocFirma } = require('./docsSeleccion');
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -49,7 +30,7 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     throw new Error("El aspirante no se encuentra en estado 'En proceso'.");
   }
 
-  const docItem = DOCS_FIRMA_SELECCION.find(d => d.id === Number(idConfigDoc));
+  const docItem = await obtenerDocFirma(idConfigDoc);
   const prefijo = docItem ? docItem.prefijo : null;
 
   // Requisición
@@ -68,11 +49,12 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     }
   }
 
-  // Validación: Documento 33 (Formatos Italcol) solo para "Italcol La Estrella"
-  if (Number(idConfigDoc) === 33) {
-    const esItalcol = (operacion || '').toString().trim().toLowerCase() === 'italcol la estrella';
-    if (!esItalcol) {
-      throw new Error("El documento Formatos Italcol solo aplica para la operación 'Italcol La Estrella'");
+  // Validación: el documento debe aplicar a la operación de la requisición
+  // (regla en Config_Parametros talenthub/Aspirantes; ej. Formatos Italcol solo en "Italcol La Estrella")
+  if (docItem) {
+    const aplicables = await obtenerDocsFirmaParaOperacion(operacion);
+    if (!aplicables.some(d => d.id === docItem.id)) {
+      throw new Error(`El documento ${docItem.etiqueta || docItem.nombre} no aplica para la operación '${operacion || 'sin operación'}'`);
     }
   }
 
@@ -83,14 +65,10 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
       'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
       [prefijo]
     );
+    // Las plantillas de selección se administran solo en Maestro_Plantillas
+    // (los archivos de src/templates/seleccion quedan como base para SST).
     if (plantillaRows.length > 0 && plantillaRows[0].contenido_html) {
       contenidoHtml = plantillaRows[0].contenido_html;
-    } else {
-      // Fallback a archivo en disco
-      const templatePath = path.join(__dirname, '../templates/seleccion', `${prefijo}.html`);
-      if (fs.existsSync(templatePath)) {
-        contenidoHtml = fs.readFileSync(templatePath, 'utf8');
-      }
     }
   }
 
@@ -147,13 +125,57 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
   };
 }
 
+// ¿Se puede firmar (o volver a firmar) este documento? Devuelve null si se puede,
+// o el motivo del bloqueo: el aspirante debe estar "En proceso" y el documento no
+// debe estar aprobado por Selección. Con el aspirante contratado o bloqueado no se firma.
+function motivoBloqueoFirma(aspirante, docActual) {
+  const estado = (aspirante && aspirante.estado_proceso || '').toString().trim().toLowerCase();
+  if (estado === 'bloqueado') return 'El proceso del aspirante está bloqueado.';
+  if (estado === 'contratado') return 'El aspirante ya fue contratado: los documentos de firma no se pueden modificar.';
+  if (estado !== 'en proceso') return 'La fase de firmas aún no está habilitada para este aspirante.';
+  if (docActual && (docActual.estado || '').toString().trim().toLowerCase() === 'aprobado') {
+    return 'Este documento ya fue aprobado por Selección y no se puede volver a firmar.';
+  }
+  return null;
+}
+
+const MESES_HUELLA = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+// Fecha y hora de Colombia: { sql: 'AAAA-MM-DD HH:MM:SS', texto: '7 de noviembre de 2026 a las 08:15:30' }
+function ahoraColombia() {
+  const partes = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(new Date()).map(p => [p.type, p.value]));
+  const hora = partes.hour === '24' ? '00' : partes.hour;
+  return {
+    sql: `${partes.year}-${partes.month}-${partes.day} ${hora}:${partes.minute}:${partes.second}`,
+    texto: `${Number(partes.day)} de ${MESES_HUELLA[Number(partes.month) - 1]} de ${partes.year} a las ${hora}:${partes.minute}:${partes.second}`
+  };
+}
+
+function escHtml(t) {
+  return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Bloque de huella que se agrega al final del PDF firmado
+function htmlHuellaFirma({ nombre, identificacion, fechaTexto, ip, codigo }) {
+  return `
+<div style="margin-top:18px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;font-family:Arial,sans-serif;font-size:9px;line-height:1.45;color:#334155;page-break-inside:avoid">
+  <strong style="color:#1B2A5E">Firma electrónica (Ley 527 de 1999)</strong><br>
+  Firmado por <strong>${escHtml(nombre)}</strong>, C.C. ${escHtml(identificacion)}, el ${escHtml(fechaTexto)} (hora de Colombia)
+  desde la dirección IP ${escHtml(ip || 'no disponible')}.<br>
+  Código de verificación: <strong style="font-family:monospace">${escHtml(codigo)}</strong>
+</div>`;
+}
+
 function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, firmaPrevia, docActual, usuario, bucketAspirantes }) {
   const yaFirmado = docActual && docActual.estado === 'Firmado';
   const urlPdfFirmado = yaFirmado && docActual.gcs_path
     ? `https://storage.googleapis.com/${bucketAspirantes}/${docActual.gcs_path}`
     : null;
 
-  const nombreDoc = docItem ? docItem.nombre : 'Documento';
+  const nombreDoc = docItem ? (docItem.etiqueta || docItem.nombre) : 'Documento';
   const nombreAspirante = [aspirante.primer_nombre, aspirante.primer_apellido].filter(Boolean).join(' ');
 
   return `<!DOCTYPE html>
@@ -497,15 +519,21 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
 </html>`;
 }
 
-async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes }) {
+async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null }) {
   const datos = await obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc);
   if (!datos) {
     throw new Error('Aspirante no encontrado');
   }
 
-  const { aspirante, docItem, prefijo, contenidoHtml, variables } = datos;
+  const { aspirante, docItem, prefijo, contenidoHtml, variables, docActual } = datos;
   if (!docItem || !prefijo) {
     throw new Error('Tipo de documento no configurado para firma');
+  }
+  const motivoBloqueo = motivoBloqueoFirma(aspirante, docActual);
+  if (motivoBloqueo) {
+    const err = new Error(motivoBloqueo);
+    err.bloqueado = true;
+    throw err;
   }
   if (!contenidoHtml) {
     throw new Error(`Plantilla no encontrada para el documento ${prefijo}`);
@@ -548,7 +576,24 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     firma_colaborador: firmaHtml
   };
 
-  const htmlCompleto = reemplazarVariables(contenidoHtml, todasLasVariables);
+  let htmlCompleto = reemplazarVariables(contenidoHtml, todasLasVariables);
+
+  // 3b. Huella de la firma: quién, cuándo (hora de Colombia), desde qué IP y un código de verificación
+  const ipFirma = (ip || '').toString().split(',')[0].trim().slice(0, 64) || null;
+  const dispositivoFirma = (dispositivo || '').toString().slice(0, 255) || null;
+  const fechaFirma = ahoraColombia();
+  const codigoVerificacion = crypto.createHash('sha256')
+    .update([idAspirante, idConfigDoc, aspirante.identificacion, fechaFirma.sql, ipFirma || '', htmlCompleto].join('|'))
+    .digest('hex').slice(0, 16).toUpperCase();
+  const huella = htmlHuellaFirma({
+    nombre: variables.nombre_completo,
+    identificacion: aspirante.identificacion,
+    fechaTexto: fechaFirma.texto,
+    ip: ipFirma,
+    codigo: codigoVerificacion
+  });
+  const posBody = htmlCompleto.toLowerCase().lastIndexOf('</body>');
+  htmlCompleto = posBody >= 0 ? htmlCompleto.slice(0, posBody) + huella + htmlCompleto.slice(posBody) : htmlCompleto + huella;
 
   // 4. Generar PDF con Puppeteer
   console.log(`[Firma Selección] Generando PDF con Puppeteer para ${prefijo} (Aspirante ${idAspirante})...`);
@@ -583,6 +628,20 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
       fecha_actualizacion = CURRENT_TIMESTAMP
   `, [idAspirante, idConfigDoc, gcsPath]);
 
+  // 7. Guardar la huella (requiere migraciones/2026-11-07_aspirantes_validaciones_avisos_huella.sql;
+  //    si las columnas aún no existen, la firma queda igual y solo se registra el aviso en el log)
+  const hashPdf = crypto.createHash('sha256').update(pdfBuffer).digest('hex');
+  try {
+    await pool.execute(
+      `UPDATE Dynamic_hv_documentos
+       SET fecha_firma = ?, ip_firma = ?, dispositivo_firma = ?, hash_firma = ?, codigo_verificacion = ?
+       WHERE id_aspirante = ? AND id_config_doc = ?`,
+      [fechaFirma.sql, ipFirma, dispositivoFirma, hashPdf, codigoVerificacion, idAspirante, idConfigDoc]
+    );
+  } catch (errHuella) {
+    console.warn('[Firma Selección] No se pudo guardar la huella de la firma:', errHuella.message);
+  }
+
   return {
     ok: true,
     gcsPath,
@@ -591,7 +650,7 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
 }
 
 module.exports = {
-  DOCS_FIRMA_SELECCION,
+  motivoBloqueoFirma,
   obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
   generarHtmlVistaFirma,

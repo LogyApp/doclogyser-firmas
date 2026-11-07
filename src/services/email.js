@@ -3528,3 +3528,87 @@ module.exports = {
   LOGO_HEADER_ATTACHMENT,
   COLOR_ENCABEZADO_AZUL,
 };
+
+// ── Aspirantes (Selección): avisos de la fase de firmas ─────────────────────
+// Interruptor: Config_Parametros talenthub/Aspirantes
+// 'Habilitar notificaciones de correo en Aspirantes' (ver services/avisosSeleccion.js).
+
+// Al aspirante: ya puede firmar sus documentos de vinculación.
+async function notificarAspiranteFaseFirmas({ correo, nombreAspirante, cargo, operacion, portalUrl, totalDocumentos, copia = [] }) {
+  const asunto = 'Ya puedes firmar tus documentos de vinculación — LOG&SER S.A.S.';
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="padding:24px;background:#fff;border:1px solid #eee;color:#1a1a2e;line-height:1.6">
+        <h2 style="color:#1B2A5E;margin:0 0 10px">¡Hola, ${nombreAspirante}!</h2>
+        <p style="color:#555;font-size:.93rem;margin:0 0 14px">
+          Tu proceso de selección avanzó a la <strong>fase de firmas</strong>. Desde tu portal puedes leer
+          y firmar digitalmente ${totalDocumentos ? `los <strong>${totalDocumentos} documentos</strong>` : 'los documentos'} de tu vinculación.
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:.92rem">
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:38%">Cargo</td><td style="padding:8px 12px;font-weight:bold">${cargo || '—'}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Operación</td><td style="padding:8px 12px">${operacion || '—'}</td></tr>
+        </table>
+        <div style="text-align:center;margin:26px 0">
+          <a href="${portalUrl}" target="_blank"
+             style="background:#F15A22;color:#fff;text-decoration:none;padding:13px 30px;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block">
+            Ir a firmar mis documentos ➔
+          </a>
+        </div>
+        <p style="font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:14px;margin:0">
+          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+          <a href="${portalUrl}" style="color:#2563eb;word-break:break-all">${portalUrl}</a>
+        </p>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Selección" <${EMAIL_FROM}>`,
+    to: correo,
+    cc: copia.length ? copia : undefined,
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
+// A Selección: el aspirante terminó de firmar todos sus documentos.
+async function notificarFirmasCompletasAspirante({ nombreAspirante, identificacion, cargo, operacion, totalDocumentos, adminUrl, para = [], copia = [] }) {
+  const asunto = `Firmas completas — ${nombreAspirante}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <div style="display:inline-block;background:#eafaf1;border:1px solid #a9dfbf;border-radius:6px;padding:6px 16px;margin-bottom:18px">
+          <span style="color:#1e8449;font-weight:bold;font-size:.88rem">&#9679; FIRMAS COMPLETAS</span>
+        </div>
+        <h2 style="color:#1a1a2e;margin:0 0 6px">El aspirante firmó todos sus documentos</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
+          Ya puede revisar los documentos firmados y continuar con la contratación.
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.93rem">
+          <tr style="background:#f8f9fb"><td style="padding:9px 12px;color:#888;width:38%">Aspirante</td><td style="padding:9px 12px;font-weight:bold">${nombreAspirante}</td></tr>
+          <tr><td style="padding:9px 12px;color:#888">Identificación</td><td style="padding:9px 12px">${identificacion || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:9px 12px;color:#888">Cargo</td><td style="padding:9px 12px;font-weight:bold;color:#1e8449">${cargo || '—'}</td></tr>
+          <tr><td style="padding:9px 12px;color:#888">Operación</td><td style="padding:9px 12px">${operacion || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:9px 12px;color:#888">Documentos firmados</td><td style="padding:9px 12px">${totalDocumentos}</td></tr>
+        </table>
+        ${adminUrl ? `<div style="text-align:center;margin:10px 0 4px">
+          <a href="${adminUrl}" target="_blank" style="background:#1B2A5E;color:#fff;text-decoration:none;padding:11px 26px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block">Abrir Panel Admin del aspirante</a>
+        </div>` : ''}
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Selección" <${EMAIL_FROM}>`,
+    to: para.length ? para : copia,
+    cc: para.length && copia.length ? copia : undefined,
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
+Object.assign(module.exports, { notificarAspiranteFaseFirmas, notificarFirmasCompletasAspirante });
