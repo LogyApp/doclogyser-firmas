@@ -14,7 +14,9 @@ const {
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
-const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante } = require('../services/docsSeleccion');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar } = require('../services/docsSeleccion');
+const { motivoBloqueoFirma } = require('../services/seleccionFirmas');
+const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -619,6 +621,11 @@ router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
     if (datos.aspirante.estado_proceso === 'bloqueado') {
       return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}`);
     }
+    // Firma bloqueada: aspirante contratado, fase de firmas no habilitada o documento ya aprobado
+    const motivoBloqueo = motivoBloqueoFirma(datos.aspirante, datos.docActual);
+    if (motivoBloqueo) {
+      return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}&msg=firma_bloqueada&info=${encodeURIComponent(motivoBloqueo)}`);
+    }
 
     const { reemplazarVariables } = require('../services/plantilla');
     const contenidoHtmlConVariables = reemplazarVariables(datos.contenidoHtml, {
@@ -653,16 +660,32 @@ router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async
   }
 
   try {
+    // Estado previo del documento: el aviso de "firmas completas" solo sale cuando
+    // esta firma completa el paquete (no al volver a firmar uno ya firmado)
+    const [previo] = await pool.execute(
+      'SELECT estado FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?',
+      [uuid, idConfigDoc]
+    );
+    const yaEstabaFirmado = previo.length > 0 && ['firmado', 'aprobado'].includes(String(previo[0].estado || '').toLowerCase());
+
     const resultado = await procesarFirmaDocumento({
       idAspirante: uuid,
       idConfigDoc,
       firmaBase64: firma_base64,
       esNuevaFirma: !!es_nueva_firma,
-      bucketAspirantes: BUCKET_ASPIRANTES
+      bucketAspirantes: BUCKET_ASPIRANTES,
+      ip: req.headers['x-forwarded-for'] || req.ip || req.socket?.remoteAddress,
+      dispositivo: req.get('user-agent')
     });
 
+    if (!yaEstabaFirmado) {
+      setImmediate(() => avisarFirmasCompletas({ idAspirante: uuid }));
+    }
     res.json(resultado);
   } catch (err) {
+    if (err.bloqueado) {
+      return res.status(403).json({ ok: false, error: err.message });
+    }
     console.error('Error al procesar firma de selección:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -679,20 +702,34 @@ router.post('/cambiar-estado-proceso', async (req, res) => {
       return res.status(400).send('Estado no permitido');
     }
 
+    let estadoAnterior = null;
     if (nuevo_estado === 'En proceso') {
       const [aspRows] = await pool.execute(
-        'SELECT IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
+        'SELECT IdRequisicion, estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
         [id_aspirante]
       );
       if (!aspRows.length || !aspRows[0].IdRequisicion) {
         return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible pasar a "En proceso": El aspirante no tiene una requisición vinculada.')}`);
       }
+      estadoAnterior = aspRows[0].estado_proceso;
+
+      // Regla configurable: documentos obligatorios aprobados (Config_Parametros talenthub/Aspirantes)
+      const validacion = await validarPasoEnProceso(id_aspirante);
+      if (!validacion.ok) {
+        return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible pasar a "En proceso". Faltan documentos aprobados: ' + validacion.faltantes.join(', ') + '.')}`);
+      }
     }
 
-    await pool.execute(
+    const [resultado] = await pool.execute(
       'UPDATE Dynamic_hv_aspirante SET estado_proceso = ? WHERE id_aspirante = ? AND estado_proceso != "contratado"',
       [nuevo_estado, id_aspirante]
     );
+
+    // Aviso al aspirante (si está activo en Config_Parametros) solo cuando realmente pasa a "En proceso"
+    if (nuevo_estado === 'En proceso' && estadoAnterior !== 'En proceso' && resultado.affectedRows > 0) {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      setImmediate(() => avisarFaseFirmas({ idAspirante: id_aspirante, usuario, baseUrl }));
+    }
 
     res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent('Estado del aspirante actualizado a ' + nuevo_estado)}`);
   } catch (error) {
@@ -1275,7 +1312,26 @@ router.get('/api/operaciones/:regional', async (req, res) => {
 router.post('/finalizar-contratacion', async (req, res) => {
   const { id_aspirante, regional, operacion, fecha_ingreso } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
-  
+
+  // Regla configurable: todas las firmas completas (según la operación de la requisición,
+  // que es la que definió qué documentos debía firmar el aspirante)
+  try {
+    const [reqOp] = await pool.execute(
+      `SELECT r.\`Operación\` AS operacion FROM Dynamic_hv_aspirante a
+       LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+       WHERE a.id_aspirante = ? LIMIT 1`,
+      [id_aspirante]
+    );
+    const operacionFirmas = reqOp.length && reqOp[0].operacion ? reqOp[0].operacion : operacion;
+    const validacion = await validarFirmasParaContratar(id_aspirante, operacionFirmas);
+    if (!validacion.ok) {
+      return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible finalizar la contratación. Faltan documentos por firmar: ' + validacion.faltantes.join(', ') + '.')}`);
+    }
+  } catch (errVal) {
+    console.error('Error validando firmas para contratar:', errVal);
+    return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No se pudo validar las firmas del aspirante. Intenta de nuevo.')}`);
+  }
+
   const connection = await pool.getConnection();
 
   try {
@@ -1504,6 +1560,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
       if (params.get('msg') === 'deleted') alert('Documento eliminado correctamente.');
       if (params.get('msg') === 'uploaded') alert('Documento guardado y cargado correctamente.');
       if (params.get('msg') === 'firmado') alert('¡Documento firmado y generado con éxito!');
+      if (params.get('msg') === 'firma_bloqueada') alert(params.get('info') || 'Este documento no se puede firmar en este momento.');
     </script>
   `;
 
@@ -1511,7 +1568,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   const estadoHabilitado = (estadoProceso === 'En proceso' || estadoProceso === 'contratado') && tieneRequisicion;
   const allUploaded = docs.every(doc => mapaDocs[doc.id]);
   const totalCargados = docs.filter(d => mapaDocs[d.id]).length;
-  const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length;
+  const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && ['Firmado', 'Aprobado'].includes(mapaDocs[d.id].estado)).length;
 
   const renderDocSoporte = (doc) => {
     const data = mapaDocs[doc.id];
@@ -1591,10 +1648,15 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     </div>`;
   };
 
+  // Firmar o volver a firmar solo en "En proceso"; si el documento está aprobado o el aspirante
+  // ya fue contratado, queda solo para ver.
+  const firmasAbiertas = estadoProceso === 'En proceso';
   const renderDocFirma = (doc, idx) => {
     const data = mapaDocs[doc.id];
-    const estaFirmado = data && data.estado === 'Firmado';
+    const estaAprobado = data && data.estado === 'Aprobado';
+    const estaFirmado = data && (data.estado === 'Firmado' || estaAprobado);
     const estaCargado = data && !estaFirmado;
+    const puedeFirmar = firmasAbiertas && !estaAprobado;
 
     return `
     <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaFirmado ? 'border-emerald-200 bg-emerald-50/50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} rounded-2xl shadow-xs transition-all hover:border-slate-200">
@@ -1610,31 +1672,31 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 
       <div class="flex items-center gap-2 mt-3 md:mt-0">
         ${estaFirmado ? `
-          <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">✓ Firmado</span>
+          <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">${estaAprobado ? '✓ Aprobado' : '✓ Firmado'}</span>
           <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver PDF ↗
           </a>
-          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+          ${puedeFirmar ? `<a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">
             Volver a firmar
-          </a>
+          </a>` : ''}
         ` : (estaCargado ? `
           <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
           <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver ↗
           </a>
-          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+          ${puedeFirmar ? `<a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs">
             Firmar Digitalmente →
-          </a>
-        ` : `
+          </a>` : ''}
+        ` : (puedeFirmar ? `
           <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5">
             <span>✍️</span> Abrir y Firmar →
           </a>
-        `)}
+        ` : `<span class="text-[10px] font-bold text-slate-400 italic">Pendiente</span>`))}
       </div>
     </div>`;
   };
@@ -2544,7 +2606,9 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
         </div>
         ${data ? `
           <div class="flex items-center gap-1.5 shrink-0">
-            ${estaFirmado 
+            ${data.estado === 'Aprobado'
+              ? '<span class="text-[9px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ APROBADO</span>'
+              : estaFirmado 
               ? '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ FIRMADO</span>' 
               : '<span class="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">CARGADO</span>'}
             <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
@@ -2593,7 +2657,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
     </script>
   `;
 
-  const totalFirmados = docsFir.filter(d => mapa[d.id] && mapa[d.id].estado === 'Firmado').length;
+  const totalFirmados = docsFir.filter(d => mapa[d.id] && ['Firmado', 'Aprobado'].includes(mapa[d.id].estado)).length;
 
   return `
   <!DOCTYPE html>
