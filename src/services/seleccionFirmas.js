@@ -3,7 +3,8 @@ const crypto = require('crypto');
 const pool = require('./db');
 const { generarPDFDesdeHTML } = require('./renderer');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
-const { reemplazarVariables } = require('./plantilla');
+const { reemplazarVariables, aplicarFormatoPlantilla, firmaConFecha } = require('./plantilla');
+const { LOGO_BASE64 } = require('./assets');
 
 // La lista de documentos para firma sale de Config_Doc_Trabajador (Clasificacion
 // "3. Documentos para Firmas") y la regla por operación de Config_Parametros:
@@ -62,13 +63,27 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
   let contenidoHtml = '';
   if (prefijo) {
     const [plantillaRows] = await pool.execute(
-      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
+      `SELECT contenido_html, codigo_formato, version_formato, fecha_version FROM Maestro_Plantillas
+       WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1`,
       [prefijo]
     );
     // Las plantillas de selección se administran solo en Maestro_Plantillas
     // (los archivos de src/templates/seleccion quedan como base para SST).
+    // El encabezado toma código, versión y fecha del formato de la misma fila.
     if (plantillaRows.length > 0 && plantillaRows[0].contenido_html) {
-      contenidoHtml = plantillaRows[0].contenido_html;
+      const fila = plantillaRows[0];
+      const fechaFormato = fila.fecha_version
+        ? (fila.fecha_version instanceof Date
+            ? fila.fecha_version.toISOString().slice(0, 10)
+            : String(fila.fecha_version).slice(0, 10)).split('-').reverse().join('/')
+        : '';
+      contenidoHtml = aplicarFormatoPlantilla(fila.contenido_html, {
+        codigo: fila.codigo_formato ? String(fila.codigo_formato).trim() : '',
+        version: fila.version_formato ? String(fila.version_formato).trim() : '',
+        fecha: fechaFormato
+      });
+      // Si la plantilla no tiene fecha del formato, no se muestra el marcador
+      contenidoHtml = contenidoHtml.replace(/\{\{\s*(codigo_formato|version_formato|fecha_formato)\s*\}\}/g, '');
     }
   }
 
@@ -111,7 +126,10 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     eps: aspirante.eps || 'EPS No reportada',
     dia_firma: String(ahoraBogota.getDate()),
     mes_firma: MESES[ahoraBogota.getMonth()],
-    anio_firma: String(ahoraBogota.getFullYear())
+    anio_firma: String(ahoraBogota.getFullYear()),
+    // Diseño moderno (mismo estilo de los formatos de SST y Cesantías)
+    logo_src: LOGO_BASE64,
+    fecha_generacion: ahoraColombia().texto.replace(' a las ', ', ').replace(/:\d{2}$/, '')
   };
 
   return {
@@ -270,8 +288,10 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
         <span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Desplázate para leer todo</span>
       </div>
 
-      <div class="doc-preview-container p-4 md:p-8">
-        ${contenidoHtmlConVariables}
+      <div class="doc-preview-container p-2 md:p-4">
+        <iframe id="vistaDocumento" title="Vista previa del documento" class="w-full block border-0 bg-white" style="min-height:60vh"
+          srcdoc="${String(contenidoHtmlConVariables).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"
+          onload="try{const d=this.contentDocument;const ajustar=()=>{this.style.height=(d.documentElement.scrollHeight+16)+'px'};ajustar();setTimeout(ajustar,400);}catch(e){}"></iframe>
       </div>
     </div>
 
@@ -569,8 +589,12 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     }
   }
 
-  // 3. Preparar HTML completo con firma
-  const firmaHtml = `<img src="${firmaFinalBase64}" style="max-height:75px; max-width:220px; object-fit:contain; display:block; margin:0 auto;" alt="Firma Colaborador"/>`;
+  // 3. Preparar HTML completo con firma (con la fecha y hora de firma debajo, como en LogySign)
+  const fechaFirma = ahoraColombia();
+  const firmaHtml = firmaConFecha(
+    `<img src="${firmaFinalBase64}" style="max-height:70px; max-width:220px; object-fit:contain; display:block; margin:0 auto;" alt="Firma Colaborador"/>`,
+    fechaFirma.sql
+  );
   const todasLasVariables = {
     ...variables,
     firma_colaborador: firmaHtml
@@ -581,7 +605,6 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
   // 3b. Huella de la firma: quién, cuándo (hora de Colombia), desde qué IP y un código de verificación
   const ipFirma = (ip || '').toString().split(',')[0].trim().slice(0, 64) || null;
   const dispositivoFirma = (dispositivo || '').toString().slice(0, 255) || null;
-  const fechaFirma = ahoraColombia();
   const codigoVerificacion = crypto.createHash('sha256')
     .update([idAspirante, idConfigDoc, aspirante.identificacion, fechaFirma.sql, ipFirma || '', htmlCompleto].join('|'))
     .digest('hex').slice(0, 16).toUpperCase();
