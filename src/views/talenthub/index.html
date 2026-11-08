@@ -3924,8 +3924,9 @@
       // 1. Renderizar navegación según secciones autorizadas
       renderSidebarNav();
 
-      // Cargar catálogos y permisos de Requisiciones desde el inicio
-      await cargarCatalogosRequisiciones();
+      // Catálogos y permisos de Requisiciones: se piden desde el inicio pero sin esperar,
+      // para no demorar las demás pestañas (Requisiciones los espera en inicializarRequisiciones)
+      cargarCatalogosRequisiciones();
 
       // 2. Activar pestaña configurada
       switchTab(CONFIG.activeTab || 'Requisiciones');
@@ -4840,7 +4841,20 @@
       inicializarRedimensionColumnasRequisiciones();
     }
 
-    async function cargarCatalogosRequisiciones() {
+    // Una sola petición aunque varias partes de la pantalla la pidan a la vez
+    let _reqCatalogosPromesa = null;
+    function cargarCatalogosRequisiciones() {
+      if (_reqCatalogos) return Promise.resolve();
+      if (!_reqCatalogosPromesa) {
+        _reqCatalogosPromesa = cargarCatalogosRequisicionesRed().finally(() => {
+          if (!_reqCatalogos) _reqCatalogosPromesa = null;   // si falló, se puede reintentar
+          actualizarVisibilidadBotonesHeader();
+        });
+      }
+      return _reqCatalogosPromesa;
+    }
+
+    async function cargarCatalogosRequisicionesRed() {
       try {
         const res = await fetch(`/talenthub/api/requisiciones/catalogos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const data = await res.json();

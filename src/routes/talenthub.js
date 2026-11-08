@@ -793,7 +793,15 @@ router.post('/api/integridad/modificar', async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ── HELPER DE PARÁMETROS CONFIGURABLES ───────────────────────────────────────
+// Caché corta de Config_Parametros (talenthub). Se limpia al guardar parámetros desde la pestaña.
+const PARAMS_TTL_MS = 60 * 1000;
+let cacheParametrosTalenthub = { t: 0, data: null };
+function limpiarCacheParametrosTalenthub() { cacheParametrosTalenthub = { t: 0, data: null }; }
+
 async function obtenerParametrosTalenthub() {
+  if (cacheParametrosTalenthub.data && Date.now() - cacheParametrosTalenthub.t < PARAMS_TTL_MS) {
+    return { ...cacheParametrosTalenthub.data };
+  }
   const [rows] = await pool.execute(
     'SELECT `Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ?',
     ['talenthub']
@@ -803,7 +811,8 @@ async function obtenerParametrosTalenthub() {
     mapa[r.Concepto] = r.Parametro;
     mapa[`${r.Seccion}:${r.Concepto}`] = r.Parametro;
   }
-  return mapa;
+  cacheParametrosTalenthub = { t: Date.now(), data: mapa };
+  return { ...mapa };
 }
 
 function rolPermitidoEnParametro(rolUsuario, parametroStr) {
@@ -846,16 +855,15 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     let fechaDesdeDefecto = null;
     if (!noAplicaFiltroFechaDesde) {
       try {
-        const [fHoyRows] = await pool.execute('SELECT `Quincena`, `Año` FROM `Maestro_Fechas` WHERE DATE(`Fecha`) = CURDATE() LIMIT 1');
-        if (fHoyRows.length > 0) {
-          const { Quincena, Año } = fHoyRows[0];
-          const [fMinRows] = await pool.execute(
-            'SELECT DATE_FORMAT(MIN(`Fecha`), "%Y-%m-%d") as fechaMinima FROM `Maestro_Fechas` WHERE `Quincena` = ? AND `Año` = ?',
-            [Quincena, Año]
-          );
-          if (fMinRows.length > 0 && fMinRows[0].fechaMinima) {
-            fechaDesdeDefecto = fMinRows[0].fechaMinima;
-          }
+        // Primer día de la quincena de hoy (una sola consulta; `Fecha` es DATE y usa su índice)
+        const [fMinRows] = await pool.execute(
+          `SELECT DATE_FORMAT(MIN(f2.\`Fecha\`), '%Y-%m-%d') AS fechaMinima
+           FROM \`Maestro_Fechas\` f1
+           JOIN \`Maestro_Fechas\` f2 ON f2.\`Quincena\` = f1.\`Quincena\` AND f2.\`Año\` = f1.\`Año\`
+           WHERE f1.\`Fecha\` = CURDATE()`
+        );
+        if (fMinRows.length > 0 && fMinRows[0].fechaMinima) {
+          fechaDesdeDefecto = fMinRows[0].fechaMinima;
         }
       } catch (errFecha) {
         console.error('[talenthub] Error consultando fecha mínima de quincena en Maestro_Fechas:', errFecha.message);
@@ -882,12 +890,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       }
     }
     opQuery += " ORDER BY `OPERACIÓN` ASC";
-    const [opRows] = await pool.execute(opQuery, opParams);
 
-    // Regionales únicas permitidas
-    const regionalesSet = new Set();
-    opRows.forEach(r => { if (r.regional) regionalesSet.add(r.regional); });
-    const regionales = Array.from(regionalesSet).sort();
 
     // Cargos de Config_Cargo_Laboral según Config_Parametros
     const puedeTodosLosCargos = rolPermitidoEnParametro(rol, paramsConfig['Puede escoger todos los cargos en la Requisición']);
@@ -901,24 +904,29 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     } else {
       cargosQuery = "SELECT `Cargo` as cargo, `Grupo Nomina` as grupoNomina FROM `Config_Cargo_Laboral` WHERE `Grupo Nomina` = 'Operativo' ORDER BY `Cargo` ASC";
     }
-    const [cargoRows] = await pool.execute(cargosQuery);
-
     // Responsables de Selección: pobladas con Nombre y Rol de Maestro_Usuarios según roles en "Responsables area de Selección"
     const rolesRespParam = paramsConfig['Responsables area de Selección'] || 'Selección, Selección Centro, Directorth, Generalista, AuxiliarR';
     const rolesRespLista = rolesRespParam.split(',').map(r => r.trim()).filter(Boolean);
 
-    let respRows = [];
-    if (rolesRespLista.length > 0) {
-      const phRoles = rolesRespLista.map(() => '?').join(',');
-      const [uRows] = await pool.execute(
-        `SELECT \`ID\` as id, \`Nombre\` as nombre, \`Cargo\` as cargo, \`Rol\` as rol 
-         FROM \`Maestro_Usuarios\` 
-         WHERE \`Rol\` IN (${phRoles}) 
-         ORDER BY \`Nombre\` ASC`,
-        rolesRespLista
-      );
-      respRows = uRows;
-    }
+    // Operaciones, cargos y responsables no dependen entre sí: se consultan en paralelo
+    const [[opRows], [cargoRows], respRows] = await Promise.all([
+      pool.execute(opQuery, opParams),
+      pool.execute(cargosQuery),
+      rolesRespLista.length > 0
+        ? pool.execute(
+            `SELECT \`ID\` as id, \`Nombre\` as nombre, \`Cargo\` as cargo, \`Rol\` as rol 
+             FROM \`Maestro_Usuarios\` 
+             WHERE \`Rol\` IN (${rolesRespLista.map(() => '?').join(',')}) 
+             ORDER BY \`Nombre\` ASC`,
+            rolesRespLista
+          ).then(([uRows]) => uRows)
+        : Promise.resolve([])
+    ]);
+
+    // Regionales únicas permitidas
+    const regionalesSet = new Set();
+    opRows.forEach(r => { if (r.regional) regionalesSet.add(r.regional); });
+    const regionales = Array.from(regionalesSet).sort();
 
     const listaResponsables = respRows.map(r => ({
       id: r.nombre,
@@ -1035,13 +1043,14 @@ router.get('/api/requisiciones', async (req, res) => {
         params.push(responsable.trim());
       }
     }
-    if (fechaDesde) {
-      whereClauses.push("DATE(`Fecha Requisición`) >= ?");
+    // Sin DATE() sobre la columna, para que use el índice de `Fecha Requisición`
+    if (fechaDesde && RE_FECHA_YMD.test(fechaDesde)) {
+      whereClauses.push("`Fecha Requisición` >= ?");
       params.push(fechaDesde);
     }
-    if (fechaHasta) {
-      whereClauses.push("DATE(`Fecha Requisición`) <= ?");
-      params.push(fechaHasta);
+    if (fechaHasta && RE_FECHA_YMD.test(fechaHasta)) {
+      whereClauses.push("`Fecha Requisición` < ?");
+      params.push(siguienteDia(fechaHasta));
     }
     if (q && q.trim()) {
       const qWild = `%${q.trim()}%`;
@@ -1071,26 +1080,60 @@ router.get('/api/requisiciones', async (req, res) => {
     const paramsConfig = await obtenerParametrosTalenthub();
     const puedeVerSalario = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar y ver Salario en Requisición']);
 
-    const [rows] = await pool.execute(
-      `SELECT r.IdRequisicion, r.\`Requisición\`, 
-              DATE_FORMAT(r.\`Fecha Requisición\`, '%Y-%m-%d %H:%i') as fechaRequisicion,
-              r.\`Estado\`, r.\`Regional\`, r.\`Operación\`, r.\`Ciudad\`, r.\`Cargo Requerido\`, r.\`Tipo de Pago\`,
-              ${puedeVerSalario ? 'r.`Salario`' : 'NULL AS `Salario`'},
-              r.\`Solicitante\`, r.\`Cargo Solicitante\`, r.\`N° Personas Requeridas\`, r.\`Perfil del Cargo\`,
-              r.\`Conocimientos Adicionales\`, r.\`Experiencia Requerida\`, r.\`Turno Requerido\`, r.\`Descripción del Turno\`,
-              r.\`Manipulación de Alimentos - BPM\`, r.\`Requiere Curso por el Cliente\`, r.\`Descripción Curso Requerido\`,
-              r.\`Motivo de la Solicitud\`, r.\`Motivo del Reemplazo\`, r.\`Duración de la Temporalidad\`, r.\`Observaciones\`,
-              r.\`Dotación Requerida\`, r.\`EPP Requeridos\`,
-              DATE_FORMAT(r.\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacion,
-              r.\`Responsable de Selección\`,
-              DATE_FORMAT(r.\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
-              r.\`usuario_actualizacion\`
-       FROM \`Dynamic_Requisiciones\` r
-       WHERE ${whereSql}
-       ORDER BY ${sortCol} ${sortDirection}
-       LIMIT 500`,
-      params
-    );
+    // Alcance base del usuario (KPIs y conteos de los filtros)
+    const baseScopeClauses = ["1=1"];
+    const baseScopeParams = [];
+    if (!acceso.sinFiltro) {
+      if (acceso.operacionesFiltro && acceso.operacionesFiltro.length > 0) {
+        baseScopeClauses.push(`\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+        baseScopeParams.push(...acceso.operacionesFiltro);
+      } else if (acceso.regional) {
+        baseScopeClauses.push("`Regional` = ?");
+        baseScopeParams.push(acceso.regional);
+      }
+    }
+    const baseScopeSql = baseScopeClauses.join(' AND ');
+
+    // El listado lleva solo las columnas que muestra la tabla: el detalle y la edición
+    // consultan /api/requisiciones/:id. El listado, los KPIs y los conteos van en paralelo.
+    const [
+      [rows], [kpiRows], [facetEstados], [facetRegionales], [facetOperaciones], [facetCargos], [facetResponsables]
+    ] = await Promise.all([
+      pool.execute(
+        `SELECT r.IdRequisicion, r.\`Requisición\`,
+                DATE_FORMAT(r.\`Fecha Requisición\`, '%Y-%m-%d %H:%i') as fechaRequisicion,
+                r.\`Estado\`, r.\`Regional\`, r.\`Operación\`, r.\`Ciudad\`, r.\`Cargo Requerido\`, r.\`Tipo de Pago\`,
+                ${puedeVerSalario ? 'r.`Salario`' : 'NULL AS `Salario`'},
+                r.\`Solicitante\`, r.\`Cargo Solicitante\`, r.\`N° Personas Requeridas\`,
+                r.\`Motivo de la Solicitud\`, r.\`Turno Requerido\`,
+                DATE_FORMAT(r.\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacion,
+                r.\`Responsable de Selección\`,
+                DATE_FORMAT(r.\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
+                r.\`usuario_actualizacion\`
+         FROM \`Dynamic_Requisiciones\` r
+         WHERE ${whereSql}
+         ORDER BY ${sortCol} ${sortDirection}
+         LIMIT 500`,
+        params
+      ),
+      pool.execute(
+        `SELECT 
+           COUNT(*) as total,
+           SUM(CASE WHEN UPPER(\`Estado\`) = 'EN PROCESO' THEN 1 ELSE 0 END) as enProceso,
+           SUM(CASE WHEN UPPER(\`Estado\`) = 'FINALIZADO' THEN 1 ELSE 0 END) as finalizado,
+           SUM(CASE WHEN UPPER(\`Estado\`) = 'SUSPENDIDO' THEN 1 ELSE 0 END) as suspendido,
+           SUM(CASE WHEN UPPER(\`Estado\`) = 'CANCELADO' THEN 1 ELSE 0 END) as cancelado,
+           COALESCE(SUM(\`N° Personas Requeridas\`), 0) as totalVacantes
+         FROM \`Dynamic_Requisiciones\`
+         WHERE ${baseScopeSql}`,
+        baseScopeParams
+      ),
+      pool.execute(`SELECT UPPER(\`Estado\`) as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Estado\` IS NOT NULL GROUP BY UPPER(\`Estado\`) ORDER BY cnt DESC`, baseScopeParams),
+      pool.execute(`SELECT \`Regional\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Regional\` IS NOT NULL GROUP BY \`Regional\` ORDER BY cnt DESC`, baseScopeParams),
+      pool.execute(`SELECT \`Operación\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Operación\` IS NOT NULL GROUP BY \`Operación\` ORDER BY cnt DESC`, baseScopeParams),
+      pool.execute(`SELECT \`Cargo Requerido\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Cargo Requerido\` IS NOT NULL GROUP BY \`Cargo Requerido\` ORDER BY cnt DESC`, baseScopeParams),
+      pool.execute(`SELECT NULLIF(TRIM(\`Responsable de Selección\`), '') as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} GROUP BY NULLIF(TRIM(\`Responsable de Selección\`), '') ORDER BY cnt DESC`, baseScopeParams)
+    ]);
 
     // Aspirantes de las requisiciones listadas con su fecha de ingreso más reciente
     const aspirantesPorReq = new Map();
@@ -1131,59 +1174,6 @@ router.get('/api/requisiciones', async (req, res) => {
       requisicionesFormateadas.sort((a, b) =>
         dir * ((a.sla_pct - b.sla_pct) || (a.aspirantes_cumple - b.aspirantes_cumple)));
     }
-
-    // Consulta de conteos para filtros y KPIs (bajo el alcance base del usuario)
-    let baseScopeClauses = ["1=1"];
-    const baseScopeParams = [];
-    if (!acceso.sinFiltro) {
-      if (acceso.operacionesFiltro && acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        baseScopeClauses.push(`\`Operación\` IN (${ph})`);
-        baseScopeParams.push(...acceso.operacionesFiltro);
-      } else if (acceso.regional) {
-        baseScopeClauses.push("`Regional` = ?");
-        baseScopeParams.push(acceso.regional);
-      }
-    }
-    const baseScopeSql = baseScopeClauses.join(' AND ');
-
-    const [kpiRows] = await pool.execute(
-      `SELECT 
-         COUNT(*) as total,
-         SUM(CASE WHEN UPPER(\`Estado\`) = 'EN PROCESO' THEN 1 ELSE 0 END) as enProceso,
-         SUM(CASE WHEN UPPER(\`Estado\`) = 'FINALIZADO' THEN 1 ELSE 0 END) as finalizado,
-         SUM(CASE WHEN UPPER(\`Estado\`) = 'SUSPENDIDO' THEN 1 ELSE 0 END) as suspendido,
-         SUM(CASE WHEN UPPER(\`Estado\`) = 'CANCELADO' THEN 1 ELSE 0 END) as cancelado,
-         COALESCE(SUM(\`N° Personas Requeridas\`), 0) as totalVacantes
-       FROM \`Dynamic_Requisiciones\`
-       WHERE ${baseScopeSql}`,
-      baseScopeParams
-    );
-
-    const [facetEstados] = await pool.execute(
-      `SELECT UPPER(\`Estado\`) as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Estado\` IS NOT NULL GROUP BY UPPER(\`Estado\`) ORDER BY cnt DESC`,
-      baseScopeParams
-    );
-
-    const [facetRegionales] = await pool.execute(
-      `SELECT \`Regional\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Regional\` IS NOT NULL GROUP BY \`Regional\` ORDER BY cnt DESC`,
-      baseScopeParams
-    );
-
-    const [facetOperaciones] = await pool.execute(
-      `SELECT \`Operación\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Operación\` IS NOT NULL GROUP BY \`Operación\` ORDER BY cnt DESC`,
-      baseScopeParams
-    );
-
-    const [facetCargos] = await pool.execute(
-      `SELECT \`Cargo Requerido\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Cargo Requerido\` IS NOT NULL GROUP BY \`Cargo Requerido\` ORDER BY cnt DESC`,
-      baseScopeParams
-    );
-
-    const [facetResponsables] = await pool.execute(
-      `SELECT NULLIF(TRIM(\`Responsable de Selección\`), '') as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} GROUP BY NULLIF(TRIM(\`Responsable de Selección\`), '') ORDER BY cnt DESC`,
-      baseScopeParams
-    );
 
     res.json({
       ok: true,
@@ -2190,6 +2180,7 @@ router.put(['/api/parametros/:id', '/api/parametros/requisiciones/:id'], async (
     );
 
     console.log(`[talenthub-parametros] Parámetro id=${id} ("${row.Concepto}" - ${row.Seccion}) actualizado por ${acceso.usuarioId}: "${finalParam}"`);
+    limpiarCacheParametrosTalenthub();
     res.json({ ok: true, mensaje: 'Parámetro actualizado exitosamente.' });
   } catch (err) {
     console.error('[talenthub] PUT /api/parametros/:id error:', err);
@@ -2269,6 +2260,7 @@ router.post('/api/parametros/requisiciones', async (req, res) => {
     }
 
     console.log(`[talenthub-parametros] Parámetros de Requisiciones actualizados por ${acceso.usuarioId}`);
+    limpiarCacheParametrosTalenthub();
     res.json({ ok: true, mensaje: 'Parámetros actualizados exitosamente.' });
   } catch (err) {
     console.error('[talenthub] POST /api/parametros/requisiciones:', err);
@@ -2317,12 +2309,20 @@ router.get('/api/aspirantes', async (req, res) => {
         r.\`Regional\` AS req_regional,
         r.Estado AS req_estado,
         EXISTS (SELECT 1 FROM \`Maestro_Vinculación\` mv WHERE mv.\`Identificación\` = a.identificacion) AS en_socio,
-        COUNT(DISTINCT d.id_documento) AS docs_cargados,
-        SUM(CASE WHEN d.estado = 'Aprobado' THEN 1 ELSE 0 END) AS docs_aprobados,
-        SUM(CASE WHEN d.estado = 'Firmado' THEN 1 ELSE 0 END) AS docs_firmados
+        COALESCE(d.docs_cargados, 0) AS docs_cargados,
+        COALESCE(d.docs_aprobados, 0) AS docs_aprobados,
+        COALESCE(d.docs_firmados, 0) AS docs_firmados
       FROM Dynamic_hv_aspirante a
       LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
-      LEFT JOIN Dynamic_hv_documentos d ON d.id_aspirante = a.id_aspirante
+      -- Conteo de documentos agrupado antes de unir (evita agrupar todo el listado: ~5 veces más rápido)
+      LEFT JOIN (
+        SELECT id_aspirante,
+               COUNT(*) AS docs_cargados,
+               SUM(estado = 'Aprobado') AS docs_aprobados,
+               SUM(estado = 'Firmado') AS docs_firmados
+        FROM Dynamic_hv_documentos
+        GROUP BY id_aspirante
+      ) d ON d.id_aspirante = a.id_aspirante
       WHERE 1=1
     `;
     const params = [];
@@ -2413,25 +2413,15 @@ router.get('/api/aspirantes', async (req, res) => {
       }
     }
 
-    // Filtros de fecha de registro
-    if (desde) {
-      sql += ` AND DATE(a.fecha_registro) >= ?`;
+    // Filtros de fecha de registro (sin DATE() sobre la columna, para usar su índice)
+    if (desde && RE_FECHA_YMD.test(desde)) {
+      sql += ` AND a.fecha_registro >= ?`;
       params.push(desde);
     }
-    if (hasta) {
-      sql += ` AND DATE(a.fecha_registro) <= ?`;
-      params.push(hasta);
+    if (hasta && RE_FECHA_YMD.test(hasta)) {
+      sql += ` AND a.fecha_registro < ?`;
+      params.push(siguienteDia(hasta));
     }
-
-    sql += `
-      GROUP BY
-        a.id_aspirante, a.tipo_documento, a.identificacion,
-        a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido,
-        a.departamento, a.ciudad, a.telefono, a.correo_electronico,
-        a.medio_reclutamiento, a.estado_proceso, a.fecha_registro,
-        a.foto_public_url, a.pdf_public_url, a.IdRequisicion,
-        r.\`Requisición\`, r.\`Operación\`, r.\`Cargo Requerido\`, r.\`Regional\`, r.Estado
-    `;
 
     // Mapeo seguro de columnas ordenables
     const colMap = {
@@ -2450,10 +2440,9 @@ router.get('/api/aspirantes', async (req, res) => {
 
     sql += ` ORDER BY ${colOrder} ${dirOrder} LIMIT 1000`;
 
-    const [rows] = await pool.execute(sql, params);
-
-    // Consulta de KPIs por Estado y facetas para los filtros desplegables
-    const [[kpiRows], [facetasDeptos], [facetasMedios], [facetasReqs], [facetasRegs], [facetasOps], [facetasQuincenas]] = await Promise.all([
+    // Listado, KPIs por Estado y facetas de los filtros, en paralelo
+    const [[rows], [kpiRows], [facetasDeptos], [facetasMedios], [facetasReqs], [facetasRegs], [facetasOps], [facetasQuincenas]] = await Promise.all([
+      pool.execute(sql, params),
       pool.execute(`
         SELECT 
           COUNT(*) AS total,
@@ -3103,16 +3092,12 @@ router.get('/api/sociodemografica', async (req, res) => {
         WHERE ${conds.join(' AND ')}
         ORDER BY ${(opcionKey === 'datos_generales' || opcionKey === 'info_personal') ? 's.\`Fecha de Actualización\` DESC' : 'v.\`Fecha de Ingreso\` DESC, s.\`Fecha de Actualización\` DESC'}
       `;
-      const [r] = await pool.execute(sql, params);
-
-      // Si es info_bancaria o seguridad_social, consultar los documentos más recientes en Maestro_docTrabajador
-      const docsPorIdentificacion = new Map();
-      if ((opcionKey === 'info_bancaria' || opcionKey === 'seguridad_social') && r.length > 0) {
-        const tiposDoc = opcionKey === 'info_bancaria' ? ['10'] : ['15', '14', '12', '6'];
-        const idsUnicos = Array.from(new Set(r.map(x => x.identificacion).filter(Boolean)));
-        if (idsUnicos.length > 0) {
-          const phTipos = tiposDoc.map(() => '?').join(',');
-          const [docRows] = await pool.execute(
+      // Documentos más recientes de Maestro_docTrabajador (info_bancaria / seguridad_social):
+      // no dependen del listado, así que se consultan al mismo tiempo
+      const tiposDoc = opcionKey === 'info_bancaria' ? ['10']
+        : opcionKey === 'seguridad_social' ? ['15', '14', '12', '6'] : null;
+      const consultaDocs = tiposDoc
+        ? pool.execute(
             `SELECT identificacion, tipo_doc, url
              FROM (
                SELECT mdt.\`Identificación\` AS identificacion,
@@ -3123,18 +3108,20 @@ router.get('/api/sociodemografica', async (req, res) => {
                         ORDER BY mdt.FechaRegistro DESC, mdt.id DESC
                       ) AS rn
                FROM Maestro_docTrabajador mdt INNER JOIN \`Maestro_Segmentación\` s ON s.\`Identificación\` = mdt.\`Identificación\`
-               WHERE s.Estado = ? AND mdt.TipoDocumento IN (${phTipos})
+               WHERE s.Estado = ? AND mdt.TipoDocumento IN (${tiposDoc.map(() => '?').join(',')})
                  AND mdt.Url IS NOT NULL AND mdt.Url != ''
              ) dt
              WHERE dt.rn = 1`,
             [estadoNorm, ...tiposDoc]
-          );
-          for (const d of docRows) {
-            const key = `${d.identificacion}_${d.tipo_doc}`;
-            if (!docsPorIdentificacion.has(key)) {
-              docsPorIdentificacion.set(key, d.url);
-            }
-          }
+          )
+        : Promise.resolve([[]]);
+      const [[r], [docRows]] = await Promise.all([pool.execute(sql, params), consultaDocs]);
+
+      const docsPorIdentificacion = new Map();
+      for (const d of docRows) {
+        const key = `${d.identificacion}_${d.tipo_doc}`;
+        if (!docsPorIdentificacion.has(key)) {
+          docsPorIdentificacion.set(key, d.url);
         }
       }
 

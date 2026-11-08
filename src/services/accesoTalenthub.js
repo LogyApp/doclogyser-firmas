@@ -9,8 +9,25 @@ const { seccionesDelRol, normalizar } = require('./maestroMenu');
  * 2 = Filtrado por Regional
  * 3 = Filtrado por Operación / Dispositivo
  */
+// Caché corta: cada pestaña llama varias veces por carga (catálogos, listado, conteos).
+// Un cambio de rol o de Maestro_Menu se refleja a más tardar en ACCESO_TTL_MS.
+const ACCESO_TTL_MS = 60 * 1000;
+const cacheAcceso = new Map();   // `${usuario}|${seccion}` → { t, valor }
+
 async function computarAccesoTalenthub(usuarioId, seccionRequested = null) {
   if (!usuarioId) return null;
+  const clave = `${usuarioId}|${seccionRequested || ''}`;
+  const enCache = cacheAcceso.get(clave);
+  if (enCache && Date.now() - enCache.t < ACCESO_TTL_MS) {
+    return enCache.valor ? structuredClone(enCache.valor) : null;
+  }
+  const valor = await calcularAccesoTalenthub(usuarioId, seccionRequested);
+  if (cacheAcceso.size > 500) cacheAcceso.clear();
+  cacheAcceso.set(clave, { t: Date.now(), valor });
+  return valor ? structuredClone(valor) : null;
+}
+
+async function calcularAccesoTalenthub(usuarioId, seccionRequested = null) {
 
   const [uRows] = await pool.execute(
     'SELECT ID, Nombre, Colaborador, Rol, Cargo, Regional, Dispositivo, `Operación` FROM Maestro_Usuarios WHERE ID = ?',
