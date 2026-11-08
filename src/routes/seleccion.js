@@ -631,7 +631,7 @@ router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
     const contenidoHtmlConVariables = reemplazarVariables(datos.contenidoHtml, {
       ...datos.variables,
       firma_colaborador: '<div style="color:#64748b;font-style:italic;font-size:11px;text-align:center;padding:12px 0;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:6px;">[Tu firma digital aparecerá aquí tras confirmar]</div>'
-    });
+    }).replace(/\{\{\s*resp_[^}]+\}\}/g, '<em style="color:#94a3b8">(según tu respuesta en el formulario)</em>');
 
     const html = generarHtmlVistaFirma({
       aspirante: datos.aspirante,
@@ -640,7 +640,8 @@ router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
       firmaPrevia: datos.firmaPrevia,
       docActual: datos.docActual,
       usuario,
-      bucketAspirantes: BUCKET_ASPIRANTES
+      bucketAspirantes: BUCKET_ASPIRANTES,
+      formulario: datos.formulario
     });
 
     res.send(html);
@@ -675,7 +676,8 @@ router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async
       esNuevaFirma: !!es_nueva_firma,
       bucketAspirantes: BUCKET_ASPIRANTES,
       ip: req.headers['x-forwarded-for'] || req.ip || req.socket?.remoteAddress,
-      dispositivo: req.get('user-agent')
+      dispositivo: req.get('user-agent'),
+      respuestas: req.body.respuestas || null
     });
 
     if (!yaEstabaFirmado) {
@@ -685,6 +687,9 @@ router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async
   } catch (err) {
     if (err.bloqueado) {
       return res.status(403).json({ ok: false, error: err.message });
+    }
+    if (err.validacion) {
+      return res.status(400).json({ ok: false, error: err.message });
     }
     console.error('Error al procesar firma de selección:', err);
     res.status(500).json({ ok: false, error: err.message });

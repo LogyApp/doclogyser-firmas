@@ -3,7 +3,9 @@ const crypto = require('crypto');
 const pool = require('./db');
 const { generarPDFDesdeHTML } = require('./renderer');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
-const { reemplazarVariables } = require('./plantilla');
+const { reemplazarVariables, aplicarFormatoPlantilla, firmaConFecha } = require('./plantilla');
+const { LOGO_BASE64 } = require('./assets');
+const formularios = require('./formulariosSeleccion');
 
 // La lista de documentos para firma sale de Config_Doc_Trabajador (Clasificacion
 // "3. Documentos para Firmas") y la regla por operación de Config_Parametros:
@@ -62,13 +64,27 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
   let contenidoHtml = '';
   if (prefijo) {
     const [plantillaRows] = await pool.execute(
-      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
+      `SELECT contenido_html, codigo_formato, version_formato, fecha_version FROM Maestro_Plantillas
+       WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1`,
       [prefijo]
     );
     // Las plantillas de selección se administran solo en Maestro_Plantillas
     // (los archivos de src/templates/seleccion quedan como base para SST).
+    // El encabezado toma código, versión y fecha del formato de la misma fila.
     if (plantillaRows.length > 0 && plantillaRows[0].contenido_html) {
-      contenidoHtml = plantillaRows[0].contenido_html;
+      const fila = plantillaRows[0];
+      const fechaFormato = fila.fecha_version
+        ? (fila.fecha_version instanceof Date
+            ? fila.fecha_version.toISOString().slice(0, 10)
+            : String(fila.fecha_version).slice(0, 10)).split('-').reverse().join('/')
+        : '';
+      contenidoHtml = aplicarFormatoPlantilla(fila.contenido_html, {
+        codigo: fila.codigo_formato ? String(fila.codigo_formato).trim() : '',
+        version: fila.version_formato ? String(fila.version_formato).trim() : '',
+        fecha: fechaFormato
+      });
+      // Si la plantilla no tiene fecha del formato, no se muestra el marcador
+      contenidoHtml = contenidoHtml.replace(/\{\{\s*(codigo_formato|version_formato|fecha_formato)\s*\}\}/g, '');
     }
   }
 
@@ -111,8 +127,16 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     eps: aspirante.eps || 'EPS No reportada',
     dia_firma: String(ahoraBogota.getDate()),
     mes_firma: MESES[ahoraBogota.getMonth()],
-    anio_firma: String(ahoraBogota.getFullYear())
+    anio_firma: String(ahoraBogota.getFullYear()),
+    // Diseño moderno (mismo estilo de los formatos de SST y Cesantías)
+    logo_src: LOGO_BASE64,
+    fecha_generacion: ahoraColombia().texto.replace(' a las ', ', ').replace(/:\d{2}$/, '')
   };
+
+  // Formulario del documento (Config_Formulario_Preguntas) y respuestas guardadas
+  const preguntas = await formularios.obtenerPreguntas(idConfigDoc);
+  const respuestas = preguntas.length ? await formularios.obtenerRespuestas(aspirante.id_aspirante, idConfigDoc) : {};
+  Object.assign(variables, variablesFormulario(preguntas, respuestas));
 
   return {
     aspirante,
@@ -121,7 +145,20 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     contenidoHtml,
     docActual,
     firmaPrevia,
-    variables
+    variables,
+    formulario: { preguntas, respuestas }
+  };
+}
+
+// {{formulario_respuestas}} (bloque con todas las respuestas) y {{resp_<codigo>}} por pregunta
+function variablesFormulario(preguntas, respuestas) {
+  if (!preguntas.length) return { formulario_respuestas: '' };
+  const hayRespuestas = Object.keys(respuestas).length > 0;
+  return {
+    ...formularios.variablesRespuestas(preguntas, respuestas),
+    formulario_respuestas: hayRespuestas
+      ? formularios.htmlRespuestasPdf(preguntas, respuestas)
+      : '<div style="padding:10px;border:1px dashed #cbd5e1;border-radius:6px;background:#f8fafc;color:#64748b;font-size:8.5pt;text-align:center">Tus respuestas del formulario aparecerán aquí al firmar el documento.</div>'
   };
 }
 
@@ -169,7 +206,7 @@ function htmlHuellaFirma({ nombre, identificacion, fechaTexto, ip, codigo }) {
 </div>`;
 }
 
-function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, firmaPrevia, docActual, usuario, bucketAspirantes }) {
+function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, firmaPrevia, docActual, usuario, bucketAspirantes, formulario = null }) {
   const yaFirmado = docActual && docActual.estado === 'Firmado';
   const urlPdfFirmado = yaFirmado && docActual.gcs_path
     ? `https://storage.googleapis.com/${bucketAspirantes}/${docActual.gcs_path}`
@@ -270,10 +307,18 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
         <span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Desplázate para leer todo</span>
       </div>
 
-      <div class="doc-preview-container p-4 md:p-8">
-        ${contenidoHtmlConVariables}
+      <div class="doc-preview-container p-2 md:p-4">
+        <iframe id="vistaDocumento" title="Vista previa del documento" class="w-full block border-0 bg-white" style="min-height:60vh"
+          srcdoc="${String(contenidoHtmlConVariables).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"
+          onload="try{const d=this.contentDocument;const ajustar=()=>{this.style.height=(d.documentElement.scrollHeight+16)+'px'};ajustar();setTimeout(ajustar,400);}catch(e){}"></iframe>
       </div>
     </div>
+
+    ${formulario && formulario.preguntas && formulario.preguntas.length ? `
+    <!-- Formulario del documento -->
+    <div class="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm">
+      ${formularios.htmlFormularioPantalla(formulario.preguntas, formulario.respuestas || {})}
+    </div>` : ''}
 
     <!-- Signature Section -->
     <div class="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
@@ -360,6 +405,7 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
   </div>
 
   <script>
+    ${formularios.JS_FORMULARIO}
     const TIENE_FIRMA_PREVIA = ${firmaPrevia ? 'true' : 'false'};
     const FIRMA_PREVIA_URL = ${JSON.stringify(firmaPrevia || '')};
     const ID_ASPIRANTE = ${JSON.stringify(aspirante.id_aspirante)};
@@ -467,6 +513,15 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
 
     // Submit firma
     btnConfirmar.addEventListener('click', async () => {
+      // Formulario del documento (si tiene preguntas)
+      const datosFormulario = recogerRespuestasFormulario();
+      if (datosFormulario.faltantes.length) {
+        mostrarAlerta('Faltan ' + datosFormulario.faltantes.length + ' respuesta(s) obligatoria(s) del formulario (marcadas en rojo).', 'error');
+        const primera = document.querySelector('#formularioDocumento .bg-red-50');
+        if (primera) primera.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
       if (!chkConsentimiento.checked) {
         mostrarAlerta('Debes marcar la casilla aceptando los términos y declarando tu consentimiento para firmar este documento.', 'error');
         return;
@@ -496,7 +551,8 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             firma_base64: firmaBase64,
-            es_nueva_firma: esNueva
+            es_nueva_firma: esNueva,
+            respuestas: datosFormulario.respuestas
           })
         });
 
@@ -519,7 +575,7 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
 </html>`;
 }
 
-async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null }) {
+async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null, respuestas = null }) {
   const datos = await obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc);
   if (!datos) {
     throw new Error('Aspirante no encontrado');
@@ -534,6 +590,19 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     const err = new Error(motivoBloqueo);
     err.bloqueado = true;
     throw err;
+  }
+
+  // Formulario: validar y guardar las respuestas antes de generar el PDF
+  const preguntas = (datos.formulario && datos.formulario.preguntas) || [];
+  if (preguntas.length) {
+    const validacion = formularios.validarRespuestas(preguntas, respuestas || {});
+    if (!validacion.ok) {
+      const err = new Error('Revisa el formulario: ' + validacion.errores.slice(0, 3).join(' ') + (validacion.errores.length > 3 ? ` (y ${validacion.errores.length - 3} más)` : ''));
+      err.validacion = true;
+      throw err;
+    }
+    await formularios.guardarRespuestas(idAspirante, idConfigDoc, validacion.respuestas);
+    Object.assign(variables, variablesFormulario(preguntas, validacion.respuestas));
   }
   if (!contenidoHtml) {
     throw new Error(`Plantilla no encontrada para el documento ${prefijo}`);
@@ -569,19 +638,23 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     }
   }
 
-  // 3. Preparar HTML completo con firma
-  const firmaHtml = `<img src="${firmaFinalBase64}" style="max-height:75px; max-width:220px; object-fit:contain; display:block; margin:0 auto;" alt="Firma Colaborador"/>`;
+  // 3. Preparar HTML completo con firma (con la fecha y hora de firma debajo, como en LogySign)
+  const fechaFirma = ahoraColombia();
+  const firmaHtml = firmaConFecha(
+    `<img src="${firmaFinalBase64}" style="max-height:70px; max-width:220px; object-fit:contain; display:block; margin:0 auto;" alt="Firma Colaborador"/>`,
+    fechaFirma.sql
+  );
   const todasLasVariables = {
     ...variables,
     firma_colaborador: firmaHtml
   };
 
-  let htmlCompleto = reemplazarVariables(contenidoHtml, todasLasVariables);
+  let htmlCompleto = reemplazarVariables(contenidoHtml, todasLasVariables)
+    .replace(/\{\{\s*resp_[^}]+\}\}/g, '');   // respuestas de preguntas que ya no existen
 
   // 3b. Huella de la firma: quién, cuándo (hora de Colombia), desde qué IP y un código de verificación
   const ipFirma = (ip || '').toString().split(',')[0].trim().slice(0, 64) || null;
   const dispositivoFirma = (dispositivo || '').toString().slice(0, 255) || null;
-  const fechaFirma = ahoraColombia();
   const codigoVerificacion = crypto.createHash('sha256')
     .update([idAspirante, idConfigDoc, aspirante.identificacion, fechaFirma.sql, ipFirma || '', htmlCompleto].join('|'))
     .digest('hex').slice(0, 16).toUpperCase();

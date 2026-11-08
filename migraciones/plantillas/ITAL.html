@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Formatos Italcol — LOG&amp;SER</title>
+<style>
+  @page { size: A4; margin: 10mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #0f172a; background: #ffffff; font-size: 9pt; line-height: 1.42;
+    -webkit-font-smoothing: antialiased;
+  }
+  .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #cbd5e1; }
+  .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .header-title-cell { width: 56%; background: #e6edf7; color: #000b59; text-align: center; padding: 10px 14px; }
+  .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .meta-ver { color: #334155; }
+  .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .metrics-card { display: flex; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .metric-item { flex: 1; padding: 9px 12px; border-right: 1px solid #e2e8f0; min-width: 0; }
+  .metric-item:last-child { border-right: none; }
+  .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .metric-value { font-size: 9pt; font-weight: 700; color: #000b59; word-break: break-word; }
+
+  .section-block { margin-bottom: 12px; }
+  .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; display: flex; align-items: center; gap: 6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; page-break-after: avoid; }
+  .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; }
+
+  .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 8.5pt; }
+  .data-grid td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .data-grid tr:last-child td { border-bottom: none; }
+  .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .data-label { width: 30%; font-weight: 600; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .data-val { font-weight: 600; color: #0f172a; }
+
+  .statement-box { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 10px 13px; margin-bottom: 12px; }
+  .statement-header { font-size: 8pt; font-weight: 700; color: #000b59; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.3px; }
+  .statement-text { font-size: 8.5pt; color: #334155; text-align: justify; line-height: 1.5; margin-bottom: 6px; }
+  .statement-text:last-child { margin-bottom: 0; }
+  .autoriza { background: #fff7ed; border: 1px solid #fed7aa; border-left: 3.5px solid #f55400; }
+  .autoriza .statement-header { color: #c2410c; }
+  .autoriza .statement-text { color: #1e293b; }
+  .statement-list { margin: 4px 0 6px 18px; font-size: 8.5pt; color: #334155; line-height: 1.45; }
+  .statement-list li { text-align: justify; margin-bottom: 3px; padding-left: 2px; }
+  .statement-list li::marker { color: #f55400; font-weight: 700; }
+
+  .rule-list { list-style: none; counter-reset: regla; }
+  .rule-list li { counter-increment: regla; position: relative; padding: 6px 10px 6px 34px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 5px; font-size: 8.5pt; color: #334155; text-align: justify; background: #ffffff; page-break-inside: avoid; }
+  .rule-list li::before { content: counter(regla); position: absolute; left: 8px; top: 6px; width: 18px; height: 18px; border-radius: 50%; background: #000b59; color: #ffffff; font-size: 7.5pt; font-weight: 800; text-align: center; line-height: 18px; }
+
+  .q-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid #e2e8f0; }
+  .q-table th { background: #e6edf7; color: #000b59; font-weight: 700; text-transform: uppercase; font-size: 7pt; letter-spacing: 0.3px; padding: 5px 6px; border: 1px solid #cbd5e1; text-align: left; }
+  .q-table td { padding: 5px 6px; border: 1px solid #e2e8f0; vertical-align: middle; color: #334155; }
+  .q-table tr:nth-child(even) td { background: #fafafa; }
+  .q-table tr { page-break-inside: avoid; }
+  .q-table .c { text-align: center; white-space: nowrap; }
+  .box { display: inline-block; width: 10px; height: 10px; border: 1px solid #64748b; border-radius: 2px; vertical-align: middle; margin: 0 2px 0 6px; }
+  .blank { display: inline-block; min-width: 90px; border-bottom: 1px solid #94a3b8; height: 11px; vertical-align: bottom; }
+
+  .lugar-fecha { font-size: 8.5pt; color: #334155; margin: 6px 0 4px; }
+  .lugar-fecha strong { color: #000b59; }
+
+  .signature-container { margin-top: 18px; page-break-inside: avoid; }
+  .signature-card { width: 46%; margin: 0 auto; text-align: center; }
+  .sig-img-wrap { height: 80px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 4px; }
+  .sig-img-wrap img { max-height: 70px; max-width: 240px; object-fit: contain; }
+  .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .sig-role { font-size: 7.5pt; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: 0.3px; }
+  .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  .doc-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; gap: 10px; font-size: 7pt; color: #94a3b8; page-break-inside: avoid; }
+
+  .formato-head { display: flex; justify-content: space-between; align-items: center; background: #000b59; color: #ffffff; border-radius: 6px 6px 0 0; padding: 7px 12px; margin-top: 16px; page-break-after: avoid; }
+  .formato-head .fh-title { font-size: 9pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
+  .formato-head .fh-code { font-size: 7.5pt; font-weight: 700; background: #f55400; border-radius: 4px; padding: 2px 7px; white-space: nowrap; }
+  .formato-body { border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 6px 6px; padding: 10px 12px; margin-bottom: 6px; }
+  .formato-break { page-break-before: always; }
+  .preg { margin-bottom: 9px; page-break-inside: avoid; }
+  .preg-t { font-size: 8.5pt; font-weight: 700; color: #000b59; margin-bottom: 4px; }
+  .preg-item { font-size: 8.3pt; color: #334155; text-align: justify; margin: 0 0 4px 10px; }
+  .opciones { font-size: 8.3pt; color: #334155; margin: 2px 0 0 10px; line-height: 1.7; }
+  .opciones span.op { display: inline-block; margin-right: 12px; }
+  .firma-politica { font-size: 7.5pt; color: #64748b; margin-top: 6px; text-align: right; font-style: italic; }
+</style>
+</head>
+<body>
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Formatos y Políticas Italcol</div>
+        <div class="doc-subtitle">Operación Italcol La Estrella</div>
+        <div class="doc-subdetail">Inducción, emergencias y políticas del cliente</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión: {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="metrics-card">
+    <div class="metric-item"><div class="metric-label">Colaborador</div><div class="metric-value">{{nombre_completo}}</div></div>
+    <div class="metric-item"><div class="metric-label">Identificación</div><div class="metric-value">C.C. {{identificacion}}</div></div>
+    <div class="metric-item"><div class="metric-label">Cargo</div><div class="metric-value">{{cargo}}</div></div>
+    <div class="metric-item"><div class="metric-label">Operación</div><div class="metric-value">{{operacion}}</div></div>
+  </div>
+
+  <section class="statement-box ">
+    <div class="statement-header">Contenido</div>
+    <p class="statement-text">Este documento reúne los formatos y políticas de Italcol que el colaborador debe diligenciar y conocer para la operación. Con una sola firma quedan registrados todos.</p>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Formatos incluidos</div>
+    <table class="data-grid">
+      <tr><td class="data-label" style="width:8%;text-align:center">1</td><td class="data-val">Formato de Evaluación de Conocimiento (MAS-FR-GH-002 · V01)</td></tr>
+      <tr><td class="data-label" style="width:8%;text-align:center">2</td><td class="data-val">Formulario de Información de Emergencias</td></tr>
+      <tr><td class="data-label" style="width:8%;text-align:center">3</td><td class="data-val">Política de No Consumo de Alcohol, Tabaco y Sustancias Psicoactivas (DN-PC-GE-001 · V03)</td></tr>
+      <tr><td class="data-label" style="width:8%;text-align:center">4</td><td class="data-val">Política de No Uso de Teléfonos Celulares en la Jornada de Trabajo (DN-PC-GE-001 · V03)</td></tr>
+      <tr><td class="data-label" style="width:8%;text-align:center">5</td><td class="data-val">Política Sistema Integrado de Gestión Italcol (DN-PC-GE-001 · V04)</td></tr>
+    </table>
+  </section>
+
+  <div class="formato-head"><span class="fh-title">1. Formato de Evaluación de Conocimiento</span><span class="fh-code">MAS-FR-GH-002 · V01</span></div>
+  <div class="formato-body">
+    <table class="data-grid" style="margin-bottom:9px">
+      <tr><td class="data-label">Tema</td><td class="data-val">Inducción en Seguridad y Salud en el Trabajo</td></tr>
+      <tr><td class="data-label">Planta</td><td class="data-val"><span class="blank" style="min-width:200px"></span></td></tr>
+      <tr><td class="data-label">Empresa</td><td class="data-val">Apoyo Logístico y Operativo S.A.S.</td></tr>
+    </table>
+    <div class="preg"><div class="preg-t">1. Responda falso o verdadero.</div>
+      <p class="preg-item">La política integral tiene como prioridad proteger la seguridad y salud de los trabajadores, mediante la planeación, implementación, verificación y mejora continua del SG-SST, identificando los peligros, evaluando y valorando los riesgos a los cuales se encuentren expuestos en su lugar de trabajo, estableciendo los controles respectivos, con el fin de establecer las acciones que contribuyan a la eliminación, reducción y prevención de incidentes, accidentes y enfermedades laborales.<br><span class="op">Falso <span class="box"></span></span> <span class="op">Verdadero <span class="box"></span></span></p>
+      <p class="preg-item">La política de no consumo de alcohol, tabaco y sustancias psicoactivas establece que no se permite a ninguna persona ingresar y trabajar bajo la influencia del alcohol o sustancias psicoactivas.<br><span class="op">Falso <span class="box"></span></span> <span class="op">Verdadero <span class="box"></span></span></p>
+      <p class="preg-item">La política de seguridad vial establece que el límite máximo de velocidad para vehículos en áreas de operación dentro de las instalaciones de ITALCOL DE OCCIDENTE es de 10 km/h.<br><span class="op">Falso <span class="box"></span></span> <span class="op">Verdadero <span class="box"></span></span></p>
+      <p class="preg-item">La política de no uso de celulares en la jornada de trabajo determina que hacer uso de equipos electrónicos, como tablets, relojes electrónicos, entre otros, durante la jornada laboral está prohibido.<br><span class="op">Falso <span class="box"></span></span> <span class="op">Verdadero <span class="box"></span></span></p>
+    </div>
+    <div class="preg"><div class="preg-t">2. Marque con una X la respuesta correcta. Los EPP básicos que debo utilizar para ingresar a las áreas de producción son:</div>
+      <div class="opciones"><span class="op"><span class="box"></span> a. Casco de seguridad.</span><span class="op"><span class="box"></span> b. Gafas de seguridad.</span><span class="op"><span class="box"></span> c. Protección auditiva.</span><span class="op"><span class="box"></span> d. Botas de seguridad.</span><span class="op"><span class="box"></span> e. Todas las anteriores.</span></div>
+    </div>
+    <div class="preg"><div class="preg-t">3. Relacione cada palabra con el número del concepto que le corresponde.</div>
+      <div class="opciones" style="margin-bottom:4px"><span class="op">1. Combinación de probabilidad y severidad (consecuencia).</span><br><span class="op">2. Comportamientos que dan origen a incidentes o accidentes.</span><br><span class="op">3. Suceso repentino, por causa u ocasión del trabajo, que genera lesión.</span><br><span class="op">4. Circunstancias que pueden ocasionar incidentes o accidentes.</span><br><span class="op">5. Fuente o situación con potencial de daño.</span><br></div>
+      <table class="data-grid">
+      <tr><td style="width:30%"><strong>a. Peligro</strong></td><td><span class="blank" style="min-width:60px"></span></td></tr>
+      <tr><td style="width:30%"><strong>b. Riesgo</strong></td><td><span class="blank" style="min-width:60px"></span></td></tr>
+      <tr><td style="width:30%"><strong>c. Condición insegura</strong></td><td><span class="blank" style="min-width:60px"></span></td></tr>
+      <tr><td style="width:30%"><strong>d. Acto inseguro</strong></td><td><span class="blank" style="min-width:60px"></span></td></tr>
+      <tr><td style="width:30%"><strong>e. Accidente de trabajo</strong></td><td><span class="blank" style="min-width:60px"></span></td></tr>
+      </table>
+    </div>
+    <div class="preg"><div class="preg-t">4. ¿Cuáles de los deberes hacen parte de mis responsabilidades como trabajador?</div>
+      <div class="opciones"><span class="op"><span class="box"></span> a. Procurar el cuidado integral de su salud.</span><span class="op"><span class="box"></span> b. Cumplir las normas de seguridad e higiene propias de la empresa.</span><span class="op"><span class="box"></span> c. Reportar inmediatamente todo accidente de trabajo o incidente.</span><span class="op"><span class="box"></span> d. Suministrar información clara, completa y veraz sobre su estado de salud.</span><span class="op"><span class="box"></span> e. Todas las anteriores.</span></div>
+    </div>
+    <div class="preg"><div class="preg-t">5. Complete la palabra a la que hace referencia cada letra de la sigla PILOSO.</div>
+      <table class="data-grid">
+      <tr><td style="width:8%;text-align:center"><strong>P</strong></td><td><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td style="width:8%;text-align:center"><strong>I</strong></td><td><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td style="width:8%;text-align:center"><strong>L</strong></td><td><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td style="width:8%;text-align:center"><strong>O</strong></td><td><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td style="width:8%;text-align:center"><strong>S</strong></td><td><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td style="width:8%;text-align:center"><strong>O</strong></td><td><span class="blank" style="min-width:260px"></span></td></tr>
+      </table>
+    </div>
+    <div class="preg"><div class="preg-t">6. Al activarse una alarma de emergencia debo seguir las siguientes instrucciones:</div>
+      <div class="opciones"><span class="op"><span class="box"></span> a. Salir de la planta, irme para mi casa, llamar a bomberos.</span><span class="op"><span class="box"></span> b. Apagar mi equipo y estar atento a las instrucciones del líder de evacuación.</span><span class="op"><span class="box"></span> c. A y B son correctas.</span></div>
+    </div>
+    <div class="preg"><div class="preg-t">7. ¿Cuál es el tiempo que se debe esperar para evacuar cuando una alarma se activa?</div>
+      <div class="opciones"><span class="op"><span class="box"></span> a. 0 minutos.</span><span class="op"><span class="box"></span> b. 30 segundos.</span><span class="op"><span class="box"></span> c. 1 hora.</span></div>
+    </div>
+    <div class="preg"><div class="preg-t">8. ¿Cuál es el lema del pilar de Protección en Acción?</div>
+      <p class="preg-item"><span class="blank" style="min-width:420px"></span></p>
+    </div>
+    <section class="statement-box autoriza" style="margin-bottom:0">
+      <div class="statement-header">Certificación</div>
+      <p class="statement-text">Certifico que me ha sido divulgada y entiendo la Política de SST, los peligros y riesgos asociados al proceso productivo y los medios de control para mitigarlos. Por todo lo anterior firmo el presente documento como muestra del compromiso con mi seguridad y la de los demás, cumpliendo activamente con las normas de seguridad y todo lo expuesto en el curso de Seguridad y Salud en el Trabajo.</p>
+    </section>
+  </div>
+
+  <div class="formato-head formato-break"><span class="fh-title">2. Formulario de Información de Emergencias</span></div>
+  <div class="formato-body">
+    <table class="data-grid" style="margin-bottom:9px">
+      <tr><td class="data-label">Fecha (día / mes / año)</td><td class="data-val">{{dia_firma}} / {{mes_firma}} / {{anio_firma}}</td></tr>
+      <tr><td class="data-label">Planta</td><td class="data-val"><span class="box"></span> Girardota &nbsp; <span class="box"></span> Santa Rosa de Osos &nbsp; <span class="box"></span> Yarumal</td></tr>
+    </table>
+    <div class="section-title">Información personal</div>
+    <table class="data-grid" style="margin-bottom:9px">
+      <tr><td class="data-label">Nombres y apellidos</td><td class="data-val">{{nombre_completo}}</td></tr>
+      <tr><td class="data-label">Sexo</td><td class="data-val"><span class="box"></span> Masculino &nbsp; <span class="box"></span> Femenino &nbsp; <span class="box"></span> Otro</td></tr>
+      <tr><td class="data-label">Nacionalidad</td><td class="data-val"><span class="blank" style="min-width:200px"></span></td></tr>
+      <tr><td class="data-label">Fecha y lugar de nacimiento</td><td class="data-val"><span class="blank" style="min-width:200px"></span></td></tr>
+      <tr><td class="data-label">Dirección de residencia</td><td class="data-val"><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td class="data-label">Contacto en caso de emergencia</td><td class="data-val"><span class="blank" style="min-width:200px"></span> &nbsp;Tel. <span class="blank" style="min-width:90px"></span></td></tr>
+      <tr><td class="data-label">Contacto en caso de emergencia (2)</td><td class="data-val"><span class="blank" style="min-width:200px"></span> &nbsp;Tel. <span class="blank" style="min-width:90px"></span></td></tr>
+    </table>
+    <div class="section-title">Datos médicos</div>
+    <table class="data-grid" style="margin-bottom:6px">
+      <tr><td class="data-label">Grupo sanguíneo</td><td class="data-val"><span class="blank" style="min-width:80px"></span></td></tr>
+      <tr><td class="data-label">Alergias</td><td class="data-val"><span class="blank" style="min-width:260px"></span></td></tr>
+      <tr><td class="data-label">Condición de salud</td><td class="data-val"><span class="blank" style="min-width:260px"></span></td></tr>
+    </table>
+    <p class="statement-text" style="font-size:7.5pt;color:#64748b">La información suministrada por el colaborador es de uso confidencial y solo será utilizada en caso de emergencia.</p>
+  </div>
+
+  <div class="formato-head"><span class="fh-title">3. Política de No Consumo de Alcohol, Tabaco y Sustancias Psicoactivas</span><span class="fh-code">DN-PC-GE-001 · V03</span></div>
+  <div class="formato-body">
+
+    <p class="statement-text">ITALCOL ha definido y establecido una política para el no consumo de alcohol, tabaco y sustancias psicoactivas, para preservar, mejorar y conservar el bienestar de los trabajadores y su calidad de vida, logrando además un adecuado desempeño y competitividad del personal y de la empresa, así como el fomento de estilos de vida saludables, teniendo en cuenta lo establecido en la legislación vigente.</p>
+    <p class="statement-text">ITALCOL es consciente de que el alcoholismo y el consumo de sustancias psicoactivas por parte de los trabajadores pueden tener efectos adversos en su capacidad de desempeño y pueden afectar considerablemente la salud y seguridad de los demás colaboradores y de terceros. Por lo anterior, ITALCOL contempla los siguientes aspectos:</p>
+    <ul class="statement-list">
+      <li>Está prohibido presentarse a trabajar bajo el efecto de alcohol, drogas y/o sustancias psicoactivas o que crean dependencia.</li>
+      <li>Está estrictamente prohibida la posesión, consumo, distribución o venta de bebidas alcohólicas, tabaco o sustancias psicoactivas, medicamentos formulados o drogas no recetadas en el desarrollo del trabajo, dentro y fuera de las instalaciones de la empresa, dentro de los centros de trabajo o durante la prestación de servicios.</li>
+      <li>ITALCOL se reserva el derecho de realizar pruebas de alcoholemia y/o de consumo de drogas ilícitas, o de convocar a terceros para que las hagan, en situaciones en que un trabajador, directamente contratado o de terceros, esté envuelto en algún accidente y/o presente características o actitudes sospechosas.</li>
+    </ul>
+    <p class="statement-text">La empresa se acoge a las normas, políticas y campañas que en materia de desestimulación o prohibición del consumo de tabaco, alcohol y drogas imparta el gobierno nacional.</p>
+    <p class="statement-text">El alcance de esta política aplicará a nuestros trabajadores, contratistas y visitantes, y será divulgada a todo el personal.</p>
+    <p class="firma-politica">Enero de 2019 — Juan Felipe Cadavid Hernández, Gerente Regional Antioquia</p>
+  </div>
+
+  <div class="formato-head formato-break"><span class="fh-title">4. Política de No Uso de Teléfonos Celulares en la Jornada de Trabajo</span><span class="fh-code">DN-PC-GE-001 · V03</span></div>
+  <div class="formato-body">
+
+    <p class="statement-text">ITALCOL es consciente de que el uso de teléfonos celulares en las áreas OPERATIVAS, tales como PRODUCCIÓN, ALMACÉN, TALLERES DE MANTENIMIENTO, VÍAS DE ACCESO, etc., puede generar distracciones y, en consecuencia, accidentes graves. Por este motivo declara la PROHIBICIÓN de la posesión y uso de teléfonos celulares y elementos distractores, tales como tablets (de uso personal) y relojes electrónicos, entre otros, durante la jornada laboral, razón por la cual establece para sus colaboradores:</p>
+    <ul class="statement-list">
+      <li>Realizar o recibir llamadas durante la jornada laboral en las áreas antes mencionadas queda prohibido.</li>
+      <li>Enviar mensajes de texto o manipular el teléfono celular durante la jornada laboral está prohibido.</li>
+      <li>Hacer uso de equipos electrónicos, como tablets (de uso personal), relojes electrónicos, entre otros, durante la jornada laboral está prohibido.</li>
+      <li>La participación activa de los colaboradores en los programas de señalización y capacitación que promueven el cumplimiento de la política contra el uso de teléfonos celulares durante la jornada laboral es de obligatorio cumplimiento.</li>
+      <li>Se permitirá el uso de tablets solo a personal autorizado, para fines específicos de su labor y en lugares autorizados.</li>
+    </ul>
+    <p class="statement-text">El incumplimiento de cualquiera de las obligaciones antes determinadas constituye una FALTA GRAVE y una violación a las obligaciones y prohibiciones que rigen los contratos de trabajo; en consecuencia, la EMPRESA podrá adoptar las medidas disciplinarias correspondientes, inclusive dar por finalizado el contrato de trabajo por justa causa de acuerdo con lo establecido en el reglamento interno de trabajo y la ley, según sea el caso.</p>
+    <p class="statement-text">La empresa dispondrá de casilleros y punto de uso seguro del celular; así mismo, pondrá a disposición de los colaboradores las herramientas que se requieran para el buen desempeño de las labores, tales como cámaras, relojes de pared y/o radios.</p>
+    <p class="statement-text">Esta política estará en vigencia a partir de su publicación en las instalaciones de ITALCOL y se aplicará a los colaboradores que desempeñan sus funciones laborales en las áreas OPERATIVAS y a cualquier actor (visitante, contratista o administrativo) que ingrese a estas áreas. Para los efectos de la presente política se entiende por jornada laboral el tiempo en que el trabajador presta un servicio al empleador.</p>
+    <p class="firma-politica">Enero de 2019 — Juan Felipe Cadavid Hernández, Gerente Regional Antioquia</p>
+  </div>
+
+  <div class="formato-head"><span class="fh-title">5. Política Sistema Integrado de Gestión Italcol</span><span class="fh-code">DN-PC-GE-001 · V04</span></div>
+  <div class="formato-body">
+
+    <p class="statement-text">ITALCOL, dedicada a la elaboración de alimentos para animales, comercialización y almacenamiento de materias primas pecuarias en sus plantas de producción; recepción, almacenamiento y despacho de materias primas pecuarias en sus operaciones portuarias; fabricación de premezclas vitamínicas y minerales para alimentación animal; y cría de aves y cerdos, empleando materias primas nacionales e importadas, se compromete a cumplir con los requisitos internos y demás requisitos legales aplicables, así como con el mejoramiento continuo de los procesos, con estándares de calidad e inocuidad de los alimentos, contando con un grupo humano dispuesto a lograr la satisfacción de las necesidades y expectativas de nuestros colaboradores, clientes y otras partes interesadas, garantizando operaciones de comercio exterior seguras y confiables, trabajando en la mitigación de riesgos a través de toda la cadena de suministro y protegiendo así nuestras operaciones.</p>
+    <p class="statement-text">Tiene como prioridad proteger la seguridad y salud de los colaboradores mediante la planeación, implementación, verificación y mejora continua del Sistema de Gestión de Seguridad y Salud en el Trabajo, identificando los peligros, evaluando y valorando los riesgos a los cuales se encuentren expuestos en su lugar de trabajo y que puedan afectar el bienestar físico, mental y social de los mismos y demás partes interesadas, mediante el establecimiento de los controles aplicables al contexto de cada centro de trabajo, con el fin de establecer las acciones que contribuyan a la eliminación, reducción y prevención de incidentes, accidentes y enfermedades laborales.</p>
+    <p class="statement-text">Actúa de manera responsable con la protección del medio ambiente, buscando la prevención de la contaminación, gestionando los aspectos ambientales significativos asociados a las actividades, productos y servicios desarrollados en sus operaciones y estableciendo dentro de sus prioridades el uso racional y eficiente de los recursos naturales de mayor consumo, recursos nutricionales, gestión de gases de efecto invernadero y la reducción, reutilización y aprovechamiento de sus residuos sólidos.</p>
+    <p class="statement-text">Se compromete a mejorar el desempeño energético mediante la adquisición de productos y servicios con alta eficiencia energética, diseñando o desarrollando actividades que consideren la mejora de este. Así mismo, asegura la disponibilidad de la información y los recursos para lograr los objetivos y metas energéticas, siendo factores claves para la sostenibilidad de la organización y sus partes interesadas.</p>
+    <p class="statement-text">ITALCOL se compromete a asignar los recursos humanos, económicos, tecnológicos y de cualquier índole necesarios para el diseño, implementación, evaluación y mejoramiento de las actividades del Sistema Integrado de Gestión. Así mismo, a generar mecanismos para la consulta y participación de los trabajadores y sus representantes.</p>
+    <p class="statement-text">Esta política se aplica y difunde en todos los centros de trabajo y a todos los niveles de la organización, y a cualquier persona que preste servicios independientemente de su forma de contratación: trabajadores directos o en misión, contratistas, subcontratistas, visitantes, asociados de negocio y todas las partes interesadas. Será revisada y actualizada acorde a los cambios normativos y legales asociados al Sistema Integrado de Gestión y al direccionamiento estratégico de ITALCOL.</p>
+    <p class="firma-politica">Mayo de 2023 — Representante Legal</p>
+  </div>
+
+  <p class="lugar-fecha">Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes de <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.</p>
+
+  <div class="signature-container">
+    <div class="signature-card">
+      <div class="sig-img-wrap">{{firma_colaborador}}</div>
+      <div class="sig-line"></div>
+      <div class="sig-role">Colaborador</div>
+      <div class="sig-name">{{nombre_completo}}</div>
+      <div class="sig-details">C.C. {{identificacion}} de {{ciudad_expedicion}}<br>{{cargo}}</div>
+    </div>
+  </div>
+
+  <footer class="doc-footer">
+    <span>Apoyo Logístico y Operativo S.A.S. &bull; Formatos y Políticas Italcol</span>
+    <span>Certificación electrónica bajo Ley 527 de 1999</span>
+    <span>Generado el {{fecha_generacion}}</span>
+  </footer>
+
+</body>
+</html>
