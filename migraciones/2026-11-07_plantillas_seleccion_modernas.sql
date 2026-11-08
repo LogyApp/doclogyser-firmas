@@ -2,8 +2,9 @@
 -- con el mismo estilo de Compromiso SST, Prueba de Consumo y Cesantías.
 -- El HTML de cada uno también está en migraciones/plantillas/<PREFIJO>.html.
 -- Respaldo del diseño anterior: respaldos/2026-11-07_respaldo_plantillas_seleccion.sql
--- EJECUTAR DESPUÉS DE DESPLEGAR el código que llena {{logo_src}} y {{fecha_generacion}}
--- (services/seleccionFirmas.js); antes, el PDF saldría con esos marcadores sin llenar.
+-- ORDEN: 1) desplegar el código (llena {{logo_src}}, {{fecha_generacion}} y las respuestas);
+--        2) ejecutar 2026-11-08_formularios_seleccion.sql (CS y CHC muestran las respuestas del formulario);
+--        3) ejecutar este archivo.
 -- El texto de cada documento es el mismo de la versión anterior. Se puede ejecutar más de una vez.
 
 -- ACTCON
@@ -282,7 +283,7 @@ SET version = 2, ultima_actualizacion = NOW(), contenido_html = '<!DOCTYPE html>
     <p class="statement-text">Manifiesto, además, conocer y entender los riesgos a los que voy a estar expuesto(a) y las medidas de control que el empleador considere necesarias durante la relación laboral.</p>
     <p class="statement-text">En concordancia con lo anterior, me obligo y me comprometo a cumplir con las normas y procedimientos establecidos por la empresa y otros que sean necesarios para el buen desempeño de mi trabajo y/o durante la permanencia en la compañía.</p>
     <p class="statement-text">Por último, manifiesto que conozco las sanciones disciplinarias a las cuales me encuentro expuesto(a) en caso de incumplimiento de lo anteriormente mencionado, de acuerdo con la reglamentación legal vigente, al igual que las dispuestas en el reglamento interno de trabajo.</p>
-    <p class="statement-text">Acepto la finalidad antes indicada: SÍ <span class="box"></span> &nbsp; NO <span class="box"></span></p>
+    <p class="statement-text">Acepto la finalidad antes indicada: <strong>{{resp_acepta_finalidad}}</strong></p>
   </section>
 
   <p class="lugar-fecha">Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes de <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.</p>
@@ -423,74 +424,7 @@ SET version = 3, ultima_actualizacion = NOW(), contenido_html = '<!DOCTYPE html>
     <p class="statement-text">Marque con X el segmento corporal en el que ha presentado fractura o amputación, y el segmento en el que ha presentado esguince o dolor en los últimos 6 meses.</p>
   </section>
 
-  <section class="section-block">
-    <div class="section-title">Segmento corporal afectado</div>
-    <table class="q-table">
-      <tr><th>Segmento corporal</th><th class="c">Fractura / amputación</th><th class="c">Esguince o dolor (últimos 6 meses)</th></tr>
-      <tr><td>Cráneo</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Cara</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Cuello</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Tórax</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Tronco</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Brazo</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Antebrazo</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Mano</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Abdomen</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Pelvis</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Muslo</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Pierna</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-      <tr><td>Pie</td><td class="c"><span class="box"></span></td><td class="c"><span class="box"></span></td></tr>
-    </table>
-  </section>
-
-  <section class="section-block">
-    <div class="section-title">Datos generales de salud</div>
-    <table class="data-grid">
-      <tr><td class="data-label">Peso</td><td class="data-val"><span class="blank"></span></td><td class="data-label">Altura</td><td class="data-val"><span class="blank"></span></td></tr>
-      <tr><td class="data-label">Edad</td><td class="data-val"><span class="blank"></span></td><td class="data-label">Fuma</td><td class="data-val">Sí <span class="box"></span> No <span class="box"></span> &nbsp;¿Cuántos cigarrillos al día? <span class="blank" style="min-width:40px"></span></td></tr>
-      <tr><td class="data-label">Alcohol</td><td class="data-val">Sí <span class="box"></span> No <span class="box"></span> &nbsp;¿Cuántas veces por semana? <span class="blank" style="min-width:40px"></span></td><td class="data-label">Actividad física</td><td class="data-val">Sí <span class="box"></span> No <span class="box"></span> &nbsp;¿Cuántas veces por semana? <span class="blank" style="min-width:40px"></span></td></tr>
-      <tr><td class="data-label">¿Cuál actividad realiza?</td><td class="data-val" colspan="3"><span class="blank" style="min-width:300px"></span></td></tr>
-      <tr><td class="data-label">Medio de transporte</td><td class="data-val" colspan="3">Pie <span class="box"></span> Bicicleta <span class="box"></span> Moto <span class="box"></span> Vehículo particular <span class="box"></span> Transporte público <span class="box"></span></td></tr>
-      <tr><td class="data-label">Tiempo de desplazamiento por recorrido (minutos)</td><td class="data-val" colspan="3"><span class="blank"></span></td></tr>
-    </table>
-  </section>
-
-  <section class="section-block">
-    <div class="section-title">Condiciones de salud actuales</div>
-    <table class="q-table">
-      <tr><th style="width:46%">Descripción</th><th class="c">Sí / No</th><th style="width:12%">Fecha evento</th><th style="width:9%">AT / T / C</th><th style="width:18%">Describa</th></tr>
-      <tr><td>Cuándo fue la última vez que asistió a control médico</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha tenido alguna enfermedad diagnosticada. Menciónela</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Tiene antecedentes familiares importantes (hipertensión, diabetes, cáncer, coronaria, artritis, dermatitis, epilepsia, otra)</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha tenido algún tipo de accidente con lesiones como esguince, fracturas, amputaciones, recomendaciones</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha tenido incapacidad mayor a 15 días por accidente de trabajo, tránsito o común en los últimos 6 meses</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha estado en tratamiento por terapia física, psicológica o por sustancias psicoactivas</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>En los últimos 6 meses ha presentado problemas de hernias o dolores lumbares, espasmos, lumbago, ciática, várices</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado lesiones o dolor en hombro, clavícula, codo, manos, tronco, espalda, rodilla, tobillo, pie u otro</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Tiene conocimiento o diagnóstico de presentar algún tipo de hernia abdominal, inguinal, femoral, otras</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado varicocele, ¿en qué grado?</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado dermatitis o lesiones en manos por alergias, exposición a temperaturas frío-calor</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Tiene alguna condición de salud que altere su visión (accidentes en ojos, cirugías, etc.)</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Actualmente utiliza gafas o lentes de contacto para la realización de sus actividades cotidianas</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado accidentes de tránsito, vehículo, moto, otro en los últimos 24 meses</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado accidentes y lesiones al realizar deporte</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha tenido cirugías. Mencione cuál</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado incapacidades en los últimos 6 meses</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha presentado algún accidente laboral o general que haya causado algún tipo de lesión o secuela</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Actualmente consume algún tipo de medicamento</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-    </table>
-  </section>
-
-  <section class="section-block">
-    <div class="section-title">Lesiones que ha presentado en su vida</div>
-    <table class="q-table">
-      <tr><th style="width:46%">Descripción</th><th class="c">Sí / No</th><th style="width:12%">Fecha evento</th><th style="width:9%">AT / T / C</th><th style="width:18%">Describa</th></tr>
-      <tr><td>Conoce si es apto para trabajar en alturas</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Sufre de vértigo o tiene miedo a las alturas</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha tenido caídas a nivel o a diferente nivel y a causa de la misma requirió atención médica</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-      <tr><td>Ha tenido lesiones por arma blanca</td><td class="c">Sí <span class="box"></span> No <span class="box"></span></td><td></td><td></td><td></td></tr>
-    </table>
-  </section>
+  {{formulario_respuestas}}
 
   <section class="statement-box autoriza">
     <div class="statement-header">Declaración juramentada</div>
