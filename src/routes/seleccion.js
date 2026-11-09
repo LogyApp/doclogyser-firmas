@@ -15,7 +15,7 @@ const {
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
 const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar } = require('../services/docsSeleccion');
-const { motivoBloqueoFirma } = require('../services/seleccionFirmas');
+const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
 
 // Multer in-memory storage
@@ -426,7 +426,7 @@ router.get('/admin/:uuid', async (req, res) => {
          FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`, 
         [uuid]
       ),
-      pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones, fuente FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
       pool.execute(`
         SELECT IdRequisicion, \`Requisición\`, \`Operación\`, \`Cargo Requerido\`, \`N° Personas Requeridas\`, Estado 
         FROM Dynamic_Requisiciones 
@@ -474,7 +474,7 @@ router.get('/admin/:uuid', async (req, res) => {
     const docsFirmar = await obtenerDocsFirmaParaOperacion(operacionSugerida);
 
     const mapaDocs = {};
-    cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path, rutaPropia: rutaHvAspirante(c.observaciones) }; });
+    cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path, rutaPropia: rutaHvAspirante(c.observaciones), fuente: c.fuente }; });
 
     res.send(generarHtmlAdmin(
       uuid,
@@ -785,6 +785,20 @@ router.post('/aprobar-masivo', async (req, res) => {
 });
 
 // Eliminar Documento (Portal Aspirante)
+// Regenera un documento firmado con la plantilla actual (misma firma, respuestas y huella)
+router.post('/regenerar-firma', async (req, res) => {
+  const { id_aspirante, id_config_doc } = req.body;
+  const usuario = req.query.usuario || req.body.usuario || '';
+  const volver = (msg, info) => res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${encodeURIComponent(usuario)}&msg=${msg}&info=${encodeURIComponent(info)}`);
+  try {
+    await regenerarDocumentoFirmado({ idAspirante: id_aspirante, idConfigDoc: id_config_doc, bucketAspirantes: BUCKET_ASPIRANTES });
+    volver('success', 'Documento regenerado. Ábrelo con "VER" para revisarlo.');
+  } catch (err) {
+    console.error('Error al regenerar documento firmado:', err);
+    volver('error', err.validacion ? err.message : 'No se pudo regenerar el documento: ' + err.message);
+  }
+});
+
 router.post('/delete-doc', async (req, res) => {
   const { id_aspirante, id_config_doc } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
@@ -1601,7 +1615,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           (estaAprobado ? 
             '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
             (estaCargado ? 
-              `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+              `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
                <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
               `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${doc.id}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
             )
@@ -1643,7 +1657,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
             </div>
             <div class="flex items-center gap-2">
               ${propia ? `
-                <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${propia.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+                <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${propia.path}?v=${Date.now()}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
                 <button type="button" onclick="confirmarEliminar('${ID_HOJA_VIDA}', 'tu versión de la hoja de vida')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>
               ` : `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${ID_HOJA_VIDA}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`}
             </div>
@@ -1678,7 +1692,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
       <div class="flex items-center gap-2 mt-3 md:mt-0">
         ${estaFirmado ? `
           <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">${estaAprobado ? '✓ Aprobado' : '✓ Firmado'}</span>
-          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
+          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver PDF ↗
           </a>
@@ -1688,7 +1702,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           </a>` : ''}
         ` : (estaCargado ? `
           <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
-          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
+          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver ↗
           </a>
@@ -2616,7 +2630,10 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
               : estaFirmado 
               ? '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ FIRMADO</span>' 
               : '<span class="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">CARGADO</span>'}
-            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
+            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
+            ${data.fuente === 'Sistema' && ['Firmado', 'Aprobado'].includes(data.estado)
+              ? `<button type="button" onclick="regenerarFirma(${doc.id}, '${jsAttr(doc.nombre)}')" class="text-[10px] text-indigo-600 font-bold hover:underline" title="Vuelve a generar el PDF con la plantilla actual, la misma firma y la misma huella">REGENERAR</button>`
+              : ''}
             ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${jsAttr(doc.nombre)}')" class="text-[10px] text-red-400 font-bold italic hover:text-red-600">ELIMINAR</button>` : ''}
           </div>
         ` : '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic shrink-0">Pendiente</span>'}
@@ -2659,6 +2676,20 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
       }
       if (params.get('msg') === 'aprobado') alert('Documento aprobado con éxito');
       if (params.get('msg') === 'deleted') alert('Documento eliminado del sistema');
+
+      // Regenerar un documento firmado con la plantilla actual (misma firma y huella)
+      function regenerarFirma(idDoc, nombre) {
+        if (!confirm('¿Regenerar "' + nombre + '" con la plantilla actual? Se conserva la firma, las respuestas y la huella.')) return;
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = '/seleccion/regenerar-firma' + window.location.search.replace(/[?&]msg=[^&]*/g, '').replace(/[?&]info=[^&]*/g, '');
+        [['id_aspirante', window.location.pathname.split('/').pop()], ['id_config_doc', idDoc]].forEach(([k, v]) => {
+          const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; f.appendChild(i);
+        });
+        document.body.appendChild(f);
+        document.body.style.cursor = 'wait';
+        f.submit();
+      }
     </script>
   `;
 
@@ -2899,8 +2930,8 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
                     ${doc.prefijo ? `<span class="text-[9px] text-slate-400 font-mono font-bold">(${doc.prefijo})</span>` : ''}
                   </div>
                   <div class="flex gap-2 items-center shrink-0">
-                    ${d && !(esHv && d.rutaPropia === d.path) ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
-                    ${esHv && d && d.rutaPropia ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.rutaPropia}" target="_blank" class="text-[10px] font-bold text-indigo-600 hover:underline" title="Versión que subió el aspirante">VER VERSIÓN ASPIRANTE</a>` : ''}
+                    ${d && !(esHv && d.rutaPropia === d.path) ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}?v=${Date.now()}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
+                    ${esHv && d && d.rutaPropia ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.rutaPropia}?v=${Date.now()}" target="_blank" class="text-[10px] font-bold text-indigo-600 hover:underline" title="Versión que subió el aspirante">VER VERSIÓN ASPIRANTE</a>` : ''}
                     ${aprobado ? '<span class="text-[9px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-md uppercase">✓ Aprobado</span>' : ''}
                     ${d && !aprobado && !bloqueado && !esHv ? `<button type="button" onclick="eliminar(${id}, '${jsAttr(nombreDoc)}')" class="text-[10px] text-red-400 italic font-bold hover:text-red-600">BORRAR</button>` : ''}
                     ${!d ? '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic">Pendiente</span>' : ''}

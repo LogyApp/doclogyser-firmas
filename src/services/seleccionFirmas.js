@@ -133,6 +133,12 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     fecha_generacion: ahoraColombia().texto.replace(' a las ', ', ').replace(/:\d{2}$/, '')
   };
 
+  // Los datos del aspirante son texto: se escapan para que un símbolo como "<" en un
+  // nombre no se interprete como HTML y desarme el documento (pasó con "AGUILAR<RODRIGUEZ")
+  for (const clave of Object.keys(variables)) {
+    if (clave !== 'logo_src' && typeof variables[clave] === 'string') variables[clave] = escHtml(variables[clave]);
+  }
+
   // Formulario del documento (Config_Formulario_Preguntas) y respuestas guardadas
   const preguntas = await formularios.obtenerPreguntas(idConfigDoc);
   const respuestas = preguntas.length ? await formularios.obtenerRespuestas(aspirante.id_aspirante, idConfigDoc) : {};
@@ -189,6 +195,34 @@ function ahoraColombia() {
     sql: `${partes.year}-${partes.month}-${partes.day} ${hora}:${partes.minute}:${partes.second}`,
     texto: `${Number(partes.day)} de ${MESES_HUELLA[Number(partes.month) - 1]} de ${partes.year} a las ${hora}:${partes.minute}:${partes.second}`
   };
+}
+
+// Fecha guardada 'AAAA-MM-DD HH:MM:SS' (hora de Colombia) → { sql, texto }
+function fechaDesdeSql(sql) {
+  const [fecha, hora = '00:00:00'] = String(sql).split(' ');
+  const [y, m, d] = fecha.split('-');
+  return { sql: `${fecha} ${hora}`, texto: `${Number(d)} de ${MESES_HUELLA[Number(m) - 1]} de ${y} a las ${hora}` };
+}
+
+function desescHtml(t) {
+  return String(t == null ? '' : t).replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+// Regenera un documento ya firmado (Panel Admin) con la misma firma, respuestas y huella.
+// Sirve para aplicar un cambio de plantilla sin pedirle al aspirante que vuelva a firmar.
+async function regenerarDocumentoFirmado({ idAspirante, idConfigDoc, bucketAspirantes }) {
+  const datos = await obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc);
+  const estado = (datos.docActual && datos.docActual.estado || '').toLowerCase();
+  if (!['firmado', 'aprobado'].includes(estado)) {
+    throw Object.assign(new Error('Solo se pueden regenerar documentos que ya fueron firmados.'), { validacion: true });
+  }
+  if (!datos.firmaPrevia) {
+    throw Object.assign(new Error('No se encontró la firma guardada del aspirante para regenerar el documento.'), { validacion: true });
+  }
+  return procesarFirmaDocumento({
+    idAspirante, idConfigDoc, firmaBase64: datos.firmaPrevia, esNuevaFirma: false,
+    bucketAspirantes, regenerar: true
+  });
 }
 
 function escHtml(t) {
@@ -575,7 +609,7 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
 </html>`;
 }
 
-async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null, respuestas = null }) {
+async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null, respuestas = null, regenerar = false }) {
   const datos = await obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc);
   if (!datos) {
     throw new Error('Aspirante no encontrado');
@@ -585,16 +619,38 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
   if (!docItem || !prefijo) {
     throw new Error('Tipo de documento no configurado para firma');
   }
-  const motivoBloqueo = motivoBloqueoFirma(aspirante, docActual);
+  // Al regenerar (desde el Panel Admin) no aplica el bloqueo: se rehace el mismo documento
+  // con la firma, las respuestas y la huella que ya tenía
+  const motivoBloqueo = regenerar ? null : motivoBloqueoFirma(aspirante, docActual);
   if (motivoBloqueo) {
     const err = new Error(motivoBloqueo);
     err.bloqueado = true;
     throw err;
   }
 
+  let huellaPrevia = null;
+  if (regenerar) {
+    try {
+      const [hRows] = await pool.execute(
+        `SELECT DATE_FORMAT(fecha_firma, '%Y-%m-%d %H:%i:%s') AS fecha_firma, ip_firma, dispositivo_firma, codigo_verificacion
+         FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND id_config_doc = ?`,
+        [idAspirante, idConfigDoc]
+      );
+      if (hRows.length && hRows[0].fecha_firma) huellaPrevia = hRows[0];
+    } catch (e) { /* columnas de huella aún no creadas */ }
+    if (huellaPrevia) {
+      // La fecha del documento es la de la firma original, no la de hoy
+      const [y, m, d] = huellaPrevia.fecha_firma.slice(0, 10).split('-');
+      variables.dia_firma = String(Number(d));
+      variables.mes_firma = MESES[Number(m) - 1];
+      variables.anio_firma = y;
+    }
+  }
+
   // Formulario: validar y guardar las respuestas antes de generar el PDF
+  // (al regenerar se usan las respuestas ya guardadas)
   const preguntas = (datos.formulario && datos.formulario.preguntas) || [];
-  if (preguntas.length) {
+  if (preguntas.length && !regenerar) {
     const validacion = formularios.validarRespuestas(preguntas, respuestas || {});
     if (!validacion.ok) {
       const err = new Error('Revisa el formulario: ' + validacion.errores.slice(0, 3).join(' ') + (validacion.errores.length > 3 ? ` (y ${validacion.errores.length - 3} más)` : ''));
@@ -639,7 +695,7 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
   }
 
   // 3. Preparar HTML completo con firma (con la fecha y hora de firma debajo, como en LogySign)
-  const fechaFirma = ahoraColombia();
+  const fechaFirma = huellaPrevia ? fechaDesdeSql(huellaPrevia.fecha_firma) : ahoraColombia();
   const firmaHtml = firmaConFecha(
     `<img src="${firmaFinalBase64}" style="max-height:70px; max-width:220px; object-fit:contain; display:block; margin:0 auto;" alt="Firma Colaborador"/>`,
     fechaFirma.sql
@@ -653,13 +709,13 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     .replace(/\{\{\s*resp_[^}]+\}\}/g, '');   // respuestas de preguntas que ya no existen
 
   // 3b. Huella de la firma: quién, cuándo (hora de Colombia), desde qué IP y un código de verificación
-  const ipFirma = (ip || '').toString().split(',')[0].trim().slice(0, 64) || null;
-  const dispositivoFirma = (dispositivo || '').toString().slice(0, 255) || null;
-  const codigoVerificacion = crypto.createHash('sha256')
+  const ipFirma = huellaPrevia ? huellaPrevia.ip_firma : ((ip || '').toString().split(',')[0].trim().slice(0, 64) || null);
+  const dispositivoFirma = huellaPrevia ? huellaPrevia.dispositivo_firma : ((dispositivo || '').toString().slice(0, 255) || null);
+  const codigoVerificacion = (huellaPrevia && huellaPrevia.codigo_verificacion) || crypto.createHash('sha256')
     .update([idAspirante, idConfigDoc, aspirante.identificacion, fechaFirma.sql, ipFirma || '', htmlCompleto].join('|'))
     .digest('hex').slice(0, 16).toUpperCase();
   const huella = htmlHuellaFirma({
-    nombre: variables.nombre_completo,
+    nombre: desescHtml(variables.nombre_completo),
     identificacion: aspirante.identificacion,
     fechaTexto: fechaFirma.texto,
     ip: ipFirma,
@@ -685,7 +741,8 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
   await file.save(pdfBuffer, {
     contentType: 'application/pdf',
     metadata: {
-      cacheControl: 'public, max-age=3600'
+      // Sin caché: al volver a firmar o regenerar, el PDF nuevo se ve de inmediato
+      cacheControl: 'no-cache, max-age=0'
     }
   });
   console.log(`[Firma Selección] PDF guardado en GCS: ${gcsPath}`);
@@ -696,10 +753,10 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     VALUES (?, ?, ?, 'Firmado', 'Sistema')
     ON DUPLICATE KEY UPDATE
       gcs_path = VALUES(gcs_path),
-      estado = 'Firmado',
+      estado = IF(? AND estado = 'Aprobado', estado, 'Firmado'),
       fuente = 'Sistema',
       fecha_actualizacion = CURRENT_TIMESTAMP
-  `, [idAspirante, idConfigDoc, gcsPath]);
+  `, [idAspirante, idConfigDoc, gcsPath, regenerar ? 1 : 0]);
 
   // 7. Guardar la huella (requiere migraciones/2026-11-07_aspirantes_validaciones_avisos_huella.sql;
   //    si las columnas aún no existen, la firma queda igual y solo se registra el aviso en el log)
@@ -723,6 +780,7 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
 }
 
 module.exports = {
+  regenerarDocumentoFirmado,
   motivoBloqueoFirma,
   obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
