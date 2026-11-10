@@ -1783,9 +1783,6 @@
           <div style="display:flex; align-items:center; gap:8px;">
             <span>📜</span> Historial de Auditoría de Eliminaciones
           </div>
-          <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarHistorialAuditoria()">
-            <span>↻ Actualizar</span>
-          </button>
         </div>
 
         <div class="table-container">
@@ -1890,9 +1887,6 @@
             <span id="lblTotalRegistrosReq" style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;"></span>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarRequisiciones()">
-              <span>↻ Actualizar</span>
-            </button>
           </div>
         </div>
 
@@ -1994,9 +1988,6 @@
               Reglas de negocio y configuración de TalentHub (tabla <code>Config_Parametros</code>): roles autorizados, SLA, límites e interruptores.
             </div>
           </div>
-          <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem;" onclick="cargarParametrosTalenthubTabla()">
-            <span>↻ Actualizar</span>
-          </button>
         </div>
 
         <div style="display:grid; grid-template-columns: 200px 200px 1fr auto; gap:12px; align-items:end;">
@@ -2169,9 +2160,6 @@
             <span id="lblTotalRegistrosAsp" style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;"></span>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarAspirantes()">
-              <span>↻ Actualizar</span>
-            </button>
           </div>
         </div>
 
@@ -2706,9 +2694,6 @@
               <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="abrirModalReporteSociodemografica()" title="Descargar reporte en Excel (.xlsx) o CSV (.csv)">
                 <span>📥 Descargar Reporte</span>
               </button>
-              <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarDatosSociodemografica()">
-                <span>↻ Actualizar</span>
-              </button>
             </div>
           </div>
 
@@ -2957,9 +2942,6 @@
             <span style="font-weight: 700;">📝 Registros de Participación</span>
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span id="raTotalBadge" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">(0 registros)</span>
-              <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarRegistroAsistencia()">
-                <span>↻ Actualizar</span>
-              </button>
             </div>
           </div>
           <div class="req-table-wrapper">
@@ -3980,6 +3962,14 @@
 
       // 5. Cargar perfil corporativo del usuario (gestionado globalmente por app-launcher-profile.js)
       sincronizarPerfilMovil();
+
+      // Botón "Sincronizar" (compartido, ver public/js/boton-sync.js): recarga la pestaña visible
+      if (typeof initBotonSync === 'function') {
+        initBotonSync({
+          alSincronizar: refrescarVistaTalenthub,
+          escritorio: [{ encabezado: '.page-header', acciones: ':scope > div:last-child' }]
+        });
+      }
 
       // 6. Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js)
       if (typeof initBotonTicket === 'function') {
@@ -7571,6 +7561,28 @@
       renderSubTabFichaAspirante(tabName);
     }
 
+    // Recarga los datos de la pestaña visible (botón Sincronizar, public/js/boton-sync.js)
+    async function refrescarVistaTalenthub() {
+      const tab = CONFIG.activeTab;
+      if (tab === 'Aspirantes') {
+        const vistaAdmin = document.getElementById('aspVistaAdmin');
+        if (vistaAdmin && vistaAdmin.style.display !== 'none') {
+          const frame = document.getElementById('frameAdminAspirante');
+          try { frame.contentWindow.location.reload(); } catch (e) { frame.src = frame.src; }
+          return;
+        }
+        return cargarAspirantes();
+      }
+      const recargas = {
+        Requisiciones: () => cargarRequisiciones(),
+        Sociodemografica: () => cargarDatosSociodemografica(),
+        RegistroAsistencia: () => cargarRegistroAsistencia(),
+        Integridad: () => cargarHistorialAuditoria(),
+        Parametros: () => cargarParametrosTalenthubTabla()
+      };
+      if (recargas[tab]) return recargas[tab]();
+    }
+
     // Al cerrar la ficha, modal-back.js hace history.back() (asíncrono). Si el panel se abre
     // de inmediato, ese "atrás" llega después y lo vuelve a cerrar. Por eso se espera a que el
     // historial termine de retroceder antes de abrir el panel.
@@ -10942,6 +10954,7 @@
   <script src="/js/theme.js" defer></script>
   <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/boton-sync.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
 </body>
 </html>

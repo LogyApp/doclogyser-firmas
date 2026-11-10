@@ -1938,7 +1938,6 @@
             <span>Guía y Tutorial</span>
           </button>
         </div>
-        <button type="button" class="btn-reset" onclick="fetchCesantiasData()" style="margin:0;">↻ Actualizar</button>
       </div>
 
       <!-- Filtros de Consulta -->
@@ -2033,7 +2032,6 @@
           </button>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" class="btn-reset" onclick="fetchAsistenciaData()" style="margin:0;">↻ Actualizar</button>
         </div>
       </div>
 
@@ -9754,6 +9752,35 @@
     switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : (tabs.traslados ? 'traslados' : (tabs.cesantias ? 'cesantias' : (tabs.asistencia ? 'asistencia' : 'produccion'))))))));
   }
 
+  // Recarga los datos de la pestaña visible (botón Sincronizar, public/js/boton-sync.js)
+  async function refrescarVistaNomina() {
+    const recargas = {
+      activos: () => fetchDataActivos(),
+      retiros: () => fetchDataRetiros(),
+      bloqueo: () => fetchDataBloqueoNomina(),
+      biometrico: () => fetchBiometricoData(),
+      incapacidades: () => cargarIncapacidadesNomina(),
+      traslados: () => fetchTrasladosData(),
+      cesantias: () => fetchCesantiasData(),
+      asistencia: () => (typeof fetchAsistenciaData === 'function' ? fetchAsistenciaData() : null),
+      produccion: () => {
+        const sub = _prodState.activeSubTab;
+        if (sub === 'areas') return cargarAreasProduccion();
+        if (sub === 'tarifas') return cargarTarifasProduccion();
+        return cargarProduccion();
+      }
+    };
+    if (recargas[_tabActual]) return recargas[_tabActual]();
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initBotonSync === 'function') {
+      initBotonSync({
+        alSincronizar: refrescarVistaNomina,
+        escritorio: [{ encabezado: '.page-hd' }]
+      });
+    }
+  });
+
   // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
   // Se espera a DOMContentLoaded porque ticket-boton.js se carga con "defer" al
   // final del body — este <script> corre inline durante el parseo, antes de
@@ -9779,6 +9806,7 @@
 <script src="/js/theme.js" defer></script>
 <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
+<script src="/js/boton-sync.js" defer></script>
 <script src="/js/nomina-asistencia.js?v=20261105"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>
