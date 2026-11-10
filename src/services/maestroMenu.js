@@ -74,6 +74,7 @@ async function accesoSeccion(modulo, rol, seccion) {
 const MODULOS_MENU = [
   ['nomina', 'Nómina'],
   ['facturacion', 'Facturación'],
+  ['contabilidad', 'Contabilidad'],
   ['sst', 'SST'],
   ['talenthub', 'TalentHub'],
   ['clouddocs', 'Cloud Docs'],

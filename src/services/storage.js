@@ -397,7 +397,17 @@ async function eliminarArchivoBucket(docUrlOrPath) {
   }
 }
 
+async function subirComprobanteConsignacion(idConsignacion, buffer, originalName, contentType) {
+  const ext = path.extname(originalName) || '.jpg';
+  const cleanId = String(idConsignacion).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const nombre = `general/CONSIG_${cleanId}_${Date.now()}${ext}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(buffer, { contentType: contentType || 'image/jpeg' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
+  subirComprobanteConsignacion,
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
   subirFirma,

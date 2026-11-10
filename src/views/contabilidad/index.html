@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contabilidad — Consignaciones | LOG&SER</title>
+
+  <!-- Prevención de FOUC de tema -->
+  <script>
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+        var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+          : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+        document.documentElement.setAttribute('data-theme', tema);
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="stylesheet" href="/css/theme-tokens.css?v=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
+
+  <script src="/js/theme.js" defer></script>
+  <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
+  <script src="/js/ticket-boton.js" defer></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root[data-theme="oscuro"] { color-scheme: dark; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER Y BACKDROP MÓVIL (IDÉNTICO A FACTURACIÓN / NÓMINA) ── */
+    .mobile-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 140;
+    }
+    .mobile-backdrop.open { display: block; }
+
+    .mobile-header {
+      display: none;
+      background: var(--primary);
+      color: var(--text-inverse);
+      padding: 7px 12px;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 130;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-height: 48px;
+      width: 100%;
+    }
+    .mobile-header-left { display: flex; align-items: center; gap: 8px; }
+    .mobile-menu-btn {
+      background: none; border: none; color: var(--text-inverse); font-size: 1.45rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 2px 4px; line-height: 1;
+    }
+    .mobile-logo-app { height: 24px; max-height: 24px; width: auto; object-fit: contain; }
+    .mobile-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: .95rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: .2px;
+    }
+    .mobile-header-right { display: flex; align-items: center; gap: 10px; }
+    .mobile-sync-btn {
+      width: 34px; height: 34px; border: none; background: transparent; color: var(--text-inverse); border-radius: 50%;
+    }
+    .mobile-profile-btn {
+      background: transparent; border: none; padding: 0; margin: 0; cursor: pointer;
+      display: flex; align-items: center; border-radius: 50%; outline: none;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+    .mobile-profile-btn:active { transform: scale(.92); opacity: .85; }
+    .mobile-profile-thumb {
+      width: 33px; height: 33px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover; background: var(--card-bg); box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
+
+    /* ── SIDEBAR FIJO (270px) ────────────────────────────────── */
+    .sidebar {
+      width: 270px;
+      background: var(--primary);
+      color: var(--text-inverse);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 200;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow-lg);
+      transition: transform 0.25s ease;
+    }
+
+    .sidebar-brand {
+      padding: 18px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.12);
+      gap: 8px;
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .brand-logo-app {
+      height: 26px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .brand-divider {
+      width: 1.5px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .brand-logo-company-crop {
+      width: 100px;
+      height: 28px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -48px;
+      top: -48px;
+      width: 200px;
+      height: 132px;
+      max-width: none;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-item.active {
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-icon {
+      font-size: 1.15rem;
+      line-height: 1;
+    }
+
+    .sidebar-user {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.1);
+      font-size: 0.8rem;
+      line-height: 1.3;
+    }
+
+    .sidebar-user strong {
+      display: block;
+      color: #ffffff;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-user span {
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 0.75rem;
+    }
+
+    /* ── MAIN WRAPPER ───────────────────────────────────────── */
+    .wrapper {
+      margin-left: 270px;
+      flex: 0 0 calc(100% - 270px);
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: var(--bg);
+    }
+
+    /* ── TOP HEADER (ESCRITORIO) ────────────────────────────── */
+    .top-header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .breadcrumb-title h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .breadcrumb-title p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Botón Sincronizar */
+    .btn-sync {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--card-bg);
+      color: var(--accent);
+      transition: all 0.15s ease;
+    }
+
+    .btn-sync:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+    }
+
+    .btn-sync.girando .icono-sync {
+      animation: giro-sync 0.8s linear infinite;
+    }
+
+    @keyframes giro-sync {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── CONTENT CONTAINER ──────────────────────────────────── */
+    .content-container {
+      padding: 16px 20px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── MINI STAT CARDS (ESTILO VALORIZACIÓN DE INVENTARIO) ─── */
+    .mini-stat-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .mini-stat-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      min-width: 145px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .mini-stat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .mini-stat-icon {
+      font-size: 1.15rem;
+      line-height: 1;
+    }
+
+    .mini-stat-info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .mini-stat-info .lbl {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.35px;
+    }
+
+    .mini-stat-info .val {
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.92rem;
+      font-family: 'Outfit', sans-serif;
+      margin-top: 1px;
+    }
+
+    /* ── FILTROS PLEGABLES (ESTILO FACTURACIÓN) ─────────────── */
+    .filters-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.03));
+    }
+
+    .filtros-toggle {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      gap: 10px;
+    }
+
+    .filtros-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .filtros-badge {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: #ffffff;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+    }
+
+    .filtros-busqueda {
+      flex: 1;
+      max-width: 440px;
+      margin: 0 8px 0 auto;
+      height: 33px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .filtros-busqueda:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .filtros-chevron {
+      display: inline-block;
+      transition: transform 0.2s ease;
+      color: var(--text);
+      font-size: 0.95rem;
+      user-select: none;
+    }
+
+    .filtros-chevron.abierto {
+      transform: rotate(90deg);
+    }
+
+    #filtrosBody {
+      overflow: hidden;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .filter-group.sm {
+      max-width: 125px;
+      min-width: 95px;
+    }
+
+    .filter-group label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.35px;
+    }
+
+    .filter-control {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 9px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      outline: none;
+      height: 34px;
+      transition: all 0.15s ease;
+    }
+
+    .filter-control:focus {
+      border-color: var(--accent);
+    }
+
+    .ops-button-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-top: 3px;
+    }
+
+    .op-chip {
+      padding: 4px 10px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .op-chip:hover {
+      border-color: var(--accent);
+    }
+
+    .op-chip.active {
+      background: var(--accent) !important;
+      color: #ffffff !important;
+      border-color: var(--accent) !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    .conteo-bar {
+      display: flex;
+      justify-content: flex-end;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .conteo-bar span {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* ── TABLA DE DATOS CON RESIZE Y SORT ────────────────────── */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.03));
+    }
+
+    .table-container {
+      overflow-x: auto;
+      max-height: calc(100vh - 280px);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      text-align: left;
+    }
+
+    table.data-table thead th {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.71rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 9px 12px;
+      border-bottom: 1.5px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    table.data-table thead th:hover {
+      color: var(--text);
+    }
+
+    table.data-table thead th.sort-asc::after {
+      content: ' ▲';
+      color: var(--accent);
+      font-size: 0.65rem;
+    }
+
+    table.data-table thead th.sort-desc::after {
+      content: ' ▼';
+      color: var(--accent);
+      font-size: 0.65rem;
+    }
+
+    .th-resize {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      cursor: col-resize;
+      touch-action: none;
+      z-index: 2;
+    }
+
+    .th-resize::after {
+      content: '';
+      display: block;
+      position: absolute;
+      right: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 2px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+
+    .th-resize:hover::after, .th-resize.resizing::after {
+      background: var(--accent);
+    }
+
+    table.data-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s ease;
+      cursor: pointer;
+    }
+
+    table.data-table tbody tr:hover {
+      background: var(--bg-hover, rgba(0, 0, 0, 0.03));
+    }
+
+    table.data-table tbody td {
+      padding: 7px 11px;
+      vertical-align: middle;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    /* Badges de Fase */
+    .fase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .fase-badge.green {
+      background: rgba(22, 163, 74, 0.12);
+      color: #16a34a;
+    }
+
+    .fase-badge.red {
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+    }
+
+    .fase-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .fase-badge.green .fase-dot { background: #16a34a; }
+    .fase-badge.red .fase-dot { background: #ef4444; }
+
+    .currency-text {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+    .diferencia-text.ok { color: #16a34a; font-weight: 600; }
+    .diferencia-text.warn { color: #d97706; font-weight: 600; }
+    .diferencia-text.danger { color: #ef4444; font-weight: 600; }
+
+    /* Badge clickable para ver servicios asociados */
+    .servicios-btn-badge {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .servicios-btn-badge:hover {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    /* Botón de acción */
+    .btn-action {
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .btn-action.primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-action.primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-action.secondary {
+      background: var(--card-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .btn-action.secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Botón Lápiz en columna Estado */
+    .btn-lapiz-edit {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      margin-left: 6px;
+      vertical-align: middle;
+      line-height: 1;
+    }
+
+    .btn-lapiz-edit:hover {
+      background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+      border-color: var(--accent);
+      transform: scale(1.12);
+    }
+
+    /* Badge Validado */
+    .badge-validado {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--accent);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* Fila de servicios asociados con cursor pointer y hover */
+    #tablaServiciosAsociados tbody tr {
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+
+    #tablaServiciosAsociados tbody tr:hover {
+      background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+    }
+
+    /* ── MODALES ADAPTADOS A CLARO Y OSCURO ─────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+      transform: translateY(15px) scale(0.98);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-card.lg {
+      max-width: 1000px;
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-header {
+      background: var(--primary);
+      color: var(--text-inverse);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.02rem;
+    }
+
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: var(--text-inverse);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    .modal-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      flex: 1;
+      background: var(--card-bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 11px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--bg-elevated);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text);
+      background-color: var(--card-bg);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .info-banner {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-banner-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .info-banner-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* Zonas para adjuntar archivos (Estilo Facturación / Inventario) */
+    .zona-archivo-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .zona-archivo-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .file-dropzone {
+      border: 1.5px dashed var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg-elevated);
+      color: var(--text);
+      transition: border-color 0.15s ease;
+    }
+
+    .file-dropzone:hover {
+      border-color: var(--accent);
+    }
+
+    .file-dropzone p {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .preview-container {
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-elevated);
+    }
+
+    .preview-thumb {
+      width: 42px;
+      height: 42px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .preview-details {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .preview-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── BARRA DE HERRAMIENTAS VISOR (ZOOM Y ROTACIÓN) ────────── */
+    .visor-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 14px;
+      border-radius: 30px;
+      margin-bottom: 8px;
+    }
+
+    .visor-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .visor-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .visor-stage {
+      width: 100%;
+      height: 65vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      background: #000;
+      border-radius: 8px;
+      position: relative;
+      touch-action: pan-x pan-y;
+    }
+
+    .visor-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transform-origin: center center;
+      transition: transform 0.15s ease;
+      user-select: none;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      body { flex-direction: column; overflow: visible; height: auto; }
+      .mobile-header { display: flex; }
+      .btn-sync-escritorio { display: none; }
+      .sidebar { transform: translateX(-100%); transition: transform .25s ease; z-index: 200; }
+      .sidebar.open { transform: translateX(0); }
+      .wrapper { margin-left: 0; flex: 1 1 100%; width: 100%; }
+      .form-row { grid-template-columns: 1fr; }
+      .top-header { display: none; } /* En móvil se usa .mobile-header */
+    }
+
+    @media (max-width: 600px) {
+      .mobile-header { padding: 5px 10px; min-height: 44px; }
+      .mobile-menu-btn { font-size: 1.35rem; }
+      .mobile-logo-app { height: 22px; max-height: 22px; }
+      .mobile-title { font-size: .88rem; }
+      .mobile-profile-thumb { width: 31px; height: 31px; }
+      .content-container { padding: 10px 8px 60px; }
+      .mini-stat-card { flex: 1 1 calc(50% - 6px); min-width: 0; padding: 6px 8px; }
+      .modal-card { max-width: 100% !important; border-radius: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil (Estilo Nómina / Facturación) -->
+  <header class="mobile-header">
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+    </div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">Contabilidad</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="btn-sync mobile-sync-btn" onclick="sincronizarConsignaciones(this)" title="Sincronizar" aria-label="Sincronizar">
+        <svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>
+      </button>
+      <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR DE CONTABILIDAD ────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+    </div>
+
+    <ul class="nav-list">
+      <li>
+        <a class="nav-item active" href="/contabilidad?tab=consignaciones">
+          <span class="nav-icon">💰</span>
+          <span>Consignaciones</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sidebar-user" id="sidebarUser">
+      <!-- Dinámico con info del usuario -->
+    </div>
+  </aside>
+
+  <!-- ── WRAPPER PRINCIPAL ──────────────────────────────────── -->
+  <main class="wrapper">
+    <!-- Top Header Escritorio -->
+    <header class="top-header">
+      <div class="breadcrumb-title">
+        <h1><span>💰</span> Consignaciones Bancarias</h1>
+        <p>Control y conciliación diaria de efectivo recaudado por operación vs consignaciones registradas</p>
+      </div>
+      <div class="header-actions">
+        <!-- Botón Sincronizar escritorio -->
+        <button type="button" class="btn-sync btn-sync-escritorio" id="btnSync" title="Sincronizar" aria-label="Sincronizar" onclick="sincronizarConsignaciones(this)">
+          <svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/>
+            <path d="M3 21v-5h5"/>
+            <path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/>
+            <path d="M21 3v5h-5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Container -->
+    <div class="content-container">
+
+      <!-- Mini stat cards compactas (Estilo Valorización Inventario) -->
+      <section class="mini-stat-container">
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">💵</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Efectivo Recaudado</span>
+            <span class="val" id="kpiTotalEfectivo">$ 0</span>
+          </div>
+        </div>
+
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">🏦</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Total Consignado</span>
+            <span class="val" id="kpiTotalConsignado">$ 0</span>
+          </div>
+        </div>
+
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">⏳</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Saldo Pendiente</span>
+            <span class="val" id="kpiSaldoPendiente">$ 0</span>
+          </div>
+        </div>
+
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">📊</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Días Registrados</span>
+            <span class="val" id="kpiTotalRegistros">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel de Filtros Plegables por defecto (Estilo Facturación) -->
+      <section class="filters-card">
+        <div class="filtros-toggle" id="filtrosToggle" onclick="toggleFiltros()">
+          <span class="filtros-toggle-left">
+            Filtros
+            <span class="filtros-badge" id="filtrosBadge">0</span>
+          </span>
+          <input type="search" class="filtros-busqueda" id="filtroBusqueda" placeholder="🔍 Buscar por operación, comprobante, banco, cuenta, usuario..." aria-label="Buscador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="filtrosChevron">▸</span>
+        </div>
+
+        <div id="filtrosBody" style="display: none;">
+          <div class="filter-row">
+            <!-- Año -->
+            <div class="filter-group sm">
+              <label for="filtroAnio">Año</label>
+              <select id="filtroAnio" class="filter-control"></select>
+            </div>
+
+            <!-- Quincena -->
+            <div class="filter-group">
+              <label for="filtroQuincena">Quincena</label>
+              <select id="filtroQuincena" class="filter-control"></select>
+            </div>
+
+            <!-- Día específico -->
+            <div class="filter-group sm">
+              <label for="filtroDia">Día Específico</label>
+              <input type="date" id="filtroDia" class="filter-control">
+            </div>
+
+            <!-- Regional -->
+            <div class="filter-group">
+              <label for="filtroRegional">Regional</label>
+              <select id="filtroRegional" class="filter-control">
+                <option value="TODAS">Todas las Regionales</option>
+              </select>
+            </div>
+
+            <!-- Operación (select) -->
+            <div class="filter-group" id="grupoSelectOperacion">
+              <label for="filtroOperacion">Operación</label>
+              <select id="filtroOperacion" class="filter-control">
+                <option value="TODAS">Todas las Operaciones</option>
+              </select>
+            </div>
+
+            <!-- Fase -->
+            <div class="filter-group sm">
+              <label for="filtroFase">Estado</label>
+              <select id="filtroFase" class="filter-control">
+                <option value="TODAS">Todos</option>
+                <option value="Red">🔴 Pendientes</option>
+                <option value="Green">🟢 Consignadas</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Botones interactivos si son <= 5 operaciones -->
+          <div id="contenedorChipsOperacion" style="display:none;">
+            <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Operaciones:</label>
+            <div class="ops-button-bar" id="chipsOperacionBar"></div>
+          </div>
+
+          <div class="conteo-bar">
+            Mostrando&nbsp;<span id="conteoVisible">0</span>&nbsp;de&nbsp;<span id="conteoTotal">0</span>&nbsp;días registrados
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabla de Consignaciones (Columnas ajustables y ordenables) -->
+      <section class="table-card">
+        <div class="table-container">
+          <table class="data-table" id="tablaConsignaciones">
+            <thead>
+              <tr>
+                <th data-sort="fase" style="width: 140px;">Estado</th>
+                <th data-sort="dia" style="width: 130px;">Día</th>
+                <th data-sort="operacion" style="width: 160px;">Operación</th>
+                <th data-sort="totalEfectivo" style="width: 120px;">Total Efectivo</th>
+                <th data-sort="totalServicios" style="width: 95px; text-align: center;">Servicios</th>
+                <th data-sort="banco" style="width: 140px;">Banco / Entidad</th>
+                <th data-sort="cuenta" style="width: 120px;">Cuenta</th>
+                <th data-sort="comprobante" style="width: 130px;">Comprobante</th>
+                <th data-sort="fechaConsignacion" style="width: 110px;">Fecha Consig.</th>
+                <th data-sort="valorConsignado" style="width: 130px;">Valor Consignado</th>
+                <th data-sort="diferencia" style="width: 110px;">Diferencia</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyConsignaciones">
+              <tr>
+                <td colspan="11" style="text-align:center; padding: 30px; color: var(--text-muted);">
+                  Cargando consignaciones...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ── MODAL DE REGISTRO / EDICIÓN DE CONSIGNACIÓN ────────── -->
+  <div class="modal-overlay" id="modalConsignacion">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span id="modalTitulo">Registrar Consignación</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalConsignacion()">&times;</button>
+      </div>
+
+      <form id="formConsignacion" onsubmit="guardarConsignacionSubmit(event)">
+        <div class="modal-body">
+          <div class="info-banner">
+            <div>
+              <div class="info-banner-label" id="modalSubtitulo">Día - Operación</div>
+              <div style="font-size:0.78rem; font-weight:600; color:var(--text); margin-top:2px;" id="modalServiciosInfo">0 servicios en efectivo</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="info-banner-label">Efectivo Recaudado</div>
+              <div class="info-banner-val" id="modalEfectivoVal">$ 0</div>
+            </div>
+          </div>
+
+          <input type="hidden" id="formDia">
+          <input type="hidden" id="formOperacion">
+
+          <!-- Banco y Cuenta -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="formBanco">Banco / Entidad *</label>
+              <select id="formBanco" required>
+                <option value="">Seleccione Banco...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="formCuenta">N° Cuenta Destino</label>
+              <input type="text" id="formCuenta" placeholder="Ej: 8969994865">
+            </div>
+          </div>
+
+          <!-- Comprobante y Fecha -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="formComprobante">N° Comprobante / Transacción *</label>
+              <input type="text" id="formComprobante" required placeholder="Número del recibo bancario">
+            </div>
+
+            <div class="form-group">
+              <label for="formFechaConsignacion">Fecha de Consignación *</label>
+              <input type="date" id="formFechaConsignacion" required>
+            </div>
+          </div>
+
+          <!-- Valor Consignado -->
+          <div class="form-group">
+            <label for="formValorConsignado">Valor Consignado en Banco ($ COP) *</label>
+            <input type="number" id="formValorConsignado" step="1" required placeholder="Ej: 544350">
+          </div>
+
+          <!-- Adjuntar Soporte / Foto (Estilo Facturación / Inventario) -->
+          <div class="form-group">
+            <label>Comprobante / Soporte Bancario (Foto o PDF)</label>
+            <div class="zona-archivo" data-input="formFotoFile"></div>
+            <input type="file" id="formFotoFile" accept="image/*,application/pdf" style="display:none;">
+            <input type="file" id="formFotoCamara" accept="image/*" capture="environment" style="display:none;" onchange="onFotoCamaraConsignacion(this)">
+            <div id="contenedorFotoActual" style="display:none; align-items:center; justify-content:space-between; margin-top:6px; padding:7px 10px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; font-size:0.76rem;">
+              <span id="formFotoActualTexto" style="color:var(--text-muted);"></span>
+              <button type="button" id="btnEliminarFotoModal" style="display:none; background:none; border:none; color:#ef4444; font-weight:700; cursor:pointer;" onclick="eliminarFotoDesdeModal()">🗑️ Eliminar soporte actual</button>
+            </div>
+          </div>
+
+          <!-- Observaciones -->
+          <div class="form-group">
+            <label for="formObservaciones">Observaciones</label>
+            <textarea id="formObservaciones" rows="2" placeholder="Notas o aclaraciones de la consignación..."></textarea>
+          </div>
+
+          <!-- Opción de Validación (Solo Roles autorizados: Contabilidad, Sistema) -->
+          <div class="form-group" id="grupoValidadoContenedor" style="display:none; background:var(--bg-elevated); padding:10px 14px; border-radius:8px; border:1px solid var(--border);">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.84rem; text-transform:none; margin:0; color:var(--text);">
+              <input type="checkbox" id="formValidado" style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+              <span><strong>Validar Consignación</strong> (Marcado por Contabilidad)</span>
+            </label>
+            <div id="infoValidadoPrevio" style="font-size:0.74rem; color:var(--text-muted); margin-top:4px; padding-left:26px;"></div>
+          </div>
+
+          <div id="modalErrorMsg" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-action secondary" onclick="cerrarModalConsignacion()">Cancelar</button>
+          <button type="submit" class="btn-action primary" id="btnGuardarConsignacion">
+            <span id="btnGuardarTexto">Guardar Consignación</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL VISOR DE SOPORTE CON ZOOM Y ROTACIÓN ─────────── -->
+  <div class="modal-overlay" id="modalVisor">
+    <div class="modal-card" style="max-width: 860px; max-height: 94vh;">
+      <div class="modal-header">
+        <span id="visorTitulo">Soporte de Consignación</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarVisor()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 10px; background: #0b0f19; align-items: center; justify-content: center;">
+        <!-- Barra de herramientas (Zoom y Giro) -->
+        <div class="visor-toolbar" id="visorToolbar">
+          <button type="button" class="visor-btn" onclick="zoomVisor(0.25)" title="Acercar">
+            🔍 +
+          </button>
+          <button type="button" class="visor-btn" onclick="zoomVisor(-0.25)" title="Alejar">
+            🔍 -
+          </button>
+          <button type="button" class="visor-btn" onclick="rotarVisor(90)" title="Girar 90 grados">
+            🔄 Girar
+          </button>
+          <button type="button" class="visor-btn" onclick="resetVisor()" title="Restablecer tamaño y giro">
+            ↺ 100%
+          </button>
+        </div>
+
+        <!-- Escenario de visualización -->
+        <div class="visor-stage" id="visorStage">
+          <div id="visorContent" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div id="visorValidacionContenedor" style="display:flex; align-items:center; gap:8px;">
+          <span id="visorValidadoBadge" class="fase-badge" style="display:none;"></span>
+          <button type="button" class="btn-action" id="btnVisorValidar" style="display:none;" onclick="toggleValidarDesdeVisor()">
+            Validar
+          </button>
+          <button type="button" class="btn-action" id="btnVisorEliminarFoto" style="display:none; background:rgba(239, 68, 68, 0.15); border-color:#ef4444; color:#ef4444;" onclick="eliminarFotoDesdeVisor()">
+            🗑️ Eliminar Soporte
+          </button>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button type="button" class="btn-action secondary" id="btnVisorEditar" onclick="editarDesdeVisor()" style="display:none;">
+            ✏️ Editar
+          </button>
+          <a id="btnDescargarSoporte" href="#" target="_blank" download class="btn-action primary">
+            Descargar Soporte
+          </a>
+          <button type="button" class="btn-action secondary" onclick="cerrarVisor()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL DE SERVICIOS ASOCIADOS (RÉPLICA LINKTOFILTEREDVIEW) ── -->
+  <div class="modal-overlay" id="modalServiciosAsociados">
+    <div class="modal-card lg">
+      <div class="modal-header">
+        <span id="serviciosAsociadosTitulo">📋 Servicios Asociados (Efectivo)</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalServiciosAsociados()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="info-banner" id="serviciosAsociadosBanner">
+          <div>
+            <strong id="serviciosAsociadosSubtitulo">—</strong>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Servicios con forma de pago Efectivo (Modalidad Recaudo)</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="info-banner-label">Total a Consignar</div>
+            <div class="info-banner-val" id="serviciosAsociadosTotalPago">$ 0</div>
+          </div>
+        </div>
+
+        <!-- Contenedor con barra de desplazamiento horizontal y vertical -->
+        <div class="table-card" style="max-height: 55vh; overflow: auto; -webkit-overflow-scrolling: touch;">
+          <table class="data-table" id="tablaServiciosAsociados" style="min-width: 1050px; width: 100%;">
+            <thead>
+              <tr>
+                <th>Servicio</th>
+                <th>Recibo</th>
+                <th>Hora</th>
+                <th>Cliente</th>
+                <th>Actividad</th>
+                <th>Placa</th>
+                <th style="text-align:right;">Cant.</th>
+                <th style="text-align:right;">Vlr. Unit.</th>
+                <th style="text-align:right;">Valor Base</th>
+                <th style="text-align:right;">IVA (19%)</th>
+                <th style="text-align:right;">Retenciones</th>
+                <th style="text-align:right;">Total Pago</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyServiciosAsociados">
+              <tr>
+                <td colspan="12" style="text-align:center; padding: 20px; color: var(--text-muted);">
+                  Cargando servicios asociados...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cerrarModalServiciosAsociados()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts principales y utilitarios corporativos -->
+  <script src="/js/theme.js" defer></script>
+  <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/modal-back.js" defer></script>
+  <script src="/js/contabilidad-consignaciones.js"></script>
+</body>
+</html>
