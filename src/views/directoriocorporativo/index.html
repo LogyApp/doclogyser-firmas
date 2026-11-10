@@ -2618,5 +2618,15 @@
   </script>
   <script src="/js/theme.js" defer></script>
   <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
+  <script src="/js/ticket-boton.js" defer></script>
+  <!-- Botón flotante "Ticket" (compartido, ver public/js/ticket-boton.js) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const usuarioTicket = new URLSearchParams(window.location.search).get('usuario');
+      if (usuarioTicket && typeof initBotonTicket === 'function') {
+        initBotonTicket({ usuarioId: usuarioTicket, moduloErp: 'directorio' });
+      }
+    });
+  </script>
 </body>
 </html>

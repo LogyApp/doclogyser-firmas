@@ -102,6 +102,31 @@ router.get('/api/usuario-info', async (req, res) => {
   }
 });
 
+// ── GET /api/operaciones?usuario=X — operaciones activas por regional ─────
+// Para los módulos que no entregan su propia lista al botón (Caja operativa,
+// Directorio, Configuración). Mismo criterio de arriba: cualquier usuario
+// registrado puede reportar sobre cualquier operación activa.
+router.get('/api/operaciones', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'usuario requerido' });
+    const [u] = await pool.execute('SELECT ID FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!u.length) return res.status(403).json({ ok: false, error: 'Usuario no reconocido' });
+    const [rows] = await pool.execute(
+      "SELECT OPERACIÓN AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
+    );
+    const opsPorRegional = {};
+    rows.forEach(r => {
+      if (!r.regional || !r.operacion) return;
+      (opsPorRegional[r.regional] = opsPorRegional[r.regional] || []).push(r.operacion);
+    });
+    res.json({ ok: true, opsPorRegional });
+  } catch (err) {
+    console.error('[tickets] GET /api/operaciones:', err);
+    res.status(500).json({ ok: false, error: 'No se pudieron cargar las operaciones' });
+  }
+});
+
 // ── POST /api/crear — crea un ticket desde cualquier módulo con el botón ───
 router.post('/api/crear', uploadTicket.single('evidencia'), async (req, res) => {
   try {

@@ -308,6 +308,11 @@
   font-style: italic;
 }
 
+/* Movible: no hace scroll la página mientras se arrastra con el dedo */
+.tkb-flotante { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.tkb-flotante.tkb-arrastrando { transition: none; transform: scale(1.08); cursor: grabbing; opacity: 0.92; }
+.tkb-flotante.tkb-pegando { transition: left 0.22s ease, top 0.22s ease; }
+
 @media (max-width: 900px) {
   .tkb-flotante { right: 16px; bottom: 16px; padding: 12px 16px; }
   .tkb-flotante span.tkb-label { display: none; }
