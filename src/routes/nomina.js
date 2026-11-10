@@ -313,13 +313,15 @@ router.get('/', async (req, res) => {
 
     // Asistencia y Novedades: permisos vía Maestro_Menu (Modulo 'nomina', Seccion 'Asistencia')
     const accesoAsistencia = await computarAccesoNomina(usuario, 'Asistencia');
+    // Quincena Excel: quincena que trae el Excel de nómina por operación (Maestro_Visual_Excel)
+    const accesoQuincenaExcel = await computarAccesoNomina(usuario, 'Quincena_Excel');
     const paramsAsistencia = accesoAsistencia ? await obtenerParametrosAsistencia() : null;
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia) {
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia && !accesoQuincenaExcel) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia || accesoQuincenaExcel;
     const puedeGenerarDocs = await puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -343,7 +345,7 @@ router.get('/', async (req, res) => {
     }
 
     const opsTicket = await opsPorRegionalTicket([
-      accesoRetiro, accesoActivo, accesoBloqueo, accesoBiometrico, accesoTraslados, accesoCesantias, accesoProd, accesoAsistencia
+      accesoRetiro, accesoActivo, accesoBloqueo, accesoBiometrico, accesoTraslados, accesoCesantias, accesoProd, accesoAsistencia, accesoQuincenaExcel
     ]);
 
     // Botón "Sociodemografica" en la Ficha y en la ventana de Retiro: solo para roles con la
@@ -398,6 +400,7 @@ router.get('/', async (req, res) => {
           opsPorRegional: accesoProd.opsPorRegional || {},
           ...(await obtenerPermisosProduccion(base.rol)),
         } : null,
+        quincenaexcel: accesoQuincenaExcel ? { sinFiltro: accesoQuincenaExcel.sinFiltro } : null,
         asistencia: accesoAsistencia ? {
           sinFiltro: accesoAsistencia.sinFiltro,
           operacionesFiltro: accesoAsistencia.operacionesFiltro || [],

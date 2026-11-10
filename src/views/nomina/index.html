@@ -1209,10 +1209,48 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-6"></path></svg>
         <span>Producción</span>
       </li>
+      <li class="nav-item" id="navQuincenaExcel" onclick="switchTab('quincenaexcel')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"></path></svg>
+        <span>Quincena Excel</span>
+      </li>
     </ul>
   </div>
 
   <div class="wrapper">
+
+    <!-- ══════════════ Pestaña: Quincena Excel (Maestro_Visual_Excel) ══════════════ -->
+    <div id="panelQuincenaExcel" style="display:none">
+      <div class="page-hd">
+        <div class="page-title">Nómina · Quincena Excel</div>
+        <div class="page-sub">Quincena que trae el Excel de nómina (Power Query) para cada operación. El Excel filtra el año.</div>
+      </div>
+
+      <div class="card">
+        <div class="filtros-grid">
+          <div class="filtro-field"><label>Buscar operación</label><input type="search" id="qeFilterBuscar" placeholder="Escribe la operación..." oninput="renderQuincenaExcel()"></div>
+          <div class="filtro-field"><label>Regional</label><select id="qeFilterRegional" onchange="renderQuincenaExcel()"><option value="">Todas las regionales</option></select></div>
+        </div>
+        <div style="margin-top:10px; font-size:.82rem; color:var(--text-muted);" id="qeQuincenaActual"></div>
+      </div>
+
+      <div class="card">
+        <div class="contador-resultados" id="qeContador">Cargando...</div>
+        <div class="table-container">
+          <table class="retiros-table" id="quincenaExcelTable">
+            <thead>
+              <tr>
+                <th style="width:170px">Operación</th>
+                <th style="width:190px">Quincena</th>
+                <th style="width:190px">Usuario</th>
+                <th style="width:140px">Fecha registro</th>
+                <th style="width:140px">Regional</th>
+              </tr>
+            </thead>
+            <tbody id="quincenaExcelBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
     <!-- ══════════════ Pestaña: Producción (destajo colectivo) ══════════════ -->
     <div id="panelProduccion" style="display:none">
@@ -4195,7 +4233,8 @@
       traslados: 'Nómina · Traslados',
       cesantias: 'Nómina · Cesantías',
       produccion: 'Nómina · Producción',
-      asistencia: 'Nómina · Asistencia y Novedades'
+      asistencia: 'Nómina · Asistencia y Novedades',
+      quincenaexcel: 'Nómina · Quincena Excel'
     };
     const titleEl = document.getElementById('mobileHeaderTitle');
     if (titleEl && tabNombres[tab]) titleEl.textContent = tabNombres[tab];
@@ -4208,6 +4247,7 @@
     if (document.getElementById('navCesantias')) document.getElementById('navCesantias').classList.toggle('active', tab === 'cesantias');
     if (document.getElementById('navProduccion')) document.getElementById('navProduccion').classList.toggle('active', tab === 'produccion');
     if (document.getElementById('navAsistencia')) document.getElementById('navAsistencia').classList.toggle('active', tab === 'asistencia');
+    if (document.getElementById('navQuincenaExcel')) document.getElementById('navQuincenaExcel').classList.toggle('active', tab === 'quincenaexcel');
     document.getElementById('panelRetiros').style.display = tab === 'retiros' ? 'block' : 'none';
     document.getElementById('panelActivos').style.display = tab === 'activos' ? 'block' : 'none';
     if (document.getElementById('panelBloqueo')) document.getElementById('panelBloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
@@ -4217,6 +4257,8 @@
     if (document.getElementById('panelCesantias')) document.getElementById('panelCesantias').style.display = tab === 'cesantias' ? 'block' : 'none';
     if (document.getElementById('panelProduccion')) document.getElementById('panelProduccion').style.display = tab === 'produccion' ? 'block' : 'none';
     if (document.getElementById('panelAsistencia')) document.getElementById('panelAsistencia').style.display = tab === 'asistencia' ? 'block' : 'none';
+    if (document.getElementById('panelQuincenaExcel')) document.getElementById('panelQuincenaExcel').style.display = tab === 'quincenaexcel' ? 'block' : 'none';
+    if (tab === 'quincenaexcel' && !_qeState.cargado) cargarQuincenaExcel();
     if (tab === 'retiros' && !_retirosState.cargado) fetchDataRetiros();
     if (tab === 'activos' && !_activosState.cargado) fetchDataActivos();
     if (tab === 'bloqueo' && !_bloqueoNominaState.cargado) fetchDataBloqueoNomina();
@@ -4227,6 +4269,100 @@
     if (tab === 'produccion') switchProduccionSubTab(_prodState.activeSubTab);
     if (tab === 'asistencia') { if (typeof initAsistenciaNomina === 'function' && typeof _asisState !== 'undefined' && !_asisState.cargado) initAsistenciaNomina(); }
     toggleMobileSidebar(false);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Pestaña QUINCENA EXCEL (Maestro_Visual_Excel; API en src/routes/quincenaExcel.js)
+  // Solo se cambia la Quincena de cada operación; Usuario y Fecha registro son informativos.
+  // ═══════════════════════════════════════════════════════════════════════
+  const _qeState = { cargado: false, registros: [], quincenas: [], quincenaActual: null };
+
+  async function cargarQuincenaExcel() {
+    const body = document.getElementById('quincenaExcelBody');
+    try {
+      const r = await fetch(`/quincena-excel/api/registros?usuario=${encodeURIComponent(usuario)}`);
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo cargar la información.');
+      _qeState.registros = data.registros || [];
+      _qeState.quincenas = data.quincenas || [];
+      _qeState.quincenaActual = data.quincenaActual;
+      _qeState.cargado = true;
+      const selReg = document.getElementById('qeFilterRegional');
+      const elegida = selReg.value;
+      const regionales = [...new Set(_qeState.registros.map(x => x.regional).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+      selReg.innerHTML = '<option value="">Todas las regionales</option>' +
+        regionales.map(x => `<option value="${esc(x)}"${x === elegida ? ' selected' : ''}>${esc(x)}</option>`).join('');
+      document.getElementById('qeQuincenaActual').innerHTML = _qeState.quincenaActual
+        ? `Quincena de hoy: <b>${esc(_qeState.quincenaActual)}</b>` : '';
+      renderQuincenaExcel();
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding:20px;">${esc(e.message)}</td></tr>`;
+      document.getElementById('qeContador').textContent = '';
+    }
+  }
+
+  function renderQuincenaExcel() {
+    const body = document.getElementById('quincenaExcelBody');
+    const texto = (document.getElementById('qeFilterBuscar').value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const regional = document.getElementById('qeFilterRegional').value;
+    const filas = _qeState.registros.filter(x =>
+      (!regional || x.regional === regional) &&
+      (!texto || String(x.operacion || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(texto)));
+    document.getElementById('qeContador').textContent = `Mostrando ${filas.length} operación(es)`;
+    if (!filas.length) {
+      body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">No hay operaciones para mostrar.</td></tr>';
+      return;
+    }
+    body.innerHTML = filas.map(x => {
+      const idx = _qeState.registros.indexOf(x);
+      const opciones = [...new Set([...(x.quincena && !_qeState.quincenas.includes(x.quincena) ? [x.quincena] : []), ..._qeState.quincenas])]
+        .map(q => `<option value="${esc(q)}"${q === x.quincena ? ' selected' : ''}>${esc(q)}</option>`).join('');
+      return `<tr>
+        <td style="font-weight:700;">${esc(x.operacion)}</td>
+        <td>
+          <select class="qe-select" data-idx="${idx}" onchange="guardarQuincenaExcel(this)" style="width:100%; padding:6px 8px; border:1.5px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); font:inherit; font-size:.85rem;">
+            ${x.quincena ? '' : '<option value="">— Sin quincena —</option>'}${opciones}
+          </select>
+          <div class="qe-estado" style="font-size:.72rem; min-height:14px; margin-top:2px;"></div>
+        </td>
+        <td style="color:var(--text-muted);">${esc(x.usuario || '—')}</td>
+        <td style="color:var(--text-muted); white-space:nowrap;">${esc(x.fechaRegistro || '—')}</td>
+        <td>${esc(x.regional || '—')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function guardarQuincenaExcel(sel) {
+    const reg = _qeState.registros[Number(sel.dataset.idx)];
+    const estado = sel.parentElement.querySelector('.qe-estado');
+    const anterior = reg.quincena;
+    const quincena = sel.value;
+    if (!quincena || quincena === anterior) return;
+    sel.disabled = true;
+    estado.style.color = 'var(--text-muted)';
+    estado.textContent = 'Guardando...';
+    try {
+      const r = await fetch('/quincena-excel/api/registros', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, operacion: reg.operacion, quincena })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar.');
+      Object.assign(reg, { quincena: data.registro.quincena, usuario: data.registro.usuario, fechaRegistro: data.registro.fechaRegistro });
+      const fila = sel.closest('tr');
+      fila.children[2].textContent = reg.usuario;
+      fila.children[3].textContent = reg.fechaRegistro;
+      estado.style.color = 'var(--success, #16a34a)';
+      estado.textContent = '✓ Guardado';
+      setTimeout(() => { if (estado.textContent === '✓ Guardado') estado.textContent = ''; }, 2500);
+    } catch (e) {
+      sel.value = anterior || '';
+      estado.style.color = 'var(--danger, #dc2626)';
+      estado.textContent = e.message;
+    } finally {
+      sel.disabled = false;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -9602,6 +9738,9 @@
     document.getElementById('navProduccion').style.display = 'flex';
     initProduccion();
   }
+  if (tabs.quincenaexcel) {
+    document.getElementById('navQuincenaExcel').style.display = 'flex';
+  }
   if (tabs.cesantias) {
     const navCes = document.getElementById('navCesantias');
     if (navCes) navCes.style.display = 'flex';
@@ -9657,6 +9796,8 @@
     tabDestino = 'cesantias';
   } else if (tabParam === 'produccion' || tabParam === 'producción') {
     tabDestino = 'produccion';
+  } else if (tabParam === 'quincenaexcel' || tabParam === 'quincena-excel' || tabParam === 'quincena_excel') {
+    tabDestino = 'quincenaexcel';
   } else if (busquedaParam) {
     tabDestino = tabs.activo ? 'activos' : 'retiros';
   } else if (idVinculacionParam) {
@@ -9677,6 +9818,8 @@
     tabDestino = 'asistencia';
   } else if (tabs.produccion) {
     tabDestino = 'produccion';
+  } else if (tabs.quincenaexcel) {
+    tabDestino = 'quincenaexcel';
   }
 
   // Aplicar filtros en la pestaña correspondiente
@@ -9748,8 +9891,10 @@
     const subParamProd = (paramsUrl.get('subtab') || '').toLowerCase().trim();
     if (tabs.produccion[subParamProd]) _prodState.activeSubTab = subParamProd;
     switchTab('produccion');
+  } else if (tabDestino === 'quincenaexcel' && tabs.quincenaexcel) {
+    switchTab('quincenaexcel');
   } else {
-    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : (tabs.traslados ? 'traslados' : (tabs.cesantias ? 'cesantias' : (tabs.asistencia ? 'asistencia' : 'produccion'))))))));
+    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : (tabs.traslados ? 'traslados' : (tabs.cesantias ? 'cesantias' : (tabs.asistencia ? 'asistencia' : (tabs.produccion ? 'produccion' : 'quincenaexcel')))))))));
   }
 
   // Recarga los datos de la pestaña visible (botón Sincronizar, public/js/boton-sync.js)
@@ -9763,6 +9908,7 @@
       traslados: () => fetchTrasladosData(),
       cesantias: () => fetchCesantiasData(),
       asistencia: () => (typeof fetchAsistenciaData === 'function' ? fetchAsistenciaData() : null),
+      quincenaexcel: () => cargarQuincenaExcel(),
       produccion: () => {
         const sub = _prodState.activeSubTab;
         if (sub === 'areas') return cargarAreasProduccion();
