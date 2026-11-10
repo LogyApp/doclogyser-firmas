@@ -97,8 +97,25 @@ const COLUMNAS_TRABAJADOR = [
   { table: 'Dynamic_ats_trabajadores', column: 'nombre_trabajador', id: 'identificacion' },
   { table: 'Dynamic_descuentonomina', column: 'nombre_trabajador', id: 'identificacion' },
   { table: 'Dynamic_Registro_Asistencia', column: 'Trabajador', id: null }
-  // Dynamic_Data_Nomina es una vista: se actualiza sola a partir de sus tablas de origen
 ];
+// Dynamic_Data_Nomina es una vista: su columna TRABAJADOR sale de Dynamic_Servicios.Auxiliares,
+// que guarda uno o varios "CÉDULA ** NOMBRE" separados por coma. Esa tabla es grande, así que se
+// corrige después de confirmar la transacción para no bloquear el registro de servicios.
+const COLUMNAS_TRABAJADOR_LISTA = [
+  { table: 'Dynamic_Servicios', column: 'Auxiliares' }
+];
+
+// Cambia "VIEJA ** NOMBRE" por "NUEVA ** NOMBRE" en una columna que puede tener varias personas
+// separadas por coma, sin tocar cédulas que solo terminan igual (ej. 18100317 vs 8100317).
+async function actualizarTextoTrabajador(db, c, oldId, newId) {
+  const patron = `(^|,[[:space:]]*)${oldId} [*][*]`;
+  const [r] = await db.execute(
+    `UPDATE \`${c.table}\` SET \`${c.column}\` = REGEXP_REPLACE(\`${c.column}\`, ?, ?)
+     WHERE \`${c.column}\` LIKE ? AND \`${c.column}\` REGEXP ?`,
+    [patron, `$1${newId} **`, `%${oldId} **%`, patron]
+  );
+  return r.affectedRows;
+}
 
 async function tiposIdentificacion() {
   const [rows] = await pool.execute(
@@ -808,12 +825,14 @@ router.post('/api/integridad/modificar', async (req, res) => {
         // 3. Texto "CÉDULA ** NOMBRE" con la nueva cédula
         const prefijo = `${oldIdentificacion} **%`;
         for (const c of COLUMNAS_TRABAJADOR) {
-          const filtro = c.id ? `\`${c.id}\` = ? AND \`${c.column}\` LIKE ?` : `\`${c.column}\` LIKE ?`;
-          const params = c.id ? [newIdentificacion, prefijo] : [prefijo];
-          await conn.execute(
-            `UPDATE \`${c.table}\` SET \`${c.column}\` = CONCAT(?, SUBSTRING(\`${c.column}\`, ?)) WHERE ${filtro}`,
-            [newIdentificacion, oldIdentificacion.length + 1, ...params]
-          );
+          if (c.id) {
+            await conn.execute(
+              `UPDATE \`${c.table}\` SET \`${c.column}\` = CONCAT(?, SUBSTRING(\`${c.column}\`, ?)) WHERE \`${c.id}\` = ? AND \`${c.column}\` LIKE ?`,
+              [newIdentificacion, oldIdentificacion.length + 1, newIdentificacion, prefijo]
+            );
+          } else {
+            await actualizarTextoTrabajador(conn, c, oldIdentificacion, newIdentificacion);
+          }
         }
 
         // 4. Modificar contenido de URLs en Maestro_docTrabajador.Doc
@@ -866,6 +885,18 @@ router.post('/api/integridad/modificar', async (req, res) => {
       return res.json({ ok: true, mensaje: `Tipo de documento actualizado a ${tipo.descripcion}.` });
     }
 
+    // Servicios (Facturación / Data Nómina): fuera de la transacción por ser una tabla grande
+    const avisos = [];
+    for (const c of COLUMNAS_TRABAJADOR_LISTA) {
+      try {
+        const n = await actualizarTextoTrabajador(pool, c, oldIdentificacion, newIdentificacion);
+        console.log(`[talenthub-integridad] ${c.table}.${c.column}: ${n} fila(s) con la nueva cédula`);
+      } catch (e) {
+        console.error(`[talenthub-integridad] No se pudo actualizar ${c.table}.${c.column}:`, e.message);
+        avisos.push(`${c.table}: ${e.message}`);
+      }
+    }
+
     // 7. Renombrar archivos en Google Cloud Storage bajo el prefijo
     for (const bucketName of BUCKETS) {
       try {
@@ -886,7 +917,8 @@ router.post('/api/integridad/modificar', async (req, res) => {
     }
 
     res.json({ ok: true, mensaje: `Identificación actualizada exitosamente de ${oldIdentificacion} a ${newIdentificacion}` +
-      `${cambiaTipo ? ` y tipo de documento a ${tipo.descripcion}` : ''}.` });
+      `${cambiaTipo ? ` y tipo de documento a ${tipo.descripcion}` : ''}.` +
+      `${avisos.length ? ` Atención, no se pudo actualizar: ${avisos.join('; ')}` : ''}` });
   } catch (err) {
     console.error('[talenthub] Error en POST /api/integridad/modificar:', err);
     res.status(500).json({ error: err.message });
