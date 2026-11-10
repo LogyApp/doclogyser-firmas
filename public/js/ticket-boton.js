@@ -308,7 +308,11 @@
       </div>`;
     document.body.appendChild(overlay);
 
-    boton.addEventListener('click', abrir);
+    boton.addEventListener('click', (ev) => {
+      if (boton._arrastrado) { boton._arrastrado = false; ev.preventDefault(); return; }
+      abrir();
+    });
+    hacerMovible(boton);
     document.getElementById('tkb-cerrar-x').addEventListener('click', cerrar);
     document.getElementById('tkb-cancelar').addEventListener('click', cerrar);
     document.getElementById('tkb-guardar').addEventListener('click', guardar);
@@ -684,6 +688,89 @@
     }
   }
 
+  // ── Botón movible ──
+  // Se puede arrastrar con el dedo (o el mouse) para que no tape acciones del formulario.
+  // Al soltarlo se pega al borde izquierdo o derecho más cercano. La posición no se guarda:
+  // cada vez que se abre la página vuelve a la esquina inferior derecha.
+  function hacerMovible(boton) {
+    const UMBRAL = 8;   // px que hay que mover para que cuente como arrastre y no como toque
+    const MARGEN = 8;
+    let inicio = null;
+
+    const limitar = (x, y) => {
+      const w = boton.offsetWidth, h = boton.offsetHeight;
+      return [
+        Math.min(Math.max(MARGEN, x), window.innerWidth - w - MARGEN),
+        Math.min(Math.max(MARGEN, y), window.innerHeight - h - MARGEN)
+      ];
+    };
+    const ubicar = (x, y) => {
+      const [lx, ly] = limitar(x, y);
+      boton.style.left = lx + 'px';
+      boton.style.top = ly + 'px';
+      boton.style.right = 'auto';
+      boton.style.bottom = 'auto';
+    };
+
+    boton.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== undefined && ev.button !== 0) return;
+      const r = boton.getBoundingClientRect();
+      inicio = { px: ev.clientX, py: ev.clientY, x: r.left, y: r.top, moviendo: false, id: ev.pointerId };
+      // Captura desde el inicio: si el dedo sale rápido del botón, se sigue recibiendo el movimiento
+      try { boton.setPointerCapture(ev.pointerId); } catch (e) { /* sin captura */ }
+    });
+    boton.addEventListener('pointermove', (ev) => {
+      if (!inicio || ev.pointerId !== inicio.id) return;
+      const dx = ev.clientX - inicio.px, dy = ev.clientY - inicio.py;
+      if (!inicio.moviendo) {
+        if (Math.hypot(dx, dy) < UMBRAL) return;
+        inicio.moviendo = true;
+        boton.classList.add('tkb-arrastrando');
+      }
+      ev.preventDefault();
+      ubicar(inicio.x + dx, inicio.y + dy);
+    });
+    const soltar = (ev) => {
+      if (!inicio || (ev && ev.pointerId !== inicio.id)) return;
+      if (inicio.moviendo) {
+        boton._arrastrado = true;   // el "click" que sigue no abre el formulario
+        setTimeout(() => { boton._arrastrado = false; }, 350);
+        boton.classList.remove('tkb-arrastrando');
+        const r = boton.getBoundingClientRect();
+        const alBordeDerecho = r.left + r.width / 2 > window.innerWidth / 2;
+        const x = alBordeDerecho ? window.innerWidth - r.width - 16 : 16;
+        boton.classList.add('tkb-pegando');
+        ubicar(x, r.top);
+        setTimeout(() => boton.classList.remove('tkb-pegando'), 250);
+      }
+      inicio = null;
+    };
+    boton.addEventListener('pointerup', soltar);
+    boton.addEventListener('pointercancel', soltar);
+
+    // Si cambia el tamaño de la pantalla (girar el celular), que no quede por fuera
+    window.addEventListener('resize', () => {
+      if (!boton.style.left) return;
+      const r = boton.getBoundingClientRect();
+      ubicar(r.left, r.top);
+    });
+  }
+
+  // Si el módulo no entrega las operaciones, se consultan las activas para el formulario
+  async function cargarOperacionesSiFaltan() {
+    if (cfg.opsPorRegional && Object.keys(cfg.opsPorRegional).length) return;
+    try {
+      const r = await fetch(`/tickets/api/operaciones?usuario=${encodeURIComponent(cfg.usuarioId)}`);
+      const data = await r.json();
+      if (data && data.ok && data.opsPorRegional) {
+        cfg.opsPorRegional = data.opsPorRegional;
+        cfg.regionalesFiltro = Object.keys(data.opsPorRegional);
+      }
+    } catch (e) {
+      console.warn('[ticket-boton] No se pudieron cargar las operaciones:', e.message);
+    }
+  }
+
   window.initBotonTicket = function initBotonTicket(opciones) {
     if (!opciones || !opciones.usuarioId) {
       console.error('[ticket-boton] initBotonTicket requiere usuarioId.');
@@ -698,5 +785,6 @@
     crearMarkup();
     document.getElementById('tkb-boton').classList.add('tkb-visible');
     yaInicializado = true;
+    cargarOperacionesSiFaltan();
   };
 })();
