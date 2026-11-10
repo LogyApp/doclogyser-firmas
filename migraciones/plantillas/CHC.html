@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Consentimiento informado prueba de alcohol y sustancias psicoactivas — LOG&amp;SER</title>
+<title>Autorización acceso a historia clínica — LOG&amp;SER</title>
 <style>
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,6 +78,14 @@
   .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
 
   .doc-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; gap: 10px; font-size: 7pt; color: #94a3b8; page-break-inside: avoid; }
+
+  .metrics-card { margin-bottom: 10px; }
+  .statement-box { padding: 8px 12px; margin-bottom: 9px; }
+  .statement-text, .statement-list { line-height: 1.38; }
+  .statement-list li { margin-bottom: 2px; }
+  .signature-container { margin-top: 27px; }
+  .sig-img-wrap { height: 86px; }
+  .doc-footer { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -86,9 +94,9 @@
     <tr>
       <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
       <td class="header-title-cell">
-        <div class="doc-title">Consentimiento Informado</div>
-        <div class="doc-subtitle">Prueba de alcohol y detección de consumo de sustancias psicoactivas</div>
-        <div class="doc-subdetail">Sistema de Gestión de Seguridad y Salud en el Trabajo</div>
+        <div class="doc-title">Acceso a Historia Clínica</div>
+        <div class="doc-subtitle">Autorización y tratamiento de datos personales</div>
+        <div class="doc-subdetail">Gestión del Talento Humano — Ley 1581 de 2012</div>
       </td>
       <td class="header-meta-cell">
         <div class="meta-code">{{codigo_formato}}</div>
@@ -104,32 +112,30 @@
     <div class="metric-item"><div class="metric-label">Cargo</div><div class="metric-value">{{cargo}}</div></div>
     <div class="metric-item"><div class="metric-label">Operación</div><div class="metric-value">{{operacion}}</div></div>
   </div>
-
-  <section class="section-block">
-    <div class="section-title">Destinatario</div>
-    <table class="data-grid">
+    <table class="data-grid" style="margin-bottom:10px">
       <tr><td class="data-label">Señores:</td><td class="data-val">{{eps}}</td></tr>
-      <tr><td class="data-label">Asunto:</td><td class="data-val">Consentimiento para prueba de toxicología</td></tr>
+      <tr><td class="data-label">Asunto:</td><td class="data-val">Autorización de acceso a historia clínica y tratamiento de datos personales</td></tr>
     </table>
-  </section>
-
-  <section class="statement-box ">
-    <div class="statement-header">Cordial saludo</div>
-    <p class="statement-text">APOYO LOGÍSTICO Y OPERATIVO S.A.S., comprometido en prevenir la accidentalidad laboral asociada al consumo de sustancias psicoactivas legales y/o ilegales en el trabajo y en preservar el derecho a la vida e integridad personal de los mismos trabajadores, implementa de manera aleatoria y sin vulnerar los derechos fundamentales de las personas las pruebas de toxicología a los empleados, ya sea con equipos y personal propio o de terceros, y estos a su vez aceptan dicha directriz.</p>
-  </section>
 
   <section class="statement-box autoriza">
     <div class="statement-header">Autorización</div>
-    <p class="statement-text">Yo, <strong>{{nombre_completo}}</strong>, identificado(a) con C.C. No. <strong>{{identificacion}}</strong>, en calidad de trabajador(a) de la empresa, manifiesto de manera expresa, libre y voluntaria que <strong>AUTORIZO</strong> a que se me realice la toma de la prueba de toxicología conforme a las directrices de la empresa y/o el cliente <strong>{{operacion}}</strong>.</p>
+    <p class="statement-text">Cordial saludo.</p>
+    <p class="statement-text">Por medio de la suscripción de la presente autorización de tratamiento de datos personales, yo, <strong>{{nombre_completo}}</strong>, identificado(a) con cédula de ciudadanía o documento número <strong>{{identificacion}}</strong>, en mi calidad de empleado(a) o aspirante en proceso de selección, manifiesto que <strong>AUTORIZO</strong> a la empresa APOYO LOGÍSTICO Y OPERATIVO S.A.S. para que acceda de forma permanente a mi historia clínica médica y/u odontológica y efectúe el tratamiento (recolección, almacenamiento, uso, circulación o supresión) de mis datos personales que se deriven directamente del desarrollo de mis funciones o que, en mi calidad de aspirante, tengan relación directa con el proceso de selección y el ejercicio del cargo de <strong>{{cargo}}</strong> al que aspiro ser contratado(a).</p>
+    <p class="statement-text">Esta autorización la otorgo teniendo en cuenta la regulación vigente sobre la protección de datos personales: Ley 1266 de 2008, Ley 1581 de 2012, Decreto 1074 de 2015 y demás normas que la modifiquen, complementen o sustituyan.</p>
   </section>
 
   <section class="statement-box ">
-    <div class="statement-header">Declaración</div>
-    <p class="statement-text">Declaro haber recibido y entendido la política de prevención de sustancias psicoactivas, normas y directrices de la compañía, así como la aplicación de pruebas y el proceso disciplinario por LOGYSER.</p>
-    <p class="statement-text">Manifiesto, además, conocer y entender los riesgos a los que voy a estar expuesto(a) y las medidas de control que el empleador considere necesarias durante la relación laboral.</p>
-    <p class="statement-text">En concordancia con lo anterior, me obligo y me comprometo a cumplir con las normas y procedimientos establecidos por la empresa y otros que sean necesarios para el buen desempeño de mi trabajo y/o durante la permanencia en la compañía.</p>
-    <p class="statement-text">Por último, manifiesto que conozco las sanciones disciplinarias a las cuales me encuentro expuesto(a) en caso de incumplimiento de lo anteriormente mencionado, de acuerdo con la reglamentación legal vigente, al igual que las dispuestas en el reglamento interno de trabajo.</p>
-    <p class="statement-text">Acepto la finalidad antes indicada: <strong>{{resp_acepta_finalidad}}</strong></p>
+    <div class="statement-header">Derechos del titular</div>
+    <p class="statement-text">Como titular de los datos personales, declaro conocer mis derechos de aclaración, eliminación, corrección y actualización de estos, así como las demás condiciones establecidas en la Ley 1581 de 2012, que he leído previamente, dentro de las cuales se encuentran:</p>
+    <ul class="statement-list">
+      <li>Acceder en forma gratuita a los datos proporcionados que hayan sido objeto de tratamiento.</li>
+      <li>Solicitar la actualización y rectificación de mi información frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o aquellos cuyo tratamiento esté prohibido o no haya sido autorizado.</li>
+      <li>Solicitar prueba de la autorización otorgada.</li>
+      <li>Presentar ante la Superintendencia de Industria y Comercio (SIC) quejas por infracciones a lo dispuesto en la normatividad vigente.</li>
+      <li>Revocar la autorización y/o solicitar la supresión del dato, a menos que exista un deber legal o contractual que haga imperativo conservar la información.</li>
+      <li>Abstenerme de responder las preguntas sobre datos sensibles o sobre datos de niñas, niños y adolescentes.</li>
+    </ul>
+    <p class="statement-text" style="margin-top:6px;color:#000b59">Acepto la finalidad antes indicada: <strong>{{resp_acepta_finalidad}}</strong></p>
   </section>
 
   <p class="lugar-fecha">Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes de <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.</p>
@@ -145,7 +151,7 @@
   </div>
 
   <footer class="doc-footer">
-    <span>Apoyo Logístico y Operativo S.A.S. &bull; Consentimiento Informado Prueba de Alcohol y SPA</span>
+    <span>Apoyo Logístico y Operativo S.A.S. &bull; Autorización Acceso a Historia Clínica y Tratamiento de Datos</span>
     <span>Certificación electrónica bajo Ley 527 de 1999</span>
     <span>Generado el {{fecha_generacion}}</span>
   </footer>

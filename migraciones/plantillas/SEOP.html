@@ -78,6 +78,25 @@
   .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
 
   .doc-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; gap: 10px; font-size: 7pt; color: #94a3b8; page-break-inside: avoid; }
+  /* Compacto: las normas, la constancia y la firma caben en una página */
+  .doc-header-table, .metrics-card { margin-bottom: 5px; }
+  .metric-item { padding: 6px 12px; }
+  .section-block { margin-bottom: 5px; }
+  .section-title { margin-bottom: 4px; padding-bottom: 3px; }
+  .data-grid td { padding: 3px 9px; font-size: 8pt; line-height: 1.3; }
+  .data-grid .data-label { width: 17%; }
+  .data-grid .statement-list { font-weight: 500; color: #0f172a; margin-left: 14px; }
+  .statement-list { margin: 2px 0 2px 16px; font-size: 8pt; line-height: 1.35; }
+  .statement-list li { margin-bottom: 1px; }
+  .rule-list li { padding: 2px 8px 2px 30px; margin-bottom: 1px; line-height: 1.28; font-size: 8pt; }
+  .rule-list li::before { top: 2px; width: 16px; height: 16px; line-height: 16px; left: 7px; }
+  .statement-box { padding: 5px 11px; margin-bottom: 4px; }
+  .statement-text { font-size: 8pt; line-height: 1.35; margin-bottom: 0; }
+  .lugar-fecha { margin: 3px 0 0; }
+  .bloque-firma { page-break-inside: avoid; }
+  .signature-container { margin-top: 4px; }
+  .sig-img-wrap { height: 84px; }
+  .doc-footer { margin-top: 4px; padding-top: 3px; }
 </style>
 </head>
 <body>
@@ -110,15 +129,13 @@
     <table class="data-grid">
       <tr><td class="data-label">Objetivo</td><td class="data-val">Establecer normas a nivel de Seguridad y Salud en el Trabajo para laborar en las operaciones, como medida de prevención frente a riesgos y peligros derivados de la operación de Logyser.</td></tr>
       <tr><td class="data-label">Alcance</td><td class="data-val">Aplica para todos los colaboradores de Logyser.</td></tr>
-    </table>
-  </section>
-
-  <section class="section-block">
-    <div class="section-title">Objetivos específicos</div>
-    <ul class="statement-list">
+      <tr><td class="data-label">Objetivos específicos</td><td class="data-val">
+        <ul class="statement-list">
       <li>Prevenir incidentes y/o accidentes laborales, con afectación a la persona, al medio ambiente, a la operación y activos fijos de LOGYSER.</li>
       <li>Adoptar cultura de autocuidado y cumplimiento de normas de seguridad como medida preventiva frente al estado integral del trabajador.</li>
     </ul>
+      </td></tr>
+    </table>
   </section>
 
   <section class="section-block">
@@ -133,10 +150,14 @@
       <li>Me abstengo de utilizar celular, manos libres, radios, mp3 o cualquier otro elemento que me genere distracción durante mi jornada laboral.</li>
       <li>Sigo los procedimientos indicados en mi inducción, mantengo mi área de trabajo en condiciones óptimas de orden y aseo, cumpliendo las normas y controles requeridos, suspendiendo toda labor que ponga en riesgo mi vida, la de mis compañeros, el medio ambiente y los recursos de la empresa.</li>
       <li>Reporto actos y condiciones inseguras, doy buen trato a jefes y compañeros, sigo instrucciones de mi jefe y acepto retroalimentación de superiores en caso de ser necesario; en el trabajo y fuera de él cumplo las normas de seguridad vial (respeto las señales de tránsito).</li>
-      <li>Con la firma del presente documento manifiesto que he recibido la información sobre los riesgos y normas de seguridad, y me comprometo a cumplirlas durante mi relación laboral con APOYO LOGÍSTICO Y OPERATIVO S.A.S.</li>
     </ol>
   </section>
+  <section class="statement-box autoriza">
+    <div class="statement-header">Constancia</div>
+    <p class="statement-text">Con la firma del presente documento manifiesto que he recibido la información sobre los riesgos y normas de seguridad, y me comprometo a cumplirlas durante mi relación laboral con APOYO LOGÍSTICO Y OPERATIVO S.A.S.</p>
+  </section>
 
+  <div class="bloque-firma">
   <p class="lugar-fecha">Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes de <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.</p>
 
   <div class="signature-container">
@@ -147,6 +168,7 @@
       <div class="sig-name">{{nombre_completo}}</div>
       <div class="sig-details">C.C. {{identificacion}} de {{ciudad_expedicion}}<br>{{cargo}}</div>
     </div>
+  </div>
   </div>
 
   <footer class="doc-footer">
