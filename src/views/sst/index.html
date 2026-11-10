@@ -2011,7 +2011,13 @@
       }
       .tab-title {
         font-size: 1.05rem !important;
+        flex-wrap: wrap;
+        row-gap: 6px !important;
+        gap: 6px !important;
       }
+      /* El nombre de la pestaña ocupa toda la línea y los conteos bajan debajo */
+      .tab-title > span:first-child { flex: 1 1 100%; }
+      .tab-header-left { width: 100%; min-width: 0; }
       .tab-subtitle {
         font-size: .75rem !important;
       }

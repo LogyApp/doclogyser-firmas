@@ -70,8 +70,59 @@ const TABLES = [
   { table: 'Dynamic_Kardex', column: 'UsuarioAsignado' },
   { table: 'Dynamic_Logysign', column: 'identificacion' },
   { table: 'Maestro_casosmedicos', column: 'identificacion' },
+  { table: 'facial_embeddings', column: 'identificacion' },
+  { table: 'Dynamic_ats_trabajadores', column: 'identificacion' },
+  { table: 'Dynamic_descuentonomina', column: 'identificacion' },
+  { table: 'Dynamic_Inspecciones_Vehiculo', column: 'identificacion' },
+  { table: 'Maestro_notificaciones', column: 'identificacion_trabajador' },
   { table: 'Maestro_Segmentación', column: 'Identificación' }
 ];
+
+// Columnas con el texto "CÉDULA ** NOMBRE" que hay que rehacer con la nueva cédula.
+// id = columna de identificación de la tabla; si es null se busca por el prefijo del texto.
+const COLUMNAS_TRABAJADOR = [
+  { table: 'Maestro_Segmentación', column: 'Trabajador', id: 'Identificación' },
+  { table: 'Maestro_Vinculación', column: 'Trabajador', id: 'Identificación' },
+  { table: 'Maestro_Examenes', column: 'Trabajador', id: 'Identificación' },
+  { table: 'Maestro_firma_corporativa', column: 'Trabajador', id: 'Identificacion' },
+  { table: 'Dynamic_Asistencia', column: 'Trabajador', id: 'Cédula' },
+  { table: 'Dynamic_Encuesta_Satisfaccion', column: 'trabajador', id: 'identificacion' },
+  { table: 'Dynamic_Solicitud_Vacaciones', column: 'Trabajador', id: 'Identificación' },
+  { table: 'Dynamic_traslados_trabajador', column: 'Trabajador', id: 'Identificación' },
+  { table: 'facial_marcaciones', column: 'trabajador', id: 'identificacion' },
+  { table: 'facial_movimientos', column: 'trabajador', id: 'identificacion' },
+  { table: 'facial_embeddings', column: 'trabajador', id: 'identificacion' },
+  { table: 'Dynamic_Logysign', column: 'nombre_trabajador', id: 'identificacion' },
+  { table: 'Dynamic_formato_itemsAsistencia', column: 'nombre_trabajador', id: 'identificacion' },
+  { table: 'Dynamic_ats_trabajadores', column: 'nombre_trabajador', id: 'identificacion' },
+  { table: 'Dynamic_descuentonomina', column: 'nombre_trabajador', id: 'identificacion' },
+  { table: 'Dynamic_Registro_Asistencia', column: 'Trabajador', id: null }
+];
+// Dynamic_Data_Nomina es una vista: su columna TRABAJADOR sale de Dynamic_Servicios.Auxiliares,
+// que guarda uno o varios "CÉDULA ** NOMBRE" separados por coma. Esa tabla es grande, así que se
+// corrige después de confirmar la transacción para no bloquear el registro de servicios.
+const COLUMNAS_TRABAJADOR_LISTA = [
+  { table: 'Dynamic_Servicios', column: 'Auxiliares' }
+];
+
+// Cambia "VIEJA ** NOMBRE" por "NUEVA ** NOMBRE" en una columna que puede tener varias personas
+// separadas por coma, sin tocar cédulas que solo terminan igual (ej. 18100317 vs 8100317).
+async function actualizarTextoTrabajador(db, c, oldId, newId) {
+  const patron = `(^|,[[:space:]]*)${oldId} [*][*]`;
+  const [r] = await db.execute(
+    `UPDATE \`${c.table}\` SET \`${c.column}\` = REGEXP_REPLACE(\`${c.column}\`, ?, ?)
+     WHERE \`${c.column}\` LIKE ? AND \`${c.column}\` REGEXP ?`,
+    [patron, `$1${newId} **`, `%${oldId} **%`, patron]
+  );
+  return r.affectedRows;
+}
+
+async function tiposIdentificacion() {
+  const [rows] = await pool.execute(
+    'SELECT `Descripción` AS descripcion, `Cod Identificación` AS codigo FROM `Config_Tipo_Identificación` ORDER BY `Descripción`'
+  );
+  return rows;
+}
 
 function paginaNoAcceso(mensaje = 'No tienes permiso para ver este módulo.') {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sin acceso — TalentHub</title><style>*{box-sizing:border-box}body{font-family:'Outfit',sans-serif,system-ui;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#0f172a;color:#cbd5e1}.card{background:#1e293b;padding:2.5rem 2rem;border-radius:12px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.4);max-width:420px;width:90%;border:1px solid #334155}h2{color:#f8fafc;margin-bottom:10px;font-size:1.3rem}p{color:#94a3b8;font-size:.9rem;margin:0 0 1.5rem}.icon{font-size:2.8rem;margin-bottom:12px}.btn{display:inline-block;padding:10px 18px;background:#5b5fc7;color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600}</style></head><body><div class="card"><div class="icon">🔒</div><h2>Acceso Restringido</h2><p>${mensaje}</p><a href="javascript:history.back()" class="btn">Regresar</a></div></body></html>`;
@@ -293,6 +344,7 @@ router.get('/api/integridad/buscar/:identificacion', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT ms.Identificación AS identificacion, 
               ms.Trabajador AS nombre, 
+              ms.\`Tipo de Documento\` AS tipoDocumento,
               ms.\`Operación\` AS operacion,
               mv.Regional AS regional,
               mv.Cargo AS cargo,
@@ -324,6 +376,7 @@ router.get('/api/integridad/buscar/:identificacion', async (req, res) => {
       const [hvRows] = await pool.execute(
         `SELECT identificacion,
                 TRIM(CONCAT_WS(' ', primer_nombre, segundo_nombre, primer_apellido, segundo_apellido)) AS nombre,
+                tipo_documento AS tipoDocumento,
                 'Selección / Aspirantes' AS operacion,
                 COALESCE(departamento, ciudad, 'N/A') AS regional,
                 'Aspirante' AS cargo,
@@ -358,10 +411,14 @@ router.get('/api/integridad/buscar/:identificacion', async (req, res) => {
     const [hvInfoRows] = await pool.execute('SELECT estado_proceso FROM Dynamic_hv_aspirante WHERE identificacion = ? LIMIT 1', [identificacion]);
     const estadoAspirante = hvInfoRows.length ? hvInfoRows[0].estado_proceso : null;
 
+    const tiposDocumento = await tiposIdentificacion().catch(() => []);
+
     res.json({
       ok: true,
+      tiposDocumento,
       trabajador: {
         identificacion: t.identificacion,
+        tipoDocumento: t.tipoDocumento || '',
         nombre: t.nombre || 'Sin nombre registrado',
         operacion: t.operacion || 'N/A',
         regional: t.regional || 'N/A',
@@ -688,18 +745,18 @@ router.post('/api/integridad/eliminar', async (req, res) => {
 
 // ── API: Modificar identificación de trabajador ──────────────────────────────
 router.post('/api/integridad/modificar', async (req, res) => {
-  const { oldIdentificacion, newIdentificacion, usuario } = req.body;
+  const { oldIdentificacion, usuario } = req.body;
+  const newIdentificacion = String(req.body.newIdentificacion || '').trim();
+  const nuevoTipoDocumento = String(req.body.tipoDocumento || '').trim();
   if (!oldIdentificacion || !newIdentificacion || !usuario) {
     return res.status(400).json({ error: 'oldIdentificacion, newIdentificacion y usuario requeridos' });
-  }
-
-  if (oldIdentificacion === newIdentificacion) {
-    return res.status(400).json({ error: 'La nueva identificación es idéntica a la anterior.' });
   }
 
   if (!/^\d+$/.test(newIdentificacion)) {
     return res.status(400).json({ error: 'La nueva identificación debe contener solo números.' });
   }
+
+  const cambiaNumero = oldIdentificacion !== newIdentificacion;
 
   try {
     const acceso = await computarAccesoTalenthub(usuario, 'Integridad');
@@ -707,54 +764,116 @@ router.post('/api/integridad/modificar', async (req, res) => {
       return res.status(403).json({ error: 'No autorizado para modificar identificaciones.' });
     }
 
-    const [existRows] = await pool.execute(
-      'SELECT Identificación FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1',
-      [newIdentificacion]
+    // Tipo de documento (Config_Tipo_Identificación)
+    let tipo = null;
+    if (nuevoTipoDocumento) {
+      const tipos = await tiposIdentificacion();
+      tipo = tipos.find(t => t.descripcion === nuevoTipoDocumento);
+      if (!tipo) return res.status(400).json({ error: `El tipo de documento "${nuevoTipoDocumento}" no está en Config_Tipo_Identificación.` });
+    }
+    const [actualRows] = await pool.execute(
+      'SELECT `Tipo de Documento` AS tipo FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+      [oldIdentificacion]
     );
-    if (existRows.length) {
-      return res.status(400).json({ error: `La identificación de destino (${newIdentificacion}) ya existe en el sistema.` });
+    const [actualHv] = await pool.execute(
+      'SELECT tipo_documento AS tipo FROM Dynamic_hv_aspirante WHERE identificacion = ? LIMIT 1',
+      [oldIdentificacion]
+    );
+    const tipoActual = (actualRows[0] && actualRows[0].tipo) || (actualHv[0] && actualHv[0].tipo) || '';
+    const cambiaTipo = Boolean(tipo) && tipo.descripcion !== tipoActual;
+
+    if (!cambiaNumero && !cambiaTipo) {
+      return res.status(400).json({ error: 'No hay cambios: la identificación y el tipo de documento son los mismos.' });
     }
 
-    console.log(`[talenthub-integridad] Modificando identificación ${oldIdentificacion} -> ${newIdentificacion} por ${usuario}`);
+    if (cambiaNumero) {
+      const [existRows] = await pool.execute(
+        'SELECT Identificación FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1',
+        [newIdentificacion]
+      );
+      const [existHv] = await pool.execute(
+        'SELECT identificacion FROM Dynamic_hv_aspirante WHERE identificacion = ? LIMIT 1',
+        [newIdentificacion]
+      );
+      if (existRows.length || existHv.length) {
+        return res.status(400).json({ error: `La identificación de destino (${newIdentificacion}) ya existe en el sistema.` });
+      }
+    }
+
+    console.log(`[talenthub-integridad] Corrigiendo ${oldIdentificacion} -> ${newIdentificacion}` +
+      `${cambiaTipo ? ` (tipo: ${tipoActual || '—'} -> ${tipo.descripcion})` : ''} por ${usuario}`);
 
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
       await conn.execute('SET foreign_key_checks = 0');
 
-      // 1. Modificar en todas las tablas hijas
-      for (const item of TABLES) {
-        if (item.table !== 'Maestro_Segmentación') {
-          await conn.execute(`UPDATE \`${item.table}\` SET \`${item.column}\` = ? WHERE \`${item.column}\` = ?`, [newIdentificacion, oldIdentificacion]);
+      if (cambiaNumero) {
+        // 1. Modificar en todas las tablas hijas
+        for (const item of TABLES) {
+          if (item.table !== 'Maestro_Segmentación') {
+            await conn.execute(`UPDATE \`${item.table}\` SET \`${item.column}\` = ? WHERE \`${item.column}\` = ?`, [newIdentificacion, oldIdentificacion]);
+          }
         }
+
+        // 2. Modificar en la tabla maestra
+        await conn.execute(
+          'UPDATE `Maestro_Segmentación` SET `Identificación` = ? WHERE `Identificación` = ?',
+          [newIdentificacion, oldIdentificacion]
+        );
+
+        // 3. Texto "CÉDULA ** NOMBRE" con la nueva cédula
+        const prefijo = `${oldIdentificacion} **%`;
+        for (const c of COLUMNAS_TRABAJADOR) {
+          if (c.id) {
+            await conn.execute(
+              `UPDATE \`${c.table}\` SET \`${c.column}\` = CONCAT(?, SUBSTRING(\`${c.column}\`, ?)) WHERE \`${c.id}\` = ? AND \`${c.column}\` LIKE ?`,
+              [newIdentificacion, oldIdentificacion.length + 1, newIdentificacion, prefijo]
+            );
+          } else {
+            await actualizarTextoTrabajador(conn, c, oldIdentificacion, newIdentificacion);
+          }
+        }
+
+        // 4. Modificar contenido de URLs en Maestro_docTrabajador.Doc
+        await conn.execute(
+          'UPDATE `Maestro_docTrabajador` SET `Doc` = REPLACE(`Doc`, ?, ?) WHERE `Identificación` = ?',
+          [oldIdentificacion, newIdentificacion, newIdentificacion]
+        );
+
+        // 5. Modificar gcs_path en Dynamic_hv_documentos
+        await conn.execute(
+          'UPDATE `Dynamic_hv_documentos` SET `gcs_path` = REPLACE(`gcs_path`, ?, ?) WHERE `gcs_path` LIKE ?',
+          [oldIdentificacion, newIdentificacion, `%${oldIdentificacion}%`]
+        );
+        // La versión propia de la Hoja de Vida guarda su ruta en observaciones ("Versión del aspirante: <ruta>")
+        await conn.execute(
+          "UPDATE `Dynamic_hv_documentos` SET `observaciones` = REPLACE(`observaciones`, ?, ?) WHERE `observaciones` LIKE ?",
+          [oldIdentificacion, newIdentificacion, `Versión del aspirante:%${oldIdentificacion}%`]
+        );
       }
 
-      // 2. Modificar en la tabla maestra
-      await conn.execute(
-        'UPDATE `Maestro_Segmentación` SET `Identificación` = ? WHERE `Identificación` = ?',
-        [newIdentificacion, oldIdentificacion]
-      );
+      // 6. Tipo de documento en la Sociodemográfica y en el aspirante
+      if (cambiaTipo) {
+        await conn.execute(
+          'UPDATE `Maestro_Segmentación` SET `Tipo de Documento` = ?, `Cod. Tipo Doc` = ? WHERE `Identificación` = ?',
+          [tipo.descripcion, tipo.codigo, newIdentificacion]
+        );
+        await conn.execute(
+          'UPDATE Dynamic_hv_aspirante SET tipo_documento = ? WHERE identificacion = ?',
+          [tipo.descripcion, newIdentificacion]
+        );
+      }
 
-      // 3. Modificar contenido de URLs en Maestro_docTrabajador.Doc
+      // Auditoría de quién cambió y cuándo en la Sociodemográfica
       await conn.execute(
-        'UPDATE `Maestro_docTrabajador` SET `Doc` = REPLACE(`Doc`, ?, ?) WHERE `Identificación` = ?',
-        [oldIdentificacion, newIdentificacion, newIdentificacion]
-      );
-
-      // 4. Modificar gcs_path en Dynamic_hv_documentos
-      await conn.execute(
-        'UPDATE `Dynamic_hv_documentos` SET `gcs_path` = REPLACE(`gcs_path`, ?, ?) WHERE `gcs_path` LIKE ?',
-        [oldIdentificacion, newIdentificacion, `%${oldIdentificacion}%`]
-      );
-      // La versión propia de la Hoja de Vida guarda su ruta en observaciones ("Versión del aspirante: <ruta>")
-      await conn.execute(
-        "UPDATE `Dynamic_hv_documentos` SET `observaciones` = REPLACE(`observaciones`, ?, ?) WHERE `observaciones` LIKE ?",
-        [oldIdentificacion, newIdentificacion, `Versión del aspirante:%${oldIdentificacion}%`]
+        "UPDATE `Maestro_Segmentación` SET usuarioactualiza = ?, `Fecha de Actualización` = CONVERT_TZ(NOW(), 'SYSTEM', '-05:00') WHERE `Identificación` = ?",
+        [usuario, newIdentificacion]
       );
 
       await conn.execute('SET foreign_key_checks = 1');
       await conn.commit();
-      console.log(`[talenthub-integridad] Modificación exitosa ${oldIdentificacion} -> ${newIdentificacion}`);
+      console.log(`[talenthub-integridad] Corrección exitosa ${oldIdentificacion} -> ${newIdentificacion}`);
     } catch (dbErr) {
       await conn.rollback();
       throw dbErr;
@@ -762,7 +881,23 @@ router.post('/api/integridad/modificar', async (req, res) => {
       conn.release();
     }
 
-    // 5. Renombrar archivos en Google Cloud Storage bajo el prefijo
+    if (!cambiaNumero) {
+      return res.json({ ok: true, mensaje: `Tipo de documento actualizado a ${tipo.descripcion}.` });
+    }
+
+    // Servicios (Facturación / Data Nómina): fuera de la transacción por ser una tabla grande
+    const avisos = [];
+    for (const c of COLUMNAS_TRABAJADOR_LISTA) {
+      try {
+        const n = await actualizarTextoTrabajador(pool, c, oldIdentificacion, newIdentificacion);
+        console.log(`[talenthub-integridad] ${c.table}.${c.column}: ${n} fila(s) con la nueva cédula`);
+      } catch (e) {
+        console.error(`[talenthub-integridad] No se pudo actualizar ${c.table}.${c.column}:`, e.message);
+        avisos.push(`${c.table}: ${e.message}`);
+      }
+    }
+
+    // 7. Renombrar archivos en Google Cloud Storage bajo el prefijo
     for (const bucketName of BUCKETS) {
       try {
         const bucket = storage.bucket(bucketName);
@@ -781,7 +916,9 @@ router.post('/api/integridad/modificar', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, mensaje: `Identificación actualizada exitosamente de ${oldIdentificacion} a ${newIdentificacion}.` });
+    res.json({ ok: true, mensaje: `Identificación actualizada exitosamente de ${oldIdentificacion} a ${newIdentificacion}` +
+      `${cambiaTipo ? ` y tipo de documento a ${tipo.descripcion}` : ''}.` +
+      `${avisos.length ? ` Atención, no se pudo actualizar: ${avisos.join('; ')}` : ''}` });
   } catch (err) {
     console.error('[talenthub] Error en POST /api/integridad/modificar:', err);
     res.status(500).json({ error: err.message });
