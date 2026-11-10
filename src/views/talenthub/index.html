@@ -3103,7 +3103,7 @@
       </div>
       <div class="modal-ftr">
         <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
-        <button type="button" class="btn btn-outline" id="btnModalNuevoModificar" style="display:none;" onclick="abrirModalModificarDesdeNuevo()">✏️ Corregir Cédula</button>
+        <button type="button" class="btn btn-outline" id="btnModalNuevoModificar" style="display:none;" onclick="abrirModalModificarDesdeNuevo()">✏️ Corregir Identificación</button>
         <button type="button" class="btn btn-danger" id="btnModalNuevoEliminar" style="display:none;" onclick="abrirModalEliminarDesdeNuevo()">🗑️ Proceder a Eliminar</button>
       </div>
     </div>
@@ -3114,16 +3114,22 @@
     <div class="modal-box">
       <div class="modal-hdr">
         <h3><span>✏️</span> Corregir Identificación</h3>
-        <p>Esta acción actualizará la cédula en todas las tablas maestras y renombrará las carpetas en Google Cloud Storage.</p>
+        <p>Actualiza el número y/o el tipo de documento en todas las tablas (incluido el texto "cédula ** nombre" de la Sociodemográfica) y renombra las carpetas en Google Cloud Storage.</p>
       </div>
       <div class="modal-body">
         <div style="margin-bottom: 14px;">
           <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Identificación Actual</label>
           <input type="text" id="modOldId" class="input-field" disabled style="background:var(--bg-elevated); font-weight:700;">
         </div>
+        <div style="margin-bottom: 14px;">
+          <label style="font-size:0.75rem; font-weight:700; color:var(--text); text-transform:uppercase;">Tipo de Documento</label>
+          <select id="modTipoDoc" class="input-field" style="margin-top:4px;"></select>
+          <div id="modTipoDocActual" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;"></div>
+        </div>
         <div>
           <label style="font-size:0.75rem; font-weight:700; color:var(--text); text-transform:uppercase;">Nueva Identificación (Solo Números)</label>
-          <input type="text" id="modNewId" class="input-field" placeholder="Ingresa la nueva cédula..." style="margin-top:4px;">
+          <input type="text" id="modNewId" class="input-field" placeholder="Ingresa el nuevo número..." inputmode="numeric" style="margin-top:4px;">
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Si solo cambia el tipo de documento, deja el mismo número.</div>
         </div>
       </div>
       <div class="modal-ftr">
@@ -4166,9 +4172,10 @@
         }
 
         trabajadorActual = data.trabajador;
+        _tiposDocumentoIntegridad = data.tiposDocumento || [];
 
         document.getElementById('resNombre').textContent = trabajadorActual.nombre;
-        document.getElementById('resIdentificacion').textContent = trabajadorActual.identificacion;
+        document.getElementById('resIdentificacion').textContent = trabajadorActual.identificacion + (trabajadorActual.tipoDocumento ? ` · ${trabajadorActual.tipoDocumento}` : '');
         document.getElementById('resOperacion').textContent = trabajadorActual.operacion;
         document.getElementById('resRegional').textContent = trabajadorActual.regional;
         document.getElementById('resCargo').textContent = trabajadorActual.cargo;
@@ -4223,6 +4230,7 @@
         }
 
         trabajadorActual = data.trabajador;
+        _tiposDocumentoIntegridad = data.tiposDocumento || [];
         document.getElementById('modalNuevoNombre').textContent = `${trabajadorActual.nombre} (${trabajadorActual.identificacion})`;
         
         const badgeOrigen = document.getElementById('modalNuevoBadgeOrigen');
@@ -4236,7 +4244,7 @@
           }
         }
 
-        document.getElementById('modalNuevoMeta').textContent = `${trabajadorActual.cargo} • ${trabajadorActual.operacion} • ${trabajadorActual.regional} [${trabajadorActual.estado}]`;
+        document.getElementById('modalNuevoMeta').textContent = `${trabajadorActual.tipoDocumento || 'Tipo de documento sin registrar'} • ${trabajadorActual.cargo} • ${trabajadorActual.operacion} • ${trabajadorActual.regional} [${trabajadorActual.estado}]`;
         
         const c = trabajadorActual.conteos || {};
         document.getElementById('modalNuevoKpiDocs').textContent = c.documentos || 0;
@@ -4266,11 +4274,19 @@
       abrirModalEliminar();
     }
 
-    // ── INTEGRIDAD: MODIFICAR CÉDULA ────────────────────────────────────────
+    // ── INTEGRIDAD: MODIFICAR CÉDULA Y TIPO DE DOCUMENTO ────────────────────
+    let _tiposDocumentoIntegridad = [];
     function abrirModalModificar() {
       if (!trabajadorActual) return;
       document.getElementById('modOldId').value = trabajadorActual.identificacion;
-      document.getElementById('modNewId').value = '';
+      document.getElementById('modNewId').value = trabajadorActual.identificacion;
+      const actual = trabajadorActual.tipoDocumento || '';
+      const sel = document.getElementById('modTipoDoc');
+      const tipos = _tiposDocumentoIntegridad.map(t => t.descripcion);
+      if (actual && !tipos.includes(actual)) tipos.unshift(actual);
+      sel.innerHTML = (actual ? '' : '<option value="">— Sin tipo registrado —</option>') +
+        tipos.map(t => `<option value="${esc(t)}"${t === actual ? ' selected' : ''}>${esc(t)}</option>`).join('');
+      document.getElementById('modTipoDocActual').textContent = `Actual: ${actual || 'sin registrar'}`;
       const el = document.getElementById('modalModificar');
       el.style.display = 'flex';
       el._backEntry = registrarModalBack(() => cerrarModales());
@@ -4279,16 +4295,23 @@
     async function ejecutarModificacion() {
       const oldId = document.getElementById('modOldId').value.trim();
       const newId = document.getElementById('modNewId').value.trim();
+      const tipoDocumento = document.getElementById('modTipoDoc').value;
+      const tipoActual = (trabajadorActual && trabajadorActual.tipoDocumento) || '';
       const btn = document.getElementById('btnConfirmModificar');
 
       if (!newId || !/^\d+$/.test(newId)) {
         showToast('La nueva identificación debe contener únicamente dígitos numéricos.', 'error');
         return;
       }
-      if (oldId === newId) {
-        showToast('La nueva cédula no puede ser idéntica a la anterior.', 'error');
+      if (oldId === newId && (!tipoDocumento || tipoDocumento === tipoActual)) {
+        showToast('No hay cambios: cambia el número o el tipo de documento.', 'error');
         return;
       }
+      const resumen = [
+        oldId !== newId ? `Número: ${oldId} → ${newId}` : null,
+        tipoDocumento && tipoDocumento !== tipoActual ? `Tipo: ${tipoActual || 'sin registrar'} → ${tipoDocumento}` : null
+      ].filter(Boolean).join('\n');
+      if (!confirm(`Se corregirá en todas las tablas:\n\n${resumen}\n\n¿Continuar?`)) return;
 
       try {
         btn.disabled = true;
@@ -4300,6 +4323,7 @@
           body: JSON.stringify({
             oldIdentificacion: oldId,
             newIdentificacion: newId,
+            tipoDocumento,
             usuario: CONFIG.usuarioId
           })
         });
