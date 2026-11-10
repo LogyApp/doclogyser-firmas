@@ -78,6 +78,23 @@
   .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
 
   .doc-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; gap: 10px; font-size: 7pt; color: #94a3b8; page-break-inside: avoid; }
+  /* Compacto: el documento y la firma caben en una página */
+  .doc-header-table, .metrics-card { margin-bottom: 7px; }
+  .statement-box { padding: 6px 11px; margin-bottom: 6px; }
+  .statement-text { line-height: 1.38; margin-bottom: 4px; }
+  .section-block { margin-bottom: 8px; }
+  .section-title { margin-bottom: 4px; padding-bottom: 3px; }
+  .doc-title { font-size: 10pt; }
+  .rule-list li { padding: 3px 8px 3px 30px; margin-bottom: 2px; line-height: 1.33; font-size: 8pt; }
+  .autoriza .statement-text { font-size: 8pt; line-height: 1.33; }
+  .rule-list li::before { top: 3px; width: 16px; height: 16px; line-height: 16px; left: 7px; }
+  .intro-derechos { font-size: 8pt; color: #334155; margin: 0 0 4px; }
+  .bloque-firma { page-break-inside: avoid; }
+  .metric-item { padding: 6px 12px; }
+  .lugar-fecha { margin: 4px 0 2px; }
+  .signature-container { margin-top: 4px; }
+  .sig-img-wrap { height: 86px; }
+  .doc-footer { margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -86,8 +103,8 @@
     <tr>
       <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
       <td class="header-title-cell">
-        <div class="doc-title">Autorización para el Tratamiento de Datos Personales</div>
-        <div class="doc-subtitle">Política de tratamiento de datos y aviso de privacidad</div>
+        <div class="doc-title">Política para la autorización, tratamiento de datos personales y aviso de privacidad</div>
+        <div class="doc-subtitle">Autorización para el tratamiento de datos personales</div>
         <div class="doc-subdetail">Ley 1581 de 2012 — Habeas Data</div>
       </td>
       <td class="header-meta-cell">
@@ -105,31 +122,32 @@
     <div class="metric-item"><div class="metric-label">Operación</div><div class="metric-value">{{operacion}}</div></div>
   </div>
 
-  <section class="statement-box ">
-    <div class="statement-header">Declaración</div>
-    <p class="statement-text">Con la firma de este documento manifiesto que he sido informado(a) por APOYO LOGÍSTICO Y OPERATIVO S.A.S. de lo siguiente:</p>
-  </section>
+  <p class="intro-derechos" style="font-weight:600;color:#0f172a">Con la firma de este documento manifiesto que he sido informado(a) por APOYO LOGÍSTICO Y OPERATIVO S.A.S. de lo siguiente:</p>
 
   <section class="section-block">
     <div class="section-title">Información y derechos del titular</div>
     <ol class="rule-list">
-      <li>La Compañía actúa como responsable del tratamiento de datos personales del titular de acuerdo con lo establecido en la Ley 1581 de 2012 de habeas data, y conjunta o separadamente podrá recolectar, usar y tratar mis datos personales conforme a la Política de Tratamiento de Datos de la Compañía, que se encuentra disponible en la base de datos del área de Talento Humano. Es de carácter facultativo el responder las preguntas sobre datos sensibles o sobre niñas, niños y adolescentes.</li>
-      <li>Es de carácter facultativo el responder las preguntas sobre datos sensibles o sobre niñas, niños y adolescentes. Mis derechos como titular de los datos son los previstos en la Constitución y la ley, especialmente los siguientes:</li>
-      <li>Derecho a conocer, actualizar y rectificar mis datos personales frente a los responsables o encargados del tratamiento, así como el derecho a revocar el consentimiento otorgado para el tratamiento de datos personales. Este derecho se podrá ejercer, entre otros, frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o aquellos cuyo tratamiento esté expresamente prohibido o no haya sido autorizado; pueden ser ejercidos a través de los canales gratuitos dispuestos por la Compañía y observando la Política de Tratamiento de Datos Personales de APOYO LOGÍSTICO Y OPERATIVO S.A.S.</li>
+      <li>La Compañía actúa como responsable del tratamiento de datos personales del titular de acuerdo con lo establecido en la Ley 1581 de 2012 de habeas data, y conjunta o separadamente podrá recolectar, usar y tratar mis datos personales conforme a la Política de Tratamiento de Datos de la Compañía, que se encuentra disponible en el área de Talento Humano.</li>
+      <li>Es de carácter facultativo responder las preguntas sobre datos sensibles o sobre niñas, niños y adolescentes.</li>
+    </ol>
+    <p class="intro-derechos" style="margin-top:5px">Mis derechos como titular de los datos son los previstos en la Constitución y la ley, especialmente los siguientes:</p>
+    <ol class="rule-list" start="3" style="counter-reset: regla 2">
+      <li>Derecho a conocer, actualizar y rectificar mis datos personales frente a los responsables o encargados del tratamiento, así como a revocar el consentimiento otorgado. Este derecho se podrá ejercer, entre otros, frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o aquellos cuyo tratamiento esté expresamente prohibido o no haya sido autorizado, a través de los canales gratuitos dispuestos por la Compañía y observando la Política de Tratamiento de Datos Personales de APOYO LOGÍSTICO Y OPERATIVO S.A.S.</li>
       <li>Derecho a solicitar prueba de la autorización otorgada al responsable del tratamiento, salvo cuando expresamente se exceptúe como requisito para el tratamiento.</li>
-      <li>Derecho a ser informado por el responsable o el encargado del tratamiento, previa solicitud, respecto del uso que les ha dado a mis datos personales.</li>
+      <li>Derecho a ser informado por el responsable o el encargado del tratamiento, previa solicitud, respecto del uso que se ha dado a mis datos personales.</li>
       <li>Derecho a revocar la autorización y/o solicitar la supresión del dato cuando en el tratamiento no se respeten los principios, derechos y garantías constitucionales y legales.</li>
       <li>Derecho a acceder en forma gratuita a mis datos personales que hayan sido objeto de tratamiento, en los términos establecidos en la Ley 1581 de 2012 y las demás normas que la modifiquen, adicionen o complementen. Para cualquier inquietud o información adicional relacionada con el tratamiento de datos personales, puedo contactarme al correo electrónico <strong>directora.th@logyser.com</strong>.</li>
     </ol>
   </section>
 
   <section class="statement-box autoriza">
-    <div class="statement-header">Aceptación de la Política de Tratamiento de Datos Personales</div>
-    <p class="statement-text">El trabajador, al firmar este documento, declara que ha leído y comprendido en su totalidad la Política de Tratamiento de Datos Personales de APOYO LOGÍSTICO Y OPERATIVO S.A.S. (en adelante LOG&amp;SER), la cual ha sido proporcionada para su revisión. El trabajador acepta y consiente el tratamiento de sus datos personales de acuerdo con los términos y condiciones establecidos en dicha política.</p>
+    <div class="statement-header">8. Aceptación de la Política de Tratamiento de Datos Personales</div>
+    <p class="statement-text">El trabajador, al firmar este documento, declara que ha leído y comprendido en su totalidad la <strong>Política de Tratamiento de Datos Personales</strong> de <strong>APOYO LOGÍSTICO Y OPERATIVO S.A.S.</strong> (en adelante <strong>LOG&amp;SER</strong>), la cual ha sido proporcionada para su revisión. El trabajador acepta y consiente el tratamiento de sus datos personales de acuerdo con los términos y condiciones establecidos en dicha política.</p>
     <p class="statement-text">El trabajador entiende que la Política de Tratamiento de Datos Personales detalla cómo LOG&amp;SER recopila, utiliza, almacena y protege la información personal, así como los derechos y procedimientos relacionados con la protección de datos. Asimismo, reconoce que tiene acceso a la política en cualquier momento y puede solicitar aclaraciones o ejercer sus derechos de acceso, corrección, actualización o eliminación de datos conforme a lo dispuesto en la política y la legislación aplicable.</p>
     <p class="statement-text">Al firmar este documento, el trabajador otorga su consentimiento explícito para el tratamiento de sus datos personales conforme a las finalidades descritas en la política.</p>
   </section>
 
+  <div class="bloque-firma">
   <p class="lugar-fecha">Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes de <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.</p>
 
   <div class="signature-container">
@@ -140,6 +158,7 @@
       <div class="sig-name">{{nombre_completo}}</div>
       <div class="sig-details">C.C. {{identificacion}} de {{ciudad_expedicion}}<br>{{cargo}}</div>
     </div>
+  </div>
   </div>
 
   <footer class="doc-footer">
