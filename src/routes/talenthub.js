@@ -96,8 +96,8 @@ const COLUMNAS_TRABAJADOR = [
   { table: 'Dynamic_formato_itemsAsistencia', column: 'nombre_trabajador', id: 'identificacion' },
   { table: 'Dynamic_ats_trabajadores', column: 'nombre_trabajador', id: 'identificacion' },
   { table: 'Dynamic_descuentonomina', column: 'nombre_trabajador', id: 'identificacion' },
-  { table: 'Dynamic_Registro_Asistencia', column: 'Trabajador', id: null },
-  { table: 'Dynamic_Data_Nomina', column: 'TRABAJADOR', id: null }
+  { table: 'Dynamic_Registro_Asistencia', column: 'Trabajador', id: null }
+  // Dynamic_Data_Nomina es una vista: se actualiza sola a partir de sus tablas de origen
 ];
 
 async function tiposIdentificacion() {
