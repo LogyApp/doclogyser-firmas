@@ -961,6 +961,25 @@
       border-color: transparent;
     }
     .btn.asp-action:hover:not(:disabled) { filter: brightness(0.9); }
+    /* Ficha del aspirante en celular: nombre arriba, acciones en una fila debajo y la X en la esquina */
+    @media (max-width: 640px) {
+      #modalFichaAspirante { padding: 8px !important; align-items: flex-start; }
+      #modalFichaAspirante .modal-box { max-height: calc(100dvh - 16px) !important; }
+      #modalFichaAspirante .modal-hdr { padding: 12px 12px 8px !important; }
+      #modalFichaAspirante .modal-body { padding: 14px 12px !important; }
+      .ficha-hdr-fila { flex-direction: column; align-items: stretch !important; gap: 10px !important; }
+      .ficha-hdr-persona { padding-right: 36px; gap: 10px !important; }
+      .ficha-hdr-persona #fichaAspFoto { width: 44px !important; height: 44px !important; }
+      #fichaAspNombre { font-size: 0.98rem !important; }
+      .ficha-hdr-meta { font-size: 0.74rem !important; gap: 4px 6px !important; }
+      .ficha-hdr-acciones { flex-wrap: wrap; gap: 6px !important; }
+      .ficha-hdr-acciones > .btn:not(.ficha-hdr-cerrar) { flex: 1 1 auto; justify-content: center; }
+      .ficha-hdr-cerrar { position: absolute; top: 10px; right: 10px; }
+      #modalFichaAspirante .tab-pill { white-space: nowrap; flex-shrink: 0; }
+      /* Botones de acción del listado: rejilla de 2 x 2 */
+      .asp-acciones-celda { display: grid !important; grid-template-columns: repeat(2, auto); justify-content: center; }
+    }
+
     .btn.asp-action:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
     .btn.asp-action:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn.asp-action-pdf { background: #b91c1c; }
@@ -3845,8 +3864,8 @@
       
       <!-- ENCABEZADO FIJO (Sticky con Foto, Nombre, Identificación y Acciones Rápidas) -->
       <div class="modal-hdr" style="position:sticky; top:0; z-index:20; background: var(--card-bg); border-bottom:1.5px solid var(--border); padding:16px 20px 12px; margin-bottom:0; flex-shrink:0;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:12px;">
-          <div style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
+        <div class="ficha-hdr-fila" style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:12px;">
+          <div class="ficha-hdr-persona" style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
             <img id="fichaAspFoto" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" 
                  alt="Foto" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-elevated); flex-shrink:0;">
             <div style="min-width:0;">
@@ -3854,7 +3873,7 @@
                 <h3 id="fichaAspNombre" style="font-size:1.15rem; font-weight:800; color:var(--text); text-transform:uppercase; margin:0; line-height:1.2;">-</h3>
                 <span id="fichaAspBadgeEstado" class="status-badge en-proceso">Registro</span>
               </div>
-              <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted); margin-top:3px; flex-wrap:wrap;">
+              <div class="ficha-hdr-meta" style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted); margin-top:3px; flex-wrap:wrap;">
                 <span id="fichaAspDocumento" style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text);">-</span>
                 <span>•</span>
                 <span id="fichaAspUbicacion">-</span>
@@ -3863,7 +3882,7 @@
               </div>
             </div>
           </div>
-          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <div class="ficha-hdr-acciones" style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
             <button type="button" id="btnFichaAbrirAdmin" class="btn btn-primary" style="padding:6px 12px; font-size:0.75rem;" onclick="abrirAdminDesdeFicha()" title="Panel administrativo de Selección">
               <span>📋 Panel Admin</span>
             </button>
@@ -3873,7 +3892,7 @@
             <a id="btnFichaVerHdv" href="#" target="_blank" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem; display:none;" title="Ver Hoja de Vida en PDF">
               <span>📄 Ver HDV</span>
             </a>
-            <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
+            <button type="button" class="btn btn-outline ficha-hdr-cerrar" style="padding:4px 9px;" onclick="cerrarModales()" aria-label="Cerrar">✕</button>
           </div>
         </div>
 
@@ -7311,7 +7330,7 @@
       return `
         <tr onclick="abrirFichaAspirante('${esc(aspId)}')" style="cursor:pointer;">
           <td style="text-align:center; ${indentStyle}" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap;">
+            <div class="asp-acciones-celda" style="display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap;">
               ${a.pdf_public_url ? `<a href="${esc(a.pdf_public_url)}" target="_blank" rel="noopener" class="btn asp-action asp-action-pdf" title="Ver hoja de vida (PDF)" aria-label="Ver hoja de vida"><span>📄</span></a>` : ''}
               <a href="/seleccion/portal/${encodeURIComponent(aspId)}" target="_blank" rel="noopener" class="btn asp-action asp-action-portal" title="Abrir el portal del aspirante" aria-label="Portal del aspirante">
                 <span>🌐</span>
@@ -7552,11 +7571,24 @@
       renderSubTabFichaAspirante(tabName);
     }
 
+    // Al cerrar la ficha, modal-back.js hace history.back() (asíncrono). Si el panel se abre
+    // de inmediato, ese "atrás" llega después y lo vuelve a cerrar. Por eso se espera a que el
+    // historial termine de retroceder antes de abrir el panel.
     function abrirAdminDesdeFicha() {
       const a = _aspActualDetalle?.aspirante || {};
       const id = a.id_aspirante || a.IdAspirante;
-      cerrarModales();
-      if (id) abrirAdminAspirante(id);
+      if (!id) return;
+      const ficha = document.getElementById('modalFichaAspirante');
+      if (ficha && ficha._backEntry) {
+        let abierto = false;
+        const abrir = () => { if (!abierto) { abierto = true; abrirAdminAspirante(id); } };
+        window.addEventListener('popstate', () => setTimeout(abrir, 0), { once: true });
+        setTimeout(abrir, 600);   // por si el navegador no dispara popstate
+        cerrarModales();
+      } else {
+        cerrarModales();
+        abrirAdminAspirante(id);
+      }
     }
 
     // Vista a pantalla completa dentro de la pestaña (como Nueva Acta en Inventario).
@@ -7789,11 +7821,11 @@
                     ${esc(a.req_operacion || '-')} · Regional: ${esc(a.req_regional || '-')}
                   </div>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                   <button type="button" class="btn btn-outline" onclick="abrirModalDetalleRequisicion(${a.IdRequisicion})" style="font-size:0.8rem; padding:6px 12px;">
                     <span>🔍 Ver Ficha Requisición</span>
                   </button>
-                  <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn btn-primary" style="font-size:0.8rem; padding:6px 12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                  <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" onclick="event.preventDefault(); abrirAdminDesdeFicha()" class="btn btn-primary" style="font-size:0.8rem; padding:6px 12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                     <span>⚙️ Administrar Aspirante</span>
                   </a>
                 </div>
@@ -7828,7 +7860,7 @@
               <p style="color:var(--text-muted); font-size:0.84rem; margin:6px 0 16px;">
                 Este candidato aún no se encuentra vinculado a ninguna requisición de personal activa.
               </p>
-              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn btn-primary" style="text-decoration:none; display:inline-flex;">
+              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" onclick="event.preventDefault(); abrirAdminDesdeFicha()" class="btn btn-primary" style="text-decoration:none; display:inline-flex;">
                 <span>⚙️ Vincular desde Panel Admin</span>
               </a>
             </div>
