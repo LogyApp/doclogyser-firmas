@@ -70,17 +70,12 @@ const TABLES = [
   { table: 'Dynamic_Kardex', column: 'UsuarioAsignado' },
   { table: 'Dynamic_Logysign', column: 'identificacion' },
   { table: 'Maestro_casosmedicos', column: 'identificacion' },
-  { table: 'Maestro_Segmentación', column: 'Identificación' }
-];
-
-// Tablas que solo se tocan al CORREGIR la identificación (no en la purga): biometría facial,
-// ATS, descuentos, inspecciones y notificaciones también guardan la cédula.
-const TABLES_SOLO_CORRECCION = [
   { table: 'facial_embeddings', column: 'identificacion' },
   { table: 'Dynamic_ats_trabajadores', column: 'identificacion' },
   { table: 'Dynamic_descuentonomina', column: 'identificacion' },
   { table: 'Dynamic_Inspecciones_Vehiculo', column: 'identificacion' },
-  { table: 'Maestro_notificaciones', column: 'identificacion_trabajador' }
+  { table: 'Maestro_notificaciones', column: 'identificacion_trabajador' },
+  { table: 'Maestro_Segmentación', column: 'Identificación' }
 ];
 
 // Columnas con el texto "CÉDULA ** NOMBRE" que hay que rehacer con la nueva cédula.
@@ -798,7 +793,7 @@ router.post('/api/integridad/modificar', async (req, res) => {
 
       if (cambiaNumero) {
         // 1. Modificar en todas las tablas hijas
-        for (const item of [...TABLES, ...TABLES_SOLO_CORRECCION]) {
+        for (const item of TABLES) {
           if (item.table !== 'Maestro_Segmentación') {
             await conn.execute(`UPDATE \`${item.table}\` SET \`${item.column}\` = ? WHERE \`${item.column}\` = ?`, [newIdentificacion, oldIdentificacion]);
           }
