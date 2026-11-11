@@ -35,127 +35,76 @@
       color: var(--text);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
+      overflow-x: hidden;
     }
 
-    /* Header Superior */
+    /* ── Header móvil y fondo oscuro (igual a Facturación / Nómina / Contabilidad) ── */
+    .mobile-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 140; }
+    .mobile-backdrop.open { display: block; }
+    .mobile-header {
+      display: none; background: var(--primary); color: var(--text-inverse); padding: 7px 12px;
+      align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 130;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); min-height: 48px; width: 100%;
+    }
+    .mobile-header-left { display: flex; align-items: center; gap: 8px; }
+    .mobile-menu-btn {
+      background: none; border: none; color: var(--text-inverse); font-size: 1.45rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 2px 4px; line-height: 1;
+    }
+    .mobile-logo-app { height: 24px; max-height: 24px; width: auto; object-fit: contain; }
+    .mobile-title { font-weight: 700; font-size: .95rem; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mobile-header-right { display: flex; align-items: center; gap: 10px; }
+    .mobile-profile-btn {
+      background: transparent; border: none; padding: 0; margin: 0; cursor: pointer;
+      display: flex; align-items: center; border-radius: 50%; outline: none;
+    }
+    .mobile-profile-thumb {
+      width: 33px; height: 33px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover; background: var(--card-bg); box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
+
+    /* ── Barra lateral fija (270px) ── */
+    .sidebar {
+      width: 270px; background: var(--primary); color: var(--text-inverse); display: flex; flex-direction: column;
+      flex-shrink: 0; height: 100vh; position: fixed; left: 0; top: 0; z-index: 200;
+      border-right: 1px solid rgba(255, 255, 255, 0.08); box-shadow: var(--shadow-lg); transition: transform 0.25s ease;
+    }
+    /* Cabecera con 2 logos (uno debajo del otro), idéntica a los demás módulos */
+    .sidebar-brand {
+      padding: 24px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.12);
+    }
+    .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 18px; flex-shrink: 0; }
+    .brand-lockup img.brand-logo-app { display: block; object-fit: contain; height: 30px; }
+    .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
+    .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
+    .brand-divider { width: 80%; height: 1.5px; background: rgba(255, 255, 255, 0.22); }
+    .nav-list { list-style: none; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7); font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: all 0.18s ease;
+    }
+    .nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+    .nav-item.active { background: var(--accent); color: #ffffff; font-weight: 600; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+    .nav-icon { font-size: 1.1rem; line-height: 1; width: 20px; text-align: center; }
+
+    /* ── Contenido principal ── */
+    .wrapper { margin-left: 270px; flex: 0 0 calc(100% - 270px); min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Encabezado de escritorio: título de la pestaña y acciones (Agregar / Sincronizar, solo Rol Sistema) */
     .top-header {
-      background: var(--primary);
-      border-bottom: 1px solid var(--primary-dark);
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-      gap: 16px;
+      background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 12px 24px;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100;
     }
-
-    .brand-wrap {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    /* Brand Lockup horizontal idéntico a Inventario / SST */
-    .brand-lockup-horizontal {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 4px 0;
-    }
-    .brand-logo-app {
-      display: block;
-      height: 28px;
-      object-fit: contain;
-    }
-    .brand-divider-vert {
-      width: 1.5px;
-      height: 24px;
-      background: rgba(255, 255, 255, 0.22);
-    }
-    .brand-logo-company-crop {
-      width: 130px;
-      height: 32px;
-      overflow: hidden;
-      position: relative;
-    }
-    .brand-logo-company-crop img {
-      position: absolute;
-      left: -63px;
-      top: -64px;
-      width: 260px;
-      height: 172px;
-      max-width: none;
-    }
-
-    .header-titles {
-      display: flex;
-      flex-direction: column;
-      border-left: 1px solid rgba(255, 255, 255, 0.2);
-      padding-left: 14px;
-    }
-    .header-main-title {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: var(--text-inverse);
-      letter-spacing: -0.3px;
-      line-height: 1.2;
-    }
-    .header-sub-title {
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.7);
-      font-weight: 500;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    /* User Badge: foto de perfil clicable que abre "Mi perfil y firma"
-       (reemplaza el badge de Rol anterior; ahorra espacio y es consistente
-       con el resto de módulos). */
-    .user-pill {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 5px 14px 5px 5px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background .15s ease, transform .15s ease;
-      font-family: inherit;
-    }
-    .user-pill:hover { background: rgba(255, 255, 255, 0.18); }
-    .user-pill:active { transform: scale(.97); }
-    .user-pill-avatar-photo {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: var(--card-bg);
-      border: 1.5px solid rgba(255, 255, 255, 0.85);
-    }
-    .user-pill-name {
-      font-weight: 600;
-      color: var(--text-inverse);
-      max-width: 160px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .breadcrumb-title h1 { font-size: 1.3rem; font-weight: 800; color: var(--text); letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+    .breadcrumb-title p { font-size: 0.8rem; color: var(--text-muted); margin-top: 1px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
     .btn-header {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-inverse);
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      color: var(--text);
       padding: 8px 14px;
       border-radius: var(--radius-sm);
       font-size: 0.84rem;
@@ -168,9 +117,9 @@
       transition: all 0.2s;
     }
     .btn-header:hover {
-      background: rgba(255, 255, 255, 0.22);
-      border-color: rgba(255, 255, 255, 0.4);
-      color: var(--text-inverse);
+      background: var(--bg);
+      border-color: var(--accent);
+      color: var(--text);
     }
     .btn-header.accent {
       background: var(--accent);
@@ -1198,44 +1147,8 @@
     .org-empty { color: var(--text-muted); font-size: 0.75rem; font-style: italic; padding: 4px; }
 
     @media (max-width: 640px) {
-      /* Encabezado compacto en movil: logo+titulo siguen en una sola fila
-         (no apilados) para no "comerse" la pantalla; las acciones envuelven
-         a una segunda fila solo si no caben, en vez de forzar 100% de ancho
-         cada una en filas separadas. */
-      .top-header {
-        flex-wrap: wrap;
-        padding: 8px 12px;
-        gap: 8px;
-      }
-      .brand-wrap {
-        gap: 10px;
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-      .brand-lockup-horizontal { gap: 6px; }
-      .brand-logo-app { height: 20px; }
-      .brand-logo-company-crop { width: 84px; height: 22px; }
-      .header-titles {
-        padding-left: 10px;
-        min-width: 0;
-      }
-      .header-main-title { font-size: 0.88rem; }
-      .header-sub-title { font-size: 0.66rem; }
-      .header-actions {
-        flex-wrap: wrap;
-        width: 100%;
-        justify-content: flex-end;
-        gap: 6px;
-      }
-      .header-actions > * { width: auto; }
-      /* Botones de acción (Agregar/Sincronizar, solo Rol Sistema) pasan a ser
-         solo-ícono en móvil (el texto va en .btn-header-label, oculto aquí)
-         para que quepan junto al badge de usuario en una sola fila compacta,
-         en vez de 3 filas completas apiladas. */
-      .btn-header { font-size: 0.95rem; padding: 7px; min-width: 34px; justify-content: center; }
+      .btn-header { font-size: 0.95rem; padding: 7px 10px; min-width: 34px; justify-content: center; }
       .btn-header-label { display: none; }
-      .user-pill { font-size: 0.72rem; padding: 4px 10px 4px 4px; gap: 6px; }
-      .user-pill-name { max-width: 90px; }
 
       .main-container { padding: 14px 12px 40px; }
       .controls-bar {
@@ -1245,13 +1158,6 @@
         margin-bottom: 16px;
       }
       .search-wrap { min-width: 0; width: 100%; }
-      .view-toggles { width: 100%; }
-      .btn-toggle {
-        flex: 1;
-        justify-content: center;
-        padding: 8px 5px;
-        font-size: 0.72rem;
-      }
       .stats-strip { gap: 8px; margin-bottom: 16px; }
       .stat-chip {
         flex: 1 1 calc(50% - 8px);
@@ -1321,6 +1227,18 @@
       .org-node-title { font-size: 0.75rem; }
       .org-people { grid-template-columns: 1fr; }
     }
+    /* Celular: barra lateral oculta (se abre con ☰) y header móvil */
+    @media (max-width: 900px) {
+      .mobile-header { display: flex; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .wrapper { margin-left: 0; flex: 1 1 100%; width: 100%; }
+      body { flex-direction: column; }
+      /* El título va en el header móvil; aquí solo quedan las acciones del Rol Sistema */
+      .top-header { position: static; padding: 8px 12px; justify-content: flex-end; }
+      .top-header .breadcrumb-title { display: none; }
+      .top-header.sin-acciones { display: none; }
+    }
   </style>
   <!-- Ícono LogyApp: favicon e ícono de la PWA (ver public/manifest.webmanifest) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
@@ -1331,42 +1249,68 @@
 </head>
 <body>
 
-  <!-- Barra Superior -->
-  <header class="top-header">
-    <div class="brand-wrap">
-      <div class="brand-lockup-horizontal">
-        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
-      </div>
-      <div class="header-titles">
-        <span class="header-main-title">Directorio Corporativo</span>
-        <span class="header-sub-title">Contactos, Áreas &amp; Sedes</span>
-      </div>
+  <!-- Fondo oscuro de la barra lateral en celular -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar(false)"></div>
+
+  <!-- Header móvil (igual a los demás módulos) -->
+  <header class="mobile-header">
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
     </div>
-
-    <div class="header-actions">
-      <!-- Badge de Usuario Conectado: foto de perfil (en vez del Rol) que abre
-           "Mi perfil y firma" al presionar, igual que en los demás módulos. -->
-      <div id="user-pill-container" style="display: none;">
-        <button type="button" class="user-pill" onclick="if (window.abrirPerfilCorporativo) abrirPerfilCorporativo();" aria-label="Ver y editar mi perfil y firma" title="Mi perfil y firma">
-          <img class="user-pill-avatar-photo mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
-          <span class="user-pill-name" id="user-display-name">—</span>
-        </button>
-      </div>
-
-      <!-- Botón Agregar (Solo Rol Sistema) -->
-      <button type="button" class="btn-header accent" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()" title="Agregar Colaborador" aria-label="Agregar Colaborador">
-        ＋<span class="btn-header-label"> Agregar Colaborador</span>
+    <div class="mobile-title" id="mobileHeaderTitle">Departamentos</div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="if (window.abrirPerfilCorporativo) abrirPerfilCorporativo();" aria-label="Ver y editar mi perfil y firma" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
       </button>
-
-      <!-- Botón Sincronizar (Solo Rol Sistema) -->
-      <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación" aria-label="Sincronizar Vinculación">
-        🔄<span class="btn-header-label"> Sincronizar Vinculación</span>
-      </button>
-
     </div>
   </header>
 
-  <!-- Contenedor Principal -->
+  <!-- Barra lateral izquierda -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" id="navAreas" onclick="cambiarModoVista('areas')">
+        <span class="nav-icon">📑</span><span>Departamentos</span>
+      </li>
+      <li class="nav-item" id="navOrg" onclick="cambiarModoVista('org')">
+        <span class="nav-icon">🌳</span><span>Organigrama</span>
+      </li>
+      <!-- Solo Rol Sistema -->
+      <li class="nav-item" id="navTable" style="display: none;" onclick="cambiarModoVista('table')">
+        <span class="nav-icon">📋</span><span>Registros / Tabla</span>
+      </li>
+    </ul>
+  </aside>
+
+  <div class="wrapper">
+    <!-- Encabezado de escritorio -->
+    <header class="top-header sin-acciones" id="topHeader">
+      <div class="breadcrumb-title">
+        <h1 id="tituloPestana"><span>📑</span> Departamentos</h1>
+        <p id="subtituloPestana">Contactos, áreas y sedes por departamento</p>
+      </div>
+      <div class="header-actions">
+        <!-- Botón Agregar (Solo Rol Sistema) -->
+        <button type="button" class="btn-header accent" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()" title="Agregar Colaborador" aria-label="Agregar Colaborador">
+          ＋<span class="btn-header-label"> Agregar Colaborador</span>
+        </button>
+        <!-- Botón Sincronizar (Solo Rol Sistema) -->
+        <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación" aria-label="Sincronizar Vinculación">
+          🔄<span class="btn-header-label"> Sincronizar Vinculación</span>
+        </button>
+      </div>
+    </header>
+
   <main class="main-container">
 
     <!-- Barra de Búsqueda y Modos de Vista -->
@@ -1376,18 +1320,6 @@
         <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar por Nombre, Cédula, Cargo, Regional, Sede o Correo..." autocomplete="off">
       </div>
 
-      <div class="view-toggles">
-        <button type="button" class="btn-toggle active" id="btn-view-areas" onclick="cambiarModoVista('areas')">
-          📑 Departamentos
-        </button>
-        <button type="button" class="btn-toggle" id="btn-view-org" onclick="cambiarModoVista('org')">
-          🌳 Organigrama
-        </button>
-        <!-- Tercera opción exclusiva para Rol Sistema -->
-        <button type="button" class="btn-toggle" id="btn-view-table" style="display: none;" onclick="cambiarModoVista('table')">
-          📋 Registros / Tabla
-        </button>
-      </div>
     </div>
 
     <!-- Tira de Estadísticas -->
@@ -1499,6 +1431,7 @@
     </div>
 
   </main>
+  </div>
 
   <!-- MODAL DETALLE DE COLABORADOR (Screenshot 3) -->
   <div class="modal-overlay" id="modal-detalle" onclick="cerrarModalFuera(event, 'modal-detalle')">
@@ -1750,6 +1683,13 @@
     document.addEventListener('DOMContentLoaded', async () => {
       inicializarRedimensionColumnas();
       await inicializarUsuario();
+      // Pestaña desde la URL (?tab=departamentos | organigrama | registros)
+      const tabUrl = (urlParams.get('tab') || '').toLowerCase();
+      const modoUrl = Object.keys(PESTANAS_DIRECTORIO).find(k => PESTANAS_DIRECTORIO[k].url === tabUrl);
+      if (modoUrl && modoUrl !== 'areas') {
+        modoVistaActual = modoUrl;
+        cambiarModoVista(modoUrl);
+      }
       await cargarDirectorio();
 
       // Buscador reactivo
@@ -1775,7 +1715,8 @@
             // Habilitar controles de Rol Sistema
             document.getElementById('btn-header-add').style.display = 'inline-flex';
             document.getElementById('btn-header-sync').style.display = 'inline-flex';
-            document.getElementById('btn-view-table').style.display = 'inline-flex';
+            document.getElementById('navTable').style.display = 'flex';
+            document.getElementById('topHeader').classList.remove('sin-acciones');
           }
         }
       } catch (err) {
@@ -1786,10 +1727,8 @@
     function mostrarUserPill(user) {
       // La foto de perfil la pinta app-launcher-profile.js (#mobileProfileThumb)
       // una vez carga /perfil/api; aquí solo fijamos el nombre y mostramos el badge.
-      const container = document.getElementById('user-pill-container');
-      const nameEl = document.getElementById('user-display-name');
-      nameEl.innerText = user.nombre || user.id;
-      container.style.display = 'flex';
+      // El nombre y la foto los muestra la tarjeta "Mi perfil corporativo" de la barra lateral.
+      return user;
     }
 
     // ════════ CARGA DE DATOS ════════
@@ -1823,12 +1762,38 @@
     }
 
     // ════════ CAMBIO DE MODOS DE VISTA ════════
+    const PESTANAS_DIRECTORIO = {
+      areas: { icono: '📑', titulo: 'Departamentos', sub: 'Contactos, áreas y sedes por departamento', url: 'departamentos' },
+      org:   { icono: '🌳', titulo: 'Organigrama', sub: 'Estructura del equipo administrativo por área', url: 'organigrama' },
+      table: { icono: '📋', titulo: 'Registros / Tabla', sub: 'Base de datos de firmas corporativas', url: 'registros' }
+    };
+
+    // Abre / cierra la barra lateral en celular (botón ☰ y fondo oscuro)
+    function toggleMobileSidebar(force) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobile-backdrop');
+      const abierto = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+      sb.classList.toggle('open', abierto);
+      bd.classList.toggle('open', abierto);
+    }
+
     function cambiarModoVista(modo) {
+      if (modo === 'table' && !(usuarioActual && usuarioActual.esSistema)) modo = 'areas';
       modoVistaActual = modo;
-      document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
-      document.getElementById('btn-view-org').classList.toggle('active', modo === 'org');
-      const btnTable = document.getElementById('btn-view-table');
-      if (btnTable) btnTable.classList.toggle('active', modo === 'table');
+      document.getElementById('navAreas').classList.toggle('active', modo === 'areas');
+      document.getElementById('navOrg').classList.toggle('active', modo === 'org');
+      document.getElementById('navTable').classList.toggle('active', modo === 'table');
+      const p = PESTANAS_DIRECTORIO[modo];
+      document.getElementById('tituloPestana').innerHTML = `<span>${p.icono}</span> ${p.titulo}`;
+      document.getElementById('subtituloPestana').textContent = p.sub;
+      document.getElementById('mobileHeaderTitle').textContent = p.titulo;
+      document.title = `Directorio · ${p.titulo} — LOG&SER`;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', p.url);
+        history.replaceState(history.state, '', url);
+      } catch (e) { /* sin cambio de URL */ }
+      toggleMobileSidebar(false);
 
       document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
       document.getElementById('view-org').style.display = modo === 'org' ? 'block' : 'none';
