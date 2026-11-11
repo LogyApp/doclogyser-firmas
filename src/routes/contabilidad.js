@@ -3,6 +3,7 @@ const path = require('path');
 const multer = require('multer');
 const { computarAccesoContabilidad } = require('../services/accesoContabilidad');
 const consignacionesService = require('../services/consignacionesService');
+const transferenciasService = require('../services/transferenciasService');
 
 const router = express.Router();
 const uploadConsignacion = multer({
@@ -42,12 +43,16 @@ function paginaError(mensaje) {
 // ── GET / (Vista Principal de Contabilidad) ───────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const { usuario } = req.query;
+    const { usuario, tab } = req.query;
     if (!usuario) {
       return res.status(400).send(paginaError('Parámetro ?usuario requerido.'));
     }
 
-    const acceso = await computarAccesoContabilidad(usuario, 'Consignaciones');
+    const seccionReq = (tab && tab.toLowerCase() === 'transferencias') ? 'Transferencias' : 'Consignaciones';
+    let acceso = await computarAccesoContabilidad(usuario, seccionReq);
+    if (!acceso) {
+      acceso = await computarAccesoContabilidad(usuario, null);
+    }
     if (!acceso) {
       return res.status(403).send(paginaError('No tienes permisos asignados en Maestro_Menu para el módulo de Contabilidad.'));
     }
@@ -62,10 +67,14 @@ router.get('/', async (req, res) => {
 // ── GET /api/estado (Metadatos de usuario, alcance, quincena y filtros) ──────
 router.get('/api/estado', async (req, res) => {
   try {
-    const { usuario } = req.query;
+    const { usuario, tab } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoContabilidad(usuario, 'Consignaciones');
+    const seccionReq = (tab && tab.toLowerCase() === 'transferencias') ? 'Transferencias' : 'Consignaciones';
+    let acceso = await computarAccesoContabilidad(usuario, seccionReq);
+    if (!acceso) {
+      acceso = await computarAccesoContabilidad(usuario, null);
+    }
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [bancos, anios, quincenaActual] = await Promise.all([
@@ -90,6 +99,7 @@ router.get('/api/estado', async (req, res) => {
       rol: acceso.rol,
       accesoCode: acceso.accesoCode,
       sinFiltro: acceso.sinFiltro,
+      secciones: acceso.secciones || ['Consignaciones', 'Transferencias'],
       puedeValidar,
       puedeEliminarFoto,
       regionales,
@@ -213,6 +223,27 @@ router.post('/api/consignaciones/eliminar-foto', async (req, res) => {
   } catch (err) {
     console.error('[contabilidad] POST /api/consignaciones/eliminar-foto error:', err);
     res.status(400).json({ error: err.message });
+  }
+});
+
+// ── GET /api/transferencias (Lista de transferencias de servicios con Forma De Pago = 2) ───
+router.get('/api/transferencias', async (req, res) => {
+  try {
+    const { usuario, anio, quincena, dia, regional, operacion, fase, busqueda } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoContabilidad(usuario, 'Transferencias');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para consultar Transferencias.' });
+
+    const data = await transferenciasService.obtenerTransferencias(
+      { anio, quincena, dia, regional, operacion, fase, busqueda },
+      acceso
+    );
+
+    res.json(data);
+  } catch (err) {
+    console.error('[contabilidad] GET /api/transferencias error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

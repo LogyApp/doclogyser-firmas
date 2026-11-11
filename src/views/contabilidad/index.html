@@ -1130,7 +1130,7 @@
     </div>
     <div class="mobile-title"><span id="mobileHeaderTitle">Contabilidad</span></div>
     <div class="mobile-header-right">
-      <button type="button" class="btn-sync mobile-sync-btn" onclick="sincronizarConsignaciones(this)" title="Sincronizar" aria-label="Sincronizar">
+      <button type="button" class="btn-sync mobile-sync-btn" onclick="sincronizarPestanaActiva(this)" title="Sincronizar" aria-label="Sincronizar">
         <svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>
       </button>
       <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
@@ -1153,9 +1153,15 @@
 
     <ul class="nav-list">
       <li>
-        <a class="nav-item active" href="/contabilidad?tab=consignaciones">
+        <a class="nav-item active" href="/contabilidad?tab=consignaciones" id="navItemConsignaciones" data-tab="consignaciones" onclick="cambiarPestanaContabilidad(event, 'consignaciones')">
           <span class="nav-icon">💰</span>
           <span>Consignaciones</span>
+        </a>
+      </li>
+      <li>
+        <a class="nav-item" href="/contabilidad?tab=transferencias" id="navItemTransferencias" data-tab="transferencias" onclick="cambiarPestanaContabilidad(event, 'transferencias')">
+          <span class="nav-icon">💳</span>
+          <span>Transferencias</span>
         </a>
       </li>
     </ul>
@@ -1169,13 +1175,17 @@
   <main class="wrapper">
     <!-- Top Header Escritorio -->
     <header class="top-header">
-      <div class="breadcrumb-title">
+      <div class="breadcrumb-title" id="headerTitleConsignaciones">
         <h1><span>💰</span> Consignaciones Bancarias</h1>
         <p>Control y conciliación diaria de efectivo recaudado por operación vs consignaciones registradas</p>
       </div>
+      <div class="breadcrumb-title" id="headerTitleTransferencias" style="display:none;">
+        <h1><span>💳</span> Transferencias Bancarias</h1>
+        <p>Control y verificación de soportes de transferencias bancarias de los servicios recaudados (Forma de Pago = 2)</p>
+      </div>
       <div class="header-actions">
         <!-- Botón Sincronizar escritorio -->
-        <button type="button" class="btn-sync btn-sync-escritorio" id="btnSync" title="Sincronizar" aria-label="Sincronizar" onclick="sincronizarConsignaciones(this)">
+        <button type="button" class="btn-sync btn-sync-escritorio" id="btnSync" title="Sincronizar" aria-label="Sincronizar" onclick="sincronizarPestanaActiva(this)">
           <svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/>
             <path d="M3 21v-5h5"/>
@@ -1189,140 +1199,289 @@
     <!-- Content Container -->
     <div class="content-container">
 
-      <!-- Mini stat cards compactas (Estilo Valorización Inventario) -->
-      <section class="mini-stat-container">
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">💵</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Efectivo Recaudado</span>
-            <span class="val" id="kpiTotalEfectivo">$ 0</span>
-          </div>
-        </div>
+      <!-- ── PESTAÑA 1: CONSIGNACIONES ────────────────────────────── -->
+      <div id="vistaConsignaciones" class="tab-pane active">
 
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">🏦</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Total Consignado</span>
-            <span class="val" id="kpiTotalConsignado">$ 0</span>
-          </div>
-        </div>
-
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">⏳</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Saldo Pendiente</span>
-            <span class="val" id="kpiSaldoPendiente">$ 0</span>
-          </div>
-        </div>
-
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">📊</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Días Registrados</span>
-            <span class="val" id="kpiTotalRegistros">0</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Panel de Filtros Plegables por defecto (Estilo Facturación) -->
-      <section class="filters-card">
-        <div class="filtros-toggle" id="filtrosToggle" onclick="toggleFiltros()">
-          <span class="filtros-toggle-left">
-            Filtros
-            <span class="filtros-badge" id="filtrosBadge">0</span>
-          </span>
-          <input type="search" class="filtros-busqueda" id="filtroBusqueda" placeholder="🔍 Buscar por operación, comprobante, banco, cuenta, usuario..." aria-label="Buscador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
-          <span class="filtros-chevron" id="filtrosChevron">▸</span>
-        </div>
-
-        <div id="filtrosBody" style="display: none;">
-          <div class="filter-row">
-            <!-- Año -->
-            <div class="filter-group sm">
-              <label for="filtroAnio">Año</label>
-              <select id="filtroAnio" class="filter-control"></select>
-            </div>
-
-            <!-- Quincena -->
-            <div class="filter-group">
-              <label for="filtroQuincena">Quincena</label>
-              <select id="filtroQuincena" class="filter-control"></select>
-            </div>
-
-            <!-- Día específico -->
-            <div class="filter-group sm">
-              <label for="filtroDia">Día Específico</label>
-              <input type="date" id="filtroDia" class="filter-control">
-            </div>
-
-            <!-- Regional -->
-            <div class="filter-group">
-              <label for="filtroRegional">Regional</label>
-              <select id="filtroRegional" class="filter-control">
-                <option value="TODAS">Todas las Regionales</option>
-              </select>
-            </div>
-
-            <!-- Operación (select) -->
-            <div class="filter-group" id="grupoSelectOperacion">
-              <label for="filtroOperacion">Operación</label>
-              <select id="filtroOperacion" class="filter-control">
-                <option value="TODAS">Todas las Operaciones</option>
-              </select>
-            </div>
-
-            <!-- Fase -->
-            <div class="filter-group sm">
-              <label for="filtroFase">Estado</label>
-              <select id="filtroFase" class="filter-control">
-                <option value="TODAS">Todos</option>
-                <option value="Red">🔴 Pendientes</option>
-                <option value="Green">🟢 Consignadas</option>
-              </select>
+        <!-- Mini stat cards compactas (Estilo Valorización Inventario) -->
+        <section class="mini-stat-container">
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">💵</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Efectivo Recaudado</span>
+              <span class="val" id="kpiTotalEfectivo">$ 0</span>
             </div>
           </div>
 
-          <!-- Botones interactivos si son <= 5 operaciones -->
-          <div id="contenedorChipsOperacion" style="display:none;">
-            <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Operaciones:</label>
-            <div class="ops-button-bar" id="chipsOperacionBar"></div>
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">🏦</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Total Consignado</span>
+              <span class="val" id="kpiTotalConsignado">$ 0</span>
+            </div>
           </div>
 
-          <div class="conteo-bar">
-            Mostrando&nbsp;<span id="conteoVisible">0</span>&nbsp;de&nbsp;<span id="conteoTotal">0</span>&nbsp;días registrados
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">⏳</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Saldo Pendiente</span>
+              <span class="val" id="kpiSaldoPendiente">$ 0</span>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <!-- Tabla de Consignaciones (Columnas ajustables y ordenables) -->
-      <section class="table-card">
-        <div class="table-container">
-          <table class="data-table" id="tablaConsignaciones">
-            <thead>
-              <tr>
-                <th data-sort="fase" style="width: 140px;">Estado</th>
-                <th data-sort="dia" style="width: 130px;">Día</th>
-                <th data-sort="operacion" style="width: 160px;">Operación</th>
-                <th data-sort="totalEfectivo" style="width: 120px;">Total Efectivo</th>
-                <th data-sort="totalServicios" style="width: 95px; text-align: center;">Servicios</th>
-                <th data-sort="banco" style="width: 140px;">Banco / Entidad</th>
-                <th data-sort="cuenta" style="width: 120px;">Cuenta</th>
-                <th data-sort="comprobante" style="width: 130px;">Comprobante</th>
-                <th data-sort="fechaConsignacion" style="width: 110px;">Fecha Consig.</th>
-                <th data-sort="valorConsignado" style="width: 130px;">Valor Consignado</th>
-                <th data-sort="diferencia" style="width: 110px;">Diferencia</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyConsignaciones">
-              <tr>
-                <td colspan="11" style="text-align:center; padding: 30px; color: var(--text-muted);">
-                  Cargando consignaciones...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">📊</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Días Registrados</span>
+              <span class="val" id="kpiTotalRegistros">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Panel de Filtros Plegables por defecto (Estilo Facturación) -->
+        <section class="filters-card">
+          <div class="filtros-toggle" id="filtrosToggle" onclick="toggleFiltros()">
+            <span class="filtros-toggle-left">
+              Filtros
+              <span class="filtros-badge" id="filtrosBadge">0</span>
+            </span>
+            <input type="search" class="filtros-busqueda" id="filtroBusqueda" placeholder="🔍 Buscar por operación, comprobante, banco, cuenta, usuario..." aria-label="Buscador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="filtrosChevron">▸</span>
+          </div>
+
+          <div id="filtrosBody" style="display: none;">
+            <div class="filter-row">
+              <!-- Año -->
+              <div class="filter-group sm">
+                <label for="filtroAnio">Año</label>
+                <select id="filtroAnio" class="filter-control"></select>
+              </div>
+
+              <!-- Quincena -->
+              <div class="filter-group">
+                <label for="filtroQuincena">Quincena</label>
+                <select id="filtroQuincena" class="filter-control"></select>
+              </div>
+
+              <!-- Día específico -->
+              <div class="filter-group sm">
+                <label for="filtroDia">Día Específico</label>
+                <input type="date" id="filtroDia" class="filter-control">
+              </div>
+
+              <!-- Regional -->
+              <div class="filter-group">
+                <label for="filtroRegional">Regional</label>
+                <select id="filtroRegional" class="filter-control">
+                  <option value="TODAS">Todas las Regionales</option>
+                </select>
+              </div>
+
+              <!-- Operación (select) -->
+              <div class="filter-group" id="grupoSelectOperacion">
+                <label for="filtroOperacion">Operación</label>
+                <select id="filtroOperacion" class="filter-control">
+                  <option value="TODAS">Todas las Operaciones</option>
+                </select>
+              </div>
+
+              <!-- Fase -->
+              <div class="filter-group sm">
+                <label for="filtroFase">Estado</label>
+                <select id="filtroFase" class="filter-control">
+                  <option value="TODAS">Todos</option>
+                  <option value="Red">🔴 Pendientes</option>
+                  <option value="Green">🟢 Consignadas</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Botones interactivos si son <= 5 operaciones -->
+            <div id="contenedorChipsOperacion" style="display:none;">
+              <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Operaciones:</label>
+              <div class="ops-button-bar" id="chipsOperacionBar"></div>
+            </div>
+
+            <div class="conteo-bar">
+              Mostrando&nbsp;<span id="conteoVisible">0</span>&nbsp;de&nbsp;<span id="conteoTotal">0</span>&nbsp;días registrados
+            </div>
+          </div>
+        </section>
+
+        <!-- Tabla de Consignaciones (Columnas ajustables y ordenables) -->
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaConsignaciones">
+              <thead>
+                <tr>
+                  <th data-sort="fase" style="width: 140px;">Estado</th>
+                  <th data-sort="dia" style="width: 130px;">Día</th>
+                  <th data-sort="operacion" style="width: 160px;">Operación</th>
+                  <th data-sort="totalEfectivo" style="width: 120px;">Total Efectivo</th>
+                  <th data-sort="totalServicios" style="width: 95px; text-align: center;">Servicios</th>
+                  <th data-sort="banco" style="width: 140px;">Banco / Entidad</th>
+                  <th data-sort="cuenta" style="width: 120px;">Cuenta</th>
+                  <th data-sort="comprobante" style="width: 130px;">Comprobante</th>
+                  <th data-sort="fechaConsignacion" style="width: 110px;">Fecha Consig.</th>
+                  <th data-sort="valorConsignado" style="width: 130px;">Valor Consignado</th>
+                  <th data-sort="diferencia" style="width: 110px;">Diferencia</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyConsignaciones">
+                <tr>
+                  <td colspan="11" style="text-align:center; padding: 30px; color: var(--text-muted);">
+                    Cargando consignaciones...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ── PESTAÑA 2: TRANSFERENCIAS ────────────────────────────── -->
+      <div id="vistaTransferencias" class="tab-pane" style="display:none;">
+
+        <!-- Mini stat cards compactas Transferencias -->
+        <section class="mini-stat-container">
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">💳</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Total Transferencias</span>
+              <span class="val" id="kpiTransfTotal">0</span>
+            </div>
+          </div>
+
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">💰</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Total Recaudado</span>
+              <span class="val" id="kpiTransfMontoTotal">$ 0</span>
+            </div>
+          </div>
+
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">✅</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Con Soporte</span>
+              <span class="val" id="kpiTransfConSoporte">0</span>
+            </div>
+          </div>
+
+          <div class="mini-stat-card">
+            <span class="mini-stat-icon">⚠️</span>
+            <div class="mini-stat-info">
+              <span class="lbl">Pendientes Soporte</span>
+              <span class="val" id="kpiTransfPendientes">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Panel de Filtros Plegables Transferencias -->
+        <section class="filters-card">
+          <div class="filtros-toggle" id="filtrosTransfToggle" onclick="toggleFiltrosTransferencias()">
+            <span class="filtros-toggle-left">
+              Filtros
+              <span class="filtros-badge" id="filtrosTransfBadge">0</span>
+            </span>
+            <input type="search" class="filtros-busqueda" id="filtroTransfBusqueda" placeholder="🔍 Buscar por recibo, cliente, placa, NIT, operación, actividad, usuario..." aria-label="Buscador Transferencias" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="filtrosTransfChevron">▸</span>
+          </div>
+
+          <div id="filtrosTransfBody" style="display: none;">
+            <div class="filter-row">
+              <!-- Año -->
+              <div class="filter-group sm">
+                <label for="filtroTransfAnio">Año</label>
+                <select id="filtroTransfAnio" class="filter-control"></select>
+              </div>
+
+              <!-- Quincena -->
+              <div class="filter-group">
+                <label for="filtroTransfQuincena">Quincena</label>
+                <select id="filtroTransfQuincena" class="filter-control"></select>
+              </div>
+
+              <!-- Día específico -->
+              <div class="filter-group sm">
+                <label for="filtroTransfDia">Día Específico</label>
+                <input type="date" id="filtroTransfDia" class="filter-control">
+              </div>
+
+              <!-- Regional -->
+              <div class="filter-group">
+                <label for="filtroTransfRegional">Regional</label>
+                <select id="filtroTransfRegional" class="filter-control">
+                  <option value="TODAS">Todas las Regionales</option>
+                </select>
+              </div>
+
+              <!-- Operación (select) -->
+              <div class="filter-group" id="grupoSelectTransfOperacion">
+                <label for="filtroTransfOperacion">Operación</label>
+                <select id="filtroTransfOperacion" class="filter-control">
+                  <option value="TODAS">Todas las Operaciones</option>
+                </select>
+              </div>
+
+              <!-- Fase -->
+              <div class="filter-group sm">
+                <label for="filtroTransfFase">Estado</label>
+                <select id="filtroTransfFase" class="filter-control">
+                  <option value="TODAS">Todos</option>
+                  <option value="Green">🟢 Con Soporte</option>
+                  <option value="Red">🔴 Pendientes</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Botones interactivos si son <= 5 operaciones -->
+            <div id="contenedorChipsTransfOperacion" style="display:none;">
+              <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Operaciones:</label>
+              <div class="ops-button-bar" id="chipsTransfOperacionBar"></div>
+            </div>
+
+            <div class="conteo-bar">
+              Mostrando&nbsp;<span id="conteoTransfVisible">0</span>&nbsp;de&nbsp;<span id="conteoTransfTotal">0</span>&nbsp;transferencias
+            </div>
+          </div>
+        </section>
+
+        <!-- Tabla de Transferencias (Columnas ajustables y ordenables) -->
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaTransferencias">
+              <thead>
+                <tr>
+                  <th data-sort="fase" style="width: 120px;">Estado</th>
+                  <th data-sort="dia" style="width: 110px;">Fecha</th>
+                  <th data-sort="operacion" style="width: 140px;">Operación</th>
+                  <th data-sort="consecutivoRecibo" style="width: 105px;">Recibo</th>
+                  <th data-sort="cliente" style="width: 180px;">Cliente</th>
+                  <th data-sort="nit" style="width: 100px;">NIT</th>
+                  <th data-sort="placa" style="width: 85px; text-align:center;">Placa</th>
+                  <th data-sort="area" style="width: 75px; text-align:center;">Área</th>
+                  <th data-sort="actividad" style="width: 120px;">Actividad</th>
+                  <th data-sort="fechaTransferencia" style="width: 130px;">Fecha Transf.</th>
+                  <th data-sort="total" style="width: 120px; text-align:right;">Total</th>
+                  <th data-sort="telefono" style="width: 105px;">Teléfono</th>
+                  <th data-sort="usuario" style="width: 150px;">Usuario</th>
+                  <th style="width: 110px; text-align:center;">Soporte</th>
+                  <th style="width: 75px; text-align:center;">Servicio</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyTransferencias">
+                <tr>
+                  <td colspan="15" style="text-align:center; padding: 30px; color: var(--text-muted);">
+                    Cargando transferencias...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
 
     </div>
   </main>
@@ -1467,6 +1626,9 @@
           </button>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
+          <a id="btnVisorIrFacturacion" href="#" target="_blank" class="btn-action secondary" style="display:none;" title="Ver servicio en Facturación">
+            🔍 Facturación
+          </a>
           <button type="button" class="btn-action secondary" id="btnVisorEditar" onclick="editarDesdeVisor()" style="display:none;">
             ✏️ Editar
           </button>
@@ -1539,6 +1701,82 @@
   <script src="/js/theme.js" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
+  <script>
+    // Coordinador de Pestañas de Contabilidad (Consignaciones / Transferencias)
+    window.cambiarPestanaContabilidad = function (e, tab) {
+      if (e && e.preventDefault) e.preventDefault();
+      activarPestanaContabilidad(tab);
+    };
+
+    function activarPestanaContabilidad(tab) {
+      const t = (tab || 'consignaciones').toLowerCase();
+      const urlParams = new URLSearchParams(window.location.search);
+      const u = urlParams.get('usuario') || (window.CONFIG && window.CONFIG.usuarioId) || '';
+
+      const newUrl = `/contabilidad?tab=${t}${u ? '&usuario=' + encodeURIComponent(u) : ''}`;
+      window.history.pushState({ tab: t }, '', newUrl);
+
+      document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+        const itemTab = item.dataset.tab;
+        if (itemTab === t) item.classList.add('active');
+        else item.classList.remove('active');
+      });
+
+      const pConsig = document.getElementById('vistaConsignaciones');
+      const pTransf = document.getElementById('vistaTransferencias');
+      const hConsig = document.getElementById('headerTitleConsignaciones');
+      const hTransf = document.getElementById('headerTitleTransferencias');
+      const mTitle = document.getElementById('mobileHeaderTitle');
+
+      if (t === 'transferencias') {
+        if (pConsig) pConsig.style.display = 'none';
+        if (pTransf) pTransf.style.display = 'block';
+        if (hConsig) hConsig.style.display = 'none';
+        if (hTransf) hTransf.style.display = 'block';
+        if (mTitle) mTitle.textContent = 'Transferencias';
+        document.title = 'Contabilidad - Transferencias | LOG&SER';
+        if (typeof window.inicializarTransferenciasSiAplica === 'function') {
+          window.inicializarTransferenciasSiAplica();
+        }
+      } else {
+        if (pConsig) pConsig.style.display = 'block';
+        if (pTransf) pTransf.style.display = 'none';
+        if (hConsig) hConsig.style.display = 'block';
+        if (hTransf) hTransf.style.display = 'none';
+        if (mTitle) mTitle.textContent = 'Consignaciones';
+        document.title = 'Contabilidad - Consignaciones | LOG&SER';
+      }
+    }
+
+    window.sincronizarPestanaActiva = function (btn) {
+      const params = new URLSearchParams(window.location.search);
+      const tab = (params.get('tab') || 'consignaciones').toLowerCase();
+      if (tab === 'transferencias') {
+        if (typeof window.cargarTransferencias === 'function') {
+          window.cargarTransferencias(btn);
+        }
+      } else {
+        if (typeof window.sincronizarConsignaciones === 'function') {
+          window.sincronizarConsignaciones(btn);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || 'consignaciones';
+      activarPestanaContabilidad(tab);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && tab.toLowerCase() === 'transferencias') {
+        activarPestanaContabilidad('transferencias');
+      }
+    });
+  </script>
   <script src="/js/contabilidad-consignaciones.js"></script>
+  <script src="/js/contabilidad-transferencias.js"></script>
 </body>
 </html>
