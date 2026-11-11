@@ -19,7 +19,7 @@
   <title>Directorio Corporativo - Logyser</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
   <style>
     :root {
@@ -35,261 +35,165 @@
       color: var(--text);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
+      overflow-x: hidden;
     }
 
-    /* Header Superior */
-    .top-header {
-      background: var(--primary);
-      border-bottom: 1px solid var(--primary-dark);
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-      gap: 16px;
+    /* ══════════════════════════════════════════════════════════
+       ESTRUCTURA IGUAL A FACTURACIÓN: header móvil, barra lateral (280px),
+       contenido con encabezado por pestaña, tarjetas, filtros plegables y tablas
+    ══════════════════════════════════════════════════════════ */
+    .mobile-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 140; }
+    .mobile-backdrop.open { display: block; }
+    .mobile-header {
+      display: none; background: var(--primary); color: var(--text-inverse); padding: 7px 12px;
+      align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 130;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); min-height: 48px;
+    }
+    .mobile-header-left { display: flex; align-items: center; gap: 8px; }
+    .mobile-menu-btn {
+      background: none; border: none; color: var(--text-inverse); font-size: 1.45rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 2px 4px; line-height: 1;
+    }
+    .mobile-logo-app { height: 24px; max-height: 24px; width: auto; object-fit: contain; }
+    .mobile-title { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: .92rem; display: flex; align-items: center; gap: 6px; letter-spacing: .2px; white-space: nowrap; }
+    .mobile-header-right { display: flex; align-items: center; gap: 10px; }
+    .mobile-profile-btn {
+      background: transparent; border: none; padding: 0; margin: 0; cursor: pointer;
+      display: flex; align-items: center; border-radius: 50%; outline: none; transition: transform .15s ease, opacity .15s ease;
+    }
+    .mobile-profile-btn:active { transform: scale(.92); opacity: .85; }
+    .mobile-profile-thumb {
+      width: 33px; height: 33px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover; background: var(--card-bg); box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
     }
 
-    .brand-wrap {
-      display: flex;
-      align-items: center;
-      gap: 16px;
+    .sidebar {
+      width: 280px; background: var(--primary); color: var(--text-inverse); display: flex; flex-direction: column;
+      flex-shrink: 0; height: 100vh; position: fixed; left: 0; top: 0; z-index: 200;
+      border-right: 1px solid rgba(255, 255, 255, 0.08); box-shadow: var(--shadow-lg); transition: transform 0.3s ease;
+    }
+    .sidebar-brand {
+      padding: 24px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.12);
+    }
+    .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 18px; flex-shrink: 0; }
+    .brand-lockup img.brand-logo-app { display: block; object-fit: contain; height: 30px; }
+    .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
+    .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
+    .brand-divider { width: 80%; height: 1.5px; background: rgba(255, 255, 255, 0.22); }
+    .nav-list { list-style: none; padding: 20px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
+    .nav-item {
+      position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7); font-weight: 500; font-size: 0.9rem; cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .nav-icon { width: 18px; height: 18px; color: rgba(255, 255, 255, 0.55); transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
+    .nav-item:hover { color: var(--text-inverse); background: rgba(255, 255, 255, 0.08); }
+    .nav-item:hover .nav-icon { color: var(--text-inverse); }
+    .nav-item.active { color: var(--text-inverse); background: rgba(255, 255, 255, 0.14); font-weight: 600; }
+    .nav-item.active .nav-icon { color: var(--accent); }
+    .nav-item.active::before {
+      content: ''; position: absolute; left: 0; top: 25%; height: 50%; width: 3.5px; background-color: var(--accent); border-radius: 8px;
     }
 
-    /* Brand Lockup horizontal idéntico a Inventario / SST */
-    .brand-lockup-horizontal {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 4px 0;
+    .wrapper { margin-left: 280px; flex: 1; min-width: 0; padding: 26px 30px; height: 100vh; overflow-y: auto; }
+
+    .page-hd { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+    .page-title { font-family: 'Outfit', sans-serif; font-size: 1.45rem; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
+    .page-sub { font-size: 0.86rem; color: var(--text-muted); margin-top: 3px; }
+    .page-hd-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .card {
+      background: var(--card-bg); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+      border: 1px solid var(--border); padding: 20px; margin-bottom: 20px;
     }
-    .brand-logo-app {
-      display: block;
-      height: 28px;
-      object-fit: contain;
-    }
-    .brand-divider-vert {
-      width: 1.5px;
-      height: 24px;
-      background: rgba(255, 255, 255, 0.22);
-    }
-    .brand-logo-company-crop {
-      width: 130px;
-      height: 32px;
-      overflow: hidden;
-      position: relative;
-    }
-    .brand-logo-company-crop img {
-      position: absolute;
-      left: -63px;
-      top: -64px;
-      width: 260px;
-      height: 172px;
-      max-width: none;
+    .card-titulo {
+      font-weight: 700; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;
+      display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
     }
 
-    .header-titles {
-      display: flex;
-      flex-direction: column;
-      border-left: 1px solid rgba(255, 255, 255, 0.2);
-      padding-left: 14px;
+    /* Métricas compactas (solo informativas) */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .metric-card {
+      background: var(--card-bg); border-radius: var(--radius-md); border: 1px solid var(--border);
+      padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
     }
-    .header-main-title {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: var(--text-inverse);
-      letter-spacing: -0.3px;
-      line-height: 1.2;
-    }
-    .header-sub-title {
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.7);
-      font-weight: 500;
-    }
+    .metric-label { font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.4px; }
+    .metric-val { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .metric-icon { font-size: 1.1rem; opacity: 0.6; }
 
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+    /* Filtros plegables con búsqueda siempre visible */
+    .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+    .filtros-toggle-left {
+      display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.82rem; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.8px;
     }
+    .filtros-busqueda {
+      flex: 1; max-width: 380px; margin: 0 12px 0 auto; height: 34px; padding: 6px 10px; font-size: 0.84rem; font-weight: 400;
+      cursor: text; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); outline: none; font-family: inherit;
+    }
+    .filtros-busqueda:focus { border-color: var(--accent); }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-contrast);
+      border-radius: 999px; font-size: 0.68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+    }
+    .filtros-chevron { display: inline-block; transition: transform 0.2s ease; color: var(--accent); font-size: 0.95rem; }
+    .filtros-body { margin-top: 16px; }
+    .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .filtro-field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+    .filtro-field select, .filtro-field input {
+      width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 0.88rem;
+      background: var(--card-bg); color: var(--text); font-family: inherit; transition: var(--transition);
+    }
+    .filtro-field select:focus, .filtro-field input:focus { outline: none; border-color: var(--accent-light); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .filtros-pie { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .filtros-rangos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .btn-reset {
+      background: none; border: 1.5px solid var(--border); color: var(--text-muted); padding: 7px 16px; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: var(--transition); font-family: inherit;
+    }
+    .btn-reset:hover { background: var(--bg-elevated); color: var(--text); }
+    .btn-reset.activo { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .filtro-check { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; color: var(--text); cursor: pointer; }
+    .filtro-check input { accent-color: var(--accent); width: 15px; height: 15px; }
+    :root[data-theme="oscuro"] { color-scheme: dark; } /* calendario y flechas nativas en oscuro */
+    :root[data-theme="oscuro"] table.data-table thead th,
+    :root[data-theme="oscuro"] .filtros-toggle-left,
+    :root[data-theme="oscuro"] .card-titulo { color: var(--text) !important; }
 
-    /* User Badge: foto de perfil clicable que abre "Mi perfil y firma"
-       (reemplaza el badge de Rol anterior; ahorra espacio y es consistente
-       con el resto de módulos). */
-    .user-pill {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 5px 14px 5px 5px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background .15s ease, transform .15s ease;
-      font-family: inherit;
+    /* Chips de estado (como en Facturación) */
+    .chips-fila { display: flex; gap: 8px; flex-wrap: wrap; }
+    .category-chip {
+      background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px;
+      font-size: 0.85rem; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
+      display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; user-select: none; min-width: 135px; font-family: inherit;
     }
-    .user-pill:hover { background: rgba(255, 255, 255, 0.18); }
-    .user-pill:active { transform: scale(.97); }
-    .user-pill-avatar-photo {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: var(--card-bg);
-      border: 1.5px solid rgba(255, 255, 255, 0.85);
+    .category-chip:hover { background-color: var(--accent-soft); border-color: var(--accent-light); color: var(--accent); }
+    .category-chip.active {
+      background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%); border-color: var(--accent);
+      color: var(--accent-contrast); box-shadow: 0 4px 12px var(--accent-soft);
     }
-    .user-pill-name {
-      font-weight: 600;
-      color: var(--text-inverse);
-      max-width: 160px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .category-chip .chip-title { font-weight: 700; font-size: 0.82rem; letter-spacing: 0.3px; }
+    .category-chip .chip-sub { font-size: 0.72rem; opacity: 0.85; }
+    .category-chip.active .chip-sub { color: var(--accent-contrast); }
 
+    /* Botones */
+    .btn-primary {
+      background: var(--accent); color: var(--accent-contrast); padding: 10px 20px; border-radius: 7px; font-weight: 600;
+      font-size: 0.88rem; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: 0 2px 4px var(--accent-soft); transition: var(--transition); font-family: inherit;
+    }
+    .btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); box-shadow: 0 4px 8px var(--accent-soft); }
     .btn-header {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-inverse);
-      padding: 8px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 0.84rem;
-      font-weight: 600;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
+      background: var(--card-bg); border: 1.5px solid var(--border); color: var(--text); padding: 8px 14px;
+      border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 600; text-decoration: none; display: inline-flex;
+      align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; font-family: inherit;
     }
-    .btn-header:hover {
-      background: rgba(255, 255, 255, 0.22);
-      border-color: rgba(255, 255, 255, 0.4);
-      color: var(--text-inverse);
-    }
-    .btn-header.accent {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: var(--accent-contrast);
-    }
-    .btn-header.accent:hover {
-      background: var(--accent-dark);
-    }
+    .btn-header:hover { background: var(--bg); border-color: var(--accent); color: var(--text); }
+    .btn-header.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+    .btn-header.accent:hover { background: var(--accent-dark); }
 
-    /* Contenedor Principal */
-    .main-container {
-      max-width: 1240px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 24px 20px 60px 20px;
-      flex: 1;
-    }
-
-    /* Barra de Herramientas y Buscador */
-    .controls-bar {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      box-shadow: var(--shadow);
-    }
-
-    .search-wrap {
-      flex: 1;
-      min-width: 280px;
-      position: relative;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 12px 16px 12px 42px;
-      background: var(--bg-elevated);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text);
-      font-size: 0.92rem;
-      font-family: inherit;
-      transition: all 0.2s;
-    }
-    .search-input:focus {
-      outline: none;
-      background: var(--card-bg);
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-    }
-    .search-icon {
-      position: absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-      font-size: 1rem;
-      pointer-events: none;
-    }
-
-    .view-toggles {
-      display: flex;
-      gap: 6px;
-      background: var(--bg);
-      padding: 4px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-    }
-
-    .btn-toggle {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-    .btn-toggle:hover { color: var(--text); background: rgba(0,0,0,0.04); }
-    .btn-toggle.active {
-      background: var(--accent);
-      color: var(--accent-contrast);
-    }
-
-    /* Métricas Rápidas */
-    .stats-strip {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .stat-chip {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 18px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.85rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    }
-    .stat-number {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: var(--accent);
-    }
+    .conteo-tabla { font-size: .8rem; color: var(--text-muted); margin: 0 2px 8px; }
 
     /* ════════ VISTA POR ÁREAS (Acordeón) ════════ */
     .area-group-list {
@@ -522,135 +426,32 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
-    /* ════════ MODO 3: REGISTROS / TABLA (Rol Sistema) ════════ */
-    #view-table {
-      display: none;
-    }
-
-    .table-panel-header {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-bottom: none;
-      border-radius: var(--radius) var(--radius) 0 0;
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    .table-panel-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    /* ════════ TABLAS (Registros y Tickets), igual que Facturación ════════ */
+    #view-table { display: none; }
     .table-container {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 0 0 var(--radius) var(--radius);
-      overflow-y: auto;
-      overflow-x: auto;
-      max-height: calc(100vh - 270px);
-      box-shadow: var(--shadow);
-      position: relative;
+      max-height: 68vh; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border);
+      border-radius: var(--radius-md); background: var(--card-bg);
     }
-
-    table.data-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      text-align: left;
-      font-size: 0.86rem;
-      min-width: 1100px;
-      table-layout: fixed;
+    table.data-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    table.data-table thead th {
+      background-color: var(--bg-elevated); color: var(--accent); font-size: 0.76rem; text-transform: uppercase;
+      letter-spacing: 0.4px; font-weight: 700; text-align: left; padding: 11px 14px; position: sticky; top: 0; z-index: 10;
+      box-shadow: inset 0 -1px 0 var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none;
     }
-
-    table.data-table thead {
-      position: sticky;
-      top: 0;
-      z-index: 20;
+    table.data-table thead th[data-sort] { cursor: pointer; }
+    table.data-table thead th[data-sort]:hover { color: var(--accent-dark); }
+    table.data-table tbody td {
+      padding: 10px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; color: var(--text); vertical-align: middle;
     }
-
-    table.data-table th {
-      background: var(--bg-elevated);
-      color: var(--text);
-      font-weight: 700;
-      padding: 11px 12px;
-      border-bottom: 2px solid var(--border-strong);
-      border-right: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 25;
-      text-transform: uppercase;
-      font-size: 0.72rem;
-      letter-spacing: 0.4px;
-      user-select: none;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    }
-    table.data-table th.sortable {
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    table.data-table th.sortable:hover {
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-    .th-content {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-    .sort-icon {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      transition: color 0.15s;
-    }
-    th.sorted .sort-icon {
-      color: var(--accent);
-      font-weight: 800;
-    }
-    .col-resizer {
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 8px;
-      cursor: col-resize;
-      user-select: none;
-      height: 100%;
-      z-index: 30;
-    }
-    .col-resizer:hover, .col-resizer.resizing {
-      background: var(--accent);
-      opacity: 0.7;
-    }
-
-    table.data-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      border-right: 1px solid var(--bg);
-      color: var(--text);
-      background: var(--card-bg);
-      vertical-align: middle;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    table.data-table tbody tr {
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    table.data-table tbody tr:hover td {
-      background: var(--bg-elevated);
-    }
+    table.data-table tbody tr { cursor: pointer; }
+    table.data-table tbody tr:hover { background-color: var(--bg-elevated); }
+    .sort-indicator { font-size: 0.72rem; color: var(--text-muted); margin-left: 4px; }
+    th.sorted .sort-indicator { color: var(--accent); }
+    .th-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; touch-action: none; z-index: 2; }
+    .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: var(--border-strong); transition: background 0.2s; }
+    .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 50px; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.2px; white-space: nowrap; }
 
     .table-avatar {
       width: 38px;
@@ -1198,68 +999,6 @@
     .org-empty { color: var(--text-muted); font-size: 0.75rem; font-style: italic; padding: 4px; }
 
     @media (max-width: 640px) {
-      /* Encabezado compacto en movil: logo+titulo siguen en una sola fila
-         (no apilados) para no "comerse" la pantalla; las acciones envuelven
-         a una segunda fila solo si no caben, en vez de forzar 100% de ancho
-         cada una en filas separadas. */
-      .top-header {
-        flex-wrap: wrap;
-        padding: 8px 12px;
-        gap: 8px;
-      }
-      .brand-wrap {
-        gap: 10px;
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-      .brand-lockup-horizontal { gap: 6px; }
-      .brand-logo-app { height: 20px; }
-      .brand-logo-company-crop { width: 84px; height: 22px; }
-      .header-titles {
-        padding-left: 10px;
-        min-width: 0;
-      }
-      .header-main-title { font-size: 0.88rem; }
-      .header-sub-title { font-size: 0.66rem; }
-      .header-actions {
-        flex-wrap: wrap;
-        width: 100%;
-        justify-content: flex-end;
-        gap: 6px;
-      }
-      .header-actions > * { width: auto; }
-      /* Botones de acción (Agregar/Sincronizar, solo Rol Sistema) pasan a ser
-         solo-ícono en móvil (el texto va en .btn-header-label, oculto aquí)
-         para que quepan junto al badge de usuario en una sola fila compacta,
-         en vez de 3 filas completas apiladas. */
-      .btn-header { font-size: 0.95rem; padding: 7px; min-width: 34px; justify-content: center; }
-      .btn-header-label { display: none; }
-      .user-pill { font-size: 0.72rem; padding: 4px 10px 4px 4px; gap: 6px; }
-      .user-pill-name { max-width: 90px; }
-
-      .main-container { padding: 14px 12px 40px; }
-      .controls-bar {
-        align-items: stretch;
-        padding: 12px;
-        gap: 10px;
-        margin-bottom: 16px;
-      }
-      .search-wrap { min-width: 0; width: 100%; }
-      .view-toggles { width: 100%; }
-      .btn-toggle {
-        flex: 1;
-        justify-content: center;
-        padding: 8px 5px;
-        font-size: 0.72rem;
-      }
-      .stats-strip { gap: 8px; margin-bottom: 16px; }
-      .stat-chip {
-        flex: 1 1 calc(50% - 8px);
-        padding: 9px 10px;
-        font-size: 0.74rem;
-      }
-      .stat-number { font-size: 1rem; }
-
       .area-header { padding: 13px 14px; }
       .area-title-wrap { min-width: 0; gap: 8px; }
       .area-name { font-size: 0.8rem; overflow-wrap: anywhere; }
@@ -1277,11 +1016,6 @@
         justify-content: flex-end;
         margin-left: 0;
       }
-
-      .table-panel-header { padding: 12px; }
-      .table-panel-title { font-size: 0.8rem; }
-      .table-panel-header .btn-header { width: 100%; justify-content: center; }
-      .table-container { max-height: calc(100vh - 300px); }
 
       .modal-overlay { padding: 8px; }
       .modal-breadcrumb { padding: 12px 14px; }
@@ -1321,6 +1055,81 @@
       .org-node-title { font-size: 0.75rem; }
       .org-people { grid-template-columns: 1fr; }
     }
+    /* ── Pestaña Tickets ── */
+    .tk-lapiz { border: 1.5px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 7px; padding: 2px 7px; cursor: pointer; font-size: .85rem; line-height: 1.4; }
+    .tk-lapiz:hover { border-color: var(--accent); }
+    .tk-modal { display: none; position: fixed; inset: 0; background: var(--overlay, rgba(15, 23, 42, .6)); z-index: 1500; align-items: center; justify-content: center; padding: 16px; }
+    .tk-modal.abierto { display: flex; }
+    .tk-modal-card { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg); }
+    .tk-modal-hd { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; background: var(--primary); color: var(--text-inverse); font-weight: 800; font-family: 'Outfit', sans-serif; }
+    .tk-modal-x { background: rgba(255,255,255,.15); border: none; color: #fff; width: 30px; height: 30px; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+    .tk-modal-body { padding: 16px 18px; overflow-y: auto; }
+    .tk-det-fila { display: grid; grid-template-columns: 120px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: .86rem; }
+    .tk-det-fila > span { color: var(--text-muted); font-weight: 700; font-size: .78rem; }
+    .tk-det-fila > div { overflow-wrap: anywhere; }
+    .tk-det-fila a { color: var(--accent); font-weight: 700; }
+    .tk-form-campo { margin-bottom: 12px; }
+    .tk-form-campo label { display: block; font-size: .78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+    .tk-form-campo input, .tk-form-campo select, .tk-form-campo textarea {
+      width: 100%; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 7px; background: var(--card-bg); color: var(--text); font: inherit; font-size: .88rem;
+    }
+    .tk-modal-acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .tk-nota { margin-top: 12px; font-size: .78rem; color: var(--text-muted); }
+
+    /* Celular: barra lateral oculta (se abre con ☰) y header móvil, igual que Facturación */
+    @media (max-width: 900px) {
+      body { flex-direction: column; overflow: visible; height: auto; }
+      .mobile-header { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform .25s ease; z-index: 200; }
+      .sidebar.open { transform: translateX(0); }
+      .wrapper { margin-left: 0; padding: 14px 12px; height: auto; min-height: calc(100vh - 48px); overflow-y: visible; }
+      .filtros-grid { grid-template-columns: 1fr; }
+      .table-container { max-height: calc(100vh - 180px); }
+    }
+    @media (max-width: 640px) {
+      .filtros-busqueda { flex: 1 1 120px; min-width: 0; max-width: none; margin: 0 8px; }
+    }
+    @media (max-width: 600px) {
+      .mobile-header { padding: 5px 10px; min-height: 44px; }
+      .mobile-menu-btn { font-size: 1.35rem; }
+      .mobile-logo-app { height: 22px; max-height: 22px; }
+      .mobile-title { font-size: .88rem; }
+      .mobile-profile-thumb { width: 31px; height: 31px; }
+      .wrapper { padding: 8px 6px; min-height: calc(100vh - 44px); }
+      .page-hd { margin-bottom: 6px; gap: 6px; }
+      .page-title { font-size: 1.02rem; line-height: 1.25; }
+      .page-sub { font-size: .70rem; line-height: 1.3; margin-top: 1px; }
+      .page-hd-actions { gap: 6px; }
+      .btn-primary, .page-hd-actions .btn-header { padding: 5px 10px; font-size: .74rem; border-radius: 6px; gap: 5px; }
+      .card { padding: 9px 9px; margin-bottom: 8px; border-radius: 8px; }
+      .card-titulo { font-size: .74rem; margin-bottom: 6px; }
+      .chips-fila { flex-wrap: nowrap; overflow-x: auto; gap: 5px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+      .category-chip { min-width: 95px; padding: 4px 8px; border-radius: 8px; flex-shrink: 0; gap: 1px; }
+      .category-chip .chip-title { font-size: .70rem; letter-spacing: .1px; }
+      .category-chip .chip-sub { font-size: .62rem; }
+      .filtros-toggle-left { font-size: .80rem; gap: 6px; }
+      .filtros-badge { font-size: .60rem; min-width: 16px; height: 16px; padding: 0 4px; }
+      .filtros-chevron { font-size: .80rem; }
+      .filtros-body { margin-top: 8px; }
+      .filtros-busqueda { padding: 6px 8px; font-size: .75rem; height: 31px; border-radius: 6px; }
+      .filtros-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .filtro-field label { font-size: .68rem; margin-bottom: 2px; }
+      .filtro-field select, .filtro-field input { padding: 5px 7px; font-size: .75rem; border-radius: 5px; height: 31px; }
+      .filtros-pie { margin-top: 8px; gap: 6px; }
+      .btn-reset { padding: 4px 9px; font-size: .70rem; border-radius: 5px; }
+      .filtro-check { font-size: .72rem; }
+      .metric-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px; }
+      .metric-card { padding: 6px 6px; flex-direction: column; align-items: flex-start; gap: 2px; border-radius: 8px; }
+      .metric-icon { display: none; }
+      .metric-label { font-size: 0.58rem; line-height: 1.1; }
+      .metric-val { font-size: 1.12rem; line-height: 1.1; }
+      .table-container { max-height: calc(100vh - 165px); border-radius: 8px; -webkit-overflow-scrolling: touch; }
+      table.data-table thead th { padding: 6px 7px; font-size: .67rem; letter-spacing: .2px; line-height: 1.2; }
+      table.data-table tbody td { padding: 6px 7px; font-size: .73rem; line-height: 1.25; }
+      .badge { font-size: .64rem; padding: 2px 6px; }
+      .conteo-tabla { font-size: .7rem; margin-bottom: 5px; }
+      .tk-det-fila { grid-template-columns: 1fr; gap: 2px; }
+    }
   </style>
   <!-- Ícono LogyApp: favicon e ícono de la PWA (ver public/manifest.webmanifest) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
@@ -1331,174 +1140,220 @@
 </head>
 <body>
 
-  <!-- Barra Superior -->
-  <header class="top-header">
-    <div class="brand-wrap">
-      <div class="brand-lockup-horizontal">
-        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
-      </div>
-      <div class="header-titles">
-        <span class="header-main-title">Directorio Corporativo</span>
-        <span class="header-sub-title">Contactos, Áreas &amp; Sedes</span>
-      </div>
+  <!-- Fondo oscuro de la barra lateral en celular -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar(false)"></div>
+
+  <!-- Header móvil (igual a Facturación). El ícono Sincronizar lo agrega boton-sync.js -->
+  <header class="mobile-header">
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
     </div>
-
-    <div class="header-actions">
-      <!-- Badge de Usuario Conectado: foto de perfil (en vez del Rol) que abre
-           "Mi perfil y firma" al presionar, igual que en los demás módulos. -->
-      <div id="user-pill-container" style="display: none;">
-        <button type="button" class="user-pill" onclick="if (window.abrirPerfilCorporativo) abrirPerfilCorporativo();" aria-label="Ver y editar mi perfil y firma" title="Mi perfil y firma">
-          <img class="user-pill-avatar-photo mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
-          <span class="user-pill-name" id="user-display-name">—</span>
-        </button>
-      </div>
-
-      <!-- Botón Agregar (Solo Rol Sistema) -->
-      <button type="button" class="btn-header accent" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()" title="Agregar Colaborador" aria-label="Agregar Colaborador">
-        ＋<span class="btn-header-label"> Agregar Colaborador</span>
+    <div class="mobile-title"><span id="mobileHeaderTitle">Departamentos</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="if (window.abrirPerfilCorporativo) abrirPerfilCorporativo();" aria-label="Ver y editar mi perfil y firma" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
       </button>
-
-      <!-- Botón Sincronizar (Solo Rol Sistema) -->
-      <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación" aria-label="Sincronizar Vinculación">
-        🔄<span class="btn-header-label"> Sincronizar Vinculación</span>
-      </button>
-
     </div>
   </header>
 
-  <!-- Contenedor Principal -->
-  <main class="main-container">
-
-    <!-- Barra de Búsqueda y Modos de Vista -->
-    <div class="controls-bar">
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar por Nombre, Cédula, Cargo, Regional, Sede o Correo..." autocomplete="off">
-      </div>
-
-      <div class="view-toggles">
-        <button type="button" class="btn-toggle active" id="btn-view-areas" onclick="cambiarModoVista('areas')">
-          📑 Departamentos
-        </button>
-        <button type="button" class="btn-toggle" id="btn-view-org" onclick="cambiarModoVista('org')">
-          🌳 Organigrama
-        </button>
-        <!-- Tercera opción exclusiva para Rol Sistema -->
-        <button type="button" class="btn-toggle" id="btn-view-table" style="display: none;" onclick="cambiarModoVista('table')">
-          📋 Registros / Tabla
-        </button>
-      </div>
-    </div>
-
-    <!-- Tira de Estadísticas -->
-    <div class="stats-strip">
-      <div class="stat-chip">
-        <span class="stat-number" id="stat-total">0</span>
-        <span style="color: var(--text-muted);">Colaboradores</span>
-      </div>
-      <div class="stat-chip">
-        <span class="stat-number" id="stat-areas">0</span>
-        <span style="color: var(--text-muted);">Áreas Corporativas</span>
-      </div>
-      <div class="stat-chip">
-        <span class="stat-number" id="stat-regionales">0</span>
-        <span style="color: var(--text-muted);">Regionales</span>
-      </div>
-    </div>
-
-    <!-- MODO 1: Acordeón por Áreas / Departamentos -->
-    <div id="view-areas" class="area-group-list">
-      <div style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando colaboradores...</div>
-    </div>
-
-    <!-- MODO 2: Organigrama Corporativo -->
-    <div id="view-org" style="display: none;">
-      <div class="org-chart" id="org-chart-container"></div>
-    </div>
-
-    <!-- MODO 3: Registros / Tabla (Exclusivo Sistema) -->
-    <div id="view-table">
-      <div class="table-panel-header">
-        <div class="table-panel-title">
-          <span>📋 Base de Datos de Firmas Corporativas</span>
-          <span class="badge-count" id="table-record-count">0 registros</span>
+  <!-- Barra lateral izquierda (igual a Facturación) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
         </div>
-        <button type="button" class="btn-header accent" onclick="abrirModalNuevoColaborador()">
-          ＋ Nuevo Registro
-        </button>
       </div>
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" id="navAreas" onclick="cambiarModoVista('areas')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+        <span>Departamentos</span>
+      </li>
+      <li class="nav-item" id="navOrg" onclick="cambiarModoVista('org')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="9" y="2" width="6" height="5" rx="1"></rect><rect x="2" y="17" width="6" height="5" rx="1"></rect><rect x="16" y="17" width="6" height="5" rx="1"></rect><path d="M12 7v5"></path><path d="M5 17v-3h14v3"></path></svg>
+        <span>Organigrama</span>
+      </li>
+      <!-- Maestro_Menu: directorio / Tickets (Rol "Todos") -->
+      <li class="nav-item" id="navTickets" style="display: none;" onclick="cambiarModoVista('tickets')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+        <span>Tickets</span>
+      </li>
+      <!-- Solo Rol Sistema -->
+      <li class="nav-item" id="navTable" style="display: none;" onclick="cambiarModoVista('table')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
+        <span>Registros / Tabla</span>
+      </li>
+    </ul>
+  </aside>
+
+  <div class="wrapper">
+
+    <!-- ══════════ DEPARTAMENTOS / ORGANIGRAMA / REGISTROS (comparten filtros) ══════════ -->
+    <div id="tab-directorio">
+      <div class="page-hd">
+        <div>
+          <div class="page-title" id="tituloPestana">Directorio · Departamentos</div>
+          <div class="page-sub" id="subtituloPestana">Contactos, áreas y sedes por departamento</div>
+        </div>
+        <div class="page-hd-actions">
+          <!-- Solo Rol Sistema -->
+          <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación">
+            🔄 Sincronizar Vinculación
+          </button>
+          <button type="button" class="btn-primary" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()" title="Agregar Colaborador">
+            ＋ Agregar Colaborador
+          </button>
+        </div>
+      </div>
+
+      <!-- Métricas -->
+      <div class="metric-grid" id="dirEstadisticas">
+        <div class="metric-card"><div><div class="metric-label">Colaboradores</div><div class="metric-val" id="stat-total">0</div></div><div class="metric-icon">👥</div></div>
+        <div class="metric-card"><div><div class="metric-label">Áreas</div><div class="metric-val" id="stat-areas">0</div></div><div class="metric-icon">🏢</div></div>
+        <div class="metric-card"><div><div class="metric-label">Regionales</div><div class="metric-val" id="stat-regionales">0</div></div><div class="metric-icon">📍</div></div>
+      </div>
+
+      <!-- Filtros plegables (plegados por defecto) con la búsqueda a la vista -->
+      <div class="card">
+        <div class="filtros-toggle" onclick="toggleFiltrosDirectorio()">
+          <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="dirFiltrosBadge">0</span></span>
+          <input type="search" class="filtros-busqueda" id="input-busqueda" placeholder="&#128269; Buscar: nombre, cédula, cargo, sede o correo..." autocomplete="off" aria-label="Buscar colaborador" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="dirFiltrosChevron">▸</span>
+        </div>
+        <div class="filtros-body" id="dirFiltrosBody" style="display: none;">
+          <div class="filtros-grid">
+            <div class="filtro-field"><label>Regional</label><select id="dirFiltroRegional" onchange="cambiarFiltroDirectorio('regional', this.value)"><option value="">Todas las regionales</option></select></div>
+            <div class="filtro-field"><label>Área</label><select id="dirFiltroArea" onchange="cambiarFiltroDirectorio('area', this.value)"><option value="">Todas las áreas</option></select></div>
+            <div class="filtro-field"><label>Operación / Sede</label><select id="dirFiltroOperacion" onchange="cambiarFiltroDirectorio('operacion', this.value)"><option value="">Todas las operaciones</option></select></div>
+          </div>
+          <div class="filtros-pie">
+            <span></span>
+            <button type="button" class="btn-reset" onclick="limpiarFiltrosDirectorio()">↺ Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODO 1: Acordeón por Áreas / Departamentos -->
+      <div id="view-areas" class="area-group-list">
+        <div style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando colaboradores...</div>
+      </div>
+
+      <!-- MODO 2: Organigrama Corporativo -->
+      <div id="view-org" style="display: none;">
+        <div class="org-chart" id="org-chart-container"></div>
+      </div>
+
+      <!-- MODO 3: Registros / Tabla (Exclusivo Sistema) -->
+      <div id="view-table">
+        <div class="conteo-tabla" id="table-record-count">0 registros</div>
+        <div class="table-container">
+          <table class="data-table" id="colaboradores-table">
+            <thead>
+              <tr>
+                <th style="width: 64px; text-align: center;">Foto</th>
+                <th style="width: 230px;" data-sort="colaborador">Colaborador / Cédula<span class="sort-indicator"></span></th>
+                <th style="width: 190px;" data-sort="cargo">Cargo<span class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="regional">Regional<span class="sort-indicator"></span></th>
+                <th style="width: 170px;" data-sort="operacion">Operación / Sede<span class="sort-indicator"></span></th>
+                <th style="width: 170px;" data-sort="area">Área<span class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="contacto">Contacto<span class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="usuario">Último Registro<span class="sort-indicator"></span></th>
+                <th style="width: 110px; text-align: center;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-muted);">Cargando registros...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ TICKETS (Maestro_Menu directorio / Tickets) ══════════ -->
+    <div id="view-tickets" style="display: none;">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Directorio · Tickets</div>
+          <div class="page-sub" id="tkSubtitulo">Tickets que has puesto desde cualquier módulo</div>
+        </div>
+        <div class="page-hd-actions"></div>
+      </div>
+
+      <!-- Chips de Estado con conteo -->
+      <div class="card">
+        <div class="card-titulo"><span>🎫</span> Estado del Ticket</div>
+        <div class="chips-fila" id="tkEstados"></div>
+      </div>
+
+      <!-- Filtros plegables (plegados por defecto) con la búsqueda a la vista -->
+      <div class="card">
+        <div class="filtros-toggle" onclick="toggleFiltrosTickets()">
+          <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="tkFiltrosBadge">0</span></span>
+          <input type="search" class="filtros-busqueda" id="tkBuscar" placeholder="&#128269; Buscar: ticket, motivo, descripción, recibo..." aria-label="Buscar ticket" oninput="buscarTicketsDiferido()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+          <span class="filtros-chevron" id="tkFiltrosChevron">▸</span>
+        </div>
+        <div class="filtros-body" id="tkFiltrosBody" style="display: none;">
+          <div class="filtros-grid">
+            <div class="filtro-field"><label>Desde</label><input type="date" id="tkDesde" onchange="cambiarFechasTickets()"></div>
+            <div class="filtro-field"><label>Hasta</label><input type="date" id="tkHasta" onchange="cambiarFechasTickets()"></div>
+            <div class="filtro-field"><label>Módulo</label><select id="tkModulo" onchange="cambiarFiltroTicket('modulo', this.value)"><option value="">Todos los módulos</option></select></div>
+            <div class="filtro-field"><label>Regional</label><select id="tkRegional" onchange="cambiarFiltroTicket('regional', this.value)"><option value="">Todas las regionales</option></select></div>
+            <div class="filtro-field"><label>Operación</label><select id="tkOperacion" onchange="cambiarFiltroTicket('operacion', this.value)"><option value="">Todas las operaciones</option></select></div>
+            <div class="filtro-field" id="tkCampoSolicitante" style="display: none;"><label>Solicitante</label><select id="tkSolicitante" onchange="cambiarFiltroTicket('solicitante', this.value)"><option value="">Todos los solicitantes</option></select></div>
+          </div>
+          <div class="filtros-pie">
+            <div class="filtros-rangos">
+              <button type="button" class="btn-reset tk-rango" data-rango="quincena" onclick="rangoTickets('quincena')">Quincena actual</button>
+              <button type="button" class="btn-reset tk-rango" data-rango="30" onclick="rangoTickets(30)">30 días</button>
+              <button type="button" class="btn-reset tk-rango" data-rango="90" onclick="rangoTickets(90)">3 meses</button>
+              <button type="button" class="btn-reset tk-rango" data-rango="365" onclick="rangoTickets(365)">1 año</button>
+              <label class="filtro-check" id="tkMiosWrap" style="display: none;"><input type="checkbox" id="tkMios" onchange="cargarTickets()"> Solo mis tickets</label>
+            </div>
+            <button type="button" class="btn-reset" onclick="limpiarFiltrosTickets()">↺ Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="conteo-tabla" id="tkContador">Cargando tickets...</div>
       <div class="table-container">
-        <table class="data-table" id="colaboradores-table">
+        <table class="data-table" id="tabla-tickets">
           <thead>
             <tr>
-              <th style="width: 60px; min-width: 50px; text-align: center;">
-                <div class="th-content" style="justify-content: center;">Foto</div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('colaborador')" id="th-colaborador" style="width: 230px; min-width: 140px;">
-                <div class="th-content">
-                  <span>Colaborador / Cédula</span>
-                  <span class="sort-icon" id="sort-icon-colaborador">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('cargo')" id="th-cargo" style="width: 190px; min-width: 120px;">
-                <div class="th-content">
-                  <span>Cargo</span>
-                  <span class="sort-icon" id="sort-icon-cargo">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('regional')" id="th-regional" style="width: 120px; min-width: 90px;">
-                <div class="th-content">
-                  <span>Regional</span>
-                  <span class="sort-icon" id="sort-icon-regional">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('operacion')" id="th-operacion" style="width: 160px; min-width: 110px;">
-                <div class="th-content">
-                  <span>Operación / Sede</span>
-                  <span class="sort-icon" id="sort-icon-operacion">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('area')" id="th-area" style="width: 160px; min-width: 110px;">
-                <div class="th-content">
-                  <span>Área</span>
-                  <span class="sort-icon" id="sort-icon-area">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('contacto')" id="th-contacto" style="width: 130px; min-width: 100px;">
-                <div class="th-content">
-                  <span>Contacto</span>
-                  <span class="sort-icon" id="sort-icon-contacto">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th class="sortable" onclick="toggleOrdenColumna('usuario')" id="th-usuario" style="width: 120px; min-width: 100px;">
-                <div class="th-content">
-                  <span>Último Registro</span>
-                  <span class="sort-icon" id="sort-icon-usuario">↕</span>
-                </div>
-                <div class="col-resizer"></div>
-              </th>
-              <th style="text-align: center; width: 145px; min-width: 140px;" id="th-acciones">
-                <div class="th-content" style="justify-content: center;">Acciones</div>
-              </th>
+              <th style="width: 52px; text-align: center;" title="Editar (solo quien lo puso, En Proceso o Pendiente)">✏️</th>
+              <th style="width: 120px;" data-sort="estado">Estado<span class="sort-indicator"></span></th>
+              <th style="width: 110px;" data-sort="ticket">Ticket<span class="sort-indicator"></span></th>
+              <th style="width: 145px;" data-sort="fechaRegistro">Fecha Registro<span class="sort-indicator"></span></th>
+              <th style="width: 120px;" data-sort="modulo">Módulo<span class="sort-indicator"></span></th>
+              <th style="width: 150px;" data-sort="operacion">Operación<span class="sort-indicator"></span></th>
+              <th style="width: 170px;" data-sort="motivo">Motivo<span class="sort-indicator"></span></th>
+              <th style="width: 220px;" data-sort="descripcion">Descripción<span class="sort-indicator"></span></th>
+              <th style="width: 170px;" data-sort="solicitante">Solicitante<span class="sort-indicator"></span></th>
+              <th style="width: 220px;" data-sort="observaciones">Respuesta<span class="sort-indicator"></span></th>
+              <th style="width: 145px;" data-sort="fechaFinalizacion">Fecha Finalización<span class="sort-indicator"></span></th>
             </tr>
           </thead>
-          <tbody id="table-body">
-            <tr>
-              <td colspan="9" style="text-align: center; padding: 30px; color: var(--text-muted);">Cargando registros...</td>
-            </tr>
-          </tbody>
+          <tbody id="tkBody"></tbody>
         </table>
       </div>
     </div>
 
-  </main>
+    <!-- Detalle / edición de un ticket -->
+    <div class="tk-modal" id="tkModal" onclick="if (event.target === this) cerrarModalTicket()">
+      <div class="tk-modal-card">
+        <div class="tk-modal-hd">
+          <span id="tkModalTitulo">Ticket</span>
+          <button type="button" class="tk-modal-x" onclick="cerrarModalTicket()" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="tk-modal-body" id="tkModalBody"></div>
+      </div>
+    </div>
+
+  </div>
 
   <!-- MODAL DETALLE DE COLABORADOR (Screenshot 3) -->
   <div class="modal-overlay" id="modal-detalle" onclick="cerrarModalFuera(event, 'modal-detalle')">
@@ -1748,8 +1603,26 @@
     const paramUsuario = urlParams.get('usuario') || '';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      inicializarRedimensionColumnas();
+      activarOrdenEncabezados('colaboradores-table', toggleOrdenColumna);
+      activarOrdenEncabezados('tabla-tickets', ordenarTicketsPor);
+      makeTableResizable(document.getElementById('colaboradores-table'));
+      makeTableResizable(document.getElementById('tabla-tickets'));
+      actualizarIconosOrden();
+      // Ícono Sincronizar (como en Facturación): header móvil y encabezado de cada pestaña
+      if (window.initBotonSync) {
+        initBotonSync({
+          alSincronizar: () => (modoVistaActual === 'tickets' ? cargarTickets() : cargarDirectorio()),
+          escritorio: [{ encabezado: '.page-hd', acciones: '.page-hd-actions' }]
+        });
+      }
       await inicializarUsuario();
+      // Pestaña desde la URL (?tab=departamentos | organigrama | registros)
+      const tabUrl = (urlParams.get('tab') || '').toLowerCase();
+      const modoUrl = Object.keys(PESTANAS_DIRECTORIO).find(k => PESTANAS_DIRECTORIO[k].url === tabUrl);
+      if (modoUrl && modoUrl !== 'areas') {
+        modoVistaActual = modoUrl;
+        cambiarModoVista(modoUrl);
+      }
       await cargarDirectorio();
 
       // Buscador reactivo
@@ -1775,8 +1648,9 @@
             // Habilitar controles de Rol Sistema
             document.getElementById('btn-header-add').style.display = 'inline-flex';
             document.getElementById('btn-header-sync').style.display = 'inline-flex';
-            document.getElementById('btn-view-table').style.display = 'inline-flex';
+            document.getElementById('navTable').style.display = 'flex';
           }
+          if (usuarioActual.puedeVerTickets) document.getElementById('navTickets').style.display = 'flex';
         }
       } catch (err) {
         console.warn('[directorio] Error al inicializar usuario:', err);
@@ -1786,10 +1660,8 @@
     function mostrarUserPill(user) {
       // La foto de perfil la pinta app-launcher-profile.js (#mobileProfileThumb)
       // una vez carga /perfil/api; aquí solo fijamos el nombre y mostramos el badge.
-      const container = document.getElementById('user-pill-container');
-      const nameEl = document.getElementById('user-display-name');
-      nameEl.innerText = user.nombre || user.id;
-      container.style.display = 'flex';
+      // El nombre y la foto los muestra la tarjeta "Mi perfil corporativo" de la barra lateral.
+      return user;
     }
 
     // ════════ CARGA DE DATOS ════════
@@ -1808,7 +1680,6 @@
           document.getElementById('stat-total').innerText = data.total || colaboradoresData.length;
           document.getElementById('stat-areas').innerText = Object.keys(data.estadisticas.porArea || {}).length;
           document.getElementById('stat-regionales').innerText = Object.keys(data.estadisticas.porRegional || {}).length;
-          document.getElementById('table-record-count').innerText = `${colaboradoresData.length} registros`;
 
           renderDirectorio();
         } else {
@@ -1823,25 +1694,417 @@
     }
 
     // ════════ CAMBIO DE MODOS DE VISTA ════════
+    const PESTANAS_DIRECTORIO = {
+      areas: { icono: '📑', titulo: 'Departamentos', sub: 'Contactos, áreas y sedes por departamento', url: 'departamentos' },
+      org:   { icono: '🌳', titulo: 'Organigrama', sub: 'Estructura del equipo administrativo por área', url: 'organigrama' },
+      table: { icono: '📋', titulo: 'Registros / Tabla', sub: 'Base de datos de firmas corporativas', url: 'registros' },
+      tickets: { icono: '🎫', titulo: 'Tickets', sub: '', url: 'tickets' }
+    };
+
+    // Abre / cierra la barra lateral en celular (botón ☰ y fondo oscuro)
+    function toggleMobileSidebar(force) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobile-backdrop');
+      const abierto = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+      sb.classList.toggle('open', abierto);
+      bd.classList.toggle('open', abierto);
+    }
+
     function cambiarModoVista(modo) {
+      if (modo === 'table' && !(usuarioActual && usuarioActual.esSistema)) modo = 'areas';
+      if (modo === 'tickets' && !(usuarioActual && usuarioActual.puedeVerTickets)) modo = 'areas';
       modoVistaActual = modo;
-      document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
-      document.getElementById('btn-view-org').classList.toggle('active', modo === 'org');
-      const btnTable = document.getElementById('btn-view-table');
-      if (btnTable) btnTable.classList.toggle('active', modo === 'table');
+      ['areas', 'org', 'tickets', 'table'].forEach(m => {
+        const nav = document.getElementById({ areas: 'navAreas', org: 'navOrg', tickets: 'navTickets', table: 'navTable' }[m]);
+        if (nav) nav.classList.toggle('active', modo === m);
+      });
+      const p = PESTANAS_DIRECTORIO[modo];
+      document.getElementById('tab-directorio').style.display = modo === 'tickets' ? 'none' : 'block';
+      document.getElementById('view-tickets').style.display = modo === 'tickets' ? 'block' : 'none';
+      document.getElementById('tituloPestana').textContent = `Directorio · ${p.titulo}`;
+      document.getElementById('subtituloPestana').textContent = p.sub;
+      document.getElementById('mobileHeaderTitle').textContent = p.titulo;
+      document.title = `Directorio · ${p.titulo} — LOG&SER`;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', p.url);
+        history.replaceState(history.state, '', url);
+      } catch (e) { /* sin cambio de URL */ }
+      toggleMobileSidebar(false);
 
       document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
       document.getElementById('view-org').style.display = modo === 'org' ? 'block' : 'none';
       document.getElementById('view-table').style.display = modo === 'table' ? 'block' : 'none';
-
+      if (modo === 'tickets') {
+        if (!tkState.cargado) iniciarTickets();
+        return;
+      }
       renderDirectorio();
+    }
+
+    // ════════ PESTAÑA TICKETS (API compartida en src/routes/tickets.js) ════════
+    // Cada usuario ve solo los tickets que puso; los roles de Config_Parametros
+    // (directorio / Tickets / "Roles que ven todos los tickets", por defecto Sistema) ven todos.
+    const tkState = {
+      cargado: false, datos: null, temporizador: null, rango: 'quincena',
+      filtros: { estado: '', modulo: '', regional: '', operacion: '', solicitante: '' },
+      orden: { col: 'fechaRegistro', dir: 'desc' }
+    };
+    const TK_ESTADOS = [
+      { key: 'En Proceso', label: '🔵 En Proceso' },
+      { key: 'Pendiente', label: '🟡 Pendiente' },
+      { key: 'Resuelto', label: '🟢 Resuelto' },
+      { key: 'Rechazado', label: '🔴 Rechazado' }
+    ];
+    function tkEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function tkColores(estado) {
+      switch (String(estado || '').trim().toLowerCase()) {
+        case 'en proceso': return { bg: 'var(--info-soft)', color: 'var(--info-dark)' };
+        case 'pendiente':  return { bg: 'var(--warning-soft)', color: 'var(--warning-dark)' };
+        case 'resuelto':   return { bg: 'var(--success-soft)', color: 'var(--success-dark)' };
+        case 'rechazado':  return { bg: 'var(--danger-soft)', color: 'var(--danger-dark)' };
+        default:           return { bg: 'var(--bg-elevated)', color: 'var(--text-muted)' };
+      }
+    }
+    function tkBadge(estado) {
+      const c = tkColores(estado);
+      return `<span class="badge" style="background:${c.bg}; color:${c.color};">${tkEsc(estado || 'Sin estado')}</span>`;
+    }
+    function tkFechaMenos(dias) {
+      const d = new Date(Date.now() - dias * 86400000);
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
+    }
+    function iniciarTickets() {
+      tkState.cargado = true;
+      cargarTickets();
+    }
+    // Filtros plegados por defecto (la búsqueda queda siempre a la vista)
+    function toggleFiltrosTickets() {
+      const body = document.getElementById('tkFiltrosBody');
+      const abrir = body.style.display === 'none';
+      body.style.display = abrir ? 'block' : 'none';
+      document.getElementById('tkFiltrosChevron').style.transform = abrir ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    function marcarRangoTickets() {
+      document.querySelectorAll('.tk-rango').forEach(b => b.classList.toggle('activo', b.dataset.rango === String(tkState.rango)));
+    }
+    function rangoTickets(rango) {
+      tkState.rango = rango;
+      if (rango === 'quincena') {
+        document.getElementById('tkDesde').value = '';
+        document.getElementById('tkHasta').value = '';
+      } else {
+        document.getElementById('tkDesde').value = tkFechaMenos(rango);
+        document.getElementById('tkHasta').value = tkFechaMenos(0);
+      }
+      cargarTickets();
+    }
+    function cambiarFechasTickets() {
+      tkState.rango = '';
+      cargarTickets();
+    }
+    function cambiarFiltroTicket(campo, valor) {
+      tkState.filtros[campo] = valor;
+      if (campo === 'regional') tkState.filtros.operacion = '';
+      cargarTickets();
+    }
+    function limpiarFiltrosTickets() {
+      tkState.filtros = { estado: '', modulo: '', regional: '', operacion: '', solicitante: '' };
+      document.getElementById('tkBuscar').value = '';
+      document.getElementById('tkMios').checked = false;
+      rangoTickets('quincena');
+    }
+    function buscarTicketsDiferido() {
+      clearTimeout(tkState.temporizador);
+      tkState.temporizador = setTimeout(cargarTickets, 350);
+    }
+    async function cargarTickets() {
+      const qs = new URLSearchParams({ usuario: paramUsuario });
+      const desde = document.getElementById('tkDesde').value;
+      const hasta = document.getElementById('tkHasta').value;
+      if (desde) qs.set('desde', desde);
+      if (hasta) qs.set('hasta', hasta);
+      const q = document.getElementById('tkBuscar').value.trim();
+      if (q) qs.set('q', q);
+      if (document.getElementById('tkMios').checked) qs.set('mios', '1');
+      Object.entries(tkState.filtros).forEach(([k, v]) => { if (v) qs.set(k, v); });
+      document.getElementById('tkContador').textContent = 'Cargando tickets...';
+      try {
+        const r = await fetch(`/tickets/api/listado?${qs.toString()}`);
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudieron cargar los tickets.');
+        tkState.datos = data;
+        if (!desde) document.getElementById('tkDesde').value = data.desde;
+        if (!hasta) document.getElementById('tkHasta').value = data.hasta;
+        renderTickets();
+      } catch (e) {
+        document.getElementById('tkContador').textContent = e.message;
+        document.getElementById('tkBody').innerHTML = '';
+      }
+    }
+    // Opciones de un filtro con su conteo; la opción escogida se conserva aunque quede en 0
+    function llenarSelectConConteo(id, facetas, valor, textoTodos) {
+      const sel = document.getElementById(id);
+      const opciones = (facetas || []).slice();
+      if (valor && !opciones.some(f => f.valor === valor)) opciones.unshift({ valor, n: 0 });
+      const total = opciones.reduce((a, f) => a + f.n, 0);
+      sel.innerHTML = `<option value="">${textoTodos} (${total.toLocaleString('es-CO')})</option>` +
+        opciones.map(f => `<option value="${tkEsc(f.valor)}"${f.valor === valor ? ' selected' : ''}>${tkEsc(f.valor)} (${f.n.toLocaleString('es-CO')})</option>`).join('');
+    }
+    function ordenarTickets(lista) {
+      const { col, dir } = tkState.orden;
+      const s = dir === 'asc' ? 1 : -1;
+      return lista.slice().sort((a, b) => String(a[col] == null ? '' : a[col])
+        .localeCompare(String(b[col] == null ? '' : b[col]), 'es', { sensitivity: 'base', numeric: true }) * s);
+    }
+    function ordenarTicketsPor(col) {
+      if (tkState.orden.col === col) tkState.orden.dir = tkState.orden.dir === 'asc' ? 'desc' : 'asc';
+      else tkState.orden = { col, dir: 'asc' };
+      if (tkState.datos) renderTickets();
+    }
+    function renderTickets() {
+      const d = tkState.datos;
+      const f = tkState.filtros;
+      const verTodos = Boolean(d.verTodos);
+      document.getElementById('tkSubtitulo').textContent = verTodos
+        ? 'Tickets de todos los usuarios y módulos. Quien puso el ticket lo edita mientras esté En Proceso o Pendiente.'
+        : 'Tickets que has puesto desde cualquier módulo. Puedes editarlos mientras estén En Proceso o Pendiente.';
+      document.getElementById('tkMiosWrap').style.display = verTodos ? 'inline-flex' : 'none';
+      document.getElementById('tkCampoSolicitante').style.display = verTodos ? '' : 'none';
+
+      llenarSelectConConteo('tkModulo', d.facetas.modulo, f.modulo, 'Todos los módulos');
+      llenarSelectConConteo('tkRegional', d.facetas.regional, f.regional, 'Todas las regionales');
+      llenarSelectConConteo('tkOperacion', d.facetas.operacion, f.operacion, 'Todas las operaciones');
+      if (verTodos) llenarSelectConConteo('tkSolicitante', d.facetas.solicitante, f.solicitante, 'Todos los solicitantes');
+
+      // Chips de estado con conteo (cuentan con los demás filtros aplicados)
+      const conteo = {};
+      (d.facetas.estado || []).forEach(e => { conteo[e.valor] = e.n; });
+      const extras = Object.keys(conteo).filter(k => !TK_ESTADOS.some(x => x.key === k)).map(k => ({ key: k, label: k }));
+      const total = Object.values(conteo).reduce((a, n) => a + n, 0);
+      const chip = (key, label, n) => `<button type="button" class="category-chip ${f.estado === key ? 'active' : ''}" data-v="${tkEsc(key)}" onclick="cambiarFiltroTicket('estado', this.dataset.v)"><span class="chip-title">${tkEsc(label)}</span><span class="chip-sub">${n.toLocaleString('es-CO')} ticket${n === 1 ? '' : 's'}</span></button>`;
+      document.getElementById('tkEstados').innerHTML = chip('', '📋 Todos', total) +
+        TK_ESTADOS.concat(extras).map(e => chip(e.key, e.label, conteo[e.key] || 0)).join('');
+
+      const activos = Object.entries(f).filter(([k, v]) => v && k !== 'estado').length
+        + (tkState.rango !== 'quincena' ? 1 : 0) + (document.getElementById('tkMios').checked ? 1 : 0);
+      const badge = document.getElementById('tkFiltrosBadge');
+      badge.textContent = activos;
+      badge.style.display = activos ? 'inline-flex' : 'none';
+      marcarRangoTickets();
+
+      document.getElementById('tkContador').textContent =
+        `${d.total.toLocaleString('es-CO')} ticket${d.total === 1 ? '' : 's'} del ${d.desde} al ${d.hasta}${d.truncado ? ' · se muestran los 5.000 más recientes, acota las fechas' : ''}`;
+
+      document.querySelectorAll('#tabla-tickets thead th[data-sort]').forEach(th => {
+        const activa = th.dataset.sort === tkState.orden.col;
+        th.classList.toggle('sorted', activa);
+        th.querySelector('.sort-indicator').textContent = activa ? (tkState.orden.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      });
+
+      const body = document.getElementById('tkBody');
+      tkState.vista = ordenarTickets(d.tickets);
+      if (!tkState.vista.length) {
+        body.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
+        return;
+      }
+      body.innerHTML = tkState.vista.map((t, i) => `
+        <tr onclick="verTicket(${i})" title="Clic para ver el detalle">
+          <td style="text-align:center; padding-left:4px; padding-right:4px; text-overflow:clip;">${t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Editar ticket" aria-label="Editar ticket" onclick="event.stopPropagation(); editarTicket(${i})">✏️</button>` : ''}</td>
+          <td>${tkBadge(t.estado)}</td>
+          <td style="font-weight:700;">${tkEsc(t.ticket)}</td>
+          <td>${tkEsc(t.fechaRegistro)}</td>
+          <td>${tkEsc(t.modulo)}</td>
+          <td title="${tkEsc(t.operacion || '')}">${tkEsc(t.operacion || '—')}</td>
+          <td title="${tkEsc(t.motivo || '')}">${tkEsc(t.motivo || '—')}</td>
+          <td title="${tkEsc(t.descripcion || '')}">${tkEsc(t.descripcion || '—')}</td>
+          <td title="${tkEsc(t.solicitante || '')}">${tkEsc(t.solicitante || '—')}</td>
+          <td title="${tkEsc(t.observaciones || '')}">${tkEsc(t.observaciones || '—')}</td>
+          <td>${tkEsc(t.fechaFinalizacion || '—')}</td>
+        </tr>`).join('');
+    }
+    function abrirModalTicket(titulo, html) {
+      document.getElementById('tkModalTitulo').innerHTML = titulo;
+      document.getElementById('tkModalBody').innerHTML = html;
+      document.getElementById('tkModal').classList.add('abierto');
+    }
+    function cerrarModalTicket() { document.getElementById('tkModal').classList.remove('abierto'); }
+    function verTicket(i) {
+      const t = tkState.vista[i];
+      const fila = (etq, val) => val ? `<div class="tk-det-fila"><span>${etq}</span><div>${val}</div></div>` : '';
+      const multilinea = v => tkEsc(v).replace(/\n/g, '<br>');
+      abrirModalTicket(`🎫 Ticket #${tkEsc(t.ticket)}`, `
+        <div style="margin-bottom:8px;">${tkBadge(t.estado)}</div>
+        ${fila('Fecha', tkEsc(t.fechaRegistro))}
+        ${fila('Solicitante', tkEsc(t.solicitante))}
+        ${fila('Módulo', tkEsc(t.modulo))}
+        ${fila('Regional', tkEsc(t.regional))}
+        ${fila('Operación', tkEsc(t.operacion))}
+        ${fila('Recibo', tkEsc(t.idrecibo))}
+        ${fila('Motivo', tkEsc(t.motivo))}
+        ${fila('Descripción', multilinea(t.descripcion))}
+        ${fila('Teléfono', tkEsc(t.telefono))}
+        ${fila('Evidencia', t.evidencia ? `<a href="${tkEsc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a>` : '')}
+        ${fila('Respuesta', multilinea(t.observaciones))}
+        ${fila('Finalizado', tkEsc(t.fechaFinalizacion))}
+        ${fila('Satisfacción', t.satisfaccion ? '★'.repeat(Number(t.satisfaccion)) : '')}
+        ${fila('Sugerencia', multilinea(t.sugerencia))}
+        ${t.puedeEditar
+          ? `<div class="tk-modal-acciones"><button type="button" class="btn-header accent" onclick="editarTicket(${i})">✏️ Editar</button></div>`
+          : '<div class="tk-nota">Solo quien puso el ticket puede editarlo, y solo mientras esté En Proceso o Pendiente.</div>'}`);
+    }
+    async function editarTicket(i) {
+      const t = tkState.vista[i];
+      abrirModalTicket(`✏️ Editar ticket #${tkEsc(t.ticket)}`, `
+        <div style="margin-bottom:10px;">${tkBadge(t.estado)} <span style="color:var(--text-muted); font-size:.82rem;">${tkEsc(t.modulo)} · ${tkEsc(t.operacion || '')}</span></div>
+        <div class="tk-form-campo"><label>Motivo</label><div id="tkEdMotivoWrap"><input type="text" id="tkEdMotivo" value="${tkEsc(t.motivo || '')}"></div></div>
+        <div class="tk-form-campo"><label>Descripción *</label><textarea id="tkEdDescripcion" rows="5">${tkEsc(t.descripcion || '')}</textarea></div>
+        <div class="tk-form-campo"><label>Teléfono de contacto</label><input type="text" id="tkEdTelefono" value="${tkEsc(t.telefono || '')}"></div>
+        <div class="tk-modal-acciones">
+          <button type="button" class="btn-header" onclick="cerrarModalTicket()">Cancelar</button>
+          <button type="button" class="btn-header accent" id="tkEdGuardar" onclick="guardarTicketEditado(${i})">Guardar cambios</button>
+        </div>`);
+      try {
+        const r = await fetch(`/tickets/api/motivos?modulo=${encodeURIComponent(t.modulo)}`);
+        const motivos = await r.json();
+        const wrap = document.getElementById('tkEdMotivoWrap');
+        if (r.ok && Array.isArray(motivos) && motivos.length && wrap) {
+          const lista = motivos.includes(t.motivo) || !t.motivo ? motivos : [t.motivo, ...motivos];
+          wrap.innerHTML = '<select id="tkEdMotivo">' + lista.map(m => `<option value="${tkEsc(m)}"${m === t.motivo ? ' selected' : ''}>${tkEsc(m)}</option>`).join('') + '</select>';
+        }
+      } catch (e) { /* queda el campo de texto */ }
+    }
+    async function guardarTicketEditado(i) {
+      const t = tkState.vista[i];
+      const motivo = (document.getElementById('tkEdMotivo').value || '').trim();
+      const descripcion = document.getElementById('tkEdDescripcion').value.trim();
+      const telefono = document.getElementById('tkEdTelefono').value.trim();
+      if (!descripcion) return showToast('La Descripción es obligatoria.', 'error');
+      const btn = document.getElementById('tkEdGuardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        const r = await fetch(`/tickets/api/ticket/${encodeURIComponent(t.ticket)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: paramUsuario, motivo, descripcion, telefono })
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar.');
+        const pos = tkState.datos.tickets.findIndex(x => String(x.ticket) === String(t.ticket));
+        if (pos >= 0) tkState.datos.tickets[pos] = data.ticket;
+        renderTickets();
+        const nuevo = tkState.vista.findIndex(x => String(x.ticket) === String(t.ticket));
+        if (nuevo >= 0) verTicket(nuevo); else cerrarModalTicket();
+        showToast('Ticket actualizado.');
+      } catch (e) {
+        showToast(e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Guardar cambios';
+      }
+    }
+
+    // ════════ FILTROS DEL DIRECTORIO (Departamentos, Organigrama y Registros) ════════
+    const dirFiltros = { regional: '', area: '', operacion: '' };
+    function toggleFiltrosDirectorio() {
+      const body = document.getElementById('dirFiltrosBody');
+      const abrir = body.style.display === 'none';
+      body.style.display = abrir ? 'block' : 'none';
+      document.getElementById('dirFiltrosChevron').style.transform = abrir ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    function cambiarFiltroDirectorio(campo, valor) {
+      dirFiltros[campo] = valor;
+      renderDirectorio();
+    }
+    function limpiarFiltrosDirectorio() {
+      dirFiltros.regional = dirFiltros.area = dirFiltros.operacion = '';
+      document.getElementById('input-busqueda').value = '';
+      renderDirectorio();
+    }
+    function valorFiltroDirectorio(c, campo) {
+      if (campo === 'regional') return c.regional || 'GENERAL';
+      if (campo === 'area') return (c.area || 'auxiliares_administrativos').replace(/_/g, ' ');
+      return formatearOperacion(c.operacion) || 'Sin operación';
+    }
+    // Conteo de cada opción con los demás filtros aplicados (como en Facturación)
+    function pintarFiltrosDirectorio(base) {
+      ['regional', 'area', 'operacion'].forEach(campo => {
+        const conteo = {};
+        base.filter(c => Object.keys(dirFiltros).every(k => k === campo || !dirFiltros[k] || valorFiltroDirectorio(c, k) === dirFiltros[k]))
+          .forEach(c => { const v = valorFiltroDirectorio(c, campo); conteo[v] = (conteo[v] || 0) + 1; });
+        const facetas = Object.entries(conteo).map(([valor, n]) => ({ valor, n })).sort((a, b) => a.valor.localeCompare(b.valor, 'es'));
+        const ids = { regional: ['dirFiltroRegional', 'Todas las regionales'], area: ['dirFiltroArea', 'Todas las áreas'], operacion: ['dirFiltroOperacion', 'Todas las operaciones'] };
+        llenarSelectConConteo(ids[campo][0], facetas, dirFiltros[campo], ids[campo][1]);
+      });
+      const activos = Object.values(dirFiltros).filter(Boolean).length;
+      const badge = document.getElementById('dirFiltrosBadge');
+      badge.textContent = activos;
+      badge.style.display = activos ? 'inline-flex' : 'none';
+    }
+
+    // Redimensionar columnas arrastrando el borde del encabezado (igual que Facturación)
+    function makeTableResizable(table) {
+      if (!table) return;
+      const row = table.querySelector('thead tr');
+      const cols = row ? row.children : [];
+      if (!cols.length) return;
+      let totalWidth = 0;
+      for (let i = 0; i < cols.length; i++) {
+        const declared = parseInt(cols[i].style.width) || 0;
+        totalWidth += declared > 0 ? declared : 110;
+      }
+      table.style.minWidth = totalWidth + 'px';
+      for (let i = 0; i < cols.length; i++) {
+        const th = cols[i];
+        const existing = th.querySelector('.th-resize');
+        if (existing) existing.remove();
+        const handle = document.createElement('span');
+        handle.className = 'th-resize';
+        handle.title = 'Arrastra para cambiar el ancho';
+        th.style.position = 'sticky';
+        th.appendChild(handle);
+        let startX, startWidth;
+        handle.addEventListener('click', (e) => e.stopPropagation());
+        handle.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startX = e.clientX;
+          startWidth = th.offsetWidth;
+          handle.classList.add('resizing');
+          try { handle.setPointerCapture(e.pointerId); } catch (err) { /* sin captura */ }
+          const onPointerMove = (ev) => {
+            const width = Math.max(50, startWidth + (ev.clientX - startX));
+            th.style.width = width + 'px';
+            th.style.minWidth = width + 'px';
+            table.style.minWidth = [...cols].reduce((a, c) => a + c.offsetWidth, 0) + 'px';
+          };
+          const onPointerUp = () => {
+            handle.classList.remove('resizing');
+            handle.removeEventListener('pointermove', onPointerMove);
+            handle.removeEventListener('pointerup', onPointerUp);
+            handle.removeEventListener('pointercancel', onPointerUp);
+          };
+          handle.addEventListener('pointermove', onPointerMove);
+          handle.addEventListener('pointerup', onPointerUp);
+          handle.addEventListener('pointercancel', onPointerUp);
+        });
+      }
+    }
+    // Clic en el encabezado: ordena ascendente / descendente
+    function activarOrdenEncabezados(tablaId, alOrdenar) {
+      document.querySelectorAll(`#${tablaId} thead th[data-sort]`).forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          alOrdenar(th.dataset.sort);
+        });
+      });
     }
 
     // ════════ RENDER GENERAL ════════
     function renderDirectorio() {
       const q = document.getElementById('input-busqueda').value.toLowerCase().trim();
 
-      const filtrados = colaboradoresData.filter(c => {
+      const porBusqueda = colaboradoresData.filter(c => {
         if (!q) return true;
         const nombre = (c.nombre || '').toLowerCase();
         const cedula = String(c.identificacion || '');
@@ -1861,9 +2124,12 @@
                email.includes(q) ||
                celular.includes(q);
       });
+      pintarFiltrosDirectorio(porBusqueda);
+      const filtrados = porBusqueda.filter(c => Object.keys(dirFiltros).every(k => !dirFiltros[k] || valorFiltroDirectorio(c, k) === dirFiltros[k]));
+      const hayFiltro = !!q || Object.values(dirFiltros).some(Boolean);
 
       if (modoVistaActual === 'areas') {
-        renderVistaAreas(filtrados, !!q);
+        renderVistaAreas(filtrados, hayFiltro);
       } else if (modoVistaActual === 'org') {
         renderVistaOrganigrama(filtrados);
       } else if (modoVistaActual === 'table') {
@@ -1885,19 +2151,10 @@
     }
 
     function actualizarIconosOrden() {
-      const columnas = ['colaborador', 'cargo', 'regional', 'operacion', 'area', 'contacto', 'usuario'];
-      columnas.forEach(col => {
-        const th = document.getElementById(`th-${col}`);
-        const icon = document.getElementById(`sort-icon-${col}`);
-        if (!th || !icon) return;
-
-        if (ordenColumna === col) {
-          th.classList.add('sorted');
-          icon.innerText = (ordenDireccion === 'asc') ? '▲' : '▼';
-        } else {
-          th.classList.remove('sorted');
-          icon.innerText = '↕';
-        }
+      document.querySelectorAll('#colaboradores-table thead th[data-sort]').forEach(th => {
+        const activa = th.dataset.sort === ordenColumna;
+        th.classList.toggle('sorted', activa);
+        th.querySelector('.sort-indicator').textContent = activa ? (ordenDireccion === 'asc' ? ' ▲' : ' ▼') : '';
       });
     }
 
@@ -1945,45 +2202,6 @@
       });
     }
 
-    function inicializarRedimensionColumnas() {
-      const table = document.getElementById('colaboradores-table');
-      if (!table) return;
-      const resizers = table.querySelectorAll('.col-resizer');
-
-      resizers.forEach(resizer => {
-        const th = resizer.parentElement;
-        let startX = 0;
-        let startWidth = 0;
-
-        const onMouseMove = (e) => {
-          const diff = e.pageX - startX;
-          const newWidth = Math.max(50, startWidth + diff);
-          th.style.width = newWidth + 'px';
-          th.style.minWidth = newWidth + 'px';
-        };
-
-        const onMouseUp = () => {
-          resizer.classList.remove('resizing');
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        resizer.addEventListener('mousedown', (e) => {
-          e.stopPropagation(); // Evita que se active el ordenamiento al arrastrar el resizer
-          e.preventDefault();
-          startX = e.pageX;
-          startWidth = th.offsetWidth;
-          resizer.classList.add('resizing');
-          document.body.style.cursor = 'col-resize';
-          document.body.style.userSelect = 'none';
-
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        });
-      });
-    }
 
     // ════════ MODO 1: DEPARTAMENTOS / ÁREAS ════════
     function renderVistaAreas(items, abrirTodos = false) {
@@ -2215,6 +2433,7 @@
     // ════════ MODO 3: REGISTROS / TABLA (Rol Sistema) ════════
     function renderVistaTabla(items) {
       const tbody = document.getElementById('table-body');
+      document.getElementById('table-record-count').textContent = `${items.length.toLocaleString('es-CO')} de ${colaboradoresData.length.toLocaleString('es-CO')} registros`;
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-muted);">No hay colaboradores registrados con el criterio de búsqueda.</td></tr>';
         return;
@@ -2617,6 +2836,7 @@
     }
   </script>
   <script src="/js/theme.js" defer></script>
+  <script src="/js/boton-sync.js" defer></script>
   <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
   <!-- Botón flotante "Ticket" (compartido, ver public/js/ticket-boton.js) -->

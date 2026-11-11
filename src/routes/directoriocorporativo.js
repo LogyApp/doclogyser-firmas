@@ -10,6 +10,7 @@ const {
   obtenerUsuarioPorId,
   verificarPermisosColaborador
 } = require('../services/firmaSyncService');
+const { accesoSeccion } = require('../services/maestroMenu');
 
 const router = express.Router();
 const HTML_VIEW_PATH = path.join(__dirname, '../views/directoriocorporativo/index.html');
@@ -45,7 +46,9 @@ router.get('/api/usuario-info', async (req, res) => {
         colaborador: user.Colaborador,
         cargo: user.Cargo,
         email: user.Email,
-        esSistema: user.Rol === 'Sistema'
+        esSistema: user.Rol === 'Sistema',
+        // Pestaña Tickets: Maestro_Menu (directorio / Tickets), por defecto Rol "Todos"
+        puedeVerTickets: Boolean(await accesoSeccion('directorio', user.Rol, 'Tickets').catch(() => null))
       }
     });
   } catch (err) {

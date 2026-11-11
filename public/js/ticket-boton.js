@@ -242,10 +242,15 @@
     overlay.innerHTML = `
       <div class="tkb-card">
         <div class="tkb-header">
-          <span>🎫 Nuevo Ticket</span>
+          <span>🎫 Tickets</span>
           <button type="button" class="tkb-close" id="tkb-cerrar-x">&times;</button>
         </div>
+        <div class="tkb-tabs" role="tablist">
+          <button type="button" class="tkb-tab tkb-tab-activa" data-tkb-tab="nuevo" role="tab">＋ Nuevo ticket</button>
+          <button type="button" class="tkb-tab" data-tkb-tab="mis" role="tab">📋 Mis tickets <span class="tkb-tab-badge" id="tkb-mis-badge" style="display:none;"></span></button>
+        </div>
         <div class="tkb-body">
+          <div id="tkb-panel-mis" style="display:none;"></div>
           <form id="tkb-form" onsubmit="return false;">
             <div class="tkb-group" id="tkb-recibo-contexto-wrap" style="display:none;">
               <label>Recibo</label>
@@ -301,9 +306,13 @@
             </div>
           </form>
         </div>
-        <div class="tkb-footer">
+        <div class="tkb-footer" id="tkb-footer-nuevo">
           <button type="button" class="tkb-btn-secundario" id="tkb-cancelar">Cancelar</button>
           <button type="button" class="tkb-btn-primario" id="tkb-guardar">Crear Ticket</button>
+        </div>
+        <div class="tkb-footer tkb-footer-mis" id="tkb-footer-mis" style="display:none;">
+          <a class="tkb-link-historial" id="tkb-link-historial" href="#">Ver tickets de otros periodos →</a>
+          <button type="button" class="tkb-btn-secundario" id="tkb-cerrar-mis">Cerrar</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -314,6 +323,9 @@
     });
     hacerMovible(boton);
     document.getElementById('tkb-cerrar-x').addEventListener('click', cerrar);
+    document.getElementById('tkb-cerrar-mis').addEventListener('click', cerrar);
+    overlay.querySelectorAll('[data-tkb-tab]').forEach(b => b.addEventListener('click', () => mostrarPestana(b.dataset.tkbTab)));
+    document.getElementById('tkb-panel-mis').addEventListener('click', onClickMis);
     document.getElementById('tkb-cancelar').addEventListener('click', cerrar);
     document.getElementById('tkb-guardar').addEventListener('click', guardar);
     document.getElementById('tkb-modulo').addEventListener('change', onModuloChange);
@@ -447,6 +459,8 @@
 
   // ── Apertura / cierre ──────────────────────────────────────────────────
   async function abrir() {
+    mostrarPestana('nuevo');
+    cargarMisTickets(false);
     document.getElementById('tkb-form').reset();
     resetearReciboCombobox('— Seleccione primero la Operación —');
 
@@ -675,6 +689,7 @@
       const data = await resp.json();
       if (resp.ok && data.ok) {
         cerrar();
+        misTickets = null;
         alert(`Ticket creado correctamente: ${data.ticket}`);
         if (typeof cfg.alCrear === 'function') cfg.alCrear(data.ticket);
       } else {
@@ -685,6 +700,187 @@
     } finally {
       btn.disabled = false;
       btn.textContent = 'Crear Ticket';
+    }
+  }
+
+  // ── Mis tickets (quincena actual) ─────────────────────────────────────────
+  // Tickets que puso el usuario en la quincena actual, de cualquier módulo. Se pueden editar
+  // (lápiz) mientras estén En Proceso o Pendiente; en los otros estados solo se ven.
+  // Para otros periodos, el enlace lleva a la pestaña Tickets del Directorio corporativo.
+  let misTickets = null;          // respuesta de /tickets/api/mis-tickets
+  let misFiltroEstado = '';
+  let misVista = { tipo: 'lista', ticket: null };
+
+  const COLOR_ESTADO = {
+    'en proceso': ['#dbeafe', '#1d4ed8'],
+    'pendiente': ['#fef3c7', '#b45309'],
+    'resuelto': ['#dcfce7', '#15803d'],
+    'rechazado': ['#fee2e2', '#b91c1c']
+  };
+  function badgeEstado(estado) {
+    const [fondo, color] = COLOR_ESTADO[String(estado || '').toLowerCase()] || ['#f1f5f9', '#475569'];
+    return `<span class="tkb-estado" style="background:${fondo};color:${color};">${esc(estado || 'Sin estado')}</span>`;
+  }
+
+  function mostrarPestana(tab) {
+    const overlay = document.getElementById('tkb-overlay');
+    overlay.querySelectorAll('[data-tkb-tab]').forEach(b => b.classList.toggle('tkb-tab-activa', b.dataset.tkbTab === tab));
+    const esMis = tab === 'mis';
+    document.getElementById('tkb-form').style.display = esMis ? 'none' : '';
+    document.getElementById('tkb-panel-mis').style.display = esMis ? '' : 'none';
+    document.getElementById('tkb-footer-nuevo').style.display = esMis ? 'none' : '';
+    document.getElementById('tkb-footer-mis').style.display = esMis ? '' : 'none';
+    document.getElementById('tkb-link-historial').href =
+      `/directorio-corporativo?usuario=${encodeURIComponent(cfg.usuarioId)}&tab=tickets`;
+    if (esMis) {
+      misVista = { tipo: 'lista', ticket: null };
+      if (misTickets) renderMis(); else cargarMisTickets(true);
+    }
+  }
+
+  async function cargarMisTickets(pintar) {
+    const panel = document.getElementById('tkb-panel-mis');
+    if (pintar) panel.innerHTML = '<div class="tkb-vacio">Cargando tus tickets...</div>';
+    try {
+      const r = await fetch(`/tickets/api/mis-tickets?usuario=${encodeURIComponent(cfg.usuarioId)}`);
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudieron cargar tus tickets.');
+      misTickets = data;
+      const abiertos = data.tickets.filter(t => ['en proceso', 'pendiente'].includes(String(t.estado || '').toLowerCase())).length;
+      const badge = document.getElementById('tkb-mis-badge');
+      badge.textContent = abiertos;
+      badge.style.display = abiertos ? '' : 'none';
+      if (pintar || document.getElementById('tkb-panel-mis').style.display !== 'none') renderMis();
+    } catch (e) {
+      if (pintar) panel.innerHTML = `<div class="tkb-vacio tkb-error">${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderMis() {
+    const panel = document.getElementById('tkb-panel-mis');
+    if (!misTickets) return;
+    if (misVista.tipo === 'detalle') return renderDetalle(misVista.ticket);
+    if (misVista.tipo === 'editar') return renderEditar(misVista.ticket);
+    const { quincena, tickets, porEstado, total } = misTickets;
+    const estados = ['En Proceso', 'Pendiente', 'Resuelto', 'Rechazado'];
+    Object.keys(porEstado).forEach(e => { if (!estados.includes(e)) estados.push(e); });
+    const chip = (valor, texto, n) => `<button type="button" class="tkb-chip ${misFiltroEstado === valor ? 'tkb-chip-activo' : ''}" data-tkb-filtro="${esc(valor)}"><b>${n}</b> ${esc(texto)}</button>`;
+    const lista = misFiltroEstado ? tickets.filter(t => t.estado === misFiltroEstado) : tickets;
+    panel.innerHTML = `
+      <div class="tkb-quincena">Quincena actual: <b>${esc(quincena.nombre)}</b> <span>(${esc(quincena.desde)} a ${esc(quincena.hasta)})</span></div>
+      <div class="tkb-chips">
+        ${chip('', 'Total', total)}
+        ${estados.map(e => chip(e, e, porEstado[e] || 0)).join('')}
+      </div>
+      ${lista.length ? lista.map(t => `
+        <div class="tkb-item" data-tkb-ver="${esc(t.ticket)}" role="button" tabindex="0">
+          <div class="tkb-item-top">
+            <span class="tkb-item-id">#${esc(t.ticket)}</span>
+            ${badgeEstado(t.estado)}
+            <span class="tkb-item-fecha">${esc(t.fechaRegistro || '')}</span>
+            ${t.puedeEditar ? `<button type="button" class="tkb-lapiz" data-tkb-editar="${esc(t.ticket)}" title="Editar ticket" aria-label="Editar ticket">✏️</button>` : ''}
+          </div>
+          <div class="tkb-item-meta">${esc(t.modulo)} · ${esc(t.operacion || '—')}</div>
+          <div class="tkb-item-motivo">${esc(t.motivo || '')}</div>
+          <div class="tkb-item-desc">${esc(t.descripcion || '')}</div>
+        </div>`).join('') : `<div class="tkb-vacio">${total ? 'No hay tickets con ese estado.' : 'No has puesto tickets en esta quincena.'}</div>`}`;
+  }
+
+  function buscarTicket(id) {
+    return (misTickets && misTickets.tickets.find(t => t.ticket === id)) || null;
+  }
+
+  function renderDetalle(t) {
+    const panel = document.getElementById('tkb-panel-mis');
+    const fila = (etq, val) => val ? `<div class="tkb-det-fila"><span>${etq}</span><div>${val}</div></div>` : '';
+    panel.innerHTML = `
+      <div class="tkb-det-acciones">
+        <button type="button" class="tkb-volver" data-tkb-volver="1">← Volver</button>
+        ${t.puedeEditar ? `<button type="button" class="tkb-btn-secundario" data-tkb-editar="${esc(t.ticket)}">✏️ Editar</button>` : ''}
+      </div>
+      <div class="tkb-det-titulo">#${esc(t.ticket)} ${badgeEstado(t.estado)}</div>
+      ${fila('Fecha', esc(t.fechaRegistro))}
+      ${fila('Módulo', esc(t.modulo))}
+      ${fila('Operación', esc(t.operacion))}
+      ${fila('Recibo', esc(t.idrecibo))}
+      ${fila('Motivo', esc(t.motivo))}
+      ${fila('Descripción', esc(t.descripcion).replace(/\n/g, '<br>'))}
+      ${fila('Teléfono', esc(t.telefono))}
+      ${fila('Evidencia', t.evidencia ? `<a href="${esc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a>` : '')}
+      ${fila('Observaciones', esc(t.observaciones).replace(/\n/g, '<br>'))}
+      ${fila('Finalizado', esc(t.fechaFinalizacion))}
+      ${t.puedeEditar ? '' : '<div class="tkb-nota">Solo se puede editar mientras esté En Proceso o Pendiente.</div>'}`;
+  }
+
+  async function renderEditar(t) {
+    const panel = document.getElementById('tkb-panel-mis');
+    panel.innerHTML = `
+      <div class="tkb-det-acciones"><button type="button" class="tkb-volver" data-tkb-volver="1">← Volver</button></div>
+      <div class="tkb-det-titulo">Editar ticket #${esc(t.ticket)} ${badgeEstado(t.estado)}</div>
+      <div class="tkb-group"><label>Motivo</label><div id="tkb-ed-motivo-wrap"><input type="text" id="tkb-ed-motivo" value="${esc(t.motivo || '')}"></div></div>
+      <div class="tkb-group"><label>Descripción *</label><textarea id="tkb-ed-descripcion" rows="4">${esc(t.descripcion || '')}</textarea></div>
+      <div class="tkb-group"><label>Teléfono de contacto</label><input type="text" id="tkb-ed-telefono" value="${esc(t.telefono || '')}"></div>
+      <div class="tkb-det-acciones" style="justify-content:flex-end;">
+        <button type="button" class="tkb-btn-secundario" data-tkb-volver="1">Cancelar</button>
+        <button type="button" class="tkb-btn-primario" data-tkb-guardar-edicion="${esc(t.ticket)}">Guardar cambios</button>
+      </div>`;
+    try {
+      const r = await fetch(`/tickets/api/motivos?modulo=${encodeURIComponent(t.modulo)}`);
+      const motivos = await r.json();
+      if (r.ok && Array.isArray(motivos) && motivos.length && document.getElementById('tkb-ed-motivo-wrap')) {
+        const lista = motivos.includes(t.motivo) || !t.motivo ? motivos : [t.motivo, ...motivos];
+        document.getElementById('tkb-ed-motivo-wrap').innerHTML = '<select id="tkb-ed-motivo">' +
+          lista.map(m => `<option value="${esc(m)}"${m === t.motivo ? ' selected' : ''}>${esc(m)}</option>`).join('') + '</select>';
+      }
+    } catch (e) { /* queda el campo de texto */ }
+  }
+
+  async function guardarEdicion(id, btn) {
+    const motivo = (document.getElementById('tkb-ed-motivo').value || '').trim();
+    const descripcion = document.getElementById('tkb-ed-descripcion').value.trim();
+    const telefono = document.getElementById('tkb-ed-telefono').value.trim();
+    if (!descripcion) return alert('La Descripción es obligatoria.');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+    try {
+      const r = await fetch(`/tickets/api/ticket/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: cfg.usuarioId, motivo, descripcion, telefono })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar.');
+      const i = misTickets.tickets.findIndex(t => t.ticket === id);
+      if (i >= 0) misTickets.tickets[i] = data.ticket;
+      misVista = { tipo: 'detalle', ticket: data.ticket };
+      renderMis();
+    } catch (e) {
+      alert(e.message);
+      btn.disabled = false;
+      btn.textContent = 'Guardar cambios';
+    }
+  }
+
+  function onClickMis(ev) {
+    const filtro = ev.target.closest('[data-tkb-filtro]');
+    if (filtro) { misFiltroEstado = filtro.dataset.tkbFiltro; return renderMis(); }
+    const editar = ev.target.closest('[data-tkb-editar]');
+    if (editar) {
+      ev.stopPropagation();
+      const t = buscarTicket(editar.dataset.tkbEditar);
+      if (t) { misVista = { tipo: 'editar', ticket: t }; renderMis(); }
+      return;
+    }
+    const guardarEd = ev.target.closest('[data-tkb-guardar-edicion]');
+    if (guardarEd) return guardarEdicion(guardarEd.dataset.tkbGuardarEdicion, guardarEd);
+    if (ev.target.closest('[data-tkb-volver]')) {
+      misVista = misVista.tipo === 'editar' && misVista.ticket ? { tipo: 'detalle', ticket: buscarTicket(misVista.ticket.ticket) || misVista.ticket } : { tipo: 'lista', ticket: null };
+      return renderMis();
+    }
+    const ver = ev.target.closest('[data-tkb-ver]');
+    if (ver) {
+      const t = buscarTicket(ver.dataset.tkbVer);
+      if (t) { misVista = { tipo: 'detalle', ticket: t }; renderMis(); }
     }
   }
 
