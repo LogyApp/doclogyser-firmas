@@ -181,4 +181,198 @@ router.post('/api/crear', uploadTicket.single('evidencia'), async (req, res) => 
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════
+// Consulta de tickets (todos los módulos)
+//  - "Mis tickets" del botón: tickets del usuario en la quincena actual.
+//  - Pestaña Tickets del Directorio corporativo (Maestro_Menu: directorio /
+//    Tickets, Rol "Todos"): todos los tickets con filtros.
+//  - Editar: solo quien puso el ticket y mientras esté En Proceso o Pendiente.
+// ══════════════════════════════════════════════════════════════════════════
+const { accesoSeccion } = require('../services/maestroMenu');
+
+const ESTADOS_EDITABLES = ['en proceso', 'pendiente'];
+const RE_FECHA_YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+const SELECT_TICKET = `
+  SELECT t.Ticket AS ticket,
+         DATE_FORMAT(t.fecha_registro, '%Y-%m-%d %H:%i') AS fechaRegistro,
+         t.\`Operación\` AS operacion, mo.REGIONAL AS regional,
+         t.solicitante AS solicitante, COALESCE(NULLIF(t.modulo, ''), 'Sin módulo') AS modulo,
+         t.motivo AS motivo, t.idrecibo AS idrecibo, t.descripcion AS descripcion,
+         t.Evidencia AS evidencia, t.telefono AS telefono, t.Estado AS estado,
+         t.Observaciones AS observaciones,
+         DATE_FORMAT(t.fecha_finalizacion, '%Y-%m-%d %H:%i') AS fechaFinalizacion,
+         t.satisfaccion AS satisfaccion, t.sugerencia AS sugerencia
+  FROM Dynamic_Tickets t
+  LEFT JOIN (SELECT \`OPERACIÓN\`, MAX(REGIONAL) AS REGIONAL FROM Maestro_Operaciones GROUP BY \`OPERACIÓN\`) mo
+    ON mo.\`OPERACIÓN\` = t.\`Operación\``;
+
+function hoyBogota() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
+function puedeEditarTicket(t, usuario) {
+  return String(t.solicitante || '').trim() === String(usuario || '').trim()
+    && ESTADOS_EDITABLES.includes(String(t.estado || '').trim().toLowerCase());
+}
+
+async function usuarioRegistrado(usuario) {
+  if (!usuario) return null;
+  const [rows] = await pool.execute('SELECT ID, Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+  return rows[0] || null;
+}
+
+// Rango de la quincena de hoy según Maestro_Fechas (si falta, del 1 al 15 o del 16 a fin de mes)
+async function quincenaActual() {
+  const hoy = hoyBogota();
+  try {
+    const [q] = await pool.execute('SELECT `Quincena` AS quincena, `Año` AS anio FROM Maestro_Fechas WHERE Fecha = ? LIMIT 1', [hoy]);
+    if (q.length) {
+      const [r] = await pool.execute(
+        "SELECT DATE_FORMAT(MIN(Fecha), '%Y-%m-%d') AS desde, DATE_FORMAT(MAX(Fecha), '%Y-%m-%d') AS hasta FROM Maestro_Fechas WHERE `Quincena` = ? AND `Año` = ?",
+        [q[0].quincena, q[0].anio]
+      );
+      if (r.length && r[0].desde) return { nombre: q[0].quincena, desde: r[0].desde, hasta: r[0].hasta };
+    }
+  } catch (e) { /* se usa el cálculo por días */ }
+  const [y, m, d] = hoy.split('-').map(Number);
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const mm = String(m).padStart(2, '0');
+  return Number(d) <= 15
+    ? { nombre: `Quincena 1 de ${mm}/${y}`, desde: `${y}-${mm}-01`, hasta: `${y}-${mm}-15` }
+    : { nombre: `Quincena 2 de ${mm}/${y}`, desde: `${y}-${mm}-16`, hasta: `${y}-${mm}-${ultimo}` };
+}
+
+function conteoPorEstado(rows) {
+  const porEstado = {};
+  rows.forEach(t => { const e = t.estado || 'Sin estado'; porEstado[e] = (porEstado[e] || 0) + 1; });
+  return porEstado;
+}
+
+// ── GET /api/mis-tickets?usuario=X — tickets del usuario en la quincena actual ─
+router.get('/api/mis-tickets', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
+    const quincena = await quincenaActual();
+    const [rows] = await pool.query(
+      `${SELECT_TICKET}
+       WHERE t.solicitante = ? AND t.fecha_registro >= ? AND t.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)
+       ORDER BY t.fecha_registro DESC`,
+      [usuario, quincena.desde, quincena.hasta]
+    );
+    rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); });
+    res.json({ ok: true, quincena, total: rows.length, porEstado: conteoPorEstado(rows), tickets: rows });
+  } catch (err) {
+    console.error('[tickets] GET /api/mis-tickets:', err);
+    res.status(500).json({ error: 'No se pudieron cargar tus tickets.' });
+  }
+});
+
+// ── GET /api/listado — todos los tickets con filtros (pestaña Tickets del Directorio) ─
+// Filtros: desde, hasta (fecha de registro), estado, modulo, regional, operacion, q, mios=1.
+// Cada faceta (estado, módulo, regional, operación) cuenta con los demás filtros aplicados,
+// para que las opciones muestren cuántos tickets quedarían al escogerlas.
+router.get('/api/listado', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const user = await usuarioRegistrado(usuario);
+    if (!user) return res.status(403).json({ error: 'Usuario no reconocido' });
+    if (!(await accesoSeccion('directorio', user.Rol, 'Tickets'))) {
+      return res.status(403).json({ error: 'No tienes acceso a la pestaña Tickets.' });
+    }
+
+    const quincena = await quincenaActual();
+    const desde = RE_FECHA_YMD.test(req.query.desde || '') ? req.query.desde : quincena.desde;
+    const hasta = RE_FECHA_YMD.test(req.query.hasta || '') ? req.query.hasta : quincena.hasta;
+    const where = ['t.fecha_registro >= ?', 't.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)'];
+    const params = [desde, hasta];
+    if (req.query.mios === '1') { where.push('t.solicitante = ?'); params.push(usuario); }
+    const q = String(req.query.q || '').trim();
+    if (q) {
+      const like = `%${q}%`;
+      where.push('(t.Ticket LIKE ? OR t.solicitante LIKE ? OR t.motivo LIKE ? OR t.descripcion LIKE ? OR t.idrecibo LIKE ?)');
+      params.push(like, like, like, like, like);
+    }
+    const [base] = await pool.query(
+      `${SELECT_TICKET} WHERE ${where.join(' AND ')} ORDER BY t.fecha_registro DESC LIMIT 5000`,
+      params
+    );
+
+    const filtros = {
+      estado: String(req.query.estado || ''),
+      modulo: String(req.query.modulo || ''),
+      regional: String(req.query.regional || ''),
+      operacion: String(req.query.operacion || '')
+    };
+    const valor = (t, campo) => (campo === 'regional' ? (t.regional || 'SIN REGIONAL') : (t[campo] || ''));
+    const cumple = (t, excepto) => Object.keys(filtros).every(c => c === excepto || !filtros[c] || valor(t, c) === filtros[c]);
+    const faceta = (campo) => {
+      const conteo = {};
+      base.filter(t => cumple(t, campo)).forEach(t => { const v = valor(t, campo); conteo[v] = (conteo[v] || 0) + 1; });
+      return Object.entries(conteo).map(([v, n]) => ({ valor: v, n })).sort((a, b) => b.n - a.n || a.valor.localeCompare(b.valor, 'es'));
+    };
+
+    const rows = base.filter(t => cumple(t, null));
+    rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); });
+    res.json({
+      ok: true,
+      desde, hasta, quincena,
+      truncado: base.length >= 5000,
+      total: rows.length,
+      facetas: { estado: faceta('estado'), modulo: faceta('modulo'), regional: faceta('regional'), operacion: faceta('operacion') },
+      tickets: rows
+    });
+  } catch (err) {
+    console.error('[tickets] GET /api/listado:', err);
+    res.status(500).json({ error: 'No se pudieron cargar los tickets.' });
+  }
+});
+
+// ── GET /api/ticket/:ticket?usuario=X — detalle ───────────────────────────────
+router.get('/api/ticket/:ticket', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
+    const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado' });
+    const t = rows[0];
+    t.puedeEditar = puedeEditarTicket(t, usuario);
+    res.json({ ok: true, ticket: t });
+  } catch (err) {
+    console.error('[tickets] GET /api/ticket/:ticket:', err);
+    res.status(500).json({ error: 'No se pudo cargar el ticket.' });
+  }
+});
+
+// ── PUT /api/ticket/:ticket — editar motivo, descripción y teléfono ──────────
+// (motivo puede quedar vacío: hay tickets antiguos y módulos sin motivos configurados)
+// Solo quien puso el ticket y mientras esté En Proceso o Pendiente.
+router.put('/api/ticket/:ticket', async (req, res) => {
+  try {
+    const { usuario } = req.body || {};
+    if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
+    const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado' });
+    if (!puedeEditarTicket(rows[0], usuario)) {
+      return res.status(403).json({ error: 'Solo quien puso el ticket puede editarlo, y solo mientras esté En Proceso o Pendiente.' });
+    }
+    const motivo = String(req.body.motivo || '').trim();
+    const descripcion = String(req.body.descripcion || '').trim();
+    if (!descripcion) return res.status(400).json({ error: 'La Descripción es obligatoria.' });
+    const telefonoTxt = String(req.body.telefono || '').replace(/\D/g, '');
+    const telefono = telefonoTxt ? (parseInt(telefonoTxt, 10) || null) : null;
+    await pool.execute(
+      'UPDATE Dynamic_Tickets SET motivo = ?, descripcion = ?, telefono = ? WHERE Ticket = ?',
+      [motivo || null, descripcion, telefono, req.params.ticket]
+    );
+    const [act] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    act[0].puedeEditar = puedeEditarTicket(act[0], usuario);
+    res.json({ ok: true, ticket: act[0] });
+  } catch (err) {
+    console.error('[tickets] PUT /api/ticket/:ticket:', err);
+    res.status(500).json({ error: 'No se pudo guardar el ticket.' });
+  }
+});
+
 module.exports = router;
