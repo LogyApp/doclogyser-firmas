@@ -6367,6 +6367,17 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       formaDePago = existente['Forma De Pago'];
     }
 
+    // Soporte de transferencia validado por Contabilidad (Contabilidad › Transferencias): ya no se
+    // puede cambiar la Foto Transferencia ni quitar la Forma de Pago Transferencia (borraría la foto).
+    if (String(existente['Validado Transferencia'] || '').toUpperCase() === 'SI') {
+      if (files.fotoTransferencia?.[0]) {
+        return res.status(400).json({ error: 'La Foto de Transferencia ya fue validada por Contabilidad y no se puede cambiar.' });
+      }
+      if (Number(formaDePago) !== 2) {
+        return res.status(400).json({ error: 'La transferencia ya fue validada por Contabilidad: no se puede cambiar la Forma de Pago.' });
+      }
+    }
+
     // Periodo: solo si cambia la Hora Inicio (quincena y bloqueos) o el recibo (quincena del
     // recibo destino). Sin esos cambios el servicio se edita, valida o mueve sin revisarlos.
     const horaInicioNueva = (typeof body.horaInicio !== 'undefined' && body.horaInicio) ? datetimeLocalToMySQL(body.horaInicio) : null;

@@ -23,6 +23,9 @@
   let estadoUsuario = null;
   let todosLosRegistros = [];
   let registrosFiltrados = [];
+  const seleccionConsig = new Set(); // "día|operación" seleccionados para validar de forma masiva
+  const claveConsig = (item) => `${item.dia}|${item.operacion}`;
+  const esSeleccionableConsig = (item) => Boolean(item.comprobante);
   let archivoSoporteSeleccionado = null;
   let sortState = { col: 'dia', order: 'desc' };
 
@@ -402,7 +405,7 @@
 
     } catch (err) {
       console.error('[contabilidad] Error en inicializar:', err);
-      dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
+      dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
     }
   }
 
@@ -502,6 +505,17 @@
   }
 
   function configurarEventos() {
+    const todas = document.getElementById('selTodasConsig');
+    if (todas) {
+      todas.addEventListener('click', (e) => e.stopPropagation());
+      todas.addEventListener('change', () => {
+        registrosFiltrados.filter(esSeleccionableConsig).forEach(r => {
+          if (todas.checked) seleccionConsig.add(claveConsig(r)); else seleccionConsig.delete(claveConsig(r));
+        });
+        renderizarTabla();
+      });
+    }
+
     dom.filtroAnio.addEventListener('change', async () => {
       const anio = dom.filtroAnio.value;
       try {
@@ -570,7 +584,7 @@
 
   // Carga de datos
   async function cargarConsignaciones() {
-    dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:var(--text-muted);"><span class="spinner" style="border-color:var(--text-muted); border-top-color:var(--accent);"></span> Cargando consignaciones...</td></tr>`;
+    dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:var(--text-muted);"><span class="spinner" style="border-color:var(--text-muted); border-top-color:var(--accent);"></span> Cargando consignaciones...</td></tr>`;
 
     const anio = dom.filtroAnio.value;
     const quincena = dom.filtroQuincena.value;
@@ -595,7 +609,7 @@
       aplicarFiltrosMemoria();
     } catch (err) {
       console.error('[contabilidad] Error en cargarConsignaciones:', err);
-      dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
+      dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
     }
   }
 
@@ -741,8 +755,14 @@
 
   // Renderizar filas de la tabla
   function renderizarTabla() {
+    const conSel = Boolean(estadoUsuario && estadoUsuario.puedeValidar);
+    const thSel = document.querySelector('#tablaConsignaciones thead th.col-sel');
+    if (thSel) thSel.style.display = conSel ? '' : 'none';
+    const visibles = new Set(registrosFiltrados.map(claveConsig));
+    [...seleccionConsig].forEach(k => { if (!visibles.has(k)) seleccionConsig.delete(k); });
+    actualizarBarraConsig();
     if (!registrosFiltrados.length) {
-      dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:var(--text-muted);">No se encontraron consignaciones para los filtros seleccionados.</td></tr>`;
+      dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:var(--text-muted);">No se encontraron consignaciones para los filtros seleccionados.</td></tr>`;
       return;
     }
 
@@ -759,7 +779,7 @@
       // Si tiene soporte, abre el visor de soporte.
       // Si no tiene soporte, abre la ventana emergente de registrar.
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-action') || e.target.closest('.btn-lapiz-edit') || e.target.closest('.servicios-btn-badge') || e.target.closest('.th-resize')) return;
+        if (e.target.closest('.btn-action') || e.target.closest('.btn-lapiz-edit') || e.target.closest('.servicios-btn-badge') || e.target.closest('.th-resize') || e.target.closest('.col-sel')) return;
 
         if (urlSoporte) {
           abrirVisorSoporte(item);
@@ -767,6 +787,25 @@
           abrirModalConsignacion(item);
         }
       });
+
+      // 0. Selección para validar de forma masiva (solo con comprobante)
+      if (conSel) {
+        const tdSel = document.createElement('td');
+        tdSel.className = 'col-sel';
+        if (esSeleccionableConsig(item)) {
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'chk-sel';
+          chk.title = 'Seleccionar para validar';
+          chk.checked = seleccionConsig.has(claveConsig(item));
+          chk.addEventListener('change', () => {
+            if (chk.checked) seleccionConsig.add(claveConsig(item)); else seleccionConsig.delete(claveConsig(item));
+            actualizarBarraConsig();
+          });
+          tdSel.appendChild(chk);
+        }
+        tr.appendChild(tdSel);
+      }
 
       // 1. Estado / Fase con Lápiz para editar
       const tdFase = document.createElement('td');
@@ -873,6 +912,63 @@
     dom.tbodyConsignaciones.innerHTML = '';
     dom.tbodyConsignaciones.appendChild(fragment);
   }
+
+  // ── VALIDACIÓN MASIVA ─────────────────────────────────────
+  function actualizarBarraConsig() {
+    const conSel = Boolean(estadoUsuario && estadoUsuario.puedeValidar);
+    const barra = document.getElementById('barraMasivaConsig');
+    const conteo = document.getElementById('selConteoConsig');
+    const todas = document.getElementById('selTodasConsig');
+    const seleccionables = registrosFiltrados.filter(esSeleccionableConsig);
+    if (conteo) conteo.textContent = seleccionConsig.size.toLocaleString('es-CO');
+    if (barra) barra.classList.toggle('visible', conSel && seleccionConsig.size > 0);
+    if (todas) {
+      todas.checked = seleccionables.length > 0 && seleccionables.every(r => seleccionConsig.has(claveConsig(r)));
+      todas.indeterminate = seleccionConsig.size > 0 && !todas.checked;
+    }
+  }
+
+  window.limpiarSeleccionConsig = function () {
+    seleccionConsig.clear();
+    renderizarTabla();
+  };
+
+  window.validarConsignacionesMasivo = async function (validado) {
+    const items = [...seleccionConsig].map(k => {
+      const i = k.indexOf('|');
+      return { dia: k.slice(0, i), operacion: k.slice(i + 1) };
+    });
+    if (!items.length) return;
+    const accion = validado === 'SI' ? 'validar' : 'quitar la validación a';
+    if (!confirm(`¿Desea ${accion} ${items.length} consignación(es) seleccionada(s)?`)) return;
+    const barra = document.getElementById('barraMasivaConsig');
+    barra.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    try {
+      const res = await fetch('/contabilidad/api/consignaciones/validar-masivo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, items, validado }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo actualizar la validación.');
+      const hechas = new Set((data.actualizados || []).map(claveConsig));
+      const fecha = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      todosLosRegistros.forEach(r => {
+        if (!hechas.has(claveConsig(r))) return;
+        r.validado = data.validado;
+        r.usuarioValida = data.usuarioValida || '';
+        r.fechaValidacion = data.validado === 'SI' ? fecha : '';
+      });
+      seleccionConsig.clear();
+      renderizarTabla();
+      const omitidas = (data.omitidos || []).length;
+      alert(`${hechas.size} consignación(es) ${data.validado === 'SI' ? 'validada(s)' : 'sin validación'}${omitidas ? ` · ${omitidas} omitida(s) (sin comprobante o fuera de su alcance)` : ''}.`);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      barra.querySelectorAll('button').forEach(b => { b.disabled = false; });
+    }
+  };
 
   // ── MODAL DE REGISTRO / EDICIÓN ───────────────────────────
   window.abrirModalConsignacion = function (item) {
