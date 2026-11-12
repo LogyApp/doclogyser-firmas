@@ -1,6 +1,6 @@
 /**
  * Contabilidad › Caja Operativa (grupo de subpestañas en la barra lateral)
- * Flujo de Caja (gastos, validación y firmas), Reintegros y Responsables. Usa la API de /cajaoperativa/api; el acceso de cada
+ * Flujo de Caja (gastos, validación y firmas), Reintegros, Responsables, Reembolsos y Proveedores. Usa la API de /cajaoperativa/api; el acceso de cada
  * subpestaña lo decide Maestro_Menu (contabilidad / Caja_Flujo, Caja_Responsables, ...).
  */
 (function () {
@@ -1110,6 +1110,225 @@
       await window.cargarCajaReintegros();
       if (st.flujoIniciado) window.cargarCajaFlujo();
       if (st.respIniciado) window.cargarCajaResponsables();
+    } catch (e) {
+      err.textContent = e.message;
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+
+  // ═════════════ FASE 3: REEMBOLSOS ═════════════
+  st.fReem = { tipo: '', regional: '', operacion: '' };
+  st.ordenReem = { col: 'fecha_registro', dir: 'desc' };
+  function tipoReembolso(x) { return x.tipo_gasto || (x.tipo_transporte ? 'Transporte' : 'Otro'); }
+  window.inicializarCajaReembolsosSiAplica = async function () {
+    if (st.reemIniciado) return;
+    st.reemIniciado = true;
+    document.getElementById('reEnlacePublico').textContent = `${window.location.origin}/reembolso`;
+    tablaInteractiva(document.getElementById('tablaCajaReem'), st.ordenReem, () => window.cajaRenderReembolsos());
+    await window.cargarCajaReembolsos();
+  };
+  window.cargarCajaReembolsos = async function () {
+    const body = document.getElementById('reBody');
+    try {
+      await obtenerAcceso('Caja_Reembolsos');
+      const r = await fetch(`/cajaoperativa/api/reembolsos/pendientes?usuario=${encodeURIComponent(usuario())}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No se pudieron cargar los reembolsos.');
+      st.reem = d.map(x => ({ ...x, tipo: tipoReembolso(x) }));
+      window.cajaRenderReembolsos();
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#ef4444;">${esc(e.message)}</td></tr>`;
+    }
+  };
+  window.cajaCambiarFiltroReem = function (campo, valor) {
+    st.fReem[campo] = valor;
+    if (campo === 'regional') st.fReem.operacion = '';
+    window.cajaRenderReembolsos();
+  };
+  window.cajaLimpiarFiltrosReem = function () {
+    st.fReem = { tipo: '', regional: '', operacion: '' };
+    document.getElementById('reBuscar').value = '';
+    window.cajaRenderReembolsos();
+  };
+  window.cajaCopiarEnlaceReembolso = async function () {
+    const url = `${window.location.origin}/reembolso`;
+    try { await navigator.clipboard.writeText(url); alert('Enlace copiado: ' + url); } catch (e) { prompt('Copia el enlace:', url); }
+  };
+  window.cajaRenderReembolsos = function () {
+    if (!st.reem) return;
+    const f = st.fReem;
+    const q = document.getElementById('reBuscar').value.trim().toLowerCase();
+    const pasa = (x, ex) => (ex === 'tipo' || !f.tipo || x.tipo === f.tipo) &&
+      (ex === 'regional' || !f.regional || x.regional === f.regional) &&
+      (ex === 'operacion' || !f.operacion || x.operacion === f.operacion);
+    llenarSelect('reTipo', contarPor(st.reem.filter(x => pasa(x, 'tipo')), 'tipo'), f.tipo, 'Todos los tipos');
+    llenarSelect('reRegional', contarPor(st.reem.filter(x => pasa(x, 'regional')), 'regional'), f.regional, 'Todas las regionales');
+    llenarSelect('reOperacion', contarPor(st.reem.filter(x => pasa(x, 'operacion')), 'operacion'), f.operacion, 'Todas las operaciones');
+    badge('reFiltrosBadge', Object.values(f).filter(Boolean).length);
+    let lista = st.reem.filter(x => pasa(x));
+    if (q) lista = lista.filter(x => [x.trabajador_nombre, x.identificacion, x.descripcion_gasto, x.operacion, x.observaciones].some(v => String(v || '').toLowerCase().includes(q)));
+    document.getElementById('reKpiTotal').textContent = lista.length;
+    document.getElementById('reKpiValor').textContent = pesos(lista.reduce((a, x) => a + num(x.valor), 0));
+    document.getElementById('reKpiFirma').textContent = lista.filter(x => x.firma).length;
+    marcarOrden(document.getElementById('tablaCajaReem'), st.ordenReem);
+    lista = ordenar(lista, st.ordenReem, (x, col) => (col === 'valor' ? num(x.valor) : col === 'firma' ? (x.firma ? 1 : 0) : x[col]));
+    st.reemVista = lista;
+    const body = document.getElementById('reBody');
+    if (!lista.length) {
+      body.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">${st.reem.length ? 'No hay reembolsos con estos filtros.' : 'No hay reembolsos pendientes de vincular.'}</td></tr>`;
+      return;
+    }
+    body.innerHTML = lista.map((x, i) => `
+      <tr onclick="cajaAbrirVincular(${i})" title="Vincular a una caja">
+        <td>${fechaHora(x.fecha_registro)}</td>
+        <td><strong>${esc(x.trabajador_nombre || '-')}</strong><br><small style="color:var(--text-muted);">C.C. ${esc(x.identificacion)}</small></td>
+        <td><small>${x.telefono ? `📱 ${esc(x.telefono)}` : '—'}${x.email ? `<br>✉️ ${esc(x.email)}` : ''}</small></td>
+        <td>${esc(x.operacion || '-')}<br><small style="color:var(--text-muted);">${esc(x.regional || '')}</small></td>
+        <td title="${esc(x.descripcion_gasto || '')}"><strong>${esc(x.tipo)}</strong>: ${esc(x.descripcion_gasto || '')}${x.observaciones ? `<br><small style="color:var(--text-muted);">${esc(x.observaciones)}</small>` : ''}</td>
+        <td style="text-align:right;"><strong>${pesos(x.valor)}</strong></td>
+        <td style="text-align:center;" onclick="event.stopPropagation()">${x.firma ? `<a href="#" onclick="event.preventDefault(); cajaVerFirma(${i})">📝 Ver</a>` : '<span class="caja-chip pend">Sin firma</span>'}</td>
+      </tr>`).join('');
+  };
+  window.cajaVerFirma = function (i) {
+    const x = st.reemVista[i];
+    if (!x || !x.firma) return;
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.title = `Firma - ${x.trabajador_nombre || ''}`;
+    const img = w.document.createElement('img');
+    img.src = x.firma;
+    img.style.cssText = 'max-width:90%; max-height:90vh; border:1px solid #ddd; display:block; margin:5vh auto;';
+    w.document.body.appendChild(img);
+  };
+  window.cajaAbrirVincular = async function (i) {
+    const x = st.reemVista[i];
+    st.reemVincular = x;
+    const esTransporte = x.tipo === 'Transporte';
+    document.getElementById('viResumen').innerHTML = `
+      <b>Colaborador:</b> ${esc(x.trabajador_nombre || '')} (C.C. ${esc(x.identificacion)})<br>
+      <b>Operación:</b> ${esc(x.regional || '')} — ${esc(x.operacion || '')}<br>
+      <b>Gasto:</b> ${esc(x.tipo)} · ${esc(x.descripcion_gasto || '')}<br>
+      <b>Valor:</b> ${pesos(x.valor)} · ${x.firma ? '✓ Firmado' : '⏳ Sin firma'}`;
+    document.getElementById('viLblDestino').textContent = esTransporte ? 'Caja / quincena donde se registra *' : 'Gasto existente al que se asocia *';
+    document.getElementById('viAyuda').textContent = esTransporte
+      ? 'Se crea un gasto de Transporte en esa caja con el valor del reembolso.'
+      : 'El reembolso queda como colaborador de ese gasto.';
+    document.getElementById('viError').style.display = 'none';
+    const sel = document.getElementById('viDestino');
+    sel.innerHTML = '<option value="">Cargando opciones...</option>';
+    abrirModal('modalCajaVincular');
+    try {
+      const qs = `usuario=${encodeURIComponent(usuario())}&regional=${encodeURIComponent(x.regional || '')}&operacion=${encodeURIComponent(x.operacion || '')}`;
+      const r = await fetch(`/cajaoperativa/api/reembolsos/${esTransporte ? 'periodos' : 'gastos'}-vincular?${qs}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No se pudieron cargar las opciones.');
+      if (!d.length) {
+        sel.innerHTML = `<option value="">${esTransporte ? 'No hay cajas de esta operación.' : 'No hay gastos registrados en esta operación.'}</option>`;
+        return;
+      }
+      sel.innerHTML = '<option value="">Seleccione...</option>' + d.map(o => esTransporte
+        ? `<option value="${esc(o.idperiodo)}">${esc(o.quincena)} ${esc(o.año)} · ${esc(o.responsable || o.identificacion || '')} (base ${pesos(o.base_autorizada)})</option>`
+        : `<option value="${esc(o.idgasto)}">${esc(String(aLocal(o.fechamovimiento)).slice(0, 10))} · ${esc(o.tipo_gasto)} · ${esc(o.tercero || '')} · ${pesos(o.valor)}</option>`).join('');
+    } catch (e) {
+      sel.innerHTML = '<option value="">—</option>';
+      document.getElementById('viError').textContent = e.message;
+      document.getElementById('viError').style.display = 'block';
+    }
+  };
+  window.cajaVincularReembolso = async function () {
+    const x = st.reemVincular;
+    const destino = document.getElementById('viDestino').value;
+    const err = document.getElementById('viError');
+    if (!destino) { err.textContent = 'Seleccione una opción de la lista.'; err.style.display = 'block'; return; }
+    const btn = document.getElementById('viGuardar');
+    btn.disabled = true;
+    try {
+      const r = await fetch('/cajaoperativa/api/reembolsos/vincular', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: usuario(), idgasto_trabajador: x.idgasto_trabajador, tipo_gasto: x.tipo, targetId: destino }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No se pudo vincular.');
+      window.cajaCerrarModal('modalCajaVincular');
+      await window.cargarCajaReembolsos();
+      if (st.flujoIniciado) window.cargarCajaFlujo();
+    } catch (e) {
+      err.textContent = e.message;
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  // ═════════════ FASE 3: PROVEEDORES ═════════════
+  st.ordenProv = { col: 'razon_social', dir: 'asc' };
+  window.inicializarCajaProveedoresSiAplica = async function () {
+    if (st.provIniciado) return;
+    st.provIniciado = true;
+    tablaInteractiva(document.getElementById('tablaCajaProv'), st.ordenProv, () => window.cajaRenderProveedores());
+    await window.cargarCajaProveedores();
+  };
+  window.cargarCajaProveedores = async function () {
+    const body = document.getElementById('pvBody');
+    try {
+      await obtenerAcceso('Caja_Proveedores');
+      const r = await fetch(`/cajaoperativa/api/proveedores?usuario=${encodeURIComponent(usuario())}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No se pudieron cargar los proveedores.');
+      st.prov = d;
+      window.cajaRenderProveedores();
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:30px; color:#ef4444;">${esc(e.message)}</td></tr>`;
+    }
+  };
+  window.cajaRenderProveedores = function () {
+    if (!st.prov) return;
+    const q = document.getElementById('pvBuscar').value.trim().toLowerCase();
+    let lista = st.prov.filter(x => !q || String(x.nit).toLowerCase().includes(q) || String(x.razon_social || '').toLowerCase().includes(q));
+    document.getElementById('pvKpiTotal').textContent = lista.length;
+    marcarOrden(document.getElementById('tablaCajaProv'), st.ordenProv);
+    lista = ordenar(lista, st.ordenProv, (x, col) => x[col]);
+    st.provVista = lista;
+    const body = document.getElementById('pvBody');
+    if (!lista.length) {
+      body.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted);">${st.prov.length ? 'No hay proveedores con esa búsqueda.' : 'Aún no hay proveedores registrados.'}</td></tr>`;
+      return;
+    }
+    body.innerHTML = lista.map((x, i) => `
+      <tr onclick="cajaAbrirProveedor(${i})" title="Editar proveedor">
+        <td><strong>${esc(x.nit)}</strong></td>
+        <td>${esc(x.razon_social || '-')}</td>
+        <td>${esc(x.usuario || '—')}</td>
+      </tr>`).join('');
+  };
+  window.cajaAbrirProveedor = function (i) {
+    const x = i == null ? null : st.provVista[i];
+    st.provEditando = x ? String(x.nit) : null;
+    document.getElementById('pvmTitulo').textContent = x ? 'Editar proveedor' : 'Nuevo proveedor';
+    document.getElementById('pvmNit').value = x ? x.nit : '';
+    document.getElementById('pvmRazon').value = x ? x.razon_social || '' : '';
+    document.getElementById('pvmNota').style.display = x ? 'block' : 'none';
+    document.getElementById('pvmError').style.display = 'none';
+    abrirModal('modalCajaProveedor');
+  };
+  window.cajaGuardarProveedor = async function () {
+    const nit = document.getElementById('pvmNit').value.trim();
+    const razon = document.getElementById('pvmRazon').value.trim();
+    const err = document.getElementById('pvmError');
+    if (!nit || !razon) { err.textContent = 'NIT y razón social son obligatorios.'; err.style.display = 'block'; return; }
+    const btn = document.getElementById('pvmGuardar');
+    btn.disabled = true;
+    try {
+      const editando = st.provEditando;
+      const url = editando ? `/cajaoperativa/api/proveedores/${encodeURIComponent(editando)}` : '/cajaoperativa/api/proveedores/crear';
+      const r = await fetch(url, { method: editando ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: usuario(), nit, razon_social: razon }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No se pudo guardar el proveedor.');
+      window.cajaCerrarModal('modalCajaProveedor');
+      await window.cargarCajaProveedores();
     } catch (e) {
       err.textContent = e.message;
       err.style.display = 'block';

@@ -9,7 +9,6 @@ const { computarAccesoContabilidad } = require('../services/accesoContabilidad')
 
 const router = express.Router();
 
-const HTML_INDEX_PATH = path.join(__dirname, '../views/cajaoperativa/index.html');
 const HTML_REEMBOLSO_PATH = path.join(__dirname, '../views/reembolso/index.html');
 
 // Helper to format date in Colombia time
@@ -319,11 +318,15 @@ async function recargarSaldosPeriodo(idperiodo, conn = pool) {
 // ═════ ROUTES ═════
 
 // Serve Admin UI / Reembolso UI
+// El módulo de Caja Operativa ahora vive en Contabilidad (grupo de subpestañas en la barra
+// lateral). La dirección anterior lleva a Contabilidad › Caja Operativa › Flujo de Caja.
 router.get('/', (req, res) => {
   if (req.baseUrl === '/reembolso') {
     res.sendFile(HTML_REEMBOLSO_PATH);
   } else {
-    res.sendFile(HTML_INDEX_PATH);
+    const qs = new URLSearchParams({ tab: 'caja-flujo' });
+    if (req.query.usuario) qs.set('usuario', String(req.query.usuario));
+    res.redirect(302, `/contabilidad?${qs.toString()}`);
   }
 });
 
@@ -1467,9 +1470,18 @@ router.get('/api/reembolsos/pendientes', async (req, res) => {
 
 router.get('/api/reembolsos/periodos-vincular', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { usuario, regional, operacion } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    // La regional y la operación están en el responsable de la caja, no en el periodo
     const [rows] = await pool.execute(
-      'SELECT idperiodo, quincena, año, base_autorizada FROM Dynamic_gastos_periodo WHERE regional = ? AND operacionprincipal = ? ORDER BY fecha_registro DESC LIMIT 15',
+      `SELECT p.idperiodo, p.quincena, p.año, r.base_autorizada, r.identificacion,
+              (SELECT SUBSTRING_INDEX(v.Trabajador, ' ** ', -1) FROM Maestro_Vinculación v
+                WHERE v.Identificación = r.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS responsable
+       FROM Dynamic_gastos_periodo p
+       JOIN Maestro_responsablegastos r ON r.idresponsable = p.idresponsable
+       WHERE r.regional = ? AND r.operacionprincipal = ?
+       ORDER BY p.año DESC, p.fecha_registro DESC LIMIT 15`,
       [regional, operacion]
     );
     res.json(rows);
@@ -1480,7 +1492,9 @@ router.get('/api/reembolsos/periodos-vincular', async (req, res) => {
 
 router.get('/api/reembolsos/gastos-vincular', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { usuario, regional, operacion } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
     const query = `
       SELECT g.idgasto, g.tipo_gasto, g.descripcion, g.valor, g.fechamovimiento,
              COALESCE(

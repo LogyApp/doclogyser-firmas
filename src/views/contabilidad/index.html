@@ -1351,6 +1351,16 @@
               <span class="nav-icon">👤</span><span>Responsables</span>
             </a>
           </li>
+          <li id="navLiCajaReembolsos">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-reembolsos" data-tab="caja-reembolsos" onclick="cambiarPestanaContabilidad(event, 'caja-reembolsos')">
+              <span class="nav-icon">🧾</span><span>Reembolsos</span>
+            </a>
+          </li>
+          <li id="navLiCajaProveedores">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-proveedores" data-tab="caja-proveedores" onclick="cambiarPestanaContabilidad(event, 'caja-proveedores')">
+              <span class="nav-icon">🏪</span><span>Proveedores</span>
+            </a>
+          </li>
         </ul>
       </li>
     </ul>
@@ -1375,6 +1385,14 @@
       <div class="breadcrumb-title" id="headerTitleCajaReintegros" style="display:none;">
         <h1><span>🔁</span> Caja Operativa · Reintegros</h1>
         <p>Solicitudes de reintegro de caja (desde el 60% de uso) y su aprobación</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaReembolsos" style="display:none;">
+        <h1><span>🧾</span> Caja Operativa · Reembolsos</h1>
+        <p>Reembolsos que solicitan los colaboradores desde el enlace público, pendientes de vincular a una caja</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaProveedores" style="display:none;">
+        <h1><span>🏪</span> Caja Operativa · Proveedores</h1>
+        <p>Proveedores de las compras de caja</p>
       </div>
       <div class="breadcrumb-title" id="headerTitleCajaResponsables" style="display:none;">
         <h1><span>👤</span> Caja Operativa · Responsables</h1>
@@ -1574,6 +1592,85 @@
                 </tr>
               </thead>
               <tbody id="riBody"><tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando reintegros...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › REEMBOLSOS ────────────────────────── -->
+      <div id="vistaCajaReembolsos" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">🧾</span><div class="mini-stat-info"><span class="lbl">Pendientes de vincular</span><span class="val" id="reKpiTotal">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">💰</span><div class="mini-stat-info"><span class="lbl">Valor pendiente</span><span class="val" id="reKpiValor">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">✍️</span><div class="mini-stat-info"><span class="lbl">Con firma</span><span class="val" id="reKpiFirma">0</span></div></div>
+        </section>
+
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="cajaToggleFiltros('re')">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="reFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="reBuscar" placeholder="🔍 Buscar colaborador, cédula, descripción..." aria-label="Buscar reembolso" oninput="cajaRenderReembolsos()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="reFiltrosChevron">▸</span>
+          </div>
+          <div id="reFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group"><label for="reTipo">Tipo</label><select id="reTipo" class="filter-control" onchange="cajaCambiarFiltroReem('tipo', this.value)"></select></div>
+              <div class="filter-group"><label for="reRegional">Regional</label><select id="reRegional" class="filter-control" onchange="cajaCambiarFiltroReem('regional', this.value)"></select></div>
+              <div class="filter-group"><label for="reOperacion">Operación</label><select id="reOperacion" class="filter-control" onchange="cajaCambiarFiltroReem('operacion', this.value)"></select></div>
+              <div class="filter-group sm" style="justify-content:flex-end;"><button type="button" class="btn-action secondary" onclick="cajaLimpiarFiltrosReem()">↺ Limpiar filtros</button></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="caja-acciones" style="justify-content: space-between;">
+          <span class="caja-nota">Los colaboradores solicitan el reembolso y firman en <b id="reEnlacePublico">/reembolso</b>. Toca un registro para vincularlo a una caja.</span>
+          <button type="button" class="btn-action secondary" onclick="cajaCopiarEnlaceReembolso()">🔗 Copiar enlace para colaboradores</button>
+        </div>
+
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaReem">
+              <thead>
+                <tr>
+                  <th data-sort="fecha_registro" style="width: 140px;">Solicitud</th>
+                  <th data-sort="trabajador_nombre" style="width: 210px;">Colaborador</th>
+                  <th data-sort="telefono" style="width: 170px;">Contacto</th>
+                  <th data-sort="operacion" style="width: 170px;">Operación</th>
+                  <th data-sort="tipo" style="width: 230px;">Gasto</th>
+                  <th data-sort="valor" style="width: 120px; text-align:right;">Valor</th>
+                  <th data-sort="firma" style="width: 100px; text-align:center;">Firma</th>
+                </tr>
+              </thead>
+              <tbody id="reBody"><tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando reembolsos...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › PROVEEDORES ───────────────────────── -->
+      <div id="vistaCajaProveedores" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">🏪</span><div class="mini-stat-info"><span class="lbl">Proveedores</span><span class="val" id="pvKpiTotal">0</span></div></div>
+        </section>
+        <section class="filters-card">
+          <div class="filtros-toggle" style="cursor:default;">
+            <span class="filtros-toggle-left">Buscar</span>
+            <input type="search" class="filtros-busqueda" id="pvBuscar" placeholder="🔍 Buscar por NIT o razón social..." aria-label="Buscar proveedor" oninput="cajaRenderProveedores()">
+          </div>
+        </section>
+        <div class="caja-acciones">
+          <button type="button" class="btn-action primary" onclick="cajaAbrirProveedor()">＋ Nuevo proveedor</button>
+        </div>
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaProv">
+              <thead>
+                <tr>
+                  <th data-sort="nit" style="width: 150px;">NIT</th>
+                  <th data-sort="razon_social" style="width: 320px;">Razón social</th>
+                  <th data-sort="usuario" style="width: 200px;">Registrado por</th>
+                </tr>
+              </thead>
+              <tbody id="pvBody"><tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando proveedores...</td></tr></tbody>
             </table>
           </div>
         </section>
@@ -2399,6 +2496,49 @@
     </div>
   </div>
 
+  <!-- ── CAJA OPERATIVA: vincular reembolso ── -->
+  <div class="modal-overlay" id="modalCajaVincular">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <span>Vincular reembolso a una caja</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaVincular')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="viResumen" class="caja-subbloque" style="font-size:.84rem; line-height:1.55;"></div>
+        <div class="form-group">
+          <label for="viDestino" id="viLblDestino">Destino *</label>
+          <select id="viDestino"></select>
+          <small class="caja-nota" id="viAyuda"></small>
+        </div>
+        <div id="viError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaVincular')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="viGuardar" onclick="cajaVincularReembolso()">Vincular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: proveedor ── -->
+  <div class="modal-overlay" id="modalCajaProveedor">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <span id="pvmTitulo">Nuevo proveedor</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaProveedor')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label for="pvmNit">NIT *</label><input type="text" id="pvmNit" placeholder="900123456"></div>
+        <div class="form-group"><label for="pvmRazon">Razón social *</label><input type="text" id="pvmRazon" placeholder="Ferretería El Tornillo"></div>
+        <div class="caja-nota" id="pvmNota" style="display:none;">Si cambias el NIT, también se actualiza en los gastos ya registrados con ese proveedor.</div>
+        <div id="pvmError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaProveedor')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="pvmGuardar" onclick="cajaGuardarProveedor()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── CAJA OPERATIVA: registrar / editar responsable ── -->
   <div class="modal-overlay" id="modalCajaResponsable">
     <div class="modal-card" style="max-width: 620px;">
@@ -2525,6 +2665,8 @@
       'caja-flujo':        { seccion: 'Caja_Flujo',        vista: 'vistaCajaFlujo',        header: 'headerTitleCajaFlujo',        nav: 'navLiCajaFlujo',        titulo: 'Flujo de Caja', grupo: 'caja' },
       'caja-reintegros':   { seccion: 'Caja_Reintegros',   vista: 'vistaCajaReintegros',   header: 'headerTitleCajaReintegros',   nav: 'navLiCajaReintegros',   titulo: 'Reintegros de Caja', grupo: 'caja' },
       'caja-responsables': { seccion: 'Caja_Responsables', vista: 'vistaCajaResponsables', header: 'headerTitleCajaResponsables', nav: 'navLiCajaResponsables', titulo: 'Responsables de Caja', grupo: 'caja' },
+      'caja-reembolsos':   { seccion: 'Caja_Reembolsos',   vista: 'vistaCajaReembolsos',   header: 'headerTitleCajaReembolsos',   nav: 'navLiCajaReembolsos',   titulo: 'Reembolsos de Caja', grupo: 'caja' },
+      'caja-proveedores':  { seccion: 'Caja_Proveedores',  vista: 'vistaCajaProveedores',  header: 'headerTitleCajaProveedores',  nav: 'navLiCajaProveedores',  titulo: 'Proveedores de Caja', grupo: 'caja' },
     };
     // Abre o cierra el grupo Caja Operativa de la barra lateral
     function abrirGrupoCaja(abrir) {
@@ -2584,6 +2726,8 @@
       if (t === 'caja-flujo' && typeof window.inicializarCajaFlujoSiAplica === 'function') window.inicializarCajaFlujoSiAplica();
       if (t === 'caja-responsables' && typeof window.inicializarCajaResponsablesSiAplica === 'function') window.inicializarCajaResponsablesSiAplica();
       if (t === 'caja-reintegros' && typeof window.inicializarCajaReintegrosSiAplica === 'function') window.inicializarCajaReintegrosSiAplica();
+      if (t === 'caja-reembolsos' && typeof window.inicializarCajaReembolsosSiAplica === 'function') window.inicializarCajaReembolsosSiAplica();
+      if (t === 'caja-proveedores' && typeof window.inicializarCajaProveedoresSiAplica === 'function') window.inicializarCajaProveedoresSiAplica();
     }
 
     window.sincronizarPestanaActiva = function (btn) {
@@ -2595,6 +2739,10 @@
         if (typeof window.cargarFormasPago === 'function') window.cargarFormasPago(btn);
       } else if (tab === 'caja-flujo') {
         if (typeof window.cargarCajaFlujo === 'function') window.cargarCajaFlujo();
+      } else if (tab === 'caja-reembolsos') {
+        if (typeof window.cargarCajaReembolsos === 'function') window.cargarCajaReembolsos();
+      } else if (tab === 'caja-proveedores') {
+        if (typeof window.cargarCajaProveedores === 'function') window.cargarCajaProveedores();
       } else if (tab === 'caja-reintegros') {
         if (typeof window.cargarCajaReintegros === 'function') window.cargarCajaReintegros();
       } else if (tab === 'caja-responsables') {
@@ -2630,6 +2778,6 @@
   <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
   <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
   <script src="/js/contabilidad-formaspago.js?v=20261111a"></script>
-  <script src="/js/contabilidad-caja.js?v=20261112b"></script>
+  <script src="/js/contabilidad-caja.js?v=20261112c"></script>
 </body>
 </html>
