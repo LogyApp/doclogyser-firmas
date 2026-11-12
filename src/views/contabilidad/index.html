@@ -761,6 +761,96 @@
       transform: scale(1.12);
     }
 
+    /* ── Formas de Pago ── */
+    :root { --fp-transf: #16a34a; --fp-efectivo: #f59e0b; --fp-credito: #cbd5e1; }
+    :root[data-theme="oscuro"] { --fp-credito: #475569; }
+    .fp-controles-fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .fp-segmento { display: inline-flex; border: 1.5px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--card-bg); }
+    .fp-segmento button {
+      border: none; background: transparent; color: var(--text-muted); padding: 7px 13px; font: inherit; font-size: .82rem; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+    }
+    .fp-segmento button + button { border-left: 1px solid var(--border); }
+    .fp-segmento button.activo { background: var(--accent); color: var(--accent-contrast, #fff); }
+    .fp-switch { display: flex; align-items: center; gap: 7px; height: 36px; font-size: .82rem; font-weight: 600; color: var(--text-muted); }
+    .fp-switch span[id] { cursor: pointer; }
+    .fp-switch span.activo { color: var(--accent); font-weight: 800; }
+    .fp-switch-ctrl { position: relative; width: 38px; height: 21px; display: inline-block; flex-shrink: 0; }
+    .fp-switch { white-space: nowrap; }
+    .fp-switch-ctrl input { opacity: 0; width: 0; height: 0; }
+    .fp-switch-ctrl span { position: absolute; inset: 0; background: var(--border); border-radius: 999px; cursor: pointer; transition: .2s; }
+    .fp-switch-ctrl span::before { content: ''; position: absolute; width: 15px; height: 15px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+    .fp-switch-ctrl input:checked + span { background: var(--accent); }
+    .fp-switch-ctrl input:checked + span::before { transform: translateX(17px); }
+
+    .fp-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .fp-kpi { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; position: relative; overflow: hidden; }
+    .fp-kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--fp-c, var(--accent)); }
+    .fp-kpi-lbl { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
+    .fp-kpi-val { font-family: 'Outfit', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--text); line-height: 1.15; margin-top: 2px; }
+    .fp-kpi-sub { font-size: .76rem; color: var(--text-muted); margin-top: 2px; }
+    .fp-kpi.destacado { border-color: var(--accent); background: var(--accent-soft, rgba(245, 84, 0, .07)); }
+
+    .fp-vistas { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .fp-leyenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: .78rem; color: var(--text-muted); font-weight: 600; }
+    .fp-leyenda i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+    .fp-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 6px 0; }
+    .fp-titulo-panel { padding: 8px 16px 6px; font-size: .78rem; color: var(--text-muted); font-weight: 600; }
+    .fp-fila {
+      display: grid; grid-template-columns: 44px minmax(150px, 230px) 1fr 108px; gap: 12px; align-items: center;
+      padding: 10px 16px; border-top: 1px solid var(--border); cursor: pointer; transition: background .15s;
+    }
+    .fp-fila:first-of-type { border-top: none; }
+    .fp-fila:hover { background: var(--bg-elevated, rgba(0,0,0,.03)); }
+    .fp-fila.mia { background: var(--accent-soft, rgba(245, 84, 0, .07)); box-shadow: inset 4px 0 0 var(--accent); }
+    .fp-fila.sin-dato { opacity: .62; }
+    .fp-puesto { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.05rem; color: var(--text-muted); text-align: center; }
+    .fp-puesto.medalla { font-size: 1.45rem; }
+    .fp-op { min-width: 0; }
+    .fp-op-nombre { font-weight: 700; color: var(--text); font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fp-op-reg { font-size: .72rem; color: var(--text-muted); }
+    .fp-tag-mia { display: inline-block; font-size: .64rem; font-weight: 800; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 6px; margin-left: 4px; vertical-align: 1px; }
+    .fp-barra-wrap { min-width: 0; }
+    .fp-barra { display: flex; height: 22px; border-radius: 7px; overflow: hidden; background: var(--bg-elevated, #eef2f7); }
+    .fp-barra > div { height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .68rem; font-weight: 800; white-space: nowrap; overflow: hidden; transition: width .35s ease; }
+    .fp-barra .t { background: var(--fp-transf); }
+    .fp-barra .e { background: var(--fp-efectivo); color: #422006; }
+    .fp-barra .c { background: var(--fp-credito); color: var(--text); }
+    .fp-valores { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: .74rem; color: var(--text-muted); }
+    .fp-valores b { color: var(--text); font-weight: 700; }
+    .fp-pct { text-align: right; }
+    .fp-pct-num { font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 800; color: var(--text); line-height: 1.1; }
+    .fp-pct-lbl { font-size: .66rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+    .fp-var { font-size: .72rem; font-weight: 800; }
+    .fp-var.sube { color: #16a34a; }
+    .fp-var.baja { color: #dc2626; }
+    .fp-var.igual { color: var(--text-muted); }
+    .fp-separador { padding: 10px 16px 4px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); border-top: 1px solid var(--border); }
+    .fp-vacio { padding: 34px 16px; text-align: center; color: var(--text-muted); font-size: .88rem; }
+    .fp-fila-dia { grid-template-columns: 110px 1fr 108px; cursor: default; }
+    .fp-dia-hoy { color: var(--accent); }
+
+    @media (max-width: 700px) {
+      .fp-fila { grid-template-columns: 30px 1fr 74px; grid-template-areas: "p o n" "b b b"; gap: 4px 8px; padding: 9px 10px; }
+      .fp-fila .fp-puesto { grid-area: p; font-size: .9rem; }
+      .fp-fila .fp-puesto.medalla { font-size: 1.15rem; }
+      .fp-fila .fp-op { grid-area: o; }
+      .fp-fila .fp-pct { grid-area: n; }
+      .fp-fila .fp-barra-wrap { grid-area: b; }
+      .fp-fila-dia { grid-template-columns: 1fr 74px; grid-template-areas: "o n" "b b"; }
+      .fp-pct-num { font-size: 1.1rem; }
+      .fp-barra { height: 18px; }
+      .fp-resumen { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .fp-kpi { padding: 8px 10px; }
+      .fp-kpi-val { font-size: 1.15rem; }
+      .fp-kpi-sub { font-size: .68rem; }
+      .fp-segmento button { padding: 6px 9px; font-size: .74rem; }
+      .fp-controles-fila { gap: 8px; }
+      .fp-vistas .fp-segmento { width: 100%; }
+      .fp-vistas .fp-segmento button { flex: 1; }
+    }
+
     /* Selección y validación masiva (Consignaciones y Transferencias) */
     .col-sel { text-align: center !important; padding-left: 4px !important; padding-right: 4px !important; }
     .chk-sel { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
@@ -1174,13 +1264,19 @@
     </div>
 
     <ul class="nav-list">
-      <li>
-        <a class="nav-item active" href="/contabilidad?tab=consignaciones" id="navItemConsignaciones" data-tab="consignaciones" onclick="cambiarPestanaContabilidad(event, 'consignaciones')">
+      <li id="navLiFormasPago">
+        <a class="nav-item active" href="/contabilidad?tab=formaspago" id="navItemFormasPago" data-tab="formaspago" onclick="cambiarPestanaContabilidad(event, 'formaspago')">
+          <span class="nav-icon">📊</span>
+          <span>Formas de Pago</span>
+        </a>
+      </li>
+      <li id="navLiConsignaciones">
+        <a class="nav-item" href="/contabilidad?tab=consignaciones" id="navItemConsignaciones" data-tab="consignaciones" onclick="cambiarPestanaContabilidad(event, 'consignaciones')">
           <span class="nav-icon">💰</span>
           <span>Consignaciones</span>
         </a>
       </li>
-      <li>
+      <li id="navLiTransferencias">
         <a class="nav-item" href="/contabilidad?tab=transferencias" id="navItemTransferencias" data-tab="transferencias" onclick="cambiarPestanaContabilidad(event, 'transferencias')">
           <span class="nav-icon">💳</span>
           <span>Transferencias</span>
@@ -1197,7 +1293,11 @@
   <main class="wrapper">
     <!-- Top Header Escritorio -->
     <header class="top-header">
-      <div class="breadcrumb-title" id="headerTitleConsignaciones">
+      <div class="breadcrumb-title" id="headerTitleFormasPago">
+        <h1><span>📊</span> Formas de Pago</h1>
+        <p>Cómo van las operaciones en Transferencia, Efectivo y Crédito en la quincena. ¡Entre más transferencia, mejor!</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleConsignaciones" style="display:none;">
         <h1><span>💰</span> Consignaciones Bancarias</h1>
         <p>Control y conciliación diaria de efectivo recaudado por operación vs consignaciones registradas</p>
       </div>
@@ -1222,7 +1322,81 @@
     <div class="content-container">
 
       <!-- ── PESTAÑA 1: CONSIGNACIONES ────────────────────────────── -->
-      <div id="vistaConsignaciones" class="tab-pane active">
+      <!-- ── PESTAÑA 0: FORMAS DE PAGO (por defecto) ──────────────── -->
+      <div id="vistaFormasPago" class="tab-pane active">
+
+        <!-- Controles principales -->
+        <section class="filters-card fp-controles">
+          <div class="fp-controles-fila">
+            <div class="filter-group sm">
+              <label for="fpAnio">Año</label>
+              <select id="fpAnio" class="filter-control" onchange="fpCambiarAnio()"></select>
+            </div>
+            <div class="filter-group">
+              <label for="fpQuincena">Quincena</label>
+              <select id="fpQuincena" class="filter-control" onchange="cargarFormasPago()"></select>
+            </div>
+            <div class="filter-group">
+              <label>Modalidad</label>
+              <div class="fp-segmento" id="fpModalidad">
+                <button type="button" data-v="recaudo" class="activo" onclick="fpCambiarModalidad('recaudo')">Recaudo</button>
+                <button type="button" data-v="todas" onclick="fpCambiarModalidad('todas')">Todas</button>
+                <button type="button" data-v="credito" onclick="fpCambiarModalidad('credito')">Crédito</button>
+              </div>
+            </div>
+            <div class="filter-group sm">
+              <label>Valores</label>
+              <div class="fp-switch">
+                <span id="fpLblSubtotal" onclick="fpCambiarMedida('base')">Subtotal</span>
+                <label class="fp-switch-ctrl"><input type="checkbox" id="fpMedidaTotal" checked onchange="fpCambiarMedida(this.checked ? 'total' : 'base')"><span></span></label>
+                <span id="fpLblTotal" class="activo" onclick="fpCambiarMedida('total')">Total</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Filtros plegables (plegados por defecto) con búsqueda a la vista -->
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="fpToggleFiltros()">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="fpFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="fpBuscar" placeholder="🔍 Buscar operación..." aria-label="Buscar operación" oninput="fpRender()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="fpFiltrosChevron">▸</span>
+          </div>
+          <div id="fpFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group">
+                <label for="fpRegional">Regional</label>
+                <select id="fpRegional" class="filter-control" onchange="fpCambiarFiltro('regional', this.value)"></select>
+              </div>
+              <div class="filter-group">
+                <label for="fpOperacion">Operación</label>
+                <select id="fpOperacion" class="filter-control" onchange="fpCambiarFiltro('operacion', this.value)"></select>
+              </div>
+              <div class="filter-group sm" style="justify-content:flex-end;">
+                <button type="button" class="btn-action secondary" onclick="fpLimpiarFiltros()">↺ Limpiar filtros</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Resumen -->
+        <section class="fp-resumen" id="fpResumen"></section>
+
+        <!-- Vistas: Ranking / Por día -->
+        <div class="fp-vistas">
+          <div class="fp-segmento" id="fpVista">
+            <button type="button" data-v="ranking" class="activo" onclick="fpCambiarVista('ranking')">🏆 Ranking por operación</button>
+            <button type="button" data-v="dias" onclick="fpCambiarVista('dias')">📅 Por día</button>
+          </div>
+          <div class="fp-leyenda" id="fpLeyenda"></div>
+        </div>
+
+        <section class="fp-panel" id="fpPanel">
+          <div class="fp-vacio">Cargando informe...</div>
+        </section>
+      </div>
+
+      <div id="vistaConsignaciones" class="tab-pane" style="display:none;">
 
         <!-- Mini stat cards compactas (Estilo Valorización Inventario) -->
         <section class="mini-stat-container">
@@ -1817,81 +1991,85 @@
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
   <script>
-    // Coordinador de Pestañas de Contabilidad (Consignaciones / Transferencias)
+    // Coordinador de Pestañas de Contabilidad (Formas de Pago / Consignaciones / Transferencias)
+    // Cada pestaña se muestra según las secciones del rol en Maestro_Menu (contabilidad).
+    const PESTANAS_CONTA = {
+      formaspago:     { seccion: 'Formas_Pago',    vista: 'vistaFormasPago',     header: 'headerTitleFormasPago',     nav: 'navLiFormasPago',     titulo: 'Formas de Pago' },
+      consignaciones: { seccion: 'Consignaciones', vista: 'vistaConsignaciones', header: 'headerTitleConsignaciones', nav: 'navLiConsignaciones', titulo: 'Consignaciones' },
+      transferencias: { seccion: 'Transferencias', vista: 'vistaTransferencias', header: 'headerTitleTransferencias', nav: 'navLiTransferencias', titulo: 'Transferencias' },
+    };
+    let seccionesConta = null; // null = aún no se sabe (se muestran todas)
+    const normSec = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    function pestanaPermitida(t) {
+      return !seccionesConta || seccionesConta.includes(normSec(PESTANAS_CONTA[t].seccion));
+    }
+    function pestanaPorDefecto() {
+      return Object.keys(PESTANAS_CONTA).find(pestanaPermitida) || 'consignaciones';
+    }
+
     window.cambiarPestanaContabilidad = function (e, tab) {
       if (e && e.preventDefault) e.preventDefault();
       activarPestanaContabilidad(tab);
     };
 
-    function activarPestanaContabilidad(tab) {
-      const t = (tab || 'consignaciones').toLowerCase();
+    function activarPestanaContabilidad(tab, sinHistorial) {
+      let t = (tab || '').toLowerCase();
+      if (!PESTANAS_CONTA[t] || !pestanaPermitida(t)) t = pestanaPorDefecto();
       const urlParams = new URLSearchParams(window.location.search);
       const u = urlParams.get('usuario') || (window.CONFIG && window.CONFIG.usuarioId) || '';
-
       const newUrl = `/contabilidad?tab=${t}${u ? '&usuario=' + encodeURIComponent(u) : ''}`;
-      window.history.pushState({ tab: t }, '', newUrl);
+      if (sinHistorial) window.history.replaceState({ tab: t }, '', newUrl);
+      else window.history.pushState({ tab: t }, '', newUrl);
 
-      document.querySelectorAll('.sidebar .nav-item').forEach(item => {
-        const itemTab = item.dataset.tab;
-        if (itemTab === t) item.classList.add('active');
-        else item.classList.remove('active');
+      document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.toggle('active', item.dataset.tab === t));
+      Object.entries(PESTANAS_CONTA).forEach(([k, p]) => {
+        const v = document.getElementById(p.vista);
+        const h = document.getElementById(p.header);
+        if (v) v.style.display = k === t ? 'block' : 'none';
+        if (h) h.style.display = k === t ? 'block' : 'none';
       });
-
-      const pConsig = document.getElementById('vistaConsignaciones');
-      const pTransf = document.getElementById('vistaTransferencias');
-      const hConsig = document.getElementById('headerTitleConsignaciones');
-      const hTransf = document.getElementById('headerTitleTransferencias');
       const mTitle = document.getElementById('mobileHeaderTitle');
-
-      if (t === 'transferencias') {
-        if (pConsig) pConsig.style.display = 'none';
-        if (pTransf) pTransf.style.display = 'block';
-        if (hConsig) hConsig.style.display = 'none';
-        if (hTransf) hTransf.style.display = 'block';
-        if (mTitle) mTitle.textContent = 'Transferencias';
-        document.title = 'Contabilidad - Transferencias | LOG&SER';
-        if (typeof window.inicializarTransferenciasSiAplica === 'function') {
-          window.inicializarTransferenciasSiAplica();
-        }
-      } else {
-        if (pConsig) pConsig.style.display = 'block';
-        if (pTransf) pTransf.style.display = 'none';
-        if (hConsig) hConsig.style.display = 'block';
-        if (hTransf) hTransf.style.display = 'none';
-        if (mTitle) mTitle.textContent = 'Consignaciones';
-        document.title = 'Contabilidad - Consignaciones | LOG&SER';
-      }
+      if (mTitle) mTitle.textContent = PESTANAS_CONTA[t].titulo;
+      document.title = `Contabilidad - ${PESTANAS_CONTA[t].titulo} | LOG&SER`;
+      if (t === 'transferencias' && typeof window.inicializarTransferenciasSiAplica === 'function') window.inicializarTransferenciasSiAplica();
+      if (t === 'formaspago' && typeof window.inicializarFormasPagoSiAplica === 'function') window.inicializarFormasPagoSiAplica();
+      if (t === 'consignaciones' && typeof window.cargarConsignacionesSiFalta === 'function') window.cargarConsignacionesSiFalta();
     }
 
     window.sincronizarPestanaActiva = function (btn) {
       const params = new URLSearchParams(window.location.search);
-      const tab = (params.get('tab') || 'consignaciones').toLowerCase();
+      const tab = (params.get('tab') || pestanaPorDefecto()).toLowerCase();
       if (tab === 'transferencias') {
-        if (typeof window.cargarTransferencias === 'function') {
-          window.cargarTransferencias(btn);
-        }
-      } else {
-        if (typeof window.sincronizarConsignaciones === 'function') {
-          window.sincronizarConsignaciones(btn);
-        }
+        if (typeof window.cargarTransferencias === 'function') window.cargarTransferencias(btn);
+      } else if (tab === 'formaspago') {
+        if (typeof window.cargarFormasPago === 'function') window.cargarFormasPago(btn);
+      } else if (typeof window.sincronizarConsignaciones === 'function') {
+        window.sincronizarConsignaciones(btn);
       }
     };
 
     window.addEventListener('popstate', () => {
       const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab') || 'consignaciones';
-      activarPestanaContabilidad(tab);
+      activarPestanaContabilidad(params.get('tab'), true);
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab');
-      if (tab && tab.toLowerCase() === 'transferencias') {
-        activarPestanaContabilidad('transferencias');
-      }
+      const u = params.get('usuario') || '';
+      try {
+        const r = await fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(u)}`);
+        const est = await r.json();
+        if (r.ok && Array.isArray(est.secciones)) seccionesConta = est.secciones.map(normSec);
+      } catch (e) { /* se muestran todas */ }
+      Object.entries(PESTANAS_CONTA).forEach(([k, p]) => {
+        const li = document.getElementById(p.nav);
+        if (li) li.style.display = pestanaPermitida(k) ? '' : 'none';
+      });
+      activarPestanaContabilidad(params.get('tab'), true);
     });
   </script>
   <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
   <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
+  <script src="/js/contabilidad-formaspago.js?v=20261111a"></script>
 </body>
 </html>

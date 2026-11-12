@@ -400,14 +400,27 @@
       // 10. Inicializar botón flotante de Tickets
       inicializarBotonTicket();
 
-      // 11. Cargar datos iniciales
-      await cargarConsignaciones();
+      // 11. Cargar datos solo si la pestaña Consignaciones está a la vista (Formas de Pago es la
+      //     pestaña por defecto y hay roles que no tienen Consignaciones)
+      listoParaCargar = true;
+      const vista = document.getElementById('vistaConsignaciones');
+      if (vista && vista.style.display !== 'none') await window.cargarConsignacionesSiFalta();
 
     } catch (err) {
       console.error('[contabilidad] Error en inicializar:', err);
       dom.tbodyConsignaciones.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
     }
   }
+
+  let listoParaCargar = false;
+  let consignacionesCargadas = false;
+  window.cargarConsignacionesSiFalta = async function () {
+    if (!listoParaCargar || consignacionesCargadas) return;
+    const secciones = (estadoUsuario && estadoUsuario.secciones || []).map(x => String(x).toLowerCase());
+    if (secciones.length && !secciones.includes('consignaciones')) return;
+    consignacionesCargadas = true;
+    await cargarConsignaciones();
+  };
 
   function poblarQuincenas(listaQuincenas, seleccionada) {
     dom.filtroQuincena.innerHTML = '';

@@ -4,6 +4,7 @@ const multer = require('multer');
 const { computarAccesoContabilidad } = require('../services/accesoContabilidad');
 const consignacionesService = require('../services/consignacionesService');
 const transferenciasService = require('../services/transferenciasService');
+const formasPagoService = require('../services/formasPagoService');
 
 const router = express.Router();
 const uploadConsignacion = multer({
@@ -41,6 +42,14 @@ function paginaError(mensaje) {
 }
 
 // ── GET / (Vista Principal de Contabilidad) ───────────────────────────────────
+// Pestaña (?tab=) → Sección de Maestro_Menu (contabilidad)
+function seccionDeTab(tab) {
+  const t = String(tab || '').toLowerCase();
+  if (t === 'transferencias') return 'Transferencias';
+  if (t === 'formaspago') return 'Formas_Pago';
+  return 'Consignaciones';
+}
+
 router.get('/', async (req, res) => {
   try {
     const { usuario, tab } = req.query;
@@ -48,7 +57,7 @@ router.get('/', async (req, res) => {
       return res.status(400).send(paginaError('Parámetro ?usuario requerido.'));
     }
 
-    const seccionReq = (tab && tab.toLowerCase() === 'transferencias') ? 'Transferencias' : 'Consignaciones';
+    const seccionReq = seccionDeTab(tab);
     let acceso = await computarAccesoContabilidad(usuario, seccionReq);
     if (!acceso) {
       acceso = await computarAccesoContabilidad(usuario, null);
@@ -70,7 +79,7 @@ router.get('/api/estado', async (req, res) => {
     const { usuario, tab } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const seccionReq = (tab && tab.toLowerCase() === 'transferencias') ? 'Transferencias' : 'Consignaciones';
+    const seccionReq = seccionDeTab(tab);
     let acceso = await computarAccesoContabilidad(usuario, seccionReq);
     if (!acceso) {
       acceso = await computarAccesoContabilidad(usuario, null);
@@ -314,6 +323,37 @@ router.post('/api/transferencias/soporte', uploadConsignacion.single('foto'), as
     res.json(await transferenciasService.guardarSoporteTransferencia(idServicio, req.file, fechaTransferencia, acceso));
   } catch (err) {
     console.error('[contabilidad] POST /api/transferencias/soporte error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ── GET /api/formas-pago (Informe de formas de pago de la quincena por operación) ──
+// Todos ven porcentajes; los valores solo de las operaciones de su alcance (Maestro_Menu Formas_Pago).
+router.get('/api/formas-pago', async (req, res) => {
+  try {
+    const { usuario, anio, quincena, regional, operacion } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoContabilidad(usuario, 'Formas_Pago');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para Formas de Pago.' });
+    res.json(await formasPagoService.obtenerInforme({ anio, quincena, regional, operacion }, acceso));
+  } catch (err) {
+    console.error('[contabilidad] GET /api/formas-pago error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ── GET /api/formas-pago/quincenas?anio= (Lista de quincenas del año) ──
+router.get('/api/formas-pago/quincenas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoContabilidad(usuario, 'Formas_Pago');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para Formas de Pago.' });
+    const hoy = await formasPagoService.quincenaDeHoy();
+    const anio = /^\d{4}$/.test(String(req.query.anio || '')) ? String(req.query.anio) : hoy.anio;
+    res.json({ ok: true, anio, quincenas: await formasPagoService.quincenasDelAnio(anio), quincenaActual: hoy.quincena, anioActual: hoy.anio });
+  } catch (err) {
+    console.error('[contabilidad] GET /api/formas-pago/quincenas error:', err);
     res.status(400).json({ error: err.message });
   }
 });
