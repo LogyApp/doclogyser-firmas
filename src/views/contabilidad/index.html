@@ -861,7 +861,21 @@
     .nav-subitem .nav-icon { font-size: 0.98rem; }
 
     /* ── Caja Operativa ── */
-    .caja-acciones { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
+    .caja-acciones { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .btn-action:disabled { opacity: .5; cursor: not-allowed; }
+    .caja-subbloque { background: var(--bg-elevated, rgba(0,0,0,.03)); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .caja-aviso { background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .4); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: .8rem; margin-bottom: 10px; }
+    #modalCajaGasto .fp-segmento button { flex: 1; }
+    #modalCajaGasto .fp-segmento { display: flex; }
+    .caja-val { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .caja-val button { border: 1px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 6px; width: 24px; height: 22px; cursor: pointer; font-size: .78rem; line-height: 1; padding: 0; }
+    .caja-val button:hover { border-color: var(--accent); }
+    .caja-val button.no { color: #ef4444; }
+    .caja-colab-lista { display: flex; flex-direction: column; gap: 8px; }
+    .caja-colab { border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; background: var(--card-bg); }
+    .caja-colab-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .caja-colab-acc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .caja-colab-acc .btn-action { padding: 4px 9px; font-size: .74rem; }
     .caja-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
     .caja-kpi { background: var(--bg-elevated, rgba(0,0,0,.03)); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
     .caja-kpi .lbl { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: .3px; }
@@ -1327,6 +1341,11 @@
               <span class="nav-icon">💵</span><span>Flujo de Caja</span>
             </a>
           </li>
+          <li id="navLiCajaReintegros">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-reintegros" data-tab="caja-reintegros" onclick="cambiarPestanaContabilidad(event, 'caja-reintegros')">
+              <span class="nav-icon">🔁</span><span>Reintegros</span>
+            </a>
+          </li>
           <li id="navLiCajaResponsables">
             <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-responsables" data-tab="caja-responsables" onclick="cambiarPestanaContabilidad(event, 'caja-responsables')">
               <span class="nav-icon">👤</span><span>Responsables</span>
@@ -1352,6 +1371,10 @@
       <div class="breadcrumb-title" id="headerTitleCajaFlujo" style="display:none;">
         <h1><span>💵</span> Caja Operativa · Flujo de Caja</h1>
         <p>Saldo de cada responsable por quincena: saldo inicial, reintegros, gastos y saldo final</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaReintegros" style="display:none;">
+        <h1><span>🔁</span> Caja Operativa · Reintegros</h1>
+        <p>Solicitudes de reintegro de caja (desde el 60% de uso) y su aprobación</p>
       </div>
       <div class="breadcrumb-title" id="headerTitleCajaResponsables" style="display:none;">
         <h1><span>👤</span> Caja Operativa · Responsables</h1>
@@ -1500,6 +1523,57 @@
                 </tr>
               </thead>
               <tbody id="cfBody"><tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando flujo de caja...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › REINTEGROS ────────────────────────── -->
+      <div id="vistaCajaReintegros" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">⏳</span><div class="mini-stat-info"><span class="lbl">Pendientes</span><span class="val" id="riKpiPend">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">💰</span><div class="mini-stat-info"><span class="lbl">Valor pendiente</span><span class="val" id="riKpiPendVal">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">✅</span><div class="mini-stat-info"><span class="lbl">Aprobados</span><span class="val" id="riKpiAprob">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">🏦</span><div class="mini-stat-info"><span class="lbl">Valor aprobado</span><span class="val" id="riKpiAprobVal">$ 0</span></div></div>
+        </section>
+
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="cajaToggleFiltros('ri')">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="riFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="riBuscar" placeholder="🔍 Buscar responsable, cédula, operación..." aria-label="Buscar reintegro" oninput="cajaRenderReintegros()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="riFiltrosChevron">▸</span>
+          </div>
+          <div id="riFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group"><label for="riEstado">Estado</label><select id="riEstado" class="filter-control" onchange="cajaCambiarFiltroRein('estado', this.value)"></select></div>
+              <div class="filter-group"><label for="riRegional">Regional</label><select id="riRegional" class="filter-control" onchange="cajaCambiarFiltroRein('regional', this.value)"></select></div>
+              <div class="filter-group"><label for="riOperacion">Operación</label><select id="riOperacion" class="filter-control" onchange="cajaCambiarFiltroRein('operacion', this.value)"></select></div>
+              <div class="filter-group sm" style="justify-content:flex-end;"><button type="button" class="btn-action secondary" onclick="cajaLimpiarFiltrosRein()">↺ Limpiar filtros</button></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="caja-acciones">
+          <button type="button" class="btn-action primary" onclick="cajaAbrirSolicitudReintegro()">＋ Solicitar reintegro</button>
+        </div>
+
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaRein">
+              <thead>
+                <tr>
+                  <th data-sort="fecha_solicitud" style="width: 140px;">Solicitud</th>
+                  <th data-sort="usuariosolicita" style="width: 200px;">Responsable</th>
+                  <th data-sort="regional" style="width: 115px;">Regional</th>
+                  <th data-sort="operacion" style="width: 150px;">Operación</th>
+                  <th data-sort="valor" style="width: 125px; text-align:right;">Valor</th>
+                  <th data-sort="estado" style="width: 115px;">Estado</th>
+                  <th data-sort="fecha_reintegro" style="width: 140px;">Aprobado</th>
+                  <th data-sort="usuarioaprueba" style="width: 150px;">Aprobó</th>
+                  <th style="width: 220px;">Observaciones</th>
+                </tr>
+              </thead>
+              <tbody id="riBody"><tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando reintegros...</td></tr></tbody>
             </table>
           </div>
         </section>
@@ -2089,34 +2163,238 @@
 
   <!-- ── CAJA OPERATIVA: detalle del periodo ── -->
   <div class="modal-overlay" id="modalCajaPeriodo">
-    <div class="modal-card" style="max-width: 980px; max-height: 94vh;">
+    <div class="modal-card" style="max-width: 1120px; max-height: 94vh;">
       <div class="modal-header">
         <span id="cpTitulo">Periodo</span>
         <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaPeriodo')">&times;</button>
       </div>
       <div class="modal-body" style="gap: 12px;">
         <div class="caja-kpis" id="cpKpis"></div>
+        <div class="caja-acciones" style="justify-content: space-between; margin-bottom: 0;">
+          <div class="caja-nota" id="cpResumenVal"></div>
+          <button type="button" class="btn-action primary" onclick="cajaAbrirGasto()">＋ Registrar gasto</button>
+        </div>
+        <div class="barra-masiva" id="cpBarraMasiva">
+          <span class="barra-masiva-txt"><strong id="cpSelConteo">0</strong> gasto(s) seleccionado(s)</span>
+          <div class="barra-masiva-acc">
+            <button type="button" class="btn-action primary" onclick="cajaValidarMasivo('operacion', 'Confirmado')">✓ Confirmar operación</button>
+            <button type="button" class="btn-action primary" id="cpBtnContable" onclick="cajaValidarMasivo('contable', 'Confirmado')">✓ Confirmar contable</button>
+            <button type="button" class="btn-action secondary" onclick="cajaValidarMasivo('operacion', 'No aplica')">✗ No aplica</button>
+            <button type="button" class="btn-action secondary" onclick="cajaLimpiarSeleccionGastos()">Cancelar</button>
+          </div>
+        </div>
         <div class="table-container" style="max-height: 52vh;">
           <table class="data-table" id="tablaCajaGastos">
             <thead>
               <tr>
-                <th style="width: 120px;">Fecha</th>
-                <th style="width: 120px;">Tipo</th>
+                <th class="col-sel" style="width: 40px;"><input type="checkbox" id="cpSelTodos" class="chk-sel" aria-label="Seleccionar todos los gastos"></th>
+                <th style="width: 105px;">Fecha</th>
+                <th style="width: 105px;">Tipo</th>
                 <th style="width: 180px;">Tercero</th>
                 <th style="width: 220px;">Descripción</th>
                 <th style="width: 115px; text-align:right;">Valor</th>
-                <th style="width: 120px;">Val. operación</th>
-                <th style="width: 120px;">Val. contable</th>
+                <th style="width: 150px;">Val. operación</th>
+                <th style="width: 150px;">Val. contable</th>
                 <th style="width: 80px; text-align:center;">Soporte</th>
               </tr>
             </thead>
             <tbody id="cpGastos"></tbody>
           </table>
         </div>
-        <div class="caja-nota">El registro y la validación de gastos se integran en la siguiente fase; mientras tanto se hacen desde el módulo anterior.</div>
+        <div class="caja-nota">Toca un gasto para editarlo o ver sus colaboradores y firmas. ✓ confirma y ✗ marca "No aplica".</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaPeriodo')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: registrar / editar gasto ── -->
+  <div class="modal-overlay" id="modalCajaGasto">
+    <div class="modal-card" style="max-width: 680px; max-height: 94vh;">
+      <div class="modal-header">
+        <span id="cgTitulo">Registrar gasto</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaGasto')">&times;</button>
+      </div>
+      <form id="formCajaGasto" onsubmit="cajaGuardarGasto(event)" style="display:flex; flex-direction:column; min-height:0;">
+        <div class="modal-body" style="overflow-y:auto;">
+          <div id="cgAviso" class="caja-aviso" style="display:none;"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cgFecha">Fecha del movimiento *</label>
+              <input type="datetime-local" id="cgFecha" required>
+            </div>
+            <div class="form-group">
+              <label>Tipo de gasto *</label>
+              <div class="fp-segmento" id="cgTipo">
+                <button type="button" data-v="Compra" onclick="cajaTipoGasto('Compra')">Compra</button>
+                <button type="button" data-v="Transporte" onclick="cajaTipoGasto('Transporte')">Transporte</button>
+                <button type="button" data-v="Otro" onclick="cajaTipoGasto('Otro')">Otro</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cgBloqueTransporte" class="caja-subbloque" style="display:none;">
+            <div class="form-group">
+              <label>Concepto de transporte *</label>
+              <div class="fp-segmento" id="cgConcepto">
+                <button type="button" data-v="Turno Extendido" onclick="cajaConceptoTransporte('Turno Extendido')">T. Extendido</button>
+                <button type="button" data-v="Domicilio" onclick="cajaConceptoTransporte('Domicilio')">Domicilio</button>
+                <button type="button" data-v="Traslado" onclick="cajaConceptoTransporte('Traslado')">Traslado</button>
+              </div>
+            </div>
+            <div class="form-group" id="cgCampoPlaca" style="display:none;">
+              <label for="cgPlaca">Placa del vehículo *</label>
+              <input type="text" id="cgPlaca" maxlength="6" placeholder="ABC123" style="text-transform:uppercase;">
+            </div>
+            <div class="form-row" id="cgCampoTraslado" style="display:none;">
+              <div class="form-group"><label for="cgOrigen">Origen *</label><input type="text" id="cgOrigen" placeholder="Mosquera"></div>
+              <div class="form-group"><label for="cgDestino">Destino *</label><input type="text" id="cgDestino" placeholder="Funza"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="cgOperacion">Operación del gasto *</label>
+            <select id="cgOperacion" required onchange="cajaCargarTrabajadores()"></select>
+          </div>
+
+          <div class="form-group" id="cgCampoProveedor" style="display:none;">
+            <label for="cgProveedor">Proveedor *</label>
+            <input type="search" id="cgBuscarProveedor" placeholder="🔍 Buscar proveedor por NIT o razón social..." oninput="cajaFiltrarProveedores()" style="margin-bottom:6px;">
+            <select id="cgProveedor" onchange="cajaElegirProveedor()"></select>
+            <div id="cgNuevoProveedor" class="caja-subbloque" style="display:none; margin-top:8px;">
+              <div class="form-row">
+                <div class="form-group"><label for="cgNpNit">NIT *</label><input type="text" id="cgNpNit" placeholder="900123456"></div>
+                <div class="form-group"><label for="cgNpRazon">Razón social *</label><input type="text" id="cgNpRazon" placeholder="Ferretería El Tornillo"></div>
+              </div>
+              <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <button type="button" class="btn-action secondary" onclick="document.getElementById('cgNuevoProveedor').style.display='none'">Cancelar</button>
+                <button type="button" class="btn-action primary" onclick="cajaCrearProveedor()">Guardar proveedor</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" id="cgCampoTrabajador" style="display:none;">
+            <label for="cgTrabajador">Trabajador *</label>
+            <select id="cgTrabajador" onchange="cajaElegirTrabajador()"></select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cgTipoId">Tipo de identificación *</label>
+              <select id="cgTipoId" required onchange="cajaTipoIdentificacion()">
+                <option value="NIT">NIT</option>
+                <option value="CC">Cédula (CC)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="cgNumId" id="cgLblNumId">Número *</label>
+              <input type="text" id="cgNumId" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="cgTercero">Nombre o razón social *</label>
+            <input type="text" id="cgTercero" required>
+          </div>
+          <div class="form-group" id="cgCampoDescripcion">
+            <label for="cgDescripcion">Descripción del gasto *</label>
+            <input type="text" id="cgDescripcion" placeholder="Ej. Cinta de embalaje">
+          </div>
+          <div class="form-group">
+            <label for="cgValor">Valor del gasto ($) *</label>
+            <input type="number" id="cgValor" required min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label>Soporte (foto o PDF)</label>
+            <div class="zona-archivo" data-input="cgSoporte"></div>
+            <input type="file" id="cgSoporte" accept="image/*,application/pdf" style="display:none;">
+            <input type="file" id="cgSoporteCamara" accept="image/*" capture="environment" style="display:none;">
+            <small id="cgSoporteActual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+          </div>
+          <div class="form-group">
+            <label for="cgObs">Observaciones</label>
+            <textarea id="cgObs" rows="2"></textarea>
+          </div>
+
+          <!-- Colaboradores y firmas (solo al editar) -->
+          <div id="cgColaboradores" style="display:none;">
+            <div class="caja-acciones" style="justify-content: space-between; margin: 6px 0 8px;">
+              <strong style="font-size:.88rem;">✍️ Colaboradores y firmas</strong>
+              <button type="button" class="btn-action secondary" id="cgBtnAgregarColab" onclick="cajaMostrarAgregarColab(true)">＋ Agregar colaborador</button>
+            </div>
+            <div id="cgAgregarColab" class="caja-subbloque" style="display:none;">
+              <div class="form-group"><label for="cgColabSel">Colaborador *</label><select id="cgColabSel"></select></div>
+              <div class="form-row">
+                <div class="form-group"><label for="cgColabValor">Valor *</label><input type="number" id="cgColabValor" min="1" placeholder="15000"></div>
+                <div class="form-group"><label for="cgColabObs">Observaciones</label><input type="text" id="cgColabObs" placeholder="Peajes del turno"></div>
+              </div>
+              <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <button type="button" class="btn-action secondary" onclick="cajaMostrarAgregarColab(false)">Cancelar</button>
+                <button type="button" class="btn-action primary" onclick="cajaAgregarColab()">Guardar colaborador</button>
+              </div>
+            </div>
+            <div id="cgListaColab" class="caja-colab-lista"></div>
+          </div>
+
+          <div id="cgError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaGasto')">Cancelar</button>
+          <button type="submit" class="btn-action primary" id="cgGuardar">Guardar gasto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: solicitar reintegro ── -->
+  <div class="modal-overlay" id="modalCajaSolicitud">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <span>Solicitar reintegro de caja</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaSolicitud')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="rsResponsable">Responsable *</label>
+          <select id="rsResponsable" onchange="cajaInfoReintegro()"></select>
+        </div>
+        <div id="rsInfo" class="caja-kpis" style="display:none;"></div>
+        <div id="rsAviso" class="caja-aviso" style="display:none;"></div>
+        <div class="form-group">
+          <label for="rsObs">Observaciones</label>
+          <textarea id="rsObs" rows="2" placeholder="Motivo o detalle de la solicitud..."></textarea>
+        </div>
+        <div id="rsError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaSolicitud')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="rsEnviar" onclick="cajaEnviarSolicitud()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: aprobar reintegro ── -->
+  <div class="modal-overlay" id="modalCajaAprobar">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <span>Aprobar reintegro</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaAprobar')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="raResumen" class="caja-subbloque" style="font-size:.84rem; line-height:1.55;"></div>
+        <div class="form-group">
+          <label for="raValor">Valor a reintegrar ($) *</label>
+          <input type="number" id="raValor" min="1" step="1">
+        </div>
+        <div class="form-group">
+          <label for="raObs">Observaciones</label>
+          <textarea id="raObs" rows="2"></textarea>
+        </div>
+        <div id="raError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaAprobar')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="raAprobar" onclick="cajaAprobarReintegro()">✅ Aprobar y acreditar</button>
       </div>
     </div>
   </div>
@@ -2245,6 +2523,7 @@
       transferencias: { seccion: 'Transferencias', vista: 'vistaTransferencias', header: 'headerTitleTransferencias', nav: 'navLiTransferencias', titulo: 'Transferencias' },
       // Grupo Caja Operativa (subpestañas en la barra lateral)
       'caja-flujo':        { seccion: 'Caja_Flujo',        vista: 'vistaCajaFlujo',        header: 'headerTitleCajaFlujo',        nav: 'navLiCajaFlujo',        titulo: 'Flujo de Caja', grupo: 'caja' },
+      'caja-reintegros':   { seccion: 'Caja_Reintegros',   vista: 'vistaCajaReintegros',   header: 'headerTitleCajaReintegros',   nav: 'navLiCajaReintegros',   titulo: 'Reintegros de Caja', grupo: 'caja' },
       'caja-responsables': { seccion: 'Caja_Responsables', vista: 'vistaCajaResponsables', header: 'headerTitleCajaResponsables', nav: 'navLiCajaResponsables', titulo: 'Responsables de Caja', grupo: 'caja' },
     };
     // Abre o cierra el grupo Caja Operativa de la barra lateral
@@ -2304,6 +2583,7 @@
       if (t === 'consignaciones' && typeof window.cargarConsignacionesSiFalta === 'function') window.cargarConsignacionesSiFalta();
       if (t === 'caja-flujo' && typeof window.inicializarCajaFlujoSiAplica === 'function') window.inicializarCajaFlujoSiAplica();
       if (t === 'caja-responsables' && typeof window.inicializarCajaResponsablesSiAplica === 'function') window.inicializarCajaResponsablesSiAplica();
+      if (t === 'caja-reintegros' && typeof window.inicializarCajaReintegrosSiAplica === 'function') window.inicializarCajaReintegrosSiAplica();
     }
 
     window.sincronizarPestanaActiva = function (btn) {
@@ -2315,6 +2595,8 @@
         if (typeof window.cargarFormasPago === 'function') window.cargarFormasPago(btn);
       } else if (tab === 'caja-flujo') {
         if (typeof window.cargarCajaFlujo === 'function') window.cargarCajaFlujo();
+      } else if (tab === 'caja-reintegros') {
+        if (typeof window.cargarCajaReintegros === 'function') window.cargarCajaReintegros();
       } else if (tab === 'caja-responsables') {
         if (typeof window.cargarCajaResponsables === 'function') window.cargarCajaResponsables();
       } else if (typeof window.sincronizarConsignaciones === 'function') {
@@ -2348,6 +2630,6 @@
   <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
   <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
   <script src="/js/contabilidad-formaspago.js?v=20261111a"></script>
-  <script src="/js/contabilidad-caja.js?v=20261112a"></script>
+  <script src="/js/contabilidad-caja.js?v=20261112b"></script>
 </body>
 </html>

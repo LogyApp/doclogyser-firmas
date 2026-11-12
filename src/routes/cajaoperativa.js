@@ -1100,9 +1100,10 @@ router.put('/api/gastos/:idgasto', async (req, res) => {
     const existing = gRows[0];
 
     // Perform backend security checks on editability
+    // Confirmado por contabilidad: solo Sistema. Confirmado por operación: los roles de validación
+    // contable (Config_Parametros contabilidad / Caja Operativa) pueden editar todo; los demás, solo el soporte.
     const isSistema = acceso.rol === 'Sistema';
-    const isContabilidad = acceso.rol === 'Contabilidad';
-    const isContabilidadOrSistema = isContabilidad || isSistema;
+    const isContabilidadOrSistema = isSistema || (await puedeValidarContable(acceso.rol));
 
     let allowedMode = 'ALL';
     if (existing.valida_contable === 'Confirmado') {
@@ -1273,6 +1274,52 @@ router.post('/api/gastos/:idgasto/validar-contable', async (req, res) => {
     await recargarSaldosPeriodo(idperiodo);
     res.json({ ok: true });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Validación masiva de gastos (Contabilidad › Caja Operativa › Flujo de Caja).
+// area: 'operacion' (cualquier usuario con acceso a la operación del gasto) o 'contable'
+// (roles de Config_Parametros). estado: 'Confirmado', 'No aplica' o 'PENDIENTE'.
+router.post('/api/gastos/validar-masivo', async (req, res) => {
+  try {
+    const { usuario, ids, area, estado } = req.body;
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!['operacion', 'contable'].includes(area)) return res.status(400).json({ error: 'Área de validación no válida.' });
+    if (!['Confirmado', 'No aplica', 'PENDIENTE'].includes(estado)) return res.status(400).json({ error: 'Estado no válido.' });
+    if (area === 'contable' && !(await puedeValidarContable(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para validación contable.' });
+    }
+    const lista = [...new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '').trim()).filter(Boolean))];
+    if (!lista.length) return res.status(400).json({ error: 'No se seleccionó ningún gasto.' });
+    if (lista.length > 500) return res.status(400).json({ error: 'Máximo 500 gastos por vez.' });
+
+    const ph = lista.map(() => '?').join(',');
+    const [rows] = await pool.query(
+      `SELECT g.idgasto, g.idperiodo, g.operacion, g.valida_contable, resp.operacionprincipal
+       FROM Dynamic_gastos g
+       LEFT JOIN Dynamic_gastos_periodo p ON p.idperiodo = g.idperiodo
+       LEFT JOIN Maestro_responsablegastos resp ON resp.idresponsable = p.idresponsable
+       WHERE g.idgasto IN (${ph})`,
+      lista
+    );
+    const permitidas = new Set((acceso.operacionesFiltro || []).map(o => String(o).trim().toLowerCase()));
+    const enAlcance = r => acceso.sinFiltro ||
+      permitidas.has(String(r.operacion || '').trim().toLowerCase()) ||
+      permitidas.has(String(r.operacionprincipal || '').trim().toLowerCase());
+    // La validación de operación no se cambia en gastos ya confirmados por contabilidad (salvo Sistema)
+    const aplicables = rows.filter(r => enAlcance(r) &&
+      !(area === 'operacion' && r.valida_contable === 'Confirmado' && acceso.rol !== 'Sistema'));
+    if (aplicables.length) {
+      const columna = area === 'operacion' ? 'valida_operacion' : 'valida_contable';
+      const ph2 = aplicables.map(() => '?').join(',');
+      await pool.query(`UPDATE Dynamic_gastos SET ${columna} = ? WHERE idgasto IN (${ph2})`, [estado, ...aplicables.map(r => r.idgasto)]);
+      for (const idp of new Set(aplicables.map(r => r.idperiodo))) await recargarSaldosPeriodo(idp);
+    }
+    res.json({ ok: true, actualizados: aplicables.map(r => r.idgasto), omitidos: lista.length - aplicables.length });
+  } catch (err) {
+    console.error('[CajaOperativa] validar-masivo:', err);
     res.status(500).json({ error: err.message });
   }
 });
