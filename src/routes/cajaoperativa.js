@@ -4,11 +4,11 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { subirSoporteGasto, storage } = require('../services/storage');
+const { computarAccesoContabilidad } = require('../services/accesoContabilidad');
 
 
 const router = express.Router();
 
-const HTML_INDEX_PATH = path.join(__dirname, '../views/cajaoperativa/index.html');
 const HTML_REEMBOLSO_PATH = path.join(__dirname, '../views/reembolso/index.html');
 
 // Helper to format date in Colombia time
@@ -21,7 +21,53 @@ function getBogotaDateString() {
 }
 
 // ═════ ACCESO Y ROLES ═════
-async function computarAccesoCajaOperativa(usuarioId) {
+// Caja Operativa vive en Contabilidad como grupo de subpestañas. Quién ve cada una y con qué alcance
+// lo decide Maestro_Menu (contabilidad / Caja_Flujo, Caja_Responsables, Caja_Reintegros,
+// Caja_Reembolsos, Caja_Proveedores): 1 = todas las operaciones, 2 = su regional, 3 = su operación.
+// Mientras no existan esas filas (migración 2026-11-12_contabilidad_caja_operativa.sql) se usa la
+// lista de roles anterior (computarAccesoCajaOperativaFijo).
+const SECCIONES_CAJA = ['Caja_Flujo', 'Caja_Responsables', 'Caja_Reintegros', 'Caja_Reembolsos', 'Caja_Proveedores'];
+let cacheHayMenuCaja = { valor: null, t: 0 };
+async function hayMenuCaja() {
+  if (cacheHayMenuCaja.valor !== null && Date.now() - cacheHayMenuCaja.t < 60 * 1000) return cacheHayMenuCaja.valor;
+  const [r] = await pool.query("SELECT COUNT(*) AS n FROM Maestro_Menu WHERE Modulo = 'contabilidad' AND Seccion LIKE 'Caja\\_%'");
+  cacheHayMenuCaja = { valor: Number(r[0].n) > 0, t: Date.now() };
+  return cacheHayMenuCaja.valor;
+}
+
+async function computarAccesoCajaOperativa(usuarioId, seccion) {
+  if (!usuarioId) return null;
+  if (!(await hayMenuCaja())) return computarAccesoCajaOperativaFijo(usuarioId);
+  const general = await computarAccesoContabilidad(usuarioId);
+  if (!general) return null;
+  const propias = SECCIONES_CAJA.filter(sec => general.seccionAcceso[sec] != null);
+  if (!propias.length) return null;
+  let elegida = seccion && propias.includes(seccion) ? seccion : null;
+  if (seccion && !elegida) return null;
+  // Sin sección pedida: la de alcance más amplio (1 > 2 > 3)
+  if (!elegida) elegida = propias.slice().sort((a, b) => general.seccionAcceso[a] - general.seccionAcceso[b])[0];
+  const acceso = await computarAccesoContabilidad(usuarioId, elegida);
+  if (acceso) acceso.seccionesCaja = propias;
+  return acceso;
+}
+
+// Roles con validación contable de gastos (Config_Parametros contabilidad / Caja Operativa)
+async function puedeValidarContable(rol) {
+  let lista = 'Contabilidad, Sistema';
+  try {
+    const [r] = await pool.execute(
+      'SELECT Parametro FROM Config_Parametros WHERE Modulo = ? AND Seccion = ? AND Concepto = ? LIMIT 1',
+      ['contabilidad', 'Caja Operativa', 'Roles que pueden validar gastos']
+    );
+    if (r.length) lista = r[0].Parametro == null ? '' : String(r[0].Parametro);
+  } catch (e) {
+    console.error('[CajaOperativa] No se pudo leer Config_Parametros:', e.message);
+  }
+  const n = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  return lista.split(',').some(x => n(x) === n(rol));
+}
+
+async function computarAccesoCajaOperativaFijo(usuarioId) {
   if (!usuarioId) return null;
   const [uRows] = await pool.execute(
     'SELECT ID, Nombre, Rol, Regional, Dispositivo, `Operación` FROM Maestro_Usuarios WHERE ID = ?',
@@ -272,11 +318,15 @@ async function recargarSaldosPeriodo(idperiodo, conn = pool) {
 // ═════ ROUTES ═════
 
 // Serve Admin UI / Reembolso UI
+// El módulo de Caja Operativa ahora vive en Contabilidad (grupo de subpestañas en la barra
+// lateral). La dirección anterior lleva a Contabilidad › Caja Operativa › Flujo de Caja.
 router.get('/', (req, res) => {
   if (req.baseUrl === '/reembolso') {
     res.sendFile(HTML_REEMBOLSO_PATH);
   } else {
-    res.sendFile(HTML_INDEX_PATH);
+    const qs = new URLSearchParams({ tab: 'caja-flujo' });
+    if (req.query.usuario) qs.set('usuario', String(req.query.usuario));
+    res.redirect(302, `/contabilidad?${qs.toString()}`);
   }
 });
 
@@ -288,14 +338,14 @@ router.get('/reembolso', (req, res) => {
 // Access Info API
 router.get('/api/acceso', async (req, res) => {
   try {
-    const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const { usuario, seccion } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario, seccion);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
     
     // Auto-generate missing periods on panel load
     await verificarYGenerarPeriodos();
 
-    res.json(acceso);
+    res.json({ ...acceso, puedeValidarContable: await puedeValidarContable(acceso.rol) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -322,7 +372,7 @@ router.get('/api/quincenas-maestro', async (req, res) => {
 router.get('/api/responsables', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Responsables');
     if (!acceso) {
       return res.status(403).json({ error: 'No autorizado.' });
     }
@@ -372,7 +422,7 @@ router.get('/api/responsables', async (req, res) => {
 router.post('/api/responsables/crear', async (req, res) => {
   try {
     const { usuario, identificacion, regional, operacionprincipal, banco, numerocuenta, base_autorizada, observaciones } = req.body;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Responsables');
     if (!acceso || !acceso.sinFiltro) {
       return res.status(403).json({ error: 'No autorizado para crear responsables.' });
     }
@@ -403,7 +453,7 @@ router.put('/api/responsables/:idresponsable', async (req, res) => {
     const { idresponsable } = req.params;
     const { usuario, identificacion, regional, operacionprincipal, banco, numerocuenta, base_autorizada, observaciones } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Responsables');
     if (!acceso || !acceso.sinFiltro) {
       return res.status(403).json({ error: 'No autorizado para editar responsables.' });
     }
@@ -442,7 +492,7 @@ router.put('/api/responsables/:idresponsable', async (req, res) => {
 router.delete('/api/responsables/:id', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Responsables');
     if (!acceso || !acceso.sinFiltro) {
       return res.status(403).json({ error: 'No autorizado.' });
     }
@@ -459,7 +509,7 @@ router.delete('/api/responsables/:id', async (req, res) => {
 router.get('/api/reintegros', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reintegros');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     let query = `
@@ -506,7 +556,7 @@ router.get('/api/reintegros', async (req, res) => {
 router.post('/api/reintegros/solicitar', async (req, res) => {
   try {
     const { usuario, idresponsable, observaciones_solicitante } = req.body;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reintegros');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Validate that this responsible exists
@@ -559,7 +609,7 @@ router.post('/api/reintegros/:id/aprobar', async (req, res) => {
   try {
     const { usuario, valor, observaciones_aprobador } = req.body;
     const { id } = req.params;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reintegros');
     if (!acceso || !acceso.sinFiltro) {
       return res.status(403).json({ error: 'No autorizado para aprobar reintegros.' });
     }
@@ -626,7 +676,7 @@ router.post('/api/reintegros/:id/aprobar', async (req, res) => {
 router.get('/api/periodos', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     let query = `
@@ -694,7 +744,7 @@ function transformUrlSoporte(url, usuarioId) {
 router.get('/api/soportes/ver', async (req, res) => {
   try {
     const { usuario, path: filePath } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) {
       return res.status(403).json({ error: 'No autorizado' });
     }
@@ -733,7 +783,7 @@ router.get('/api/periodos/:idperiodo/gastos', async (req, res) => {
   try {
     const { usuario } = req.query;
     const { idperiodo } = req.params;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Recalculate first to ensure accuracy
@@ -771,7 +821,7 @@ router.get('/api/periodos/:idperiodo/soportes', async (req, res) => {
   try {
     const { usuario } = req.query;
     const { idperiodo } = req.params;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const bucketName = 'logyser-cloud';
@@ -805,7 +855,7 @@ router.post('/api/gastos/registrar', async (req, res) => {
       idreembolso_pendiente, firma_trabajador
     } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!idperiodo || !regional || !operacion || !fechamovimiento || !tipo_gasto || !tipo_identificacion || !numero_identificacion || !valor) {
@@ -936,7 +986,7 @@ router.get('/api/gastos/:idgasto/colaboradores', async (req, res) => {
   try {
     const { idgasto } = req.params;
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.execute(
@@ -970,7 +1020,7 @@ router.post('/api/gastos/:idgasto/colaboradores', async (req, res) => {
     const { idgasto } = req.params;
     const { usuario, identificacion, valor, observaciones } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!identificacion || !valor) {
@@ -1009,7 +1059,7 @@ router.delete('/api/gastos/:idgasto/colaboradores/:idgasto_trabajador', async (r
     const { idgasto, idgasto_trabajador } = req.params;
     const { usuario } = req.query;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.execute(
@@ -1044,7 +1094,7 @@ router.put('/api/gastos/:idgasto', async (req, res) => {
       url_soporte, placa, origen, destino, eliminar_soporte
     } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Fetch the existing record
@@ -1053,9 +1103,10 @@ router.put('/api/gastos/:idgasto', async (req, res) => {
     const existing = gRows[0];
 
     // Perform backend security checks on editability
+    // Confirmado por contabilidad: solo Sistema. Confirmado por operación: los roles de validación
+    // contable (Config_Parametros contabilidad / Caja Operativa) pueden editar todo; los demás, solo el soporte.
     const isSistema = acceso.rol === 'Sistema';
-    const isContabilidad = acceso.rol === 'Contabilidad';
-    const isContabilidadOrSistema = isContabilidad || isSistema;
+    const isContabilidadOrSistema = isSistema || (await puedeValidarContable(acceso.rol));
 
     let allowedMode = 'ALL';
     if (existing.valida_contable === 'Confirmado') {
@@ -1192,7 +1243,7 @@ router.post('/api/gastos/:idgasto/validar-operacion', async (req, res) => {
   try {
     const { usuario, estado } = req.body;
     const { idgasto } = req.params;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [gRows] = await pool.execute('SELECT idperiodo FROM Dynamic_gastos WHERE idgasto = ? LIMIT 1', [idgasto]);
@@ -1212,8 +1263,8 @@ router.post('/api/gastos/:idgasto/validar-contable', async (req, res) => {
   try {
     const { usuario, estado } = req.body;
     const { idgasto } = req.params;
-    const acceso = await computarAccesoCajaOperativa(usuario);
-    if (!acceso || !['Contabilidad', 'Sistema'].includes(acceso.rol)) {
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
+    if (!acceso || !(await puedeValidarContable(acceso.rol))) {
       return res.status(403).json({ error: 'No autorizado para validación contable.' });
     }
 
@@ -1226,6 +1277,52 @@ router.post('/api/gastos/:idgasto/validar-contable', async (req, res) => {
     await recargarSaldosPeriodo(idperiodo);
     res.json({ ok: true });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Validación masiva de gastos (Contabilidad › Caja Operativa › Flujo de Caja).
+// area: 'operacion' (cualquier usuario con acceso a la operación del gasto) o 'contable'
+// (roles de Config_Parametros). estado: 'Confirmado', 'No aplica' o 'PENDIENTE'.
+router.post('/api/gastos/validar-masivo', async (req, res) => {
+  try {
+    const { usuario, ids, area, estado } = req.body;
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Flujo');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!['operacion', 'contable'].includes(area)) return res.status(400).json({ error: 'Área de validación no válida.' });
+    if (!['Confirmado', 'No aplica', 'PENDIENTE'].includes(estado)) return res.status(400).json({ error: 'Estado no válido.' });
+    if (area === 'contable' && !(await puedeValidarContable(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para validación contable.' });
+    }
+    const lista = [...new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '').trim()).filter(Boolean))];
+    if (!lista.length) return res.status(400).json({ error: 'No se seleccionó ningún gasto.' });
+    if (lista.length > 500) return res.status(400).json({ error: 'Máximo 500 gastos por vez.' });
+
+    const ph = lista.map(() => '?').join(',');
+    const [rows] = await pool.query(
+      `SELECT g.idgasto, g.idperiodo, g.operacion, g.valida_contable, resp.operacionprincipal
+       FROM Dynamic_gastos g
+       LEFT JOIN Dynamic_gastos_periodo p ON p.idperiodo = g.idperiodo
+       LEFT JOIN Maestro_responsablegastos resp ON resp.idresponsable = p.idresponsable
+       WHERE g.idgasto IN (${ph})`,
+      lista
+    );
+    const permitidas = new Set((acceso.operacionesFiltro || []).map(o => String(o).trim().toLowerCase()));
+    const enAlcance = r => acceso.sinFiltro ||
+      permitidas.has(String(r.operacion || '').trim().toLowerCase()) ||
+      permitidas.has(String(r.operacionprincipal || '').trim().toLowerCase());
+    // La validación de operación no se cambia en gastos ya confirmados por contabilidad (salvo Sistema)
+    const aplicables = rows.filter(r => enAlcance(r) &&
+      !(area === 'operacion' && r.valida_contable === 'Confirmado' && acceso.rol !== 'Sistema'));
+    if (aplicables.length) {
+      const columna = area === 'operacion' ? 'valida_operacion' : 'valida_contable';
+      const ph2 = aplicables.map(() => '?').join(',');
+      await pool.query(`UPDATE Dynamic_gastos SET ${columna} = ? WHERE idgasto IN (${ph2})`, [estado, ...aplicables.map(r => r.idgasto)]);
+      for (const idp of new Set(aplicables.map(r => r.idperiodo))) await recargarSaldosPeriodo(idp);
+    }
+    res.json({ ok: true, actualizados: aplicables.map(r => r.idgasto), omitidos: lista.length - aplicables.length });
+  } catch (err) {
+    console.error('[CajaOperativa] validar-masivo:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1298,7 +1395,7 @@ router.put('/api/reembolsos/contacto-colaborador/:identificacion', async (req, r
     const { identificacion } = req.params;
     const { telefono, email, usuario } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Verify if record exists in Maestro_Segmentación
@@ -1328,7 +1425,7 @@ router.put('/api/reembolsos/contacto-colaborador/:identificacion', async (req, r
 router.get('/api/reembolsos/pendientes', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     let query = `
@@ -1373,9 +1470,18 @@ router.get('/api/reembolsos/pendientes', async (req, res) => {
 
 router.get('/api/reembolsos/periodos-vincular', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { usuario, regional, operacion } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    // La regional y la operación están en el responsable de la caja, no en el periodo
     const [rows] = await pool.execute(
-      'SELECT idperiodo, quincena, año, base_autorizada FROM Dynamic_gastos_periodo WHERE regional = ? AND operacionprincipal = ? ORDER BY fecha_registro DESC LIMIT 15',
+      `SELECT p.idperiodo, p.quincena, p.año, r.base_autorizada, r.identificacion,
+              (SELECT SUBSTRING_INDEX(v.Trabajador, ' ** ', -1) FROM Maestro_Vinculación v
+                WHERE v.Identificación = r.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS responsable
+       FROM Dynamic_gastos_periodo p
+       JOIN Maestro_responsablegastos r ON r.idresponsable = p.idresponsable
+       WHERE r.regional = ? AND r.operacionprincipal = ?
+       ORDER BY p.año DESC, p.fecha_registro DESC LIMIT 15`,
       [regional, operacion]
     );
     res.json(rows);
@@ -1386,7 +1492,9 @@ router.get('/api/reembolsos/periodos-vincular', async (req, res) => {
 
 router.get('/api/reembolsos/gastos-vincular', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { usuario, regional, operacion } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
     const query = `
       SELECT g.idgasto, g.tipo_gasto, g.descripcion, g.valor, g.fechamovimiento,
              COALESCE(
@@ -1415,7 +1523,7 @@ router.post('/api/reembolsos/vincular', async (req, res) => {
   try {
     const { idgasto_trabajador, tipo_gasto, targetId, usuario } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Reembolsos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [tRows] = await pool.execute('SELECT * FROM Dynamic_gasto_trabajador WHERE idgasto_trabajador = ? LIMIT 1', [idgasto_trabajador]);
@@ -1581,7 +1689,7 @@ router.post('/api/reembolsos/solicitar-publico', async (req, res) => {
 router.get('/api/proveedores', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Proveedores');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.execute('SELECT * FROM Maestro_proveedorcompra ORDER BY razon_social ASC');
@@ -1594,7 +1702,7 @@ router.get('/api/proveedores', async (req, res) => {
 router.post('/api/proveedores/crear', async (req, res) => {
   try {
     const { usuario, nit, razon_social } = req.body;
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Proveedores');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!nit || !razon_social) {
@@ -1625,7 +1733,7 @@ router.put('/api/proveedores/:originalNit', async (req, res) => {
     const { originalNit } = req.params;
     const { usuario, nit, razon_social } = req.body;
 
-    const acceso = await computarAccesoCajaOperativa(usuario);
+    const acceso = await computarAccesoCajaOperativa(usuario, 'Caja_Proveedores');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!nit || !razon_social) {

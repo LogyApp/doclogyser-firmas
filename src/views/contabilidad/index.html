@@ -851,6 +851,52 @@
       .fp-vistas .fp-segmento button { flex: 1; }
     }
 
+    /* ── Grupo Caja Operativa en la barra lateral ── */
+    .nav-grupo { list-style: none; }
+    .nav-grupo-chev { font-size: 0.8rem; opacity: 0.8; transition: transform 0.2s ease; }
+    .nav-grupo.abierto .nav-grupo-chev { transform: rotate(90deg); }
+    .nav-grupo.con-activa > .nav-grupo-titulo { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
+    .nav-sub { list-style: none; margin: 4px 0 2px; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 4px; border-left: 1px solid rgba(255, 255, 255, 0.14); margin-left: 22px; }
+    .nav-subitem { padding: 8px 12px; font-size: 0.84rem; gap: 9px; }
+    .nav-subitem .nav-icon { font-size: 0.98rem; }
+
+    /* ── Caja Operativa ── */
+    .caja-acciones { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .btn-action:disabled { opacity: .5; cursor: not-allowed; }
+    .caja-subbloque { background: var(--bg-elevated, rgba(0,0,0,.03)); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+    .caja-aviso { background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .4); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: .8rem; margin-bottom: 10px; }
+    #modalCajaGasto .fp-segmento button { flex: 1; }
+    #modalCajaGasto .fp-segmento { display: flex; }
+    .caja-val { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .caja-val button { border: 1px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 6px; width: 24px; height: 22px; cursor: pointer; font-size: .78rem; line-height: 1; padding: 0; }
+    .caja-val button:hover { border-color: var(--accent); }
+    .caja-val button.no { color: #ef4444; }
+    .caja-colab-lista { display: flex; flex-direction: column; gap: 8px; }
+    .caja-colab { border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; background: var(--card-bg); }
+    .caja-colab-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .caja-colab-acc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .caja-colab-acc .btn-action { padding: 4px 9px; font-size: .74rem; }
+    .caja-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+    .caja-kpi { background: var(--bg-elevated, rgba(0,0,0,.03)); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+    .caja-kpi .lbl { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); letter-spacing: .3px; }
+    .caja-kpi .val { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .caja-nota { font-size: 0.76rem; color: var(--text-muted); }
+    .caja-uso { display: flex; align-items: center; gap: 8px; }
+    .caja-uso-barra { flex: 1; height: 8px; border-radius: 999px; background: var(--bg-elevated, #eef2f7); overflow: hidden; }
+    .caja-uso-barra > div { height: 100%; border-radius: 999px; }
+    .caja-uso-num { font-size: 0.78rem; font-weight: 800; min-width: 44px; text-align: right; }
+    .caja-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .caja-chip.ok { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+    .caja-chip.pend { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+    .caja-chip.no { background: rgba(239, 68, 68, 0.12); color: #b91c1c; }
+    :root[data-theme="oscuro"] .caja-chip.ok { color: #4ade80; }
+    :root[data-theme="oscuro"] .caja-chip.pend { color: #fbbf24; }
+    :root[data-theme="oscuro"] .caja-chip.no { color: #f87171; }
+    @media (max-width: 600px) {
+      #modalCajaResponsable .form-row { grid-template-columns: 1fr; }
+      .caja-kpis { grid-template-columns: 1fr 1fr; }
+    }
+
     /* Selección y validación masiva (Consignaciones y Transferencias) */
     .col-sel { text-align: center !important; padding-left: 4px !important; padding-right: 4px !important; }
     .chk-sel { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
@@ -1282,6 +1328,41 @@
           <span>Transferencias</span>
         </a>
       </li>
+      <!-- Caja Operativa: grupo con subpestañas (Maestro_Menu contabilidad / Caja_*) -->
+      <li id="navLiCaja" class="nav-grupo" style="display:none;">
+        <a class="nav-item nav-grupo-titulo" href="#" id="navGrupoCaja" onclick="event.preventDefault(); toggleGrupoCaja()">
+          <span class="nav-icon">🗃️</span>
+          <span style="flex:1;">Caja Operativa</span>
+          <span class="nav-grupo-chev" id="navGrupoCajaChev">▸</span>
+        </a>
+        <ul class="nav-sub" id="navSubCaja" style="display:none;">
+          <li id="navLiCajaFlujo">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-flujo" data-tab="caja-flujo" onclick="cambiarPestanaContabilidad(event, 'caja-flujo')">
+              <span class="nav-icon">💵</span><span>Flujo de Caja</span>
+            </a>
+          </li>
+          <li id="navLiCajaReintegros">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-reintegros" data-tab="caja-reintegros" onclick="cambiarPestanaContabilidad(event, 'caja-reintegros')">
+              <span class="nav-icon">🔁</span><span>Reintegros</span>
+            </a>
+          </li>
+          <li id="navLiCajaResponsables">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-responsables" data-tab="caja-responsables" onclick="cambiarPestanaContabilidad(event, 'caja-responsables')">
+              <span class="nav-icon">👤</span><span>Responsables</span>
+            </a>
+          </li>
+          <li id="navLiCajaReembolsos">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-reembolsos" data-tab="caja-reembolsos" onclick="cambiarPestanaContabilidad(event, 'caja-reembolsos')">
+              <span class="nav-icon">🧾</span><span>Reembolsos</span>
+            </a>
+          </li>
+          <li id="navLiCajaProveedores">
+            <a class="nav-item nav-subitem" href="/contabilidad?tab=caja-proveedores" data-tab="caja-proveedores" onclick="cambiarPestanaContabilidad(event, 'caja-proveedores')">
+              <span class="nav-icon">🏪</span><span>Proveedores</span>
+            </a>
+          </li>
+        </ul>
+      </li>
     </ul>
 
     <div class="sidebar-user" id="sidebarUser">
@@ -1296,6 +1377,26 @@
       <div class="breadcrumb-title" id="headerTitleFormasPago">
         <h1><span>📊</span> Formas de Pago</h1>
         <p>Cómo van las operaciones en Transferencia, Efectivo y Crédito en la quincena. ¡Entre más transferencia, mejor!</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaFlujo" style="display:none;">
+        <h1><span>💵</span> Caja Operativa · Flujo de Caja</h1>
+        <p>Saldo de cada responsable por quincena: saldo inicial, reintegros, gastos y saldo final</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaReintegros" style="display:none;">
+        <h1><span>🔁</span> Caja Operativa · Reintegros</h1>
+        <p>Solicitudes de reintegro de caja (desde el 60% de uso) y su aprobación</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaReembolsos" style="display:none;">
+        <h1><span>🧾</span> Caja Operativa · Reembolsos</h1>
+        <p>Reembolsos que solicitan los colaboradores desde el enlace público, pendientes de vincular a una caja</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaProveedores" style="display:none;">
+        <h1><span>🏪</span> Caja Operativa · Proveedores</h1>
+        <p>Proveedores de las compras de caja</p>
+      </div>
+      <div class="breadcrumb-title" id="headerTitleCajaResponsables" style="display:none;">
+        <h1><span>👤</span> Caja Operativa · Responsables</h1>
+        <p>Responsables de caja por operación, base autorizada y saldo disponible</p>
       </div>
       <div class="breadcrumb-title" id="headerTitleConsignaciones" style="display:none;">
         <h1><span>💰</span> Consignaciones Bancarias</h1>
@@ -1393,6 +1494,233 @@
 
         <section class="fp-panel" id="fpPanel">
           <div class="fp-vacio">Cargando informe...</div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › FLUJO DE CAJA ─────────────────────── -->
+      <div id="vistaCajaFlujo" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">👤</span><div class="mini-stat-info"><span class="lbl">Cajas en el periodo</span><span class="val" id="cfKpiCajas">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">💰</span><div class="mini-stat-info"><span class="lbl">Saldo inicial</span><span class="val" id="cfKpiInicial">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">🧾</span><div class="mini-stat-info"><span class="lbl">Gastos reportados</span><span class="val" id="cfKpiGastos">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">✅</span><div class="mini-stat-info"><span class="lbl">Saldo final</span><span class="val" id="cfKpiFinal">$ 0</span></div></div>
+        </section>
+
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="cajaToggleFiltros('cf')">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="cfFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="cfBuscar" placeholder="🔍 Buscar responsable, cédula, operación..." aria-label="Buscar en flujo de caja" oninput="cajaRenderFlujo()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="cfFiltrosChevron">▸</span>
+          </div>
+          <div id="cfFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group sm"><label for="cfAnio">Año</label><select id="cfAnio" class="filter-control" onchange="cajaCambiarFiltroFlujo('anio', this.value)"></select></div>
+              <div class="filter-group"><label for="cfQuincena">Quincena</label><select id="cfQuincena" class="filter-control" onchange="cajaCambiarFiltroFlujo('quincena', this.value)"></select></div>
+              <div class="filter-group"><label for="cfRegional">Regional</label><select id="cfRegional" class="filter-control" onchange="cajaCambiarFiltroFlujo('regional', this.value)"></select></div>
+              <div class="filter-group"><label for="cfOperacion">Operación</label><select id="cfOperacion" class="filter-control" onchange="cajaCambiarFiltroFlujo('operacion', this.value)"></select></div>
+              <div class="filter-group sm" style="justify-content:flex-end;"><button type="button" class="btn-action secondary" onclick="cajaLimpiarFiltrosFlujo()">↺ Limpiar filtros</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaFlujo">
+              <thead>
+                <tr>
+                  <th data-sort="periodo" style="width: 150px;">Periodo</th>
+                  <th data-sort="usuario" style="width: 200px;">Responsable</th>
+                  <th data-sort="regional" style="width: 120px;">Regional</th>
+                  <th data-sort="operacionprincipal" style="width: 150px;">Operación</th>
+                  <th data-sort="saldo_inicial" style="width: 125px; text-align:right;">Saldo inicial</th>
+                  <th data-sort="reintegros" style="width: 115px; text-align:right;">Reintegros</th>
+                  <th data-sort="total_gastos" style="width: 125px; text-align:right;">Gastos</th>
+                  <th data-sort="total_confirmado_operacion" style="width: 130px; text-align:right;">Val. operación</th>
+                  <th data-sort="total_confirmado_contable" style="width: 130px; text-align:right;">Val. contable</th>
+                  <th data-sort="saldo_final" style="width: 125px; text-align:right;">Saldo final</th>
+                </tr>
+              </thead>
+              <tbody id="cfBody"><tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando flujo de caja...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › REINTEGROS ────────────────────────── -->
+      <div id="vistaCajaReintegros" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">⏳</span><div class="mini-stat-info"><span class="lbl">Pendientes</span><span class="val" id="riKpiPend">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">💰</span><div class="mini-stat-info"><span class="lbl">Valor pendiente</span><span class="val" id="riKpiPendVal">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">✅</span><div class="mini-stat-info"><span class="lbl">Aprobados</span><span class="val" id="riKpiAprob">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">🏦</span><div class="mini-stat-info"><span class="lbl">Valor aprobado</span><span class="val" id="riKpiAprobVal">$ 0</span></div></div>
+        </section>
+
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="cajaToggleFiltros('ri')">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="riFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="riBuscar" placeholder="🔍 Buscar responsable, cédula, operación..." aria-label="Buscar reintegro" oninput="cajaRenderReintegros()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="riFiltrosChevron">▸</span>
+          </div>
+          <div id="riFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group"><label for="riEstado">Estado</label><select id="riEstado" class="filter-control" onchange="cajaCambiarFiltroRein('estado', this.value)"></select></div>
+              <div class="filter-group"><label for="riRegional">Regional</label><select id="riRegional" class="filter-control" onchange="cajaCambiarFiltroRein('regional', this.value)"></select></div>
+              <div class="filter-group"><label for="riOperacion">Operación</label><select id="riOperacion" class="filter-control" onchange="cajaCambiarFiltroRein('operacion', this.value)"></select></div>
+              <div class="filter-group sm" style="justify-content:flex-end;"><button type="button" class="btn-action secondary" onclick="cajaLimpiarFiltrosRein()">↺ Limpiar filtros</button></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="caja-acciones">
+          <button type="button" class="btn-action primary" onclick="cajaAbrirSolicitudReintegro()">＋ Solicitar reintegro</button>
+        </div>
+
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaRein">
+              <thead>
+                <tr>
+                  <th data-sort="fecha_solicitud" style="width: 140px;">Solicitud</th>
+                  <th data-sort="usuariosolicita" style="width: 200px;">Responsable</th>
+                  <th data-sort="regional" style="width: 115px;">Regional</th>
+                  <th data-sort="operacion" style="width: 150px;">Operación</th>
+                  <th data-sort="valor" style="width: 125px; text-align:right;">Valor</th>
+                  <th data-sort="estado" style="width: 115px;">Estado</th>
+                  <th data-sort="fecha_reintegro" style="width: 140px;">Aprobado</th>
+                  <th data-sort="usuarioaprueba" style="width: 150px;">Aprobó</th>
+                  <th style="width: 220px;">Observaciones</th>
+                </tr>
+              </thead>
+              <tbody id="riBody"><tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando reintegros...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › REEMBOLSOS ────────────────────────── -->
+      <div id="vistaCajaReembolsos" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">🧾</span><div class="mini-stat-info"><span class="lbl">Pendientes de vincular</span><span class="val" id="reKpiTotal">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">💰</span><div class="mini-stat-info"><span class="lbl">Valor pendiente</span><span class="val" id="reKpiValor">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">✍️</span><div class="mini-stat-info"><span class="lbl">Con firma</span><span class="val" id="reKpiFirma">0</span></div></div>
+        </section>
+
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="cajaToggleFiltros('re')">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="reFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="reBuscar" placeholder="🔍 Buscar colaborador, cédula, descripción..." aria-label="Buscar reembolso" oninput="cajaRenderReembolsos()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="reFiltrosChevron">▸</span>
+          </div>
+          <div id="reFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group"><label for="reTipo">Tipo</label><select id="reTipo" class="filter-control" onchange="cajaCambiarFiltroReem('tipo', this.value)"></select></div>
+              <div class="filter-group"><label for="reRegional">Regional</label><select id="reRegional" class="filter-control" onchange="cajaCambiarFiltroReem('regional', this.value)"></select></div>
+              <div class="filter-group"><label for="reOperacion">Operación</label><select id="reOperacion" class="filter-control" onchange="cajaCambiarFiltroReem('operacion', this.value)"></select></div>
+              <div class="filter-group sm" style="justify-content:flex-end;"><button type="button" class="btn-action secondary" onclick="cajaLimpiarFiltrosReem()">↺ Limpiar filtros</button></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="caja-acciones" style="justify-content: space-between;">
+          <span class="caja-nota">Los colaboradores solicitan el reembolso y firman en <b id="reEnlacePublico">/reembolso</b>. Toca un registro para vincularlo a una caja.</span>
+          <button type="button" class="btn-action secondary" onclick="cajaCopiarEnlaceReembolso()">🔗 Copiar enlace para colaboradores</button>
+        </div>
+
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaReem">
+              <thead>
+                <tr>
+                  <th data-sort="fecha_registro" style="width: 140px;">Solicitud</th>
+                  <th data-sort="trabajador_nombre" style="width: 210px;">Colaborador</th>
+                  <th data-sort="telefono" style="width: 170px;">Contacto</th>
+                  <th data-sort="operacion" style="width: 170px;">Operación</th>
+                  <th data-sort="tipo" style="width: 230px;">Gasto</th>
+                  <th data-sort="valor" style="width: 120px; text-align:right;">Valor</th>
+                  <th data-sort="firma" style="width: 100px; text-align:center;">Firma</th>
+                </tr>
+              </thead>
+              <tbody id="reBody"><tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando reembolsos...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › PROVEEDORES ───────────────────────── -->
+      <div id="vistaCajaProveedores" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">🏪</span><div class="mini-stat-info"><span class="lbl">Proveedores</span><span class="val" id="pvKpiTotal">0</span></div></div>
+        </section>
+        <section class="filters-card">
+          <div class="filtros-toggle" style="cursor:default;">
+            <span class="filtros-toggle-left">Buscar</span>
+            <input type="search" class="filtros-busqueda" id="pvBuscar" placeholder="🔍 Buscar por NIT o razón social..." aria-label="Buscar proveedor" oninput="cajaRenderProveedores()">
+          </div>
+        </section>
+        <div class="caja-acciones">
+          <button type="button" class="btn-action primary" onclick="cajaAbrirProveedor()">＋ Nuevo proveedor</button>
+        </div>
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaProv">
+              <thead>
+                <tr>
+                  <th data-sort="nit" style="width: 150px;">NIT</th>
+                  <th data-sort="razon_social" style="width: 320px;">Razón social</th>
+                  <th data-sort="usuario" style="width: 200px;">Registrado por</th>
+                </tr>
+              </thead>
+              <tbody id="pvBody"><tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando proveedores...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── CAJA OPERATIVA › RESPONSABLES ──────────────────────── -->
+      <div id="vistaCajaResponsables" class="tab-pane" style="display:none;">
+        <section class="mini-stat-container">
+          <div class="mini-stat-card"><span class="mini-stat-icon">👤</span><div class="mini-stat-info"><span class="lbl">Responsables</span><span class="val" id="crKpiTotal">0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">🏦</span><div class="mini-stat-info"><span class="lbl">Base autorizada</span><span class="val" id="crKpiBase">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">💵</span><div class="mini-stat-info"><span class="lbl">Saldo disponible</span><span class="val" id="crKpiSaldo">$ 0</span></div></div>
+          <div class="mini-stat-card"><span class="mini-stat-icon">📈</span><div class="mini-stat-info"><span class="lbl">Uso promedio</span><span class="val" id="crKpiUso">0%</span></div></div>
+        </section>
+
+        <section class="filters-card">
+          <div class="filtros-toggle" onclick="cajaToggleFiltros('cr')">
+            <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="crFiltrosBadge">0</span></span>
+            <input type="search" class="filtros-busqueda" id="crBuscar" placeholder="🔍 Buscar responsable, cédula, operación, banco..." aria-label="Buscar responsable" oninput="cajaRenderResponsables()" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+            <span class="filtros-chevron" id="crFiltrosChevron">▸</span>
+          </div>
+          <div id="crFiltrosBody" style="display:none;">
+            <div class="filter-row">
+              <div class="filter-group"><label for="crRegional">Regional</label><select id="crRegional" class="filter-control" onchange="cajaCambiarFiltroResp('regional', this.value)"></select></div>
+              <div class="filter-group"><label for="crOperacion">Operación</label><select id="crOperacion" class="filter-control" onchange="cajaCambiarFiltroResp('operacion', this.value)"></select></div>
+              <div class="filter-group sm" style="justify-content:flex-end;"><button type="button" class="btn-action secondary" onclick="cajaLimpiarFiltrosResp()">↺ Limpiar filtros</button></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="caja-acciones" id="crAcciones" style="display:none;">
+          <button type="button" class="btn-action primary" onclick="cajaAbrirResponsable()">＋ Registrar Responsable</button>
+        </div>
+
+        <section class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="tablaCajaResp">
+              <thead>
+                <tr>
+                  <th data-sort="usuario" style="width: 220px;">Responsable</th>
+                  <th data-sort="regional" style="width: 120px;">Regional</th>
+                  <th data-sort="operacionprincipal" style="width: 160px;">Operación</th>
+                  <th data-sort="banco" style="width: 170px;">Cuenta bancaria</th>
+                  <th data-sort="base_autorizada" style="width: 130px; text-align:right;">Base autorizada</th>
+                  <th data-sort="saldo" style="width: 130px; text-align:right;">Saldo disponible</th>
+                  <th data-sort="porcentaje_uso" style="width: 170px;">Uso</th>
+                </tr>
+              </thead>
+              <tbody id="crBody"><tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando responsables...</td></tr></tbody>
+            </table>
+          </div>
         </section>
       </div>
 
@@ -1930,6 +2258,342 @@
     </div>
   </div>
 
+  <!-- ── CAJA OPERATIVA: detalle del periodo ── -->
+  <div class="modal-overlay" id="modalCajaPeriodo">
+    <div class="modal-card" style="max-width: 1120px; max-height: 94vh;">
+      <div class="modal-header">
+        <span id="cpTitulo">Periodo</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaPeriodo')">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 12px;">
+        <div class="caja-kpis" id="cpKpis"></div>
+        <div class="caja-acciones" style="justify-content: space-between; margin-bottom: 0;">
+          <div class="caja-nota" id="cpResumenVal"></div>
+          <button type="button" class="btn-action primary" onclick="cajaAbrirGasto()">＋ Registrar gasto</button>
+        </div>
+        <div class="barra-masiva" id="cpBarraMasiva">
+          <span class="barra-masiva-txt"><strong id="cpSelConteo">0</strong> gasto(s) seleccionado(s)</span>
+          <div class="barra-masiva-acc">
+            <button type="button" class="btn-action primary" onclick="cajaValidarMasivo('operacion', 'Confirmado')">✓ Confirmar operación</button>
+            <button type="button" class="btn-action primary" id="cpBtnContable" onclick="cajaValidarMasivo('contable', 'Confirmado')">✓ Confirmar contable</button>
+            <button type="button" class="btn-action secondary" onclick="cajaValidarMasivo('operacion', 'No aplica')">✗ No aplica</button>
+            <button type="button" class="btn-action secondary" onclick="cajaLimpiarSeleccionGastos()">Cancelar</button>
+          </div>
+        </div>
+        <div class="table-container" style="max-height: 52vh;">
+          <table class="data-table" id="tablaCajaGastos">
+            <thead>
+              <tr>
+                <th class="col-sel" style="width: 40px;"><input type="checkbox" id="cpSelTodos" class="chk-sel" aria-label="Seleccionar todos los gastos"></th>
+                <th style="width: 105px;">Fecha</th>
+                <th style="width: 105px;">Tipo</th>
+                <th style="width: 180px;">Tercero</th>
+                <th style="width: 220px;">Descripción</th>
+                <th style="width: 115px; text-align:right;">Valor</th>
+                <th style="width: 150px;">Val. operación</th>
+                <th style="width: 150px;">Val. contable</th>
+                <th style="width: 80px; text-align:center;">Soporte</th>
+              </tr>
+            </thead>
+            <tbody id="cpGastos"></tbody>
+          </table>
+        </div>
+        <div class="caja-nota">Toca un gasto para editarlo o ver sus colaboradores y firmas. ✓ confirma y ✗ marca "No aplica".</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaPeriodo')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: registrar / editar gasto ── -->
+  <div class="modal-overlay" id="modalCajaGasto">
+    <div class="modal-card" style="max-width: 680px; max-height: 94vh;">
+      <div class="modal-header">
+        <span id="cgTitulo">Registrar gasto</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaGasto')">&times;</button>
+      </div>
+      <form id="formCajaGasto" onsubmit="cajaGuardarGasto(event)" style="display:flex; flex-direction:column; min-height:0;">
+        <div class="modal-body" style="overflow-y:auto;">
+          <div id="cgAviso" class="caja-aviso" style="display:none;"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cgFecha">Fecha del movimiento *</label>
+              <input type="datetime-local" id="cgFecha" required>
+            </div>
+            <div class="form-group">
+              <label>Tipo de gasto *</label>
+              <div class="fp-segmento" id="cgTipo">
+                <button type="button" data-v="Compra" onclick="cajaTipoGasto('Compra')">Compra</button>
+                <button type="button" data-v="Transporte" onclick="cajaTipoGasto('Transporte')">Transporte</button>
+                <button type="button" data-v="Otro" onclick="cajaTipoGasto('Otro')">Otro</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cgBloqueTransporte" class="caja-subbloque" style="display:none;">
+            <div class="form-group">
+              <label>Concepto de transporte *</label>
+              <div class="fp-segmento" id="cgConcepto">
+                <button type="button" data-v="Turno Extendido" onclick="cajaConceptoTransporte('Turno Extendido')">T. Extendido</button>
+                <button type="button" data-v="Domicilio" onclick="cajaConceptoTransporte('Domicilio')">Domicilio</button>
+                <button type="button" data-v="Traslado" onclick="cajaConceptoTransporte('Traslado')">Traslado</button>
+              </div>
+            </div>
+            <div class="form-group" id="cgCampoPlaca" style="display:none;">
+              <label for="cgPlaca">Placa del vehículo *</label>
+              <input type="text" id="cgPlaca" maxlength="6" placeholder="ABC123" style="text-transform:uppercase;">
+            </div>
+            <div class="form-row" id="cgCampoTraslado" style="display:none;">
+              <div class="form-group"><label for="cgOrigen">Origen *</label><input type="text" id="cgOrigen" placeholder="Mosquera"></div>
+              <div class="form-group"><label for="cgDestino">Destino *</label><input type="text" id="cgDestino" placeholder="Funza"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="cgOperacion">Operación del gasto *</label>
+            <select id="cgOperacion" required onchange="cajaCargarTrabajadores()"></select>
+          </div>
+
+          <div class="form-group" id="cgCampoProveedor" style="display:none;">
+            <label for="cgProveedor">Proveedor *</label>
+            <input type="search" id="cgBuscarProveedor" placeholder="🔍 Buscar proveedor por NIT o razón social..." oninput="cajaFiltrarProveedores()" style="margin-bottom:6px;">
+            <select id="cgProveedor" onchange="cajaElegirProveedor()"></select>
+            <div id="cgNuevoProveedor" class="caja-subbloque" style="display:none; margin-top:8px;">
+              <div class="form-row">
+                <div class="form-group"><label for="cgNpNit">NIT *</label><input type="text" id="cgNpNit" placeholder="900123456"></div>
+                <div class="form-group"><label for="cgNpRazon">Razón social *</label><input type="text" id="cgNpRazon" placeholder="Ferretería El Tornillo"></div>
+              </div>
+              <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <button type="button" class="btn-action secondary" onclick="document.getElementById('cgNuevoProveedor').style.display='none'">Cancelar</button>
+                <button type="button" class="btn-action primary" onclick="cajaCrearProveedor()">Guardar proveedor</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" id="cgCampoTrabajador" style="display:none;">
+            <label for="cgTrabajador">Trabajador *</label>
+            <select id="cgTrabajador" onchange="cajaElegirTrabajador()"></select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cgTipoId">Tipo de identificación *</label>
+              <select id="cgTipoId" required onchange="cajaTipoIdentificacion()">
+                <option value="NIT">NIT</option>
+                <option value="CC">Cédula (CC)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="cgNumId" id="cgLblNumId">Número *</label>
+              <input type="text" id="cgNumId" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="cgTercero">Nombre o razón social *</label>
+            <input type="text" id="cgTercero" required>
+          </div>
+          <div class="form-group" id="cgCampoDescripcion">
+            <label for="cgDescripcion">Descripción del gasto *</label>
+            <input type="text" id="cgDescripcion" placeholder="Ej. Cinta de embalaje">
+          </div>
+          <div class="form-group">
+            <label for="cgValor">Valor del gasto ($) *</label>
+            <input type="number" id="cgValor" required min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label>Soporte (foto o PDF)</label>
+            <div class="zona-archivo" data-input="cgSoporte"></div>
+            <input type="file" id="cgSoporte" accept="image/*,application/pdf" style="display:none;">
+            <input type="file" id="cgSoporteCamara" accept="image/*" capture="environment" style="display:none;">
+            <small id="cgSoporteActual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+          </div>
+          <div class="form-group">
+            <label for="cgObs">Observaciones</label>
+            <textarea id="cgObs" rows="2"></textarea>
+          </div>
+
+          <!-- Colaboradores y firmas (solo al editar) -->
+          <div id="cgColaboradores" style="display:none;">
+            <div class="caja-acciones" style="justify-content: space-between; margin: 6px 0 8px;">
+              <strong style="font-size:.88rem;">✍️ Colaboradores y firmas</strong>
+              <button type="button" class="btn-action secondary" id="cgBtnAgregarColab" onclick="cajaMostrarAgregarColab(true)">＋ Agregar colaborador</button>
+            </div>
+            <div id="cgAgregarColab" class="caja-subbloque" style="display:none;">
+              <div class="form-group"><label for="cgColabSel">Colaborador *</label><select id="cgColabSel"></select></div>
+              <div class="form-row">
+                <div class="form-group"><label for="cgColabValor">Valor *</label><input type="number" id="cgColabValor" min="1" placeholder="15000"></div>
+                <div class="form-group"><label for="cgColabObs">Observaciones</label><input type="text" id="cgColabObs" placeholder="Peajes del turno"></div>
+              </div>
+              <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <button type="button" class="btn-action secondary" onclick="cajaMostrarAgregarColab(false)">Cancelar</button>
+                <button type="button" class="btn-action primary" onclick="cajaAgregarColab()">Guardar colaborador</button>
+              </div>
+            </div>
+            <div id="cgListaColab" class="caja-colab-lista"></div>
+          </div>
+
+          <div id="cgError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaGasto')">Cancelar</button>
+          <button type="submit" class="btn-action primary" id="cgGuardar">Guardar gasto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: solicitar reintegro ── -->
+  <div class="modal-overlay" id="modalCajaSolicitud">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <span>Solicitar reintegro de caja</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaSolicitud')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="rsResponsable">Responsable *</label>
+          <select id="rsResponsable" onchange="cajaInfoReintegro()"></select>
+        </div>
+        <div id="rsInfo" class="caja-kpis" style="display:none;"></div>
+        <div id="rsAviso" class="caja-aviso" style="display:none;"></div>
+        <div class="form-group">
+          <label for="rsObs">Observaciones</label>
+          <textarea id="rsObs" rows="2" placeholder="Motivo o detalle de la solicitud..."></textarea>
+        </div>
+        <div id="rsError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaSolicitud')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="rsEnviar" onclick="cajaEnviarSolicitud()">Enviar solicitud</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: aprobar reintegro ── -->
+  <div class="modal-overlay" id="modalCajaAprobar">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <span>Aprobar reintegro</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaAprobar')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="raResumen" class="caja-subbloque" style="font-size:.84rem; line-height:1.55;"></div>
+        <div class="form-group">
+          <label for="raValor">Valor a reintegrar ($) *</label>
+          <input type="number" id="raValor" min="1" step="1">
+        </div>
+        <div class="form-group">
+          <label for="raObs">Observaciones</label>
+          <textarea id="raObs" rows="2"></textarea>
+        </div>
+        <div id="raError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaAprobar')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="raAprobar" onclick="cajaAprobarReintegro()">✅ Aprobar y acreditar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: vincular reembolso ── -->
+  <div class="modal-overlay" id="modalCajaVincular">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <span>Vincular reembolso a una caja</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaVincular')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="viResumen" class="caja-subbloque" style="font-size:.84rem; line-height:1.55;"></div>
+        <div class="form-group">
+          <label for="viDestino" id="viLblDestino">Destino *</label>
+          <select id="viDestino"></select>
+          <small class="caja-nota" id="viAyuda"></small>
+        </div>
+        <div id="viError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaVincular')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="viGuardar" onclick="cajaVincularReembolso()">Vincular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: proveedor ── -->
+  <div class="modal-overlay" id="modalCajaProveedor">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <span id="pvmTitulo">Nuevo proveedor</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaProveedor')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label for="pvmNit">NIT *</label><input type="text" id="pvmNit" placeholder="900123456"></div>
+        <div class="form-group"><label for="pvmRazon">Razón social *</label><input type="text" id="pvmRazon" placeholder="Ferretería El Tornillo"></div>
+        <div class="caja-nota" id="pvmNota" style="display:none;">Si cambias el NIT, también se actualiza en los gastos ya registrados con ese proveedor.</div>
+        <div id="pvmError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaProveedor')">Cancelar</button>
+        <button type="button" class="btn-action primary" id="pvmGuardar" onclick="cajaGuardarProveedor()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CAJA OPERATIVA: registrar / editar responsable ── -->
+  <div class="modal-overlay" id="modalCajaResponsable">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <span id="crmTitulo">Registrar Responsable de Caja</span>
+        <button type="button" class="modal-close-btn" onclick="cajaCerrarModal('modalCajaResponsable')">&times;</button>
+      </div>
+      <form id="formCajaResponsable" onsubmit="cajaGuardarResponsable(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="crmCedula">Cédula del responsable *</label>
+            <input type="text" id="crmCedula" required inputmode="numeric" placeholder="Ej. 1095950145" onblur="cajaBuscarNombre()">
+            <small id="crmNombre" style="color: var(--text-muted); font-size: 0.78rem;"></small>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="crmRegional">Regional *</label>
+              <select id="crmRegional" required onchange="cajaLlenarOperacionesForm()"></select>
+            </div>
+            <div class="form-group">
+              <label for="crmOperacion">Operación principal *</label>
+              <select id="crmOperacion" required></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="crmBanco">Banco</label>
+              <input type="text" id="crmBanco" placeholder="Ej. Bancolombia">
+            </div>
+            <div class="form-group">
+              <label for="crmCuenta">Número de cuenta</label>
+              <input type="text" id="crmCuenta" placeholder="Ej. Ahorros 123-45678-9">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="crmBase">Base autorizada ($) *</label>
+            <input type="number" id="crmBase" required min="1000" step="1000" placeholder="Ej. 2000000">
+          </div>
+          <div class="form-group">
+            <label for="crmObs">Observaciones</label>
+            <textarea id="crmObs" rows="2" placeholder="Notas sobre el responsable..."></textarea>
+          </div>
+          <div id="crmError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+        </div>
+        <div class="modal-footer" style="justify-content: space-between;">
+          <button type="button" class="btn-action secondary" id="crmEliminar" style="display:none; color:#ef4444; border-color:#ef4444;" onclick="cajaEliminarResponsable()">Eliminar</button>
+          <div style="display:flex; gap:8px; margin-left:auto;">
+            <button type="button" class="btn-action secondary" onclick="cajaCerrarModal('modalCajaResponsable')">Cancelar</button>
+            <button type="submit" class="btn-action primary" id="crmGuardar">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ── MODAL DE SERVICIOS ASOCIADOS (RÉPLICA LINKTOFILTEREDVIEW) ── -->
   <div class="modal-overlay" id="modalServiciosAsociados">
     <div class="modal-card lg">
@@ -1997,6 +2661,24 @@
       formaspago:     { seccion: 'Formas_Pago',    vista: 'vistaFormasPago',     header: 'headerTitleFormasPago',     nav: 'navLiFormasPago',     titulo: 'Formas de Pago' },
       consignaciones: { seccion: 'Consignaciones', vista: 'vistaConsignaciones', header: 'headerTitleConsignaciones', nav: 'navLiConsignaciones', titulo: 'Consignaciones' },
       transferencias: { seccion: 'Transferencias', vista: 'vistaTransferencias', header: 'headerTitleTransferencias', nav: 'navLiTransferencias', titulo: 'Transferencias' },
+      // Grupo Caja Operativa (subpestañas en la barra lateral)
+      'caja-flujo':        { seccion: 'Caja_Flujo',        vista: 'vistaCajaFlujo',        header: 'headerTitleCajaFlujo',        nav: 'navLiCajaFlujo',        titulo: 'Flujo de Caja', grupo: 'caja' },
+      'caja-reintegros':   { seccion: 'Caja_Reintegros',   vista: 'vistaCajaReintegros',   header: 'headerTitleCajaReintegros',   nav: 'navLiCajaReintegros',   titulo: 'Reintegros de Caja', grupo: 'caja' },
+      'caja-responsables': { seccion: 'Caja_Responsables', vista: 'vistaCajaResponsables', header: 'headerTitleCajaResponsables', nav: 'navLiCajaResponsables', titulo: 'Responsables de Caja', grupo: 'caja' },
+      'caja-reembolsos':   { seccion: 'Caja_Reembolsos',   vista: 'vistaCajaReembolsos',   header: 'headerTitleCajaReembolsos',   nav: 'navLiCajaReembolsos',   titulo: 'Reembolsos de Caja', grupo: 'caja' },
+      'caja-proveedores':  { seccion: 'Caja_Proveedores',  vista: 'vistaCajaProveedores',  header: 'headerTitleCajaProveedores',  nav: 'navLiCajaProveedores',  titulo: 'Proveedores de Caja', grupo: 'caja' },
+    };
+    // Abre o cierra el grupo Caja Operativa de la barra lateral
+    function abrirGrupoCaja(abrir) {
+      const li = document.getElementById('navLiCaja');
+      const sub = document.getElementById('navSubCaja');
+      if (!li || !sub) return;
+      li.classList.toggle('abierto', abrir);
+      sub.style.display = abrir ? 'flex' : 'none';
+    }
+    window.toggleGrupoCaja = function () {
+      const li = document.getElementById('navLiCaja');
+      abrirGrupoCaja(!(li && li.classList.contains('abierto')));
     };
     let seccionesConta = null; // null = aún no se sabe (se muestran todas)
     const normSec = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -2010,6 +2692,9 @@
     window.cambiarPestanaContabilidad = function (e, tab) {
       if (e && e.preventDefault) e.preventDefault();
       activarPestanaContabilidad(tab);
+      // En celular, al escoger una pestaña se cierra el menú
+      const sb = document.querySelector('.sidebar');
+      if (sb && sb.classList.contains('open') && typeof window.toggleMobileSidebar === 'function') window.toggleMobileSidebar();
     };
 
     function activarPestanaContabilidad(tab, sinHistorial) {
@@ -2022,6 +2707,10 @@
       else window.history.pushState({ tab: t }, '', newUrl);
 
       document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.toggle('active', item.dataset.tab === t));
+      const enCaja = PESTANAS_CONTA[t].grupo === 'caja';
+      const liCaja = document.getElementById('navLiCaja');
+      if (liCaja) liCaja.classList.toggle('con-activa', enCaja);
+      if (enCaja) abrirGrupoCaja(true);
       Object.entries(PESTANAS_CONTA).forEach(([k, p]) => {
         const v = document.getElementById(p.vista);
         const h = document.getElementById(p.header);
@@ -2034,6 +2723,11 @@
       if (t === 'transferencias' && typeof window.inicializarTransferenciasSiAplica === 'function') window.inicializarTransferenciasSiAplica();
       if (t === 'formaspago' && typeof window.inicializarFormasPagoSiAplica === 'function') window.inicializarFormasPagoSiAplica();
       if (t === 'consignaciones' && typeof window.cargarConsignacionesSiFalta === 'function') window.cargarConsignacionesSiFalta();
+      if (t === 'caja-flujo' && typeof window.inicializarCajaFlujoSiAplica === 'function') window.inicializarCajaFlujoSiAplica();
+      if (t === 'caja-responsables' && typeof window.inicializarCajaResponsablesSiAplica === 'function') window.inicializarCajaResponsablesSiAplica();
+      if (t === 'caja-reintegros' && typeof window.inicializarCajaReintegrosSiAplica === 'function') window.inicializarCajaReintegrosSiAplica();
+      if (t === 'caja-reembolsos' && typeof window.inicializarCajaReembolsosSiAplica === 'function') window.inicializarCajaReembolsosSiAplica();
+      if (t === 'caja-proveedores' && typeof window.inicializarCajaProveedoresSiAplica === 'function') window.inicializarCajaProveedoresSiAplica();
     }
 
     window.sincronizarPestanaActiva = function (btn) {
@@ -2043,6 +2737,16 @@
         if (typeof window.cargarTransferencias === 'function') window.cargarTransferencias(btn);
       } else if (tab === 'formaspago') {
         if (typeof window.cargarFormasPago === 'function') window.cargarFormasPago(btn);
+      } else if (tab === 'caja-flujo') {
+        if (typeof window.cargarCajaFlujo === 'function') window.cargarCajaFlujo();
+      } else if (tab === 'caja-reembolsos') {
+        if (typeof window.cargarCajaReembolsos === 'function') window.cargarCajaReembolsos();
+      } else if (tab === 'caja-proveedores') {
+        if (typeof window.cargarCajaProveedores === 'function') window.cargarCajaProveedores();
+      } else if (tab === 'caja-reintegros') {
+        if (typeof window.cargarCajaReintegros === 'function') window.cargarCajaReintegros();
+      } else if (tab === 'caja-responsables') {
+        if (typeof window.cargarCajaResponsables === 'function') window.cargarCajaResponsables();
       } else if (typeof window.sincronizarConsignaciones === 'function') {
         window.sincronizarConsignaciones(btn);
       }
@@ -2065,11 +2769,15 @@
         const li = document.getElementById(p.nav);
         if (li) li.style.display = pestanaPermitida(k) ? '' : 'none';
       });
+      // El grupo Caja Operativa se ve si el rol tiene alguna de sus subpestañas
+      const liCaja = document.getElementById('navLiCaja');
+      if (liCaja) liCaja.style.display = Object.keys(PESTANAS_CONTA).some(k => PESTANAS_CONTA[k].grupo === 'caja' && pestanaPermitida(k)) ? '' : 'none';
       activarPestanaContabilidad(params.get('tab'), true);
     });
   </script>
   <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
   <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
   <script src="/js/contabilidad-formaspago.js?v=20261111a"></script>
+  <script src="/js/contabilidad-caja.js?v=20261112c"></script>
 </body>
 </html>

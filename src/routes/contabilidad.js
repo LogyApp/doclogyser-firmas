@@ -47,6 +47,8 @@ function seccionDeTab(tab) {
   const t = String(tab || '').toLowerCase();
   if (t === 'transferencias') return 'Transferencias';
   if (t === 'formaspago') return 'Formas_Pago';
+  const caja = { 'caja-flujo': 'Caja_Flujo', 'caja-responsables': 'Caja_Responsables', 'caja-reintegros': 'Caja_Reintegros', 'caja-reembolsos': 'Caja_Reembolsos', 'caja-proveedores': 'Caja_Proveedores' };
+  if (caja[t]) return caja[t];
   return 'Consignaciones';
 }
 
