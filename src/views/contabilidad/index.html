@@ -761,6 +761,28 @@
       transform: scale(1.12);
     }
 
+    /* Selección y validación masiva (Consignaciones y Transferencias) */
+    .col-sel { text-align: center !important; padding-left: 4px !important; padding-right: 4px !important; }
+    .chk-sel { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
+    .barra-masiva {
+      display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      background: var(--accent-soft, rgba(37, 99, 235, 0.08)); border: 1px solid var(--accent); border-radius: 10px;
+      padding: 8px 12px; margin-bottom: 10px; color: var(--text); font-size: 0.84rem;
+    }
+    .barra-masiva.visible { display: flex; }
+    .barra-masiva-acc { display: flex; gap: 6px; flex-wrap: wrap; }
+    .barra-masiva .btn-action { padding: 6px 12px; font-size: 0.8rem; }
+    .mt-icono-detalle {
+      display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(255, 255, 255, 0.15); text-decoration: none; font-size: 1rem;
+    }
+    .mt-icono-detalle:hover { background: rgba(255, 255, 255, 0.28); }
+    @media (max-width: 600px) {
+      .barra-masiva { padding: 6px 8px; font-size: 0.76rem; }
+      .barra-masiva .btn-action { padding: 4px 8px; font-size: 0.72rem; }
+      #modalTransf .form-row { grid-template-columns: 1fr; }
+    }
+
     /* Badge Validado */
     .badge-validado {
       display: inline-flex;
@@ -1307,12 +1329,23 @@
           </div>
         </section>
 
+        <!-- Validación masiva (roles de Config_Parametros "Roles que pueden validar consignaciones") -->
+        <div class="barra-masiva" id="barraMasivaConsig">
+          <span class="barra-masiva-txt"><strong id="selConteoConsig">0</strong> seleccionada(s)</span>
+          <div class="barra-masiva-acc">
+            <button type="button" class="btn-action primary" onclick="validarConsignacionesMasivo('SI')">✅ Validar</button>
+            <button type="button" class="btn-action secondary" onclick="validarConsignacionesMasivo('NO')">❌ Quitar validación</button>
+            <button type="button" class="btn-action secondary" onclick="limpiarSeleccionConsig()">Cancelar</button>
+          </div>
+        </div>
+
         <!-- Tabla de Consignaciones (Columnas ajustables y ordenables) -->
         <section class="table-card">
           <div class="table-container">
             <table class="data-table" id="tablaConsignaciones">
               <thead>
                 <tr>
+                  <th class="col-sel" style="width: 44px;" title="Seleccionar para validar"><input type="checkbox" id="selTodasConsig" class="chk-sel" aria-label="Seleccionar todas las consignaciones con comprobante"></th>
                   <th data-sort="fase" style="width: 140px;">Estado</th>
                   <th data-sort="dia" style="width: 130px;">Día</th>
                   <th data-sort="operacion" style="width: 160px;">Operación</th>
@@ -1328,7 +1361,7 @@
               </thead>
               <tbody id="tbodyConsignaciones">
                 <tr>
-                  <td colspan="11" style="text-align:center; padding: 30px; color: var(--text-muted);">
+                  <td colspan="12" style="text-align:center; padding: 30px; color: var(--text-muted);">
                     Cargando consignaciones...
                   </td>
                 </tr>
@@ -1431,6 +1464,8 @@
                   <option value="TODAS">Todos</option>
                   <option value="Green">🟢 Con Soporte</option>
                   <option value="Red">🔴 Pendientes</option>
+                  <option value="VALIDADA">✓ Validadas</option>
+                  <option value="SIN_VALIDAR">🟢 Con soporte sin validar</option>
                 </select>
               </div>
             </div>
@@ -1447,32 +1482,41 @@
           </div>
         </section>
 
+        <!-- Validación masiva (roles de Config_Parametros "Roles que pueden validar transferencias") -->
+        <div class="barra-masiva" id="barraMasivaTransf">
+          <span class="barra-masiva-txt"><strong id="selConteoTransf">0</strong> seleccionada(s)</span>
+          <div class="barra-masiva-acc">
+            <button type="button" class="btn-action primary" onclick="validarTransferenciasMasivo('SI')">✅ Validar</button>
+            <button type="button" class="btn-action secondary" onclick="validarTransferenciasMasivo('NO')">❌ Quitar validación</button>
+            <button type="button" class="btn-action secondary" onclick="limpiarSeleccionTransf()">Cancelar</button>
+          </div>
+        </div>
+
         <!-- Tabla de Transferencias (Columnas ajustables y ordenables) -->
         <section class="table-card">
           <div class="table-container">
             <table class="data-table" id="tablaTransferencias">
               <thead>
                 <tr>
-                  <th data-sort="fase" style="width: 120px;">Estado</th>
+                  <th class="col-sel" style="width: 44px;" title="Seleccionar para validar"><input type="checkbox" id="selTodasTransf" class="chk-sel" aria-label="Seleccionar todas las transferencias con soporte"></th>
+                  <th data-sort="fase" style="width: 135px;">Estado</th>
                   <th data-sort="dia" style="width: 110px;">Fecha</th>
                   <th data-sort="operacion" style="width: 140px;">Operación</th>
                   <th data-sort="consecutivoRecibo" style="width: 105px;">Recibo</th>
                   <th data-sort="cliente" style="width: 180px;">Cliente</th>
                   <th data-sort="nit" style="width: 100px;">NIT</th>
                   <th data-sort="placa" style="width: 85px; text-align:center;">Placa</th>
-                  <th data-sort="area" style="width: 75px; text-align:center;">Área</th>
+                  <th data-sort="area" style="width: 130px;">Área</th>
                   <th data-sort="actividad" style="width: 120px;">Actividad</th>
                   <th data-sort="fechaTransferencia" style="width: 130px;">Fecha Transf.</th>
                   <th data-sort="total" style="width: 120px; text-align:right;">Total</th>
                   <th data-sort="telefono" style="width: 105px;">Teléfono</th>
                   <th data-sort="usuario" style="width: 150px;">Usuario</th>
-                  <th style="width: 110px; text-align:center;">Soporte</th>
-                  <th style="width: 75px; text-align:center;">Servicio</th>
                 </tr>
               </thead>
               <tbody id="tbodyTransferencias">
                 <tr>
-                  <td colspan="15" style="text-align:center; padding: 30px; color: var(--text-muted);">
+                  <td colspan="14" style="text-align:center; padding: 30px; color: var(--text-muted);">
                     Cargando transferencias...
                   </td>
                 </tr>
@@ -1641,6 +1685,77 @@
     </div>
   </div>
 
+  <!-- ── MODAL DE TRANSFERENCIA: ver soporte, validar o cargar la foto ── -->
+  <div class="modal-overlay" id="modalTransf">
+    <div class="modal-card" style="max-width: 860px; max-height: 94vh;">
+      <div class="modal-header">
+        <span id="mtTitulo">Soporte de Transferencia</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <a id="mtVerServicio" href="#" target="_blank" class="mt-icono-detalle" title="Ver detalle del servicio en Facturación" aria-label="Ver detalle del servicio">🔍</a>
+          <button type="button" class="modal-close-btn" onclick="cerrarModalTransf()">&times;</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="gap: 10px;">
+        <div class="info-banner">
+          <div>
+            <div class="info-banner-label" id="mtSubtitulo">Recibo — Operación</div>
+            <div style="font-size:0.78rem; font-weight:600; color:var(--text); margin-top:2px;" id="mtCliente"></div>
+          </div>
+          <div style="text-align:right;">
+            <div class="info-banner-label">Total</div>
+            <div class="info-banner-val" id="mtTotal">$ 0</div>
+          </div>
+        </div>
+
+        <!-- Vista del soporte (zoom y giro) -->
+        <div id="mtVisor" style="display:none; background:#0b0f19; border-radius:8px; padding:10px;">
+          <div class="visor-toolbar" id="mtToolbar">
+            <button type="button" class="visor-btn" onclick="mtZoom(0.25)" title="Acercar">🔍 +</button>
+            <button type="button" class="visor-btn" onclick="mtZoom(-0.25)" title="Alejar">🔍 -</button>
+            <button type="button" class="visor-btn" onclick="mtRotar(90)" title="Girar 90 grados">🔄 Girar</button>
+            <button type="button" class="visor-btn" onclick="mtReset()" title="Restablecer tamaño y giro">↺ 100%</button>
+          </div>
+          <div class="visor-stage">
+            <div id="mtContenido" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"></div>
+          </div>
+        </div>
+
+        <!-- Cargar o cambiar la foto (igual que en el formulario del servicio) -->
+        <div id="mtForm" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Foto Transferencia *</label>
+              <div class="zona-archivo" data-input="mtFotoFile"></div>
+              <input type="file" id="mtFotoFile" accept="image/*,application/pdf" style="display:none;">
+              <input type="file" id="mtFotoCamara" accept="image/*" capture="environment" style="display:none;">
+              <small id="mtFotoActual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+            </div>
+            <div class="form-group">
+              <label for="mtFechaTransferencia">Fecha Transferencia</label>
+              <input type="datetime-local" id="mtFechaTransferencia">
+            </div>
+          </div>
+        </div>
+
+        <div id="mtError" style="display:none; color:#ef4444; font-size:0.8rem; font-weight:600;"></div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span id="mtValidadoBadge" class="fase-badge" style="display:none;"></span>
+          <button type="button" class="btn-action" id="mtBtnValidar" style="display:none;" onclick="mtToggleValidar()">✅ Validar</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-action secondary" id="mtBtnCambiar" style="display:none;" onclick="mtMostrarFormulario(true)">📷 Cambiar soporte</button>
+          <a id="mtBtnDescargar" href="#" target="_blank" download class="btn-action secondary" style="display:none;">Descargar</a>
+          <button type="button" class="btn-action primary" id="mtBtnGuardar" style="display:none;" onclick="mtGuardarSoporte()">Guardar soporte</button>
+          <button type="button" class="btn-action secondary" onclick="cerrarModalTransf()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── MODAL DE SERVICIOS ASOCIADOS (RÉPLICA LINKTOFILTEREDVIEW) ── -->
   <div class="modal-overlay" id="modalServiciosAsociados">
     <div class="modal-card lg">
@@ -1776,7 +1891,7 @@
       }
     });
   </script>
-  <script src="/js/contabilidad-consignaciones.js"></script>
-  <script src="/js/contabilidad-transferencias.js"></script>
+  <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
+  <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
 </body>
 </html>

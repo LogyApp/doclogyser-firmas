@@ -7,7 +7,7 @@ const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
 const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, normalizarTexto } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
-const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
+const { obtenerTipoDocumentoConfig } = require('../services/documentRegistry');
 
 const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
@@ -5789,26 +5789,14 @@ router.get('/api/periodo-servicio', async (req, res) => {
   }
 });
 
-// Sube la foto a GCS (talenthub_central/general/{Prefijo}.{IdServicio}.ext) y registra el
-// documento en Maestro_docEmpresa, según la regla exacta dada para Foto Documento/Evidencia/Transferencia.
-async function procesarFotoServicio(file, tipoDocumentoId, idServicio, contextoRecibo, acceso) {
+// Sube la foto a GCS (talenthub_central/general/{Prefijo}.{IdServicio}_{AAAAMMDD_HHmmss}.ext) para
+// Foto Documento/Evidencia/Transferencia. Cada foto queda con su propio nombre (no sobrescribe la
+// anterior) y la URL se guarda solo en Dynamic_Servicios: ya no se registra en Maestro_docEmpresa.
+async function procesarFotoServicio(file, tipoDocumentoId, idServicio) {
   if (!file) return null;
   const docConfig = await obtenerTipoDocumentoConfig(pool, tipoDocumentoId);
   const prefijo = (docConfig && docConfig.Prefijo) || 'DOC';
-  const url = await subirFotoServicio(prefijo, idServicio, file.buffer, file.originalname, file.mimetype);
-  const regional = await obtenerRegionalDeOperacion(contextoRecibo.operacion);
-
-  await registrarDocGeneral(pool, {
-    tipoDocumentoId,
-    prefijo,
-    regional,
-    operacion: contextoRecibo.operacion,
-    usuario: acceso.usuarioId || acceso.usuarioNombre,
-    observaciones: `Servicio ${idServicio}`,
-    url,
-  });
-
-  return url;
+  return subirFotoServicio(prefijo, idServicio, file.buffer, file.originalname, file.mimetype);
 }
 
 // Calcula Hora Final (si Duración != 'Otro', Hora Inicio + Tiempo de Config_Duración) y
@@ -6377,6 +6365,17 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       }
     } else {
       formaDePago = existente['Forma De Pago'];
+    }
+
+    // Soporte de transferencia validado por Contabilidad (Contabilidad › Transferencias): ya no se
+    // puede cambiar la Foto Transferencia ni quitar la Forma de Pago Transferencia (borraría la foto).
+    if (String(existente['Validado Transferencia'] || '').toUpperCase() === 'SI') {
+      if (files.fotoTransferencia?.[0]) {
+        return res.status(400).json({ error: 'La Foto de Transferencia ya fue validada por Contabilidad y no se puede cambiar.' });
+      }
+      if (Number(formaDePago) !== 2) {
+        return res.status(400).json({ error: 'La transferencia ya fue validada por Contabilidad: no se puede cambiar la Forma de Pago.' });
+      }
     }
 
     // Periodo: solo si cambia la Hora Inicio (quincena y bloqueos) o el recibo (quincena del

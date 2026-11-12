@@ -25,11 +25,10 @@
   let registrosFiltrados = [];
   let yaInicializado = false;
   let sortState = { col: 'dia', order: 'desc' };
+  let validacionDisponible = false;   // existen las columnas de validación en Dynamic_Servicios
+  let motivoSinValidacion = '';
+  const seleccion = new Set();        // IdServicio seleccionados para validar de forma masiva
 
-  // Variables de visor
-  let visorZoom = 1;
-  let visorRotacion = 0;
-  let itemVisorActual = null;
 
   // DOM Elements
   const dom = {};
@@ -215,7 +214,7 @@
     } catch (err) {
       console.error('[transferencias] Error en inicializar:', err);
       if (dom.tbodyTransferencias) {
-        dom.tbodyTransferencias.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
+        dom.tbodyTransferencias.innerHTML = `<tr><td colspan="14" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
       }
     }
   };
@@ -337,6 +336,18 @@
     if (dom.filtroTransfBusqueda) {
       dom.filtroTransfBusqueda.addEventListener('input', () => aplicarFiltrosMemoria());
     }
+
+    // Seleccionar / quitar todas las visibles con soporte
+    const todas = document.getElementById('selTodasTransf');
+    if (todas) {
+      todas.addEventListener('click', (e) => e.stopPropagation());
+      todas.addEventListener('change', () => {
+        registrosFiltrados.filter(esSeleccionable).forEach(r => {
+          if (todas.checked) seleccion.add(r.idServicio); else seleccion.delete(r.idServicio);
+        });
+        renderizarTabla();
+      });
+    }
   }
 
   // Cargar datos desde el backend
@@ -349,14 +360,16 @@
       setTimeout(() => btnAnimar.classList.remove('girando'), 1200);
     }
 
-    dom.tbodyTransferencias.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:32px; color:var(--text-muted);"><span class="spinner" style="border-color:var(--text-muted); border-top-color:var(--accent);"></span> Cargando transferencias...</td></tr>`;
+    dom.tbodyTransferencias.innerHTML = `<tr><td colspan="14" style="text-align:center; padding:32px; color:var(--text-muted);"><span class="spinner" style="border-color:var(--text-muted); border-top-color:var(--accent);"></span> Cargando transferencias...</td></tr>`;
 
     const anio = dom.filtroTransfAnio ? dom.filtroTransfAnio.value : '';
     const quincena = dom.filtroTransfQuincena ? dom.filtroTransfQuincena.value : '';
     const dia = dom.filtroTransfDia ? dom.filtroTransfDia.value : '';
     const regional = dom.filtroTransfRegional ? dom.filtroTransfRegional.value : '';
     const operacion = obtenerOperacionSeleccionada();
-    const fase = dom.filtroTransfFase ? dom.filtroTransfFase.value : '';
+    // Validadas / sin validar se filtran aquí; al servidor solo van Green o Red
+    const faseSel = dom.filtroTransfFase ? dom.filtroTransfFase.value : '';
+    const fase = ['Green', 'Red'].includes(faseSel) ? faseSel : 'TODAS';
 
     const params = new URLSearchParams({
       usuario,
@@ -377,11 +390,13 @@
 
       const data = await res.json();
       todosLosRegistros = data.registros || [];
+      validacionDisponible = Boolean(data.validacionDisponible);
+      motivoSinValidacion = data.motivoSinValidacion || '';
       aplicarFiltrosMemoria();
 
     } catch (err) {
       console.error('[transferencias] Error al cargar:', err);
-      dom.tbodyTransferencias.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
+      dom.tbodyTransferencias.innerHTML = `<tr><td colspan="14" style="text-align:center; padding:30px; color:#ef4444;">${err.message}</td></tr>`;
     }
   };
 
@@ -394,7 +409,9 @@
     registrosFiltrados = todosLosRegistros.filter(r => {
       if (reg !== 'TODAS' && (r.regional || '').toUpperCase() !== reg.toUpperCase()) return false;
       if (op !== 'TODAS' && (r.operacion || '').toLowerCase() !== op.toLowerCase()) return false;
-      if (fase !== 'TODAS' && r.fase.toLowerCase() !== fase.toLowerCase()) return false;
+      if (fase === 'VALIDADA') { if (r.validado !== 'SI') return false; }
+      else if (fase === 'SIN_VALIDAR') { if (r.fase !== 'Green' || r.validado === 'SI') return false; }
+      else if (fase !== 'TODAS' && r.fase.toLowerCase() !== fase.toLowerCase()) return false;
 
       if (busqueda) {
         const match =
@@ -406,6 +423,7 @@
           (r.usuario && r.usuario.toLowerCase().includes(busqueda)) ||
           (r.actividad && r.actividad.toLowerCase().includes(busqueda)) ||
           (r.observaciones && r.observaciones.toLowerCase().includes(busqueda)) ||
+          (r.area && String(r.area).toLowerCase().includes(busqueda)) ||
           (r.idServicio && r.idServicio.toLowerCase().includes(busqueda));
         if (!match) return false;
       }
@@ -463,10 +481,32 @@
     if (dom.conteoTransfTotal) dom.conteoTransfTotal.textContent = todosLosRegistros.length;
   }
 
+  function escHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function puedeValidarAqui() {
+    return Boolean(estadoUsuario && estadoUsuario.puedeValidarTransferencias && validacionDisponible);
+  }
+  function urlDetalleServicio(item) {
+    return `/facturacion?tab=servicios&usuario=${encodeURIComponent(usuario)}&idservicio=${encodeURIComponent(item.idServicio)}`;
+  }
+  function esSeleccionable(item) {
+    return Boolean(item.urlSoporte || resolverUrlSoporte(item.fotoTransferencia));
+  }
+
   function renderizarTabla() {
     if (!dom.tbodyTransferencias) return;
+    const conSel = puedeValidarAqui();
+    dom.tablaTransferencias.classList.toggle('sin-seleccion', !conSel);
+    const thSel = dom.tablaTransferencias.querySelector('thead th.col-sel');
+    if (thSel) thSel.style.display = conSel ? '' : 'none';
+    // La selección solo conserva lo que sigue visible con los filtros
+    const visibles = new Set(registrosFiltrados.map(r => r.idServicio));
+    [...seleccion].forEach(id => { if (!visibles.has(id)) seleccion.delete(id); });
+
     if (!registrosFiltrados.length) {
-      dom.tbodyTransferencias.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:var(--text-muted);">No se encontraron transferencias para los filtros seleccionados.</td></tr>`;
+      dom.tbodyTransferencias.innerHTML = `<tr><td colspan="14" style="text-align:center; padding:30px; color:var(--text-muted);">No se encontraron transferencias para los filtros seleccionados.</td></tr>`;
+      actualizarBarraSeleccion();
       return;
     }
 
@@ -475,25 +515,41 @@
     registrosFiltrados.forEach(item => {
       const tr = document.createElement('tr');
       const isGreen = item.fase === 'Green';
-      const urlSoporte = item.urlSoporte || resolverUrlSoporte(item.fotoTransferencia);
+      const isValidado = item.validado === 'SI';
 
-      // Clic en fila: si tiene soporte abre el visor; si no, abre el servicio en Facturación
+      // Clic en el registro: ventana con el soporte (o para cargarlo si no tiene)
       tr.addEventListener('click', (e) => {
-        if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.th-resize')) return;
-        if (urlSoporte) {
-          abrirVisorTransferencia(item);
-        } else {
-          window.open(`/facturacion?tab=servicios&usuario=${encodeURIComponent(usuario)}&idservicio=${encodeURIComponent(item.idServicio)}`, '_blank');
-        }
+        if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.th-resize') || e.target.closest('.col-sel')) return;
+        abrirModalTransf(item);
       });
 
-      // 1. Estado / Fase
+      // 0. Selección para validar de forma masiva
+      if (conSel) {
+        const tdSel = document.createElement('td');
+        tdSel.className = 'col-sel';
+        if (esSeleccionable(item)) {
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'chk-sel';
+          chk.checked = seleccion.has(item.idServicio);
+          chk.title = 'Seleccionar para validar';
+          chk.addEventListener('change', () => {
+            if (chk.checked) seleccion.add(item.idServicio); else seleccion.delete(item.idServicio);
+            actualizarBarraSeleccion();
+          });
+          tdSel.appendChild(chk);
+        }
+        tr.appendChild(tdSel);
+      }
+
+      // 1. Estado / Fase (+ Validado)
       const tdFase = document.createElement('td');
       tdFase.innerHTML = `
         <span class="fase-badge ${isGreen ? 'green' : 'red'}" title="${isGreen ? 'Soporte de Transferencia Cargado' : 'Pendiente por Cargar Soporte'}">
           <span class="fase-dot"></span>
           ${isGreen ? 'Con Soporte' : 'Pendiente'}
         </span>
+        ${isValidado ? `<span class="badge-validado" title="Validado por ${escHtml(item.usuarioValida || 'Contabilidad')} ${item.fechaValidacion ? '(' + escHtml(item.fechaValidacion) + ')' : ''}">✓ Validado</span>` : ''}
       `;
       tr.appendChild(tdFase);
 
@@ -504,12 +560,12 @@
 
       // 3. Operación
       const tdOp = document.createElement('td');
-      tdOp.innerHTML = `<strong style="color:var(--text);">${item.operacion}</strong><br><small style="color:var(--text-muted);">${item.regional || ''}</small>`;
+      tdOp.innerHTML = `<strong style="color:var(--text);">${escHtml(item.operacion)}</strong><br><small style="color:var(--text-muted);">${escHtml(item.regional || '')}</small>`;
       tr.appendChild(tdOp);
 
       // 4. Recibo
       const tdRec = document.createElement('td');
-      tdRec.innerHTML = `<code style="font-weight:700; color:var(--text);">${item.consecutivoRecibo}</code>`;
+      tdRec.innerHTML = `<code style="font-weight:700; color:var(--text);">${escHtml(item.consecutivoRecibo)}</code>`;
       tr.appendChild(tdRec);
 
       // 5. Cliente
@@ -519,7 +575,7 @@
       tdCli.style.textOverflow = 'ellipsis';
       tdCli.style.whiteSpace = 'nowrap';
       tdCli.title = item.cliente;
-      tdCli.innerHTML = `<span style="font-weight:600;">${item.cliente || '-'}</span>`;
+      tdCli.innerHTML = `<span style="font-weight:600;">${escHtml(item.cliente || '-')}</span>`;
       tr.appendChild(tdCli);
 
       // 6. NIT
@@ -530,13 +586,13 @@
       // 7. Placa
       const tdPlaca = document.createElement('td');
       tdPlaca.style.textAlign = 'center';
-      tdPlaca.innerHTML = item.placa && item.placa !== '-' ? `<span style="font-weight:700; background:rgba(37,99,235,0.08); padding:2px 6px; border-radius:4px; border:1px solid rgba(37,99,235,0.2);">${item.placa}</span>` : '-';
+      tdPlaca.innerHTML = item.placa && item.placa !== '-' ? `<span style="font-weight:700; background:rgba(37,99,235,0.08); padding:2px 6px; border-radius:4px; border:1px solid rgba(37,99,235,0.2);">${escHtml(item.placa)}</span>` : '-';
       tr.appendChild(tdPlaca);
 
-      // 8. Área
+      // 8. Área (Config_Area.AREA por ID)
       const tdArea = document.createElement('td');
-      tdArea.style.textAlign = 'center';
       tdArea.textContent = item.area || '-';
+      tdArea.title = item.area || '';
       tr.appendChild(tdArea);
 
       // 9. Actividad
@@ -567,95 +623,325 @@
       tdUsu.textContent = item.usuario || '-';
       tr.appendChild(tdUsu);
 
-      // 14. Soporte / Foto
-      const tdSoporte = document.createElement('td');
-      tdSoporte.style.textAlign = 'center';
-      if (urlSoporte) {
-        const btnVer = document.createElement('button');
-        btnVer.type = 'button';
-        btnVer.className = 'btn-action secondary';
-        btnVer.style.padding = '3px 8px';
-        btnVer.style.fontSize = '0.75rem';
-        btnVer.title = 'Ver comprobante de transferencia';
-        btnVer.innerHTML = '📷 Ver Soporte';
-        btnVer.onclick = (e) => {
-          e.stopPropagation();
-          abrirVisorTransferencia(item);
-        };
-        tdSoporte.appendChild(btnVer);
-      } else {
-        tdSoporte.innerHTML = `<span style="color:#ef4444; font-size:0.75rem; font-weight:600;">⚠️ Sin foto</span>`;
-      }
-      tr.appendChild(tdSoporte);
-
-      // 15. Acciones / Ver en Facturación
-      const tdAcc = document.createElement('td');
-      tdAcc.style.textAlign = 'center';
-      const btnLink = document.createElement('a');
-      btnLink.href = `/facturacion?tab=servicios&usuario=${encodeURIComponent(usuario)}&idservicio=${encodeURIComponent(item.idServicio)}`;
-      btnLink.target = '_blank';
-      btnLink.className = 'btn-action';
-      btnLink.style.padding = '3px 7px';
-      btnLink.style.fontSize = '0.75rem';
-      btnLink.title = 'Abrir servicio en módulo de Facturación';
-      btnLink.innerHTML = '🔗';
-      btnLink.onclick = (e) => e.stopPropagation();
-      tdAcc.appendChild(btnLink);
-      tr.appendChild(tdAcc);
-
       fragment.appendChild(tr);
     });
 
     dom.tbodyTransferencias.innerHTML = '';
     dom.tbodyTransferencias.appendChild(fragment);
+    actualizarBarraSeleccion();
   }
 
-  // ── MODAL VISOR DE SOPORTE PARA TRANSFERENCIAS ─────────────
-  function abrirVisorTransferencia(item) {
-    const url = item.urlSoporte || resolverUrlSoporte(item.fotoTransferencia);
-    if (!url) return;
-
-    itemVisorActual = item;
-    dom.visorTitulo.textContent = `Soporte Transferencia — Recibo ${item.consecutivoRecibo} (${item.operacion} — ${item.dia})`;
-    dom.btnDescargarSoporte.href = url;
-
-    // Configurar botones del footer en el visor
-    if (dom.visorValidacionContenedor) dom.visorValidacionContenedor.style.display = 'none';
-    if (dom.btnVisorEditar) dom.btnVisorEditar.style.display = 'none';
-
-    if (dom.btnVisorIrFacturacion) {
-      dom.btnVisorIrFacturacion.href = `/facturacion?tab=servicios&usuario=${encodeURIComponent(usuario)}&idservicio=${encodeURIComponent(item.idServicio)}`;
-      dom.btnVisorIrFacturacion.style.display = 'inline-flex';
+  // ── VALIDACIÓN MASIVA ──────────────────────────────────────
+  function actualizarBarraSeleccion() {
+    const barra = document.getElementById('barraMasivaTransf');
+    const conteo = document.getElementById('selConteoTransf');
+    const todas = document.getElementById('selTodasTransf');
+    const seleccionables = registrosFiltrados.filter(esSeleccionable);
+    if (conteo) conteo.textContent = seleccion.size.toLocaleString('es-CO');
+    if (barra) barra.classList.toggle('visible', puedeValidarAqui() && seleccion.size > 0);
+    if (todas) {
+      todas.checked = seleccionables.length > 0 && seleccionables.every(r => seleccion.has(r.idServicio));
+      todas.indeterminate = seleccion.size > 0 && !todas.checked;
     }
+  }
 
-    // Resetear zoom y rotación
-    visorZoom = 1;
-    visorRotacion = 0;
+  window.limpiarSeleccionTransf = function () {
+    seleccion.clear();
+    renderizarTabla();
+  };
 
-    dom.visorContent.innerHTML = '';
-    const esPdf = url.match(/\.(pdf)$/i) || url.includes('/pdf');
+  async function enviarValidacion(ids, validado) {
+    const res = await fetch('/contabilidad/api/transferencias/validar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, ids, validado }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo actualizar la validación.');
+    const actualizados = new Set(data.actualizados || []);
+    todosLosRegistros.forEach(r => {
+      if (!actualizados.has(r.idServicio)) return;
+      r.validado = data.validado;
+      r.usuarioValida = data.usuarioValida || '';
+      r.fechaValidacion = data.fechaValidacion || '';
+    });
+    return data;
+  }
 
+  window.validarTransferenciasMasivo = async function (validado) {
+    const ids = [...seleccion];
+    if (!ids.length) return;
+    const accion = validado === 'SI' ? 'validar' : 'quitar la validación a';
+    if (!confirm(`¿Desea ${accion} ${ids.length} transferencia(s) seleccionada(s)?`)) return;
+    const barra = document.getElementById('barraMasivaTransf');
+    barra.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    try {
+      const data = await enviarValidacion(ids, validado);
+      seleccion.clear();
+      aplicarFiltrosMemoria();
+      const n = (data.actualizados || []).length;
+      alert(`${n} transferencia(s) ${validado === 'SI' ? 'validada(s)' : 'sin validación'}${data.omitidos ? ` · ${data.omitidos} omitida(s) (sin soporte o fuera de su alcance)` : ''}.`);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      barra.querySelectorAll('button').forEach(b => { b.disabled = false; });
+    }
+  };
+
+  // ── VENTANA DE LA TRANSFERENCIA: ver soporte, validar o cargar la foto ──
+  let mtItem = null;
+  let mtZoomNivel = 1;
+  let mtGiro = 0;
+
+  function ahoraDatetimeLocal() {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    return `${p.year}-${p.month}-${p.day}T${p.hour === '24' ? '00' : p.hour}:${p.minute}`;
+  }
+  function aDatetimeLocal(v) {
+    const m = String(v || '').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+    return m ? `${m[1]}T${m[2]}` : '';
+  }
+
+  function abrirModalTransf(item) {
+    mtItem = item;
+    document.getElementById('mtTitulo').textContent = `Transferencia — Recibo ${item.consecutivoRecibo}`;
+    document.getElementById('mtSubtitulo').textContent = `${item.operacion} · ${formatearFechaLegible(item.dia)}`;
+    document.getElementById('mtCliente').textContent = `${item.cliente || '-'}${item.actividad && item.actividad !== '-' ? ' · ' + item.actividad : ''}`;
+    document.getElementById('mtTotal').textContent = formatearMoneda(item.total);
+    document.getElementById('mtVerServicio').href = urlDetalleServicio(item);
+    document.getElementById('mtError').style.display = 'none';
+    const url = item.urlSoporte || resolverUrlSoporte(item.fotoTransferencia);
+    mtMostrarFormulario(!url);
+    document.getElementById('modalTransf').classList.add('active');
+  }
+
+  function mtPintarSoporte(url) {
+    mtZoomNivel = 1;
+    mtGiro = 0;
+    const cont = document.getElementById('mtContenido');
+    cont.innerHTML = '';
+    const esPdf = /\.pdf($|\?)/i.test(url) || url.includes('/pdf');
+    document.getElementById('mtToolbar').style.display = esPdf ? 'none' : 'flex';
     if (esPdf) {
-      dom.visorToolbar.style.display = 'none';
-      dom.visorContent.innerHTML = `<iframe src="${url}" style="width:100%; height:62vh; border:none; background:#fff; border-radius:6px;"></iframe>`;
+      cont.innerHTML = `<iframe src="${escHtml(url)}" style="width:100%; height:58vh; border:none; background:#fff; border-radius:6px;"></iframe>`;
     } else {
-      dom.visorToolbar.style.display = 'flex';
       const img = document.createElement('img');
-      img.id = 'visorImgTag';
+      img.id = 'mtImg';
       img.className = 'visor-img';
       img.src = url;
-      img.alt = 'Comprobante de Transferencia';
-      dom.visorContent.appendChild(img);
-      actualizarTransformVisor();
+      img.alt = 'Soporte de transferencia';
+      cont.appendChild(img);
     }
-
-    dom.modalVisor.classList.add('active');
   }
 
-  function actualizarTransformVisor() {
-    const img = document.getElementById('visorImgTag');
-    if (img) {
-      img.style.transform = `scale(${visorZoom}) rotate(${visorRotacion}deg)`;
+  // formulario = true: muestra la carga de la foto; false: muestra el soporte
+  window.mtMostrarFormulario = function (formulario) {
+    const item = mtItem;
+    if (!item) return;
+    const url = item.urlSoporte || resolverUrlSoporte(item.fotoTransferencia);
+    const isValidado = item.validado === 'SI';
+    const conSoporte = Boolean(url);
+    if (formulario && isValidado) formulario = false; // validada: la foto ya no se cambia
+
+    document.getElementById('mtVisor').style.display = (!formulario && conSoporte) ? 'block' : 'none';
+    document.getElementById('mtForm').style.display = formulario ? 'block' : 'none';
+    if (!formulario && conSoporte) mtPintarSoporte(url);
+    if (formulario) {
+      montarZonaArchivoTransf();
+      const input = document.getElementById('mtFotoFile');
+      input.value = '';
+      actualizarZonaArchivoTransf();
+      document.getElementById('mtFechaTransferencia').value = aDatetimeLocal(item.fechaTransferencia) || ahoraDatetimeLocal();
+      document.getElementById('mtFotoActual').innerHTML = conSoporte
+        ? `Soporte actual: <a href="${escHtml(url)}" target="_blank" rel="noopener">ver archivo</a> (se reemplaza en el servicio al guardar)`
+        : 'El servicio aún no tiene soporte de transferencia.';
+    }
+
+    // Botones
+    document.getElementById('mtBtnGuardar').style.display = formulario ? 'inline-flex' : 'none';
+    document.getElementById('mtBtnCambiar').style.display = (!formulario && conSoporte && !isValidado) ? 'inline-flex' : 'none';
+    const desc = document.getElementById('mtBtnDescargar');
+    desc.style.display = (!formulario && conSoporte) ? 'inline-flex' : 'none';
+    if (conSoporte) desc.href = url;
+
+    // Validación (solo con soporte y para los roles autorizados)
+    const badge = document.getElementById('mtValidadoBadge');
+    const btnVal = document.getElementById('mtBtnValidar');
+    if (conSoporte && validacionDisponible) {
+      badge.style.display = 'inline-flex';
+      badge.className = `fase-badge ${isValidado ? 'green' : 'red'}`;
+      badge.innerHTML = isValidado
+        ? `<span class="fase-dot"></span> Validado por ${escHtml(item.usuarioValida || 'Contabilidad')}${item.fechaValidacion ? ' · ' + escHtml(item.fechaValidacion) : ''}`
+        : '<span class="fase-dot"></span> Pendiente de validación';
+    } else if (conSoporte && estadoUsuario && estadoUsuario.puedeValidarTransferencias) {
+      // Tiene permiso pero la validación aún no está disponible: se explica en vez de ocultarlo
+      badge.style.display = 'inline-flex';
+      badge.className = 'fase-badge red';
+      badge.title = motivoSinValidacion;
+      badge.innerHTML = '<span class="fase-dot"></span> Validación no disponible por ahora';
+    } else {
+      badge.style.display = 'none';
+    }
+    if (conSoporte && puedeValidarAqui() && !formulario) {
+      btnVal.style.display = 'inline-flex';
+      btnVal.className = isValidado ? 'btn-action secondary' : 'btn-action primary';
+      btnVal.innerHTML = isValidado ? '❌ Quitar validación' : '✅ Validar';
+    } else {
+      btnVal.style.display = 'none';
+    }
+  };
+
+  window.mtToggleValidar = async function () {
+    if (!mtItem) return;
+    const btn = document.getElementById('mtBtnValidar');
+    const nuevo = mtItem.validado === 'SI' ? 'NO' : 'SI';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Guardando...';
+    try {
+      const data = await enviarValidacion([mtItem.idServicio], nuevo);
+      if (!(data.actualizados || []).length) throw new Error('No se pudo actualizar: el servicio no tiene soporte o está fuera de su alcance.');
+      aplicarFiltrosMemoria();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      window.mtMostrarFormulario(false);
+    }
+  };
+
+  window.mtGuardarSoporte = async function () {
+    if (!mtItem) return;
+    const input = document.getElementById('mtFotoFile');
+    const err = document.getElementById('mtError');
+    const file = input.files && input.files[0];
+    if (!file) {
+      err.textContent = 'Adjunte la foto o el archivo de la transferencia.';
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+    const btn = document.getElementById('mtBtnGuardar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Guardando...';
+    try {
+      const fd = new FormData();
+      fd.append('usuario', usuario);
+      fd.append('idServicio', mtItem.idServicio);
+      fd.append('fechaTransferencia', document.getElementById('mtFechaTransferencia').value);
+      fd.append('foto', file);
+      const res = await fetch('/contabilidad/api/transferencias/soporte', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar el soporte.');
+      const enLista = todosLosRegistros.find(r => r.idServicio === mtItem.idServicio) || mtItem;
+      [enLista, mtItem].forEach(r => {
+        r.fotoTransferencia = data.fotoTransferencia;
+        r.urlSoporte = data.fotoTransferencia;
+        r.fechaTransferencia = data.fechaTransferencia;
+        r.fase = 'Green';
+      });
+      aplicarFiltrosMemoria();
+      window.mtMostrarFormulario(false);
+    } catch (e) {
+      err.textContent = e.message;
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar soporte';
+    }
+  };
+
+  function mtTransform() {
+    const img = document.getElementById('mtImg');
+    if (img) img.style.transform = `scale(${mtZoomNivel}) rotate(${mtGiro}deg)`;
+  }
+  window.mtZoom = function (d) { mtZoomNivel = Math.max(0.5, Math.min(3.5, Math.round((mtZoomNivel + d) * 100) / 100)); mtTransform(); };
+  window.mtRotar = function (g) { mtGiro = (mtGiro + g) % 360; mtTransform(); };
+  window.mtReset = function () { mtZoomNivel = 1; mtGiro = 0; mtTransform(); };
+  window.cerrarModalTransf = function () {
+    document.getElementById('modalTransf').classList.remove('active');
+    document.getElementById('mtContenido').innerHTML = '';
+    mtItem = null;
+  };
+
+  // Zona para adjuntar la foto: mismo diseño que el formulario del servicio en Facturación
+  const ICONO_SUBIR = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:block; margin:0 auto 6px;"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><polyline points="7 9 12 4 17 9"></polyline><line x1="12" y1="4" x2="12" y2="16"></line></svg>';
+  const ICONO_CLIP = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>';
+  const ICONO_CAMARA = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>';
+
+  function asignarArchivoTransf(file) {
+    const input = document.getElementById('mtFotoFile');
+    if (!file || !(file.type.startsWith('image/') || file.type === 'application/pdf')) return;
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+    } catch (e) {
+      alert('Este navegador no permite pasar la foto directamente. Use "Elegir archivo".');
+      return;
+    }
+    actualizarZonaArchivoTransf();
+  }
+
+  function montarZonaArchivoTransf() {
+    const zona = document.querySelector('.zona-archivo[data-input="mtFotoFile"]');
+    const input = document.getElementById('mtFotoFile');
+    const camara = document.getElementById('mtFotoCamara');
+    if (!zona || !input || zona.dataset.montada) return;
+    zona.dataset.montada = '1';
+    zona.innerHTML = `
+      <div class="zona-archivo-caja" style="border:2px dashed var(--border); border-radius:8px; padding:14px; text-align:center; background:var(--bg-elevated); transition: border-color .15s, background-color .15s; cursor:pointer;">
+        <div class="zona-archivo-placeholder">
+          ${ICONO_SUBIR}
+          <div style="font-size:0.78rem; color: var(--text-muted); margin-bottom:8px;">Arrastra una foto o archivo aquí o elige una opción</div>
+          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <button type="button" class="zona-archivo-btn" data-accion="archivo">${ICONO_CLIP} Elegir archivo</button>
+            <button type="button" class="zona-archivo-btn" data-accion="camara">${ICONO_CAMARA} Tomar foto</button>
+          </div>
+        </div>
+        <div class="zona-archivo-preview" style="display:none;"></div>
+      </div>`;
+    const caja = zona.querySelector('.zona-archivo-caja');
+    caja.addEventListener('click', e => {
+      const btn = e.target.closest('[data-accion]');
+      if (btn && btn.dataset.accion === 'camara') { e.stopPropagation(); camara.value = ''; camara.click(); return; }
+      if (btn && btn.dataset.accion === 'quitar') { e.stopPropagation(); input.value = ''; actualizarZonaArchivoTransf(); return; }
+      if (e.target.closest('a')) return;
+      input.click();
+    });
+    input.addEventListener('change', actualizarZonaArchivoTransf);
+    camara.addEventListener('change', () => { asignarArchivoTransf(camara.files && camara.files[0]); camara.value = ''; });
+    ['dragenter', 'dragover'].forEach(evt => caja.addEventListener(evt, e => {
+      e.preventDefault(); e.stopPropagation();
+      caja.style.borderColor = 'var(--accent)';
+    }));
+    ['dragleave', 'drop'].forEach(evt => caja.addEventListener(evt, e => {
+      e.preventDefault(); e.stopPropagation();
+      caja.style.borderColor = 'var(--border)';
+    }));
+    caja.addEventListener('drop', e => asignarArchivoTransf(e.dataTransfer.files && e.dataTransfer.files[0]));
+  }
+
+  function actualizarZonaArchivoTransf() {
+    const zona = document.querySelector('.zona-archivo[data-input="mtFotoFile"]');
+    const input = document.getElementById('mtFotoFile');
+    if (!zona || !input) return;
+    const placeholder = zona.querySelector('.zona-archivo-placeholder');
+    const preview = zona.querySelector('.zona-archivo-preview');
+    if (!preview) return;
+    if (preview.dataset.url) { URL.revokeObjectURL(preview.dataset.url); delete preview.dataset.url; }
+    const file = input.files && input.files[0];
+    if (!file) { preview.style.display = 'none'; preview.innerHTML = ''; placeholder.style.display = 'block'; return; }
+    placeholder.style.display = 'none';
+    preview.style.display = 'block';
+    const quitar = '<button type="button" data-accion="quitar" style="margin-top:6px; font-size:0.74rem; color:#ef4444; background:none; border:none; cursor:pointer; text-decoration:underline; font-weight:600;">Quitar archivo</button>';
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      preview.dataset.url = url;
+      preview.innerHTML = `<img src="${url}" alt="Vista previa" style="max-width:100%; max-height:160px; border-radius:6px; display:block; margin:0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">${quitar}`;
+    } else {
+      preview.innerHTML = `<div style="font-size:0.84rem; font-weight:700; color:var(--text); word-break:break-all;">📄 ${escHtml(file.name)}</div>${quitar}`;
     }
   }
 

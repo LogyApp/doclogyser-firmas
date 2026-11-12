@@ -84,10 +84,11 @@ router.get('/api/estado', async (req, res) => {
     ]);
 
     const anioActual = new Date().getFullYear().toString();
-    const [quincenas, puedeValidar, puedeEliminarFoto] = await Promise.all([
+    const [quincenas, puedeValidar, puedeEliminarFoto, puedeValidarTransferencias] = await Promise.all([
       consignacionesService.obtenerQuincenasPorAnio(anioActual),
       consignacionesService.puedeValidarConsignaciones(acceso.rol),
       consignacionesService.puedeEliminarFotoConsignacion(acceso.rol),
+      transferenciasService.puedeValidarTransferencias(acceso.rol),
     ]);
 
     const regionales = Object.keys(acceso.opsPorRegional).sort();
@@ -102,6 +103,7 @@ router.get('/api/estado', async (req, res) => {
       secciones: acceso.secciones || ['Consignaciones', 'Transferencias'],
       puedeValidar,
       puedeEliminarFoto,
+      puedeValidarTransferencias,
       regionales,
       operaciones,
       opsPorRegional: acceso.opsPorRegional,
@@ -208,6 +210,42 @@ router.post('/api/consignaciones/validar', async (req, res) => {
   }
 });
 
+// ── POST /api/consignaciones/validar-masivo (Validar o quitar validación a varias) ──
+router.post('/api/consignaciones/validar-masivo', async (req, res) => {
+  try {
+    const { usuario, items, validado } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'No se seleccionó ninguna consignación.' });
+    if (items.length > 1000) return res.status(400).json({ error: 'Máximo 1.000 consignaciones por vez.' });
+
+    const acceso = await computarAccesoContabilidad(usuario, 'Consignaciones');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para el módulo de Contabilidad' });
+    if (!(await consignacionesService.puedeValidarConsignaciones(acceso.rol))) {
+      return res.status(403).json({ error: 'No tiene permisos para validar o desvalidar consignaciones.' });
+    }
+
+    const actualizados = [];
+    const omitidos = [];
+    for (const it of items) {
+      const dia = it && it.dia;
+      const operacion = it && it.operacion;
+      const permitida = acceso.sinFiltro || (acceso.operacionesFiltro || []).includes(operacion);
+      if (!dia || !operacion || !permitida) { omitidos.push({ dia, operacion }); continue; }
+      try {
+        await consignacionesService.alternarValidacion(dia, operacion, validado, acceso);
+        actualizados.push({ dia, operacion });
+      } catch (e) {
+        omitidos.push({ dia, operacion, motivo: e.message });
+      }
+    }
+    const esValidado = validado === 'SI' || validado === true || validado === '1';
+    res.json({ ok: true, validado: esValidado ? 'SI' : 'NO', usuarioValida: esValidado ? (acceso.usuarioNombre || acceso.usuarioId) : null, actualizados, omitidos });
+  } catch (err) {
+    console.error('[contabilidad] POST /api/consignaciones/validar-masivo error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // ── POST /api/consignaciones/eliminar-foto (Eliminar foto/soporte) ────────────
 router.post('/api/consignaciones/eliminar-foto', async (req, res) => {
   try {
@@ -244,6 +282,39 @@ router.get('/api/transferencias', async (req, res) => {
   } catch (err) {
     console.error('[contabilidad] GET /api/transferencias error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/transferencias/validar (Validar o quitar validación: uno o varios servicios) ──
+router.post('/api/transferencias/validar', async (req, res) => {
+  try {
+    const { usuario, ids, validado } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoContabilidad(usuario, 'Transferencias');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para Transferencias.' });
+
+    res.json(await transferenciasService.validarTransferencias(ids, validado, acceso));
+  } catch (err) {
+    console.error('[contabilidad] POST /api/transferencias/validar error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ── POST /api/transferencias/soporte (Subir o cambiar la Foto Transferencia de un servicio) ──
+router.post('/api/transferencias/soporte', uploadConsignacion.single('foto'), async (req, res) => {
+  try {
+    const { usuario, idServicio, fechaTransferencia } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!idServicio) return res.status(400).json({ error: 'idServicio requerido' });
+
+    const acceso = await computarAccesoContabilidad(usuario, 'Transferencias');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para Transferencias.' });
+
+    res.json(await transferenciasService.guardarSoporteTransferencia(idServicio, req.file, fechaTransferencia, acceso));
+  } catch (err) {
+    console.error('[contabilidad] POST /api/transferencias/soporte error:', err);
+    res.status(400).json({ error: err.message });
   }
 });
 
