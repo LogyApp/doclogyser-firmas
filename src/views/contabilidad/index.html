@@ -2760,10 +2760,12 @@
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
       const u = params.get('usuario') || '';
+      // Una sola consulta de estado al abrir el módulo: la reutiliza Consignaciones
+      window.__estadoContabilidad = fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(u)}`)
+        .then(async r => ({ ok: r.ok, datos: await r.json() }));
       try {
-        const r = await fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(u)}`);
-        const est = await r.json();
-        if (r.ok && Array.isArray(est.secciones)) seccionesConta = est.secciones.map(normSec);
+        const { ok, datos } = await window.__estadoContabilidad;
+        if (ok && Array.isArray(datos.secciones)) seccionesConta = datos.secciones.map(normSec);
       } catch (e) { /* se muestran todas */ }
       Object.entries(PESTANAS_CONTA).forEach(([k, p]) => {
         const li = document.getElementById(p.nav);
@@ -2775,7 +2777,7 @@
       activarPestanaContabilidad(params.get('tab'), true);
     });
   </script>
-  <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
+  <script src="/js/contabilidad-consignaciones.js?v=20261112a"></script>
   <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
   <script src="/js/contabilidad-formaspago.js?v=20261111a"></script>
   <script src="/js/contabilidad-caja.js?v=20261112c"></script>

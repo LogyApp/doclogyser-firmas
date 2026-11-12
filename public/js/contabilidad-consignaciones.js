@@ -330,13 +330,12 @@
     if (!usuario) return;
 
     try {
-      // 1. Obtener metadatos y estado
-      const res = await fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(usuario)}`);
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Error al obtener estado');
-      }
-      estadoUsuario = await res.json();
+      // 1. Obtener metadatos y estado (la misma consulta que ya hizo el coordinador de pestañas)
+      const est = window.__estadoContabilidad ||
+        fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(usuario)}`).then(async r => ({ ok: r.ok, datos: await r.json() }));
+      const { ok, datos } = await est;
+      if (!ok) throw new Error(datos.error || 'Error al obtener estado');
+      estadoUsuario = datos;
 
       // Info de usuario en sidebar
       if (dom.sidebarUser) {

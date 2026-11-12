@@ -55,13 +55,15 @@ async function obtenerQuincenasPorAnio(anio) {
   }));
 }
 
-// Quincena actual de hoy
+// Quincena actual de hoy (fecha de Bogotá: CURDATE() del servidor va en UTC y desde las 7 p. m.
+// ya sería el día siguiente, lo que cambiaba de quincena el 15 y el último día del mes)
 async function obtenerQuincenaActual() {
-  const [rows] = await pool.query('SELECT Quincena, DATE(Fecha) as fecha FROM Maestro_Fechas WHERE Fecha = CURDATE() LIMIT 1');
+  const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+  const [rows] = await pool.query('SELECT Quincena, DATE(Fecha) as fecha FROM Maestro_Fechas WHERE Fecha = ? LIMIT 1', [hoyBogota]);
   if (rows.length && rows[0].Quincena) {
     return rows[0].Quincena;
   }
-  const hoy = new Date();
+  const hoy = new Date(`${hoyBogota}T12:00:00`);
   const mesNom = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][hoy.getMonth()];
   const qNum = hoy.getDate() > 15 ? 'Q2' : 'Q1';
   return `${hoy.getMonth() + 1}. ${mesNom} ${qNum}`;
@@ -160,14 +162,22 @@ async function obtenerConsignaciones(filtros = {}, acceso) {
       COALESCE(mo.REGIONAL, 'N/A') as regional,
       COUNT(ds.IdServicio) as total_servicios,
       ROUND(SUM(
-        (ds.Cantidad * ds.\`Valor Unitario\`) * 1.19
-        - (CASE WHEN COALESCE(dr.Retefuente, '') = 'V' THEN (ds.Cantidad * ds.\`Valor Unitario\`) * 0.04 ELSE 0 END)
-        - (CASE WHEN COALESCE(dr.ReteIVA, '') = 'V' THEN ((ds.Cantidad * ds.\`Valor Unitario\`) * 0.19) * 0.15 ELSE 0 END)
+        (ds.Cantidad * ds.\`Valor Unitario\`) * (1 + ci.iva_pct)
+        - (CASE WHEN COALESCE(dr.Retefuente, '') = 'V' THEN (ds.Cantidad * ds.\`Valor Unitario\`) * ci.retefuente_pct ELSE 0 END)
+        - (CASE WHEN COALESCE(dr.ReteIVA, '') = 'V' THEN ((ds.Cantidad * ds.\`Valor Unitario\`) * ci.iva_pct) * ci.reteiva_pct ELSE 0 END)
         - (CASE WHEN COALESCE(dr.ReteICA, '') = 'V' THEN (ds.Cantidad * ds.\`Valor Unitario\`) * COALESCE(rica.Porcentaje, 0) ELSE 0 END)
       )) as total_efectivo
     FROM Dynamic_Servicios ds
     JOIN Dynamic_Recibos dr ON ds.IdRecibo = dr.IdRecibo
     LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.\`OPERACIÓN\`
+    -- Mismos porcentajes de Config_Impuestos que Transferencias y Formas de Pago (antes fijos en el código)
+    JOIN (
+      SELECT
+        COALESCE(MAX(CASE WHEN Concepto = 'IVA' THEN Porcentaje END), 0.19) AS iva_pct,
+        COALESCE(MAX(CASE WHEN Concepto = 'ReteFuente' THEN Porcentaje END), 0.04) AS retefuente_pct,
+        COALESCE(MAX(CASE WHEN Concepto = 'ReteIVA' THEN Porcentaje END), 0.15) AS reteiva_pct
+      FROM Config_Impuestos
+    ) ci ON 1 = 1
     LEFT JOIN (
       SELECT \`Operación\`, MAX(Porcentaje) as Porcentaje 
       FROM Config_Impuestos 
@@ -275,9 +285,13 @@ async function obtenerConsignaciones(filtros = {}, acceso) {
     });
   });
 
-  // Agregar registros que estén en Maestro_Consignaciones pero sin servicios en ese rango
+  // Agregar registros que estén en Maestro_Consignaciones pero sin servicios en ese rango.
+  // Se omiten las filas vacías que creaba el trigger de AppSheet (sin comprobante, valor, foto ni
+  // observaciones): si el servicio en efectivo se borró o cambió de forma de pago, no hay nada que mostrar.
   for (const [key, mc] of mcMap.entries()) {
-    if (!combinedMap.has(key)) {
+    const vacia = !String(mc.Comprobante || '').trim() && !Number(mc.valor_consignado) &&
+      !mc.foto_consignacion && !mc.url_consignacion && !String(mc.Observaciones || '').trim();
+    if (!combinedMap.has(key) && !vacia) {
       const dStr = mc.dia ? new Date(mc.dia).toISOString().slice(0, 10) : '';
       const comprobante = mc.Comprobante || '';
       const fase = (comprobante && comprobante.trim() !== '') ? 'Green' : 'Red';
