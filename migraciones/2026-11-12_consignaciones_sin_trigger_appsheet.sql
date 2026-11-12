@@ -3,21 +3,19 @@
 -- crea la fila de Maestro_Consignaciones solo cuando alguien registra la consignación, así que ya
 -- no hace falta que la base cree filas vacías por cada servicio en efectivo.
 --
--- Qué se elimina (no se pierden datos: son lógica, no información):
---   1. Trigger after_insert_dynamic_servicios (Dynamic_Servicios AFTER INSERT): por cada servicio en
---      efectivo hacía INSERT IGNORE de una fila vacía en Maestro_Consignaciones (Usuario 'Sistema').
---   2. Vista vista_consignaciones_appsheet: la usaba solo AppSheet (ventas diarias en efectivo y
---      saldo por quincena de los últimos 45 días).
+-- Qué se elimina (no se pierden datos: es lógica, no información):
+--   Trigger after_insert_dynamic_servicios (Dynamic_Servicios AFTER INSERT): por cada servicio en
+--   efectivo hacía INSERT IGNORE de una fila vacía en Maestro_Consignaciones (Usuario 'Sistema').
+-- La vista vista_consignaciones_appsheet NO se elimina todavía: la siguen usando archivos de Excel
+-- de nómina (William la quitará cuando los ajuste). Su definición queda abajo como referencia.
 -- Las filas que ya existen en Maestro_Consignaciones NO se tocan.
--- Confirmado por William el 2026-11-12. Se puede ejecutar más de una vez.
+-- Confirmado por William el 2026-11-12. Ejecutado el 2026-11-12. Se puede ejecutar más de una vez.
 
 DROP TRIGGER IF EXISTS after_insert_dynamic_servicios;
-DROP VIEW IF EXISTS vista_consignaciones_appsheet;
 
--- Verificación (debe devolver 0 y 0)
-SELECT
-  (SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME = 'after_insert_dynamic_servicios') AS trigger_queda,
-  (SELECT COUNT(*) FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vista_consignaciones_appsheet') AS vista_queda;
+-- Verificación (debe devolver 0)
+SELECT COUNT(*) AS trigger_queda FROM information_schema.TRIGGERS
+WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME = 'after_insert_dynamic_servicios';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- RESPALDO: definiciones originales, por si hubiera que restaurarlas.

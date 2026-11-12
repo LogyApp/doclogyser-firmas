@@ -90,13 +90,15 @@ function resolverUrlFotoTransferencia(ruta) {
  * Obtiene la quincena actual basada en la fecha del sistema.
  */
 async function obtenerQuincenaActual() {
+  // Fecha de Bogotá (CURDATE() del servidor va en UTC) y Fecha = ? para usar el índice uq_fecha
+  const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
   const [rows] = await pool.execute(
-    'SELECT Quincena FROM Maestro_Fechas WHERE DATE(Fecha) = CURDATE() LIMIT 1'
+    'SELECT Quincena FROM Maestro_Fechas WHERE Fecha = ? LIMIT 1', [hoyBogota]
   );
   if (rows.length && rows[0].Quincena) {
     return rows[0].Quincena;
   }
-  const d = new Date();
+  const d = new Date(`${hoyBogota}T12:00:00`);
   const mes = d.getMonth() + 1;
   const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const q = d.getDate() > 15 ? 'Q2' : 'Q1';
