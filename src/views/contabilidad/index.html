@@ -913,6 +913,22 @@
       background: rgba(255, 255, 255, 0.15); text-decoration: none; font-size: 1rem;
     }
     .mt-icono-detalle:hover { background: rgba(255, 255, 255, 0.28); }
+    .mt-observaciones {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    .mt-observaciones-texto {
+      font-size: 0.82rem;
+      color: var(--text);
+      margin-top: 3px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .mt-observaciones-texto.vacio { color: var(--text-muted); font-style: italic; }
     @media (max-width: 600px) {
       .barra-masiva { padding: 6px 8px; font-size: 0.76rem; }
       .barra-masiva .btn-action { padding: 4px 8px; font-size: 0.72rem; }
@@ -2210,6 +2226,12 @@
           </div>
         </div>
 
+        <!-- Observaciones del servicio (Dynamic_Servicios.Observaciones) -->
+        <div class="mt-observaciones">
+          <div class="info-banner-label">Observaciones</div>
+          <div id="mtObservaciones" class="mt-observaciones-texto"></div>
+        </div>
+
         <!-- Vista del soporte (zoom y giro) -->
         <div id="mtVisor" style="display:none; background:#0b0f19; border-radius:8px; padding:10px;">
           <div class="visor-toolbar" id="mtToolbar">
@@ -2757,13 +2779,35 @@
       activarPestanaContabilidad(params.get('tab'), true);
     });
 
+    // Filtros de Consignaciones / Transferencias: deja solo las operaciones con registros de esa forma
+    // de pago (las demás trabajan solo a crédito). clave: 'consignaciones' | 'transferencias'.
+    // Si no hay lista o el usuario se quedaría sin ninguna, se dejan sus operaciones tal cual.
+    window.restringirEstadoContabilidad = function (estado, clave) {
+      const lista = estado && estado.operacionesConRegistro && estado.operacionesConRegistro[clave];
+      if (!Array.isArray(lista)) return estado;
+      const norm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+      const conRegistro = new Set(lista.map(norm));
+      const aplica = op => conRegistro.has(norm(op));
+      const operaciones = (estado.operaciones || []).filter(aplica);
+      if (!operaciones.length) return estado;
+      const opsPorRegional = {};
+      Object.entries(estado.opsPorRegional || {}).forEach(([reg, ops]) => {
+        const f = (ops || []).filter(aplica);
+        if (f.length) opsPorRegional[reg] = f;
+      });
+      const regionales = (estado.regionales || []).filter(r => opsPorRegional[r]);
+      return Object.assign({}, estado, { operaciones, opsPorRegional, regionales });
+    };
+
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
       const u = params.get('usuario') || '';
+      // Una sola consulta de estado al abrir el módulo: la reutiliza Consignaciones
+      window.__estadoContabilidad = fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(u)}`)
+        .then(async r => ({ ok: r.ok, datos: await r.json() }));
       try {
-        const r = await fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(u)}`);
-        const est = await r.json();
-        if (r.ok && Array.isArray(est.secciones)) seccionesConta = est.secciones.map(normSec);
+        const { ok, datos } = await window.__estadoContabilidad;
+        if (ok && Array.isArray(datos.secciones)) seccionesConta = datos.secciones.map(normSec);
       } catch (e) { /* se muestran todas */ }
       Object.entries(PESTANAS_CONTA).forEach(([k, p]) => {
         const li = document.getElementById(p.nav);
@@ -2775,8 +2819,8 @@
       activarPestanaContabilidad(params.get('tab'), true);
     });
   </script>
-  <script src="/js/contabilidad-consignaciones.js?v=20261111b"></script>
-  <script src="/js/contabilidad-transferencias.js?v=20261111b"></script>
+  <script src="/js/contabilidad-consignaciones.js?v=20261112b"></script>
+  <script src="/js/contabilidad-transferencias.js?v=20261112b"></script>
   <script src="/js/contabilidad-formaspago.js?v=20261111a"></script>
   <script src="/js/contabilidad-caja.js?v=20261112c"></script>
 </body>

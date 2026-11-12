@@ -160,6 +160,10 @@
       const res = await fetch(`/contabilidad/api/estado?usuario=${encodeURIComponent(usuario)}&tab=transferencias`);
       if (!res.ok) throw new Error('Error al obtener estado');
       estadoUsuario = await res.json();
+      // Filtros: solo las operaciones que tienen transferencias (las demás son solo crédito)
+      if (typeof window.restringirEstadoContabilidad === 'function') {
+        estadoUsuario = window.restringirEstadoContabilidad(estadoUsuario, 'transferencias');
+      }
 
       // 2. Poblar selector de Años
       if (dom.filtroTransfAnio) {
@@ -710,6 +714,10 @@
     document.getElementById('mtSubtitulo').textContent = `${item.operacion} · ${formatearFechaLegible(item.dia)}`;
     document.getElementById('mtCliente').textContent = `${item.cliente || '-'}${item.actividad && item.actividad !== '-' ? ' · ' + item.actividad : ''}`;
     document.getElementById('mtTotal').textContent = formatearMoneda(item.total);
+    const obs = document.getElementById('mtObservaciones');
+    const textoObs = String(item.observaciones || '').trim();
+    obs.textContent = textoObs || 'Sin observaciones';
+    obs.classList.toggle('vacio', !textoObs);
     document.getElementById('mtVerServicio').href = urlDetalleServicio(item);
     document.getElementById('mtError').style.display = 'none';
     const url = item.urlSoporte || resolverUrlSoporte(item.fotoTransferencia);
