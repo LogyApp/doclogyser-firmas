@@ -26,6 +26,7 @@
   let yaInicializado = false;
   let sortState = { col: 'dia', order: 'desc' };
   let validacionDisponible = false;   // existen las columnas de validación en Dynamic_Servicios
+  let motivoSinValidacion = '';
   const seleccion = new Set();        // IdServicio seleccionados para validar de forma masiva
 
 
@@ -390,6 +391,7 @@
       const data = await res.json();
       todosLosRegistros = data.registros || [];
       validacionDisponible = Boolean(data.validacionDisponible);
+      motivoSinValidacion = data.motivoSinValidacion || '';
       aplicarFiltrosMemoria();
 
     } catch (err) {
@@ -773,6 +775,12 @@
       badge.innerHTML = isValidado
         ? `<span class="fase-dot"></span> Validado por ${escHtml(item.usuarioValida || 'Contabilidad')}${item.fechaValidacion ? ' · ' + escHtml(item.fechaValidacion) : ''}`
         : '<span class="fase-dot"></span> Pendiente de validación';
+    } else if (conSoporte && estadoUsuario && estadoUsuario.puedeValidarTransferencias) {
+      // Tiene permiso pero la validación aún no está disponible: se explica en vez de ocultarlo
+      badge.style.display = 'inline-flex';
+      badge.className = 'fase-badge red';
+      badge.title = motivoSinValidacion;
+      badge.innerHTML = '<span class="fase-dot"></span> Validación no disponible por ahora';
     } else {
       badge.style.display = 'none';
     }

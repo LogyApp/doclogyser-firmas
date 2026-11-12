@@ -25,20 +25,19 @@ function ahoraBogota() {
 }
 
 // Las columnas de validación (migraciones/2026-11-11_transferencias_validacion.sql) pueden no existir
-// todavía: mientras tanto la pestaña funciona igual, sin validar. Se revisa cada 5 minutos hasta que existan.
-let columnasValidacion = { existe: false, revisado: 0 };
+// todavía: mientras tanto la pestaña funciona igual, sin validar. Se prueba directamente sobre la tabla;
+// cuando existen queda recordado, y si no, se vuelve a probar a los 30 segundos.
+let columnasValidacion = { existe: false, revisado: 0, error: '' };
 async function hayColumnasValidacion() {
-  if (columnasValidacion.existe || Date.now() - columnasValidacion.revisado < 5 * 60 * 1000) return columnasValidacion.existe;
+  if (columnasValidacion.existe || Date.now() - columnasValidacion.revisado < 30 * 1000) return columnasValidacion.existe;
   try {
-    const [r] = await pool.query(
-      `SELECT COUNT(*) AS n FROM information_schema.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Dynamic_Servicios'
-         AND COLUMN_NAME IN ('Validado Transferencia', 'Usuario Valida Transferencia', 'Fecha Valida Transferencia')`
+    await pool.query(
+      'SELECT `Validado Transferencia`, `Usuario Valida Transferencia`, `Fecha Valida Transferencia` FROM Dynamic_Servicios LIMIT 0'
     );
-    columnasValidacion = { existe: Number(r[0].n) === 3, revisado: Date.now() };
+    columnasValidacion = { existe: true, revisado: Date.now(), error: '' };
   } catch (e) {
-    console.error('[transferencias] No se pudo revisar las columnas de validación:', e.message);
-    columnasValidacion = { existe: false, revisado: Date.now() };
+    console.error('[transferencias] Columnas de validación no disponibles:', e.message);
+    columnasValidacion = { existe: false, revisado: Date.now(), error: e.message };
   }
   return columnasValidacion.existe;
 }
@@ -333,6 +332,7 @@ async function obtenerTransferencias(filtros = {}, acceso) {
     registros,
     kpis,
     validacionDisponible: conValidacion,
+    motivoSinValidacion: conValidacion ? '' : 'Falta ejecutar la migración 2026-11-11_transferencias_validacion.sql (columnas de validación en Dynamic_Servicios).',
   };
 }
 
