@@ -472,11 +472,17 @@ module.exports = {
     return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
   },
   // Fotos de Dynamic_Servicios (Foto Documento / Foto Evidencia / Foto Transferencia):
-  // nombre = {Prefijo}.{IdServicio}.{ext}, bucket talenthub_central/general/.
+  // nombre = {Prefijo}.{IdServicio}_{AAAAMMDD_HHmmss}.{ext} (hora de Bogotá), bucket talenthub_central/general/.
+  // La fecha y hora en el nombre evita que una foto nueva sobrescriba la anterior del mismo servicio.
   subirFotoServicio: async function (prefix, idServicio, buffer, originalName, contentType) {
-    const ext = path.extname(originalName) || '.jpg';
+    const ext = (path.extname(originalName) || '.jpg').toLowerCase();
     const cleanPrefix = String(prefix).trim().replace(/\//g, '_');
-    const nombre = `general/${cleanPrefix}.${idServicio}${ext}`;
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    const sello = `${p.year}${p.month}${p.day}_${p.hour === '24' ? '00' : p.hour}${p.minute}${p.second}`;
+    const nombre = `general/${cleanPrefix}.${idServicio}_${sello}${ext}`;
     const file = storage.bucket(BUCKET_PDFS).file(nombre);
     await file.save(buffer, { contentType: contentType || 'image/jpeg' });
     return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
