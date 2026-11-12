@@ -21,6 +21,7 @@
   // Variables globales
   let usuario = null;
   let estadoUsuario = null;
+  let estadoTickets = null; // estado sin recortar (el botón de tickets usa todas las operaciones del usuario)
   let todosLosRegistros = [];
   let registrosFiltrados = [];
   const seleccionConsig = new Set(); // "día|operación" seleccionados para validar de forma masiva
@@ -170,12 +171,13 @@
   // Botón flotante de Tickets (Dynamic_Tickets)
   function inicializarBotonTicket() {
     const activar = () => {
-      if (typeof window.initBotonTicket === 'function' && estadoUsuario) {
+      const est = estadoTickets || estadoUsuario;
+      if (typeof window.initBotonTicket === 'function' && est) {
         window.initBotonTicket({
           moduloErp: 'contabilidad',
           usuarioId: usuario,
-          opsPorRegional: estadoUsuario.opsPorRegional || {},
-          regionalesFiltro: estadoUsuario.regionales || [],
+          opsPorRegional: est.opsPorRegional || {},
+          regionalesFiltro: est.regionales || [],
           seccion: 'Consignaciones',
         });
       }
@@ -336,6 +338,11 @@
       const { ok, datos } = await est;
       if (!ok) throw new Error(datos.error || 'Error al obtener estado');
       estadoUsuario = datos;
+      // Filtros: solo las operaciones que tienen servicios en efectivo (las demás son solo crédito)
+      estadoTickets = datos;
+      if (typeof window.restringirEstadoContabilidad === 'function') {
+        estadoUsuario = window.restringirEstadoContabilidad(datos, 'consignaciones');
+      }
 
       // Info de usuario en sidebar
       if (dom.sidebarUser) {

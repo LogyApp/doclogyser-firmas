@@ -5,6 +5,7 @@ const { computarAccesoContabilidad } = require('../services/accesoContabilidad')
 const consignacionesService = require('../services/consignacionesService');
 const transferenciasService = require('../services/transferenciasService');
 const formasPagoService = require('../services/formasPagoService');
+const { obtenerOperacionesConRegistro } = require('../services/operacionesConRegistro');
 
 const router = express.Router();
 const uploadConsignacion = multer({
@@ -95,11 +96,12 @@ router.get('/api/estado', async (req, res) => {
     ]);
 
     const anioActual = new Date().getFullYear().toString();
-    const [quincenas, puedeValidar, puedeEliminarFoto, puedeValidarTransferencias] = await Promise.all([
+    const [quincenas, puedeValidar, puedeEliminarFoto, puedeValidarTransferencias, operacionesConRegistro] = await Promise.all([
       consignacionesService.obtenerQuincenasPorAnio(anioActual),
       consignacionesService.puedeValidarConsignaciones(acceso.rol),
       consignacionesService.puedeEliminarFotoConsignacion(acceso.rol),
       transferenciasService.puedeValidarTransferencias(acceso.rol),
+      obtenerOperacionesConRegistro(),
     ]);
 
     const regionales = Object.keys(acceso.opsPorRegional).sort();
@@ -118,6 +120,8 @@ router.get('/api/estado', async (req, res) => {
       regionales,
       operaciones,
       opsPorRegional: acceso.opsPorRegional,
+      // Operaciones con servicios en efectivo / transferencia: los filtros de esas pestañas solo muestran estas
+      operacionesConRegistro,
       quincenaActual,
       anioActual,
       bancos,
