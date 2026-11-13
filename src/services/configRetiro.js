@@ -457,6 +457,46 @@ async function obtenerResponsablesOperacionRegional(operacion, regional) {
   return rowsReg;
 }
 
+/**
+ * Destinatarios de los correos programados por Operación (Tomó Cargo, Forma de Pago pendiente,
+ * Consignaciones atrasadas):
+ *  - para:   responsables de la Operación (obtenerResponsablesOperacionRegional: Auxiliar/Coordinador de la
+ *            Operación o, si no tiene, AuxiliarR/CoordinadorR de la Regional).
+ *  - copia:  AuxiliarR y CoordinadorR de la Regional de la Operación que no estén ya en "para".
+ * La Regional se toma de Maestro_Operaciones; si la Operación no aparece, se usa la que se recibe.
+ * Devuelve { para: [{ Email, Nombre, Rol }], copia: [email] } sin correos repetidos.
+ */
+async function resolverDestinatariosOperacion(operacion, regional) {
+  let regionalOp = regional || '';
+  if (operacion) {
+    const [mo] = await pool.execute('SELECT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1', [operacion]);
+    if (mo.length && mo[0].REGIONAL) regionalOp = mo[0].REGIONAL;
+  }
+  const responsables = await obtenerResponsablesOperacionRegional(operacion, regionalOp);
+  const vistos = new Set();
+  const para = responsables.filter(d => {
+    const e = String(d.Email || '').trim().toLowerCase();
+    if (!e || vistos.has(e)) return false;
+    vistos.add(e);
+    return true;
+  }).map(d => ({ ...d, Email: String(d.Email).trim() }));
+
+  const copia = [];
+  if (regionalOp) {
+    const [rowsReg] = await pool.execute(
+      `SELECT Email FROM Maestro_Usuarios
+       WHERE Rol IN ('AuxiliarR','CoordinadorR') AND Regional = ?
+         AND Email IS NOT NULL AND Email <> ''`,
+      [regionalOp]
+    );
+    rowsReg.forEach(r => {
+      const e = String(r.Email).trim();
+      if (e && !vistos.has(e.toLowerCase())) { vistos.add(e.toLowerCase()); copia.push(e); }
+    });
+  }
+  return { para, copia };
+}
+
 module.exports = {
   ID_DOC_TCR,
   ID_DOC_TCRP,
@@ -476,6 +516,7 @@ module.exports = {
   estaRetiroLegalizado,
   obtenerPendientesLegalizacion,
   obtenerResponsablesOperacionRegional,
+  resolverDestinatariosOperacion,
   PARAMETROS_RETIROS: P,
   DEFAULTS_RETIROS,
 };

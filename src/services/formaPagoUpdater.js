@@ -1,6 +1,6 @@
 const pool = require('./db');
 const { notificarReportePendientes, notificarPendientesCoordinador } = require('./email');
-const { obtenerResponsablesOperacionRegional } = require('./configRetiro');
+const { resolverDestinatariosOperacion } = require('./configRetiro');
 
 let lastRunDate = '';
 
@@ -38,9 +38,9 @@ async function ejecutarActualizacionFormaPago() {
     await notificarReportePendientes(records);
     console.log('[formaPagoUpdater] General notification email sent successfully.');
 
-    // 4. Aviso por Operación a sus responsables, con el mismo método del reporte de "Tomó Cargo":
-    //    Auxiliar y Coordinador de la Operación (incluye AuxiliarR/CoordinadorR asignados a ella); si la
-    //    Operación no tiene ninguno, AuxiliarR y CoordinadorR de su Regional.
+    // 4. Aviso por Operación, con el mismo método del reporte de "Tomó Cargo": Auxiliar y Coordinador de
+    //    la Operación (si no tiene, AuxiliarR y CoordinadorR de su Regional), y en copia los AuxiliarR y
+    //    CoordinadorR de la Regional.
     const grupos = new Map();
     records.forEach(r => {
       const key = r.Operacion || `__sinop__${r.Regional || ''}`;
@@ -51,14 +51,8 @@ async function ejecutarActualizacionFormaPago() {
 
     for (const grupo of grupos.values()) {
       try {
-        const responsables = await obtenerResponsablesOperacionRegional(grupo.operacion, grupo.regional);
-        const vistos = new Set();
-        const unicos = responsables.filter(d => {
-          const e = String(d.Email || '').trim().toLowerCase();
-          if (!e || vistos.has(e)) return false;
-          vistos.add(e);
-          return true;
-        });
+        // Para: responsables de la Operación; copia: AuxiliarR/CoordinadorR de su Regional
+        const { para: unicos, copia } = await resolverDestinatariosOperacion(grupo.operacion, grupo.regional);
         if (!unicos.length) {
           console.warn(`[formaPagoUpdater] Sin responsables para Operación="${grupo.operacion}" Regional="${grupo.regional}" — se omite`);
           continue;
@@ -66,13 +60,14 @@ async function ejecutarActualizacionFormaPago() {
         const tipoScope = grupo.operacion ? 'Operación' : 'Regional';
         const scope = grupo.operacion || grupo.regional || 'Sin operación';
         await notificarPendientesCoordinador({
-          destinatarios: unicos.map(d => d.Email.trim()),
+          destinatarios: unicos.map(d => d.Email),
+          copia,
           nombres: unicos.map(d => d.Nombre),
           tipoScope,
           scope,
           records: grupo.registros,
         });
-        console.log(`[formaPagoUpdater] Enviado a ${unicos.map(d => d.Email).join(', ')} (${tipoScope}: ${scope}, ${grupo.registros.length} registro(s))`);
+        console.log(`[formaPagoUpdater] Enviado a ${unicos.map(d => d.Email).join(', ')}${copia.length ? ' (copia ' + copia.join(', ') + ')' : ''} (${tipoScope}: ${scope}, ${grupo.registros.length} registro(s))`);
       } catch (err) {
         console.error(`[formaPagoUpdater] Error notificando Operación="${grupo.operacion}":`, err.message);
       }
@@ -83,7 +78,7 @@ async function ejecutarActualizacionFormaPago() {
 }
 
 /**
- * Starts the daily timer checking for 7:30 AM Colombia Time (Bogota, UTC-5).
+ * Starts the daily timer checking for 7:35 AM Colombia Time (Bogota, UTC-5).
  */
 function iniciarProgramadorFormaPago() {
   console.log('[formaPagoUpdater] Daily scheduler started.');
@@ -97,10 +92,10 @@ function iniciarProgramadorFormaPago() {
       const minutes = nowColombia.getUTCMinutes();
       const todayStr = nowColombia.toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
-      // Check if it's 7:30 AM and we haven't run today yet
-      if (hours === 7 && minutes === 30 && lastRunDate !== todayStr) {
+      // Check if it's 7:35 AM and we haven't run today yet
+      if (hours === 7 && minutes === 35 && lastRunDate !== todayStr) {
         lastRunDate = todayStr;
-        console.log(`[formaPagoUpdater] Triggering daily task at 7:30 AM Colombia time (${todayStr})`);
+        console.log(`[formaPagoUpdater] Triggering daily task at 7:35 AM Colombia time (${todayStr})`);
         await ejecutarActualizacionFormaPago();
       }
     } catch (err) {
