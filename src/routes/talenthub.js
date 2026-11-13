@@ -4556,6 +4556,9 @@ router.get('/api/sociodemografica/reporte', async (req, res) => {
   }
 });
 
+// Cargos y Funciones (manual de funciones por cargo): /api/cargos-funciones/...
+router.use(require('./cargosFunciones'));
+
 module.exports = router;
 
 

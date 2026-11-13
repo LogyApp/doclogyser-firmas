@@ -2979,6 +2979,9 @@
       </div>
     </div>
 
+    <!-- ── CARGOS Y FUNCIONES (manual de funciones por cargo; lógica en /js/talenthub-cargos.js) ── -->
+    <div id="tabContentCargosFunciones" style="display: none;"></div>
+
   </main>
 
   <!-- ── MODAL: CREAR / EDITAR REGISTRO DE ASISTENCIA (formulario en iframe) ──── -->
@@ -3918,6 +3921,7 @@
       Sociodemografica: { icon: '📊', title: 'Sociodemografica', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
       RegistroAsistencia: { icon: '📝', title: 'Registro de Participación', nav: 'Registro Participación', subtitle: 'Registro y firma de asistentes a formaciones, con evaluación de eficacia' },
       Integridad:      { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
+      CargosFunciones:  { icon: '🗂️', title: 'Cargos y Funciones', nav: 'Cargos y Funciones', subtitle: 'Manual de funciones, responsabilidades y competencias por cargo (SST-MA-002)' },
       Parametros:       { icon: '⚙️', title: 'Parámetros del Módulo', subtitle: 'Reglas de negocio y configuración de TalentHub (tabla Config_Parametros)' }
     };
 
@@ -3995,6 +3999,7 @@
       Sociodemografica: 'Sociodemografica',
       RegistroAsistencia: 'Registro Participación',
       Integridad: 'Integridad',
+      CargosFunciones: 'Cargos y Funciones',
       Parametros: 'Parámetros'
     };
 
@@ -4116,6 +4121,8 @@
       document.getElementById('tabContentRegistroAsistencia').style.display = 'none';
       const elTabParam = document.getElementById('tabContentParametros');
       if (elTabParam) elTabParam.style.display = 'none';
+      const elTabCargos = document.getElementById('tabContentCargosFunciones');
+      if (elTabCargos) elTabCargos.style.display = 'none';
 
       // Actualizar encabezado
       const meta = TAB_META[tabName] || { icon: '❖', title: tabName, subtitle: '' };
@@ -4144,6 +4151,8 @@
         inicializarRegistroAsistencia();
       } else if (tabName === 'Parametros') {
         cargarParametrosTalenthubTabla();
+      } else if (tabName === 'CargosFunciones') {
+        if (typeof window.inicializarCargosFunciones === 'function') window.inicializarCargosFunciones();
       }
 
       // Actualizar URL sin recargar
@@ -7602,7 +7611,8 @@
         Sociodemografica: () => cargarDatosSociodemografica(),
         RegistroAsistencia: () => cargarRegistroAsistencia(),
         Integridad: () => cargarHistorialAuditoria(),
-        Parametros: () => cargarParametrosTalenthubTabla()
+        Parametros: () => cargarParametrosTalenthubTabla(),
+        CargosFunciones: () => (typeof window.recargarCargosFunciones === 'function' ? window.recargarCargosFunciones() : null)
       };
       if (recargas[tab]) return recargas[tab]();
     }
@@ -10980,5 +10990,6 @@
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/boton-sync.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
+  <script src="/js/talenthub-cargos.js?v=20261113a" defer></script>
 </body>
 </html>

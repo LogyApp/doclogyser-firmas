@@ -87,7 +87,7 @@
       <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
       <td class="header-title-cell">
         <div class="doc-title">Manual de Funciones</div>
-        <div class="doc-subtitle">Responsabilidades y competencias — Auxiliar logístico</div>
+        <div class="doc-subtitle">Responsabilidades y competencias — {{mf_cargo}}</div>
         <div class="doc-subdetail">Gestión del Talento Humano</div>
       </td>
       <td class="header-meta-cell">
@@ -108,32 +108,32 @@
   <section class="section-block">
     <div class="section-title">Identificación del cargo y ubicación</div>
     <table class="data-grid">
-      <tr><td class="data-label">Cargo</td><td class="data-val">Auxiliar logístico</td></tr>
-      <tr><td class="data-label">Ubicación</td><td class="data-val">Sede Operativa</td></tr>
-      <tr><td class="data-label">Versión / Fecha de emisión</td><td class="data-val">01 &bull; 01/11/2024</td></tr>
-      <tr><td class="data-label">Jefe inmediato</td><td class="data-val">Coordinador de centro de trabajo</td></tr>
-      <tr><td class="data-label">Nivel jerárquico</td><td class="data-val">Operativo</td></tr>
+      <tr><td class="data-label">Cargo</td><td class="data-val">{{mf_cargo}}</td></tr>
+      <tr><td class="data-label">Ubicación</td><td class="data-val">{{mf_ubicacion}}</td></tr>
+      <tr><td class="data-label">Versión / Fecha de emisión</td><td class="data-val">{{mf_version}} &bull; {{mf_fecha_emision}}</td></tr>
+      <tr><td class="data-label">Jefe inmediato</td><td class="data-val">{{mf_jefe_inmediato}}</td></tr>
+      <tr><td class="data-label">Nivel jerárquico</td><td class="data-val">{{mf_nivel_jerarquico}}</td></tr>
     </table>
   </section>
 
   <section class="statement-box ">
     <div class="statement-header">Objetivo del cargo</div>
-    <p class="statement-text">Apoyar en la gestión integral de la cadena logística dentro y fuera del Centro de Distribución, asegurando la correcta recepción y cargue de mercancías de acuerdo con los procedimientos establecidos y las políticas de Salud Ocupacional.</p>
+    <p class="statement-text">{{mf_objetivo}}</p>
   </section>
 
   <section class="section-block">
     <div class="section-title">Autoridad</div>
-    <p class="statement-text">N/A</p>
+    <p class="statement-text">{{mf_autoridad}}</p>
   </section>
 
   <section class="section-block">
     <div class="section-title">Competencias del perfil</div>
     <table class="data-grid">
-      <tr><td class="data-label">Edad</td><td class="data-val">Preferiblemente de 18 a 40 años</td></tr>
-      <tr><td class="data-label">Género</td><td class="data-val">Preferiblemente masculino</td></tr>
-      <tr><td class="data-label">Educación</td><td class="data-val">Que sepa leer y escribir</td></tr>
-      <tr><td class="data-label">Formación</td><td class="data-val">N/A</td></tr>
-      <tr><td class="data-label">Experiencia en el cargo</td><td class="data-val">No requiere</td></tr>
+      <tr><td class="data-label">Edad</td><td class="data-val">{{mf_edad}}</td></tr>
+      <tr><td class="data-label">Género</td><td class="data-val">{{mf_genero}}</td></tr>
+      <tr><td class="data-label">Educación</td><td class="data-val">{{mf_educacion}}</td></tr>
+      <tr><td class="data-label">Formación</td><td class="data-val">{{mf_formacion}}</td></tr>
+      <tr><td class="data-label">Experiencia en el cargo</td><td class="data-val">{{mf_experiencia}}</td></tr>
     </table>
     <p class="statement-text" style="margin-top:5px;font-size:7.5pt;color:#64748b"><strong>Nota:</strong> los requerimientos de educación, formación o experiencia se tendrán en cuenta para la homologación de las competencias del cargo.</p>
   </section>
@@ -141,54 +141,35 @@
   <section class="section-block">
     <div class="section-title">Responsabilidades del cargo</div>
     <ul class="statement-list">
-      <li>Atender los vehículos.</li>
-      <li>Mantener en óptimas condiciones su área de trabajo, garantizando la movilidad de los equipos y la aplicación de las normas de seguridad.</li>
-      <li>Realizar la labor asignada siguiendo las directrices del cliente.</li>
-      <li>Apoyar las diferentes actividades imprevistas que se soliciten.</li>
+{{mf_responsabilidades}}
     </ul>
   </section>
 
   <section class="section-block">
     <div class="section-title">Funciones del cargo</div>
     <ul class="statement-list">
-      <li>Cargar y descargar vehículos.</li>
-      <li>Informar al líder en caso de identificar mercancía averiada o en mal estado, así como situaciones de hurto, recepción de propinas, eventos por el estado del camión que pongan en riesgo la mercancía y daños en instalaciones y equipos.</li>
-      <li>Alistar mercancía para el despacho.</li>
-      <li>Poner especial atención en la manipulación de la mercancía de línea blanca y línea marrón antes de ser cargada o descargada para evitar y/o identificar averías.</li>
-      <li>Apadrinar mercancías a solicitud del proveedor.</li>
-      <li>Mantener limpias las áreas de trabajo.</li>
-      <li>Estibar la mercancía respetando los pictogramas.</li>
-      <li>Paletizar mercancía optimizando el recurso.</li>
-      <li>Destellar mercancía según los requerimientos del cliente.</li>
-      <li>Además de las tareas principales, todas aquellas inherentes al cargo y que le sean asignadas por el jefe directo.</li>
+{{mf_funciones}}
     </ul>
   </section>
 
   <section class="section-block">
     <div class="section-title">Responsabilidades en SST</div>
     <ul class="statement-list">
-      <li>Velar por el cumplimiento de las Políticas, Objetivos, Misión, Visión, Reglamentos y programas existentes en el SST (Seguridad, Salud en el Trabajo y Ambiente) en la organización.</li>
-      <li>Cumplir con la implementación de los procesos existentes en Seguridad, Salud Ocupacional y Ambiente (utilización de formatos según sea el caso).</li>
-      <li>Realizar sus actividades de forma segura, promoviendo su autocuidado, evitando generar impacto al medio ambiente, preservando los bienes de la Compañía y manteniendo una actitud preventiva y proactiva.</li>
-      <li>Conocer y cumplir el programa de clasificación de residuos sólidos establecido por la Compañía.</li>
-      <li>Desarrollar las actividades asignadas por el COPASST, Comité de Convivencia y Brigadista.</li>
-      <li>Liderar y participar activamente en las reuniones o capacitaciones concernientes a Seguridad, Salud en el Trabajo y Ambiente.</li>
-      <li>Establecer el uso adecuado de ahorro de agua y energía.</li>
-      <li>Garantizar el uso, cuidado y mantenimiento de los elementos de protección personal y demás elementos de seguridad industrial requeridos para el desarrollo de las tareas, actividades y operación.</li>
-      <li>Reportar todos los actos inseguros, condiciones inseguras, incidentes y/o accidentes de trabajo inmediatamente a su jefe directo.</li>
-      <li>Suministrar información de forma clara, veraz y completa sobre su estado de salud.</li>
-      <li>Procurar el cuidado integral de su salud.</li>
-      <li>Participar en las actividades de capacitación de acuerdo al plan de trabajo SG-SST.</li>
+{{mf_sst}}
     </ul>
   </section>
 
   <section class="section-block">
     <div class="section-title">Rendición de cuentas</div>
     <table class="data-grid">
-      <tr><td class="data-label">Cargos que le reportan</td><td class="data-val">N/A</td></tr>
-      <tr><td class="data-label">A quién le reporta</td><td class="data-val">Jefe directo, Recursos Humanos, Gerencia, Seguridad y Salud en el Trabajo</td></tr>
+      <tr><td class="data-label">Cargos que le reportan</td><td class="data-val">{{mf_cargos_reportan}}</td></tr>
+      <tr><td class="data-label">A quién le reporta</td><td class="data-val">{{mf_a_quien_reporta}}</td></tr>
     </table>
   </section>
+
+{{mf_revision}}
+
+{{mf_control_cambios}}
 
   <p class="lugar-fecha">Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes de <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.</p>
 
