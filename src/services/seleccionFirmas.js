@@ -11,6 +11,8 @@ const formularios = require('./formulariosSeleccion');
 // "3. Documentos para Firmas") y la regla por operación de Config_Parametros:
 // ver services/docsSeleccion.js.
 const { obtenerDocsFirmaParaOperacion, obtenerDocFirma } = require('./docsSeleccion');
+// Manual de funciones (MF): contenido del cargo publicado en Talent Hub › Cargos y Funciones
+const { obtenerManualPublicado, variablesManual } = require('./manualFunciones');
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -139,6 +141,23 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     if (clave !== 'logo_src' && typeof variables[clave] === 'string') variables[clave] = escHtml(variables[clave]);
   }
 
+  // Manual de funciones: se llena con el manual publicado del cargo de la requisición. Sin manual
+  // publicado no se puede firmar (motivoManual bloquea la firma; ver motivoBloqueoFirma).
+  let motivoManual = null;
+  if (prefijo === 'MF') {
+    let manual = null;
+    try {
+      manual = await obtenerManualPublicado(cargo);
+    } catch (err) {
+      console.error('[Firma] No se pudo leer el manual de funciones del cargo:', err.message);
+    }
+    if (manual) {
+      Object.assign(variables, variablesManual(manual));
+    } else {
+      motivoManual = `El cargo "${cargo}" aún no tiene manual de funciones publicado. Selección debe publicarlo en Talent Hub › Cargos y Funciones antes de firmar este documento.`;
+    }
+  }
+
   // Formulario del documento (Config_Formulario_Preguntas) y respuestas guardadas
   const preguntas = await formularios.obtenerPreguntas(idConfigDoc);
   const respuestas = preguntas.length ? await formularios.obtenerRespuestas(aspirante.id_aspirante, idConfigDoc) : {};
@@ -152,6 +171,7 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     docActual,
     firmaPrevia,
     variables,
+    motivoManual,
     formulario: { preguntas, respuestas }
   };
 }
@@ -171,7 +191,8 @@ function variablesFormulario(preguntas, respuestas) {
 // ¿Se puede firmar (o volver a firmar) este documento? Devuelve null si se puede,
 // o el motivo del bloqueo: el aspirante debe estar "En proceso" y el documento no
 // debe estar aprobado por Selección. Con el aspirante contratado o bloqueado no se firma.
-function motivoBloqueoFirma(aspirante, docActual) {
+// motivoManual: el manual de funciones del cargo no está publicado (solo aplica al documento MF).
+function motivoBloqueoFirma(aspirante, docActual, motivoManual = null) {
   const estado = (aspirante && aspirante.estado_proceso || '').toString().trim().toLowerCase();
   if (estado === 'bloqueado') return 'El proceso del aspirante está bloqueado.';
   if (estado === 'contratado') return 'El aspirante ya fue contratado: los documentos de firma no se pueden modificar.';
@@ -179,6 +200,7 @@ function motivoBloqueoFirma(aspirante, docActual) {
   if (docActual && (docActual.estado || '').toString().trim().toLowerCase() === 'aprobado') {
     return 'Este documento ya fue aprobado por Selección y no se puede volver a firmar.';
   }
+  if (motivoManual) return motivoManual;
   return null;
 }
 
@@ -615,13 +637,17 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     throw new Error('Aspirante no encontrado');
   }
 
-  const { aspirante, docItem, prefijo, contenidoHtml, variables, docActual } = datos;
+  const { aspirante, docItem, prefijo, contenidoHtml, variables, docActual, motivoManual } = datos;
   if (!docItem || !prefijo) {
     throw new Error('Tipo de documento no configurado para firma');
   }
   // Al regenerar (desde el Panel Admin) no aplica el bloqueo: se rehace el mismo documento
   // con la firma, las respuestas y la huella que ya tenía
-  const motivoBloqueo = regenerar ? null : motivoBloqueoFirma(aspirante, docActual);
+  // Sin manual de funciones publicado tampoco se regenera (el documento saldría sin contenido)
+  if (regenerar && motivoManual) {
+    throw Object.assign(new Error(motivoManual), { validacion: true });
+  }
+  const motivoBloqueo = regenerar ? null : motivoBloqueoFirma(aspirante, docActual, motivoManual);
   if (motivoBloqueo) {
     const err = new Error(motivoBloqueo);
     err.bloqueado = true;

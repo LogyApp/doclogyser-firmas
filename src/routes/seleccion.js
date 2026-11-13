@@ -624,7 +624,7 @@ router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
       return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}`);
     }
     // Firma bloqueada: aspirante contratado, fase de firmas no habilitada o documento ya aprobado
-    const motivoBloqueo = motivoBloqueoFirma(datos.aspirante, datos.docActual);
+    const motivoBloqueo = motivoBloqueoFirma(datos.aspirante, datos.docActual, datos.motivoManual);
     if (motivoBloqueo) {
       return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}&msg=firma_bloqueada&info=${encodeURIComponent(motivoBloqueo)}`);
     }
