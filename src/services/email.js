@@ -2397,10 +2397,12 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
-async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, scope, records }) {
-  const isRegional = rol === 'CoordinadorR';
-  const tipoScope = isRegional ? 'Regional' : 'Operación';
+// Destinatarios: Auxiliar y Coordinador de la Operación (o AuxiliarR/CoordinadorR de la Regional si la
+// Operación no tiene responsables), igual que el reporte de "Tomó Cargo" pendiente.
+async function notificarPendientesCoordinador({ destinatarios, nombres, tipoScope, scope, records }) {
   const asunto = `Servicios con Forma de Pago Pendiente (4) — ${tipoScope}: ${scope} — LOG&SER`;
+  const lista = (nombres || []).filter(Boolean);
+  const saludo = lista.length > 1 ? `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}` : (lista[0] || 'equipo');
 
   const tableRows = records.map(r => `
     <tr>
@@ -2416,7 +2418,7 @@ async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, s
     <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
 ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
-        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${nombreCoordinador}</h2>
+        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${saludo}</h2>
         <p style="color:#555">
           Le informamos que tiene servicios en estado de pago <strong>Pendiente (Forma de Pago = 4)</strong> para su asignación (${tipoScope}: <strong>${scope}</strong>).
         </p>
@@ -2448,7 +2450,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 
   await transporter.sendMail({
     from: `"LOG&SER Facturación" <${EMAIL_FROM}>`,
-    to: email,
+    to: (destinatarios || []).join(', '),
     cc: 'admin@logyser.com',
     subject: asunto,
     html: cuerpo,

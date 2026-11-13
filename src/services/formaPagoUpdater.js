@@ -1,5 +1,6 @@
 const pool = require('./db');
 const { notificarReportePendientes, notificarPendientesCoordinador } = require('./email');
+const { obtenerResponsablesOperacionRegional } = require('./configRetiro');
 
 let lastRunDate = '';
 
@@ -37,45 +38,43 @@ async function ejecutarActualizacionFormaPago() {
     await notificarReportePendientes(records);
     console.log('[formaPagoUpdater] General notification email sent successfully.');
 
-    // 4. Query coordinators to dispatch filtered notifications by Regional or Operation
-    const [coordinators] = await pool.execute(
-      "SELECT ID, Nombre, Rol, Regional, `Operación` AS Operacion, Email FROM Maestro_Usuarios WHERE Rol IN ('CoordinadorR', 'Coordinador')"
-    );
-    console.log(`[formaPagoUpdater] Found ${coordinators.length} coordinators to process.`);
+    // 4. Aviso por Operación a sus responsables, con el mismo método del reporte de "Tomó Cargo":
+    //    Auxiliar y Coordinador de la Operación (incluye AuxiliarR/CoordinadorR asignados a ella); si la
+    //    Operación no tiene ninguno, AuxiliarR y CoordinadorR de su Regional.
+    const grupos = new Map();
+    records.forEach(r => {
+      const key = r.Operacion || `__sinop__${r.Regional || ''}`;
+      if (!grupos.has(key)) grupos.set(key, { operacion: r.Operacion, regional: r.Regional, registros: [] });
+      grupos.get(key).registros.push(r);
+    });
+    console.log(`[formaPagoUpdater] ${grupos.size} operación(es) con pendientes para notificar.`);
 
-    for (const coord of coordinators) {
-      if (!coord.Email) continue;
-
-      if (coord.Rol === 'CoordinadorR') {
-        const regionalRecords = records.filter(r => 
-          r.Regional && coord.Regional && 
-          r.Regional.trim().toUpperCase() === coord.Regional.trim().toUpperCase()
-        );
-        if (regionalRecords.length > 0) {
-          console.log(`[formaPagoUpdater] Sending email to Regional Coordinator: ${coord.Nombre} (${coord.Email}) for Regional: ${coord.Regional}`);
-          await notificarPendientesCoordinador({
-            email: coord.Email,
-            nombreCoordinador: coord.Nombre,
-            rol: coord.Rol,
-            scope: coord.Regional,
-            records: regionalRecords
-          }).catch(err => console.error(`[formaPagoUpdater] Error sending email to regional coordinator ${coord.Nombre}:`, err));
+    for (const grupo of grupos.values()) {
+      try {
+        const responsables = await obtenerResponsablesOperacionRegional(grupo.operacion, grupo.regional);
+        const vistos = new Set();
+        const unicos = responsables.filter(d => {
+          const e = String(d.Email || '').trim().toLowerCase();
+          if (!e || vistos.has(e)) return false;
+          vistos.add(e);
+          return true;
+        });
+        if (!unicos.length) {
+          console.warn(`[formaPagoUpdater] Sin responsables para Operación="${grupo.operacion}" Regional="${grupo.regional}" — se omite`);
+          continue;
         }
-      } else if (coord.Rol === 'Coordinador') {
-        const operacionRecords = records.filter(r => 
-          r.Operacion && coord.Operacion && 
-          r.Operacion.trim().toUpperCase() === coord.Operacion.trim().toUpperCase()
-        );
-        if (operacionRecords.length > 0) {
-          console.log(`[formaPagoUpdater] Sending email to Coordinator: ${coord.Nombre} (${coord.Email}) for Operation: ${coord.Operacion}`);
-          await notificarPendientesCoordinador({
-            email: coord.Email,
-            nombreCoordinador: coord.Nombre,
-            rol: coord.Rol,
-            scope: coord.Operacion,
-            records: operacionRecords
-          }).catch(err => console.error(`[formaPagoUpdater] Error sending email to coordinator ${coord.Nombre}:`, err));
-        }
+        const tipoScope = grupo.operacion ? 'Operación' : 'Regional';
+        const scope = grupo.operacion || grupo.regional || 'Sin operación';
+        await notificarPendientesCoordinador({
+          destinatarios: unicos.map(d => d.Email.trim()),
+          nombres: unicos.map(d => d.Nombre),
+          tipoScope,
+          scope,
+          records: grupo.registros,
+        });
+        console.log(`[formaPagoUpdater] Enviado a ${unicos.map(d => d.Email).join(', ')} (${tipoScope}: ${scope}, ${grupo.registros.length} registro(s))`);
+      } catch (err) {
+        console.error(`[formaPagoUpdater] Error notificando Operación="${grupo.operacion}":`, err.message);
       }
     }
   } catch (err) {
