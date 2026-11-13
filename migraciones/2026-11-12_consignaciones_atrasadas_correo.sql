@@ -25,5 +25,11 @@ SELECT 'contabilidad', 'Consignaciones', 'Operaciones excluidas del reporte de c
 WHERE NOT EXISTS (SELECT 1 FROM Config_Parametros WHERE Modulo = 'contabilidad' AND Seccion = 'Consignaciones'
                   AND Concepto = 'Operaciones excluidas del reporte de consignaciones atrasadas');
 
+INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
+SELECT 'contabilidad', 'Consignaciones', 'Diferencia en pesos que se tolera por día en consignaciones', 'Número', '2000',
+       'En el correo de consignaciones atrasadas, un día cubierto en parte por una consignación no se reporta si lo que falta es igual o menor a este valor en pesos (redondeos al consignar). Vacío o sin fila = 2000.'
+WHERE NOT EXISTS (SELECT 1 FROM Config_Parametros WHERE Modulo = 'contabilidad' AND Seccion = 'Consignaciones'
+                  AND Concepto = 'Diferencia en pesos que se tolera por día en consignaciones');
+
 SELECT Concepto, Parametro FROM Config_Parametros
-WHERE Modulo = 'contabilidad' AND Seccion = 'Consignaciones' AND Concepto LIKE '%atrasadas%';
+WHERE Modulo = 'contabilidad' AND Seccion = 'Consignaciones' AND (Concepto LIKE '%atrasadas%' OR Concepto LIKE 'Diferencia en pesos%');

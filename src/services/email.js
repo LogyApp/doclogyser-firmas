@@ -2485,7 +2485,7 @@ async function notificarConsignacionesAtrasadasReporte({ destinatarios, fechaRep
     <tr>
       <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${escConsig(o.operacion)}<div style="font-weight:normal;color:#888;font-size:.78rem">${escConsig(o.regional || '')}</div></td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;color:${o.atrasados.length >= 3 ? '#c0392b' : '#d68910'}">${o.atrasados.length}</td>
-      <td style="padding:8px;border:1px solid #ddd">${o.atrasados.map(d => `${fechaLegibleConsig(d.dia)} <span style="color:#888">(${pesosConsig(d.total)})</span>`).join('<br>')}</td>
+      <td style="padding:8px;border:1px solid #ddd">${o.atrasados.map(d => `${fechaLegibleConsig(d.dia)} <span style="color:#888">(${pesosConsig(d.total)}${d.totalDia && d.total < d.totalDia ? ` de ${pesosConsig(d.totalDia)}` : ''})</span>`).join('<br>')}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(o.totalAtrasado)}</td>
     </tr>`).join('');
 
@@ -2495,7 +2495,7 @@ async function notificarConsignacionesAtrasadasReporte({ destinatarios, fechaRep
             <tr style="background:#f8f9fb">
               <th style="padding:8px;border:1px solid #ddd;text-align:left">Operación</th>
               <th style="padding:8px;border:1px solid #ddd;text-align:center">Días atrasados</th>
-              <th style="padding:8px;border:1px solid #ddd;text-align:left">Días sin consignar (valor)</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:left">Días sin consignar (valor pendiente)</th>
               <th style="padding:8px;border:1px solid #ddd;text-align:right">Total</th>
             </tr>
           </thead>
@@ -2518,8 +2518,12 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
         <p style="color:#555">
           El efectivo de cada día debe consignarse al día siguiente. Hoy (${fechaLegibleConsig(fechaReporte)}) aún se puede
           consignar lo de ayer, por lo que se consideran <strong>atrasados</strong> los días hasta el
-          <strong>${fechaLegibleConsig(fechaLimite)}</strong> que no tienen comprobante de consignación
+          <strong>${fechaLegibleConsig(fechaLimite)}</strong> que no están cubiertos por una consignación
           (revisión desde el ${fechaLegibleConsig(desde)}).
+        </p>
+        <p style="color:#888;font-size:.8rem">
+          Si una operación consigna varios días juntos, lo que la consignación trae de más sobre su propio día cubre
+          los días anteriores sin comprobante, empezando por los más antiguos. Cuando un día está cubierto solo en parte se muestra lo que falta.
         </p>
         <p style="color:#555;font-weight:bold;margin-bottom:8px">Operaciones atrasadas: ${atrasadas.length}</p>
         ${tabla}
@@ -2552,7 +2556,7 @@ async function notificarConsignacionesAtrasadasOperacion({ destinatarios, copia 
     <tr>
       <td style="padding:8px;border:1px solid #ddd">${fechaLegibleConsig(d.dia)}</td>
       <td style="padding:8px;border:1px solid #ddd;text-align:center">${d.servicios}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(d.total)}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(d.total)}${d.totalDia && d.total < d.totalDia ? `<div style="color:#888;font-size:.75rem">de ${pesosConsig(d.totalDia)}</div>` : ''}</td>
     </tr>`).join('');
 
   const cuerpo = `
@@ -2573,7 +2577,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
             <tr style="background:#f8f9fb">
               <th style="padding:8px;border:1px solid #ddd;text-align:left">Día</th>
               <th style="padding:8px;border:1px solid #ddd;text-align:center">Servicios en efectivo</th>
-              <th style="padding:8px;border:1px solid #ddd;text-align:right">Valor a consignar</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:right">Valor pendiente</th>
             </tr>
           </thead>
           <tbody>${filas}

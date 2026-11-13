@@ -4,8 +4,15 @@
  *
  * Regla: el efectivo de un día (servicios con Forma De Pago = 1, modalidad Recaudo) se consigna al día
  * siguiente. El día del envío (hoy) todavía se puede consignar lo de ayer, así que una operación está
- * ATRASADA si tiene días de antes de ayer (o anteriores) sin consignar. "Consignado" = la fila de
- * Maestro_Consignaciones de ese día y operación tiene Comprobante (igual que la fase verde de la pestaña).
+ * ATRASADA si tiene días de antes de ayer (o anteriores) sin cubrir.
+ *
+ * Un día con comprobante en Maestro_Consignaciones está cubierto (igual que la fase verde de la pestaña).
+ * Pero varias operaciones consignan varios días juntos y registran la consignación en el último día
+ * (p. ej. Cedi Av 68 consigna el 26 lo del 20 al 26). Por eso, lo que una consignación trae de más sobre
+ * el efectivo de su propio día cubre, en orden, los días anteriores sin comprobante (los más antiguos
+ * primero). Nunca cubre días posteriores. Un día sin comprobante queda pendiente si lo que falta por
+ * cubrir supera la tolerancia (redondeos al consignar). Las diferencias de un día con comprobante (se
+ * consignó menos) no se arrastran: eso se revisa en la pestaña, no es atraso.
  *
  * Correos:
  *  1. Reporte general a Contabilidad (Config_Parametros contabilidad / Consignaciones
@@ -19,6 +26,7 @@
  *  - "Correos que reciben el reporte de consignaciones atrasadas" (auditoria.recaudo@ y asistente.contabilidad@)
  *  - "Días que revisa el reporte de consignaciones atrasadas" (30)
  *  - "Operaciones excluidas del reporte de consignaciones atrasadas" (ninguna)
+ *  - "Diferencia en pesos que se tolera por día en consignaciones" (2000)
  */
 
 const pool = require('./db');
@@ -31,6 +39,7 @@ const P_HABILITAR = 'Habilitar notificaciones de correo en Consignaciones atrasa
 const P_CORREOS = 'Correos que reciben el reporte de consignaciones atrasadas';
 const P_DIAS = 'Días que revisa el reporte de consignaciones atrasadas';
 const P_EXCLUIDAS = 'Operaciones excluidas del reporte de consignaciones atrasadas';
+const P_TOLERANCIA = 'Diferencia en pesos que se tolera por día en consignaciones';
 const CORREOS_DEFECTO = 'auditoria.recaudo@logyser.com, asistente.contabilidad@logyser.com';
 
 let lastRunDate = '';
@@ -75,6 +84,7 @@ async function leerParametros() {
     correos: lista(valor(P_CORREOS) ?? CORREOS_DEFECTO),
     dias: Number.isFinite(dias) && dias > 0 && dias <= 365 ? dias : 30,
     excluidas: new Set(lista(valor(P_EXCLUIDAS)).map(normalizar)),
+    tolerancia: (() => { const t = Number(String(valor(P_TOLERANCIA) ?? '').replace(/[^\d.]/g, '')); return valor(P_TOLERANCIA) !== null && Number.isFinite(t) && t >= 0 ? t : 2000; })(),
   };
 }
 
@@ -85,7 +95,7 @@ async function leerParametros() {
 async function consultarDias(desde, hasta) {
   const [rows] = await pool.execute(
     `SELECT x.dia, x.operacion, x.regional, x.servicios, x.total,
-            COALESCE(TRIM(mc.Comprobante), '') <> '' AS consignado
+            COALESCE(TRIM(mc.Comprobante), '') <> '' AS con_comprobante
        FROM (
          SELECT DATE(ds.\`Hora Inicio\`) AS dia,
                 dr.\`Operación\` AS operacion,
@@ -126,6 +136,43 @@ async function consultarDias(desde, hasta) {
   return rows;
 }
 
+/** Consignaciones con comprobante registradas entre desde y hoy (también en días sin servicios). */
+async function consultarConsignaciones(desde, hoy) {
+  const [rows] = await pool.execute(
+    `SELECT DATE(\`Día\`) AS dia, \`Operación\` AS operacion, \`Valor Consignado\` AS valor
+       FROM Maestro_Consignaciones
+      WHERE \`Día\` >= ? AND \`Día\` <= ?
+        AND COALESCE(TRIM(Comprobante), '') <> ''
+      ORDER BY \`Día\``,
+    [desde, hoy]
+  );
+  return rows;
+}
+
+/**
+ * Aplica las consignaciones de una operación a sus días con efectivo (ver encabezado) y devuelve los días
+ * que quedan con saldo: [{ dia, servicios, totalDia, total (pendiente) }].
+ */
+function calcularPendientes(dias, consignaciones, tolerancia) {
+  const pend = dias.map(d => ({ ...d, saldo: d.conComprobante ? 0 : d.totalDia }));
+  const eventos = [...consignaciones].sort((a, b) => a.dia.localeCompare(b.dia));
+  for (const c of eventos) {
+    if (c.valor === null) continue; // comprobante sin valor: cubre solo su propio día
+    const propio = pend.find(d => d.dia === c.dia);
+    let sobrante = c.valor - (propio ? propio.totalDia : 0);
+    for (const d of pend) {
+      if (sobrante <= 0 || d.dia >= c.dia) break;
+      if (d.saldo <= 0) continue;
+      const pago = Math.min(d.saldo, sobrante);
+      d.saldo -= pago;
+      sobrante -= pago;
+    }
+  }
+  return pend
+    .filter(d => d.saldo > tolerancia)
+    .map(d => ({ dia: d.dia, servicios: d.servicios, totalDia: d.totalDia, total: Math.round(d.saldo) }));
+}
+
 async function ejecutarReporteConsignacionesAtrasadas() {
   console.log('[consignacionesAtrasadas] Iniciando revisión...');
   try {
@@ -140,20 +187,32 @@ async function ejecutarReporteConsignacionesAtrasadas() {
     const limite = sumarDias(hoy, -2);     // de este día hacia atrás, sin consignar = atrasado
     const desde = sumarDias(hoy, -params.dias);
 
-    const filas = (await consultarDias(desde, ayer))
-      .filter(f => Number(f.total) > 0 && !params.excluidas.has(normalizar(f.operacion)));
+    // Días hasta hoy: el efectivo de hoy y ayer solo sirve para saber cuánto de una consignación es de su
+    // propio día; no se reportan (filtro por limite más abajo).
+    const [filas, consignaciones] = await Promise.all([consultarDias(desde, hoy), consultarConsignaciones(desde, hoy)]);
 
-    // Agrupar por operación
+    // Agrupar días y consignaciones por operación
     const ops = new Map();
-    filas.forEach(f => {
-      const dia = aFechaStr(f.dia);
-      if (!ops.has(f.operacion)) ops.set(f.operacion, { operacion: f.operacion, regional: f.regional, atrasados: [], pendienteHoy: null });
-      const op = ops.get(f.operacion);
-      const consignado = Number(f.consignado) === 1;
-      if (consignado) return;
-      const item = { dia, servicios: Number(f.servicios) || 0, total: Math.round(Number(f.total) || 0) };
-      if (dia <= limite) op.atrasados.push(item);
-      else if (dia === ayer) op.pendienteHoy = item;
+    const opDe = (nombre, regional) => {
+      const k = normalizar(nombre);
+      if (!ops.has(k)) ops.set(k, { operacion: nombre, regional: regional || '', dias: [], consignaciones: [] });
+      const o = ops.get(k);
+      if (!o.regional && regional) o.regional = regional;
+      return o;
+    };
+    filas.filter(f => Number(f.total) > 0 && !params.excluidas.has(normalizar(f.operacion))).forEach(f => {
+      opDe(f.operacion, f.regional).dias.push({ dia: aFechaStr(f.dia), servicios: Number(f.servicios) || 0, totalDia: Math.round(Number(f.total) || 0), conComprobante: Number(f.con_comprobante) === 1 });
+    });
+    consignaciones.forEach(c => {
+      const o = ops.get(normalizar(c.operacion));
+      if (!o) return; // operación sin efectivo en el periodo (o excluida)
+      const v = c.valor === null || c.valor === undefined || c.valor === '' ? null : Number(c.valor);
+      o.consignaciones.push({ dia: aFechaStr(c.dia), valor: v === null || !Number.isFinite(v) || v <= 0 ? null : v });
+    });
+
+    ops.forEach(o => {
+      const pendientes = calcularPendientes(o.dias, o.consignaciones, params.tolerancia);
+      o.atrasados = pendientes.filter(d => d.dia <= limite);   // lo de ayer aún se puede consignar hoy
     });
 
     const atrasadas = [...ops.values()].filter(o => o.atrasados.length)
@@ -216,4 +275,4 @@ function iniciarProgramadorConsignacionesAtrasadas() {
   }, 30000);
 }
 
-module.exports = { ejecutarReporteConsignacionesAtrasadas, iniciarProgramadorConsignacionesAtrasadas };
+module.exports = { ejecutarReporteConsignacionesAtrasadas, iniciarProgramadorConsignacionesAtrasadas, calcularPendientes };
