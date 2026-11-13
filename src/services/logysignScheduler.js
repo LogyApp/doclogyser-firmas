@@ -109,7 +109,16 @@ async function verificarEnviosProgramados() {
     }
 
     for (const doc of rows) {
+      let reclamado = false;
       try {
+        // Se reclama el registro antes de enviar: si otro servidor ya lo tomó, affectedRows = 0 y no se
+        // envía otra vez (hay dos servicios de Cloud Run revisando cada minuto)
+        const [claim] = await pool.execute(
+          "UPDATE `Dynamic_Logysign` SET `estado` = 'PENDIENTE' WHERE `id` = ? AND `estado` = 'PROGRAMADO'",
+          [doc.id]
+        );
+        if (!claim.affectedRows) continue;
+        reclamado = true;
         console.log(`[logysignScheduler] Sending scheduled email for doc id=${doc.id} worker="${doc.nombre_trabajador}"`);
 
         // Get CC emails
@@ -162,14 +171,13 @@ ${encabezadoLogo('#000b59')}
           attachments: [LOGO_HEADER_ATTACHMENT],
         });
 
-        // Update state to PENDIENTE
-        await pool.execute(
-          "UPDATE `Dynamic_Logysign` SET `estado` = 'PENDIENTE' WHERE `id` = ?",
-          [doc.id]
-        );
         console.log(`[logysignScheduler] Successfully sent scheduled email for id=${doc.id} and updated status to PENDIENTE.`);
       } catch (innerErr) {
         console.error(`[logysignScheduler] Failed to send scheduled email for id=${doc.id}:`, innerErr);
+        // Si falló el envío, vuelve a PROGRAMADO para reintentar en el próximo ciclo
+        if (reclamado) {
+          await pool.execute("UPDATE `Dynamic_Logysign` SET `estado` = 'PROGRAMADO' WHERE `id` = ? AND `estado` = 'PENDIENTE'", [doc.id]).catch(() => {});
+        }
       }
     }
   } catch (err) {

@@ -244,7 +244,7 @@ async function resolverResponsablesRetiro(operacion, roles = ROLES_RESPONSABLES)
     const sociodemografica = moRows.length ? String(moRows[0].SOCIODEMOGRAFICA || '').trim() : '';
     if (sociodemografica) {
       const [rows] = await pool.execute(
-        `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
+        `SELECT ID, Email, Nombre, Rol FROM Maestro_Usuarios
          WHERE LOWER(Dispositivo) LIKE ?
            AND Rol IN (${rolesSel.map(() => '?').join(',')})
            AND Email IS NOT NULL AND Email <> ''`,
@@ -423,7 +423,7 @@ async function obtenerFechaIngresoReciente(identificacion, fechaRetiro, respaldo
 async function obtenerResponsablesOperacionRegional(operacion, regional) {
   if (operacion) {
     const [rowsOp] = await pool.execute(
-      `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
+      `SELECT ID, Email, Nombre, Rol FROM Maestro_Usuarios
        WHERE Rol IN ('Auxiliar','Coordinador','AuxiliarR','CoordinadorR') AND \`Operación\` = ?
          AND Email IS NOT NULL AND Email <> ''`,
       [operacion]
@@ -449,7 +449,7 @@ async function obtenerResponsablesOperacionRegional(operacion, regional) {
   }
   if (!regional) return [];
   const [rowsReg] = await pool.execute(
-    `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
+    `SELECT ID, Email, Nombre, Rol FROM Maestro_Usuarios
      WHERE Rol IN ('AuxiliarR','CoordinadorR') AND Regional = ?
        AND Email IS NOT NULL AND Email <> ''`,
     [regional]
@@ -482,19 +482,58 @@ async function resolverDestinatariosOperacion(operacion, regional) {
   }).map(d => ({ ...d, Email: String(d.Email).trim() }));
 
   const copia = [];
+  let regionalesReg = [];
   if (regionalOp) {
     const [rowsReg] = await pool.execute(
-      `SELECT Email FROM Maestro_Usuarios
+      `SELECT ID, Email, Nombre, Rol FROM Maestro_Usuarios
        WHERE Rol IN ('AuxiliarR','CoordinadorR') AND Regional = ?
          AND Email IS NOT NULL AND Email <> ''`,
       [regionalOp]
     );
+    regionalesReg = rowsReg;
     rowsReg.forEach(r => {
       const e = String(r.Email).trim();
       if (e && !vistos.has(e.toLowerCase())) { vistos.add(e.toLowerCase()); copia.push(e); }
     });
   }
+
+  // Responsable principal de la regional (Config_Parametros configuracion / Correos programados
+  // "Responsable principal de la regional <REGIONAL>"): cuando el correo va a los AuxiliarR/CoordinadorR,
+  // solo el principal queda en "para" (y en el saludo); los demás de la regional pasan a copia.
+  const principal = await responsablePrincipalRegional(regionalOp, [...para, ...regionalesReg]);
+  const esRegional = d => ['auxiliarr', 'coordinadorr'].includes(String(d.Rol || '').trim().toLowerCase());
+  if (principal && para.some(esRegional)) {
+    const correoPrincipal = String(principal.Email).trim();
+    const mover = para.filter(d => esRegional(d) && d.Email.toLowerCase() !== correoPrincipal.toLowerCase());
+    const nuevoPara = para.filter(d => !esRegional(d));
+    nuevoPara.unshift({ ...principal, Email: correoPrincipal });
+    const copiaFinal = [...mover.map(d => d.Email), ...copia]
+      .filter((e, i, arr) => e.toLowerCase() !== correoPrincipal.toLowerCase() && arr.findIndex(x => x.toLowerCase() === e.toLowerCase()) === i);
+    return { para: nuevoPara, copia: copiaFinal };
+  }
   return { para, copia };
+}
+
+// Principal configurado para la regional, buscado entre los candidatos por Nombre, Email o ID. null si no hay.
+let cachePrincipales = { t: 0, datos: null };
+async function responsablePrincipalRegional(regional, candidatos) {
+  if (!regional || !candidatos.length) return null;
+  const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  if (!cachePrincipales.datos || Date.now() - cachePrincipales.t > 5 * 60 * 1000) {
+    try {
+      const [rows] = await pool.execute(
+        "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'configuracion' AND Seccion = 'Correos programados' AND Concepto LIKE 'Responsable principal de la regional %'"
+      );
+      const mapa = {};
+      rows.forEach(r => { mapa[norm(String(r.Concepto).replace(/^Responsable principal de la regional\s*/i, ''))] = String(r.Parametro || '').trim(); });
+      cachePrincipales = { t: Date.now(), datos: mapa };
+    } catch (_) {
+      cachePrincipales = { t: Date.now(), datos: {} };
+    }
+  }
+  const valor = norm(cachePrincipales.datos[norm(regional)]);
+  if (!valor) return null;
+  return candidatos.find(c => [c.Nombre, c.Email, c.ID].some(x => x != null && norm(x) === valor)) || null;
 }
 
 module.exports = {

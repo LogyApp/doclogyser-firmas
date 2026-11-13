@@ -2,6 +2,7 @@ const pool = require('./db');
 const { notificarTomoCargoPendiente } = require('./email');
 const { resolverDestinatariosOperacion } = require('./configRetiro');
 
+const { reclamarTareaDiaria, terminarTareaDiaria } = require('./tareaProgramadaUnica');
 let lastRunDate = '';
 
 function limpiarNombre(trabajador) {
@@ -93,8 +94,10 @@ function iniciarProgramadorTomoCargo() {
       const todayStr = nowColombia.toISOString().slice(0, 10);
       if (hours === 7 && minutes === 30 && lastRunDate !== todayStr) {
         lastRunDate = todayStr;
+        if (!(await reclamarTareaDiaria('tomo_cargo_pendiente', todayStr))) return;
         console.log(`[tomoCargoNotifier] Triggering daily task at 7:30 AM Colombia time (${todayStr})`);
         await ejecutarNotificacionTomoCargo();
+        await terminarTareaDiaria('tomo_cargo_pendiente', todayStr, 'ok');
       }
     } catch (err) {
       console.error('[tomoCargoNotifier] Error checking daily scheduler time:', err.message);
