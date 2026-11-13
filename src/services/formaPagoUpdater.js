@@ -2,6 +2,7 @@ const pool = require('./db');
 const { notificarReportePendientes, notificarPendientesCoordinador } = require('./email');
 const { resolverDestinatariosOperacion } = require('./configRetiro');
 
+const { reclamarTareaDiaria, terminarTareaDiaria } = require('./tareaProgramadaUnica');
 let lastRunDate = '';
 
 /**
@@ -95,8 +96,11 @@ function iniciarProgramadorFormaPago() {
       // Check if it's 7:35 AM and we haven't run today yet
       if (hours === 7 && minutes === 35 && lastRunDate !== todayStr) {
         lastRunDate = todayStr;
+        // Solo un servidor la ejecuta (hay dos servicios de Cloud Run con las tareas activas)
+        if (!(await reclamarTareaDiaria('forma_pago_pendiente', todayStr))) return;
         console.log(`[formaPagoUpdater] Triggering daily task at 7:35 AM Colombia time (${todayStr})`);
         await ejecutarActualizacionFormaPago();
+        await terminarTareaDiaria('forma_pago_pendiente', todayStr, 'ok');
       }
     } catch (err) {
       console.error('[formaPagoUpdater] Error checking daily scheduler time:', err.message);

@@ -42,6 +42,7 @@ const P_EXCLUIDAS = 'Operaciones excluidas del reporte de consignaciones atrasad
 const P_TOLERANCIA = 'Diferencia en pesos que se tolera por día en consignaciones';
 const CORREOS_DEFECTO = 'auditoria.recaudo@logyser.com, asistente.contabilidad@logyser.com';
 
+const { reclamarTareaDiaria, terminarTareaDiaria } = require('./tareaProgramadaUnica');
 let lastRunDate = '';
 
 function normalizar(v) {
@@ -230,7 +231,10 @@ async function ejecutarReporteConsignacionesAtrasadas() {
         .catch(err => console.error('[consignacionesAtrasadas] Error enviando el reporte general:', err.message));
     }
 
-    // 2. Aviso informativo a cada operación atrasada
+    // 2. Aviso informativo a los responsables. Las operaciones con los mismos destinatarios van en un solo
+    //    correo: así, si varias operaciones de una regional no tienen Auxiliar ni Coordinador y caen en los
+    //    AuxiliarR/CoordinadorR de la regional, les llega un correo con todas y no uno por operación.
+    const grupos = new Map();
     for (const op of atrasadas) {
       try {
         const { para, copia } = await resolverDestinatariosOperacion(op.operacion, op.regional);
@@ -238,18 +242,26 @@ async function ejecutarReporteConsignacionesAtrasadas() {
           console.warn(`[consignacionesAtrasadas] Sin responsables para Operación="${op.operacion}" — se omite`);
           continue;
         }
-        await notificarConsignacionesAtrasadasOperacion({
-          destinatarios: para.map(d => d.Email),
-          copia,
-          nombres: para.map(d => d.Nombre),
-          operacion: op.operacion,
-          fechaLimite: limite,
-          dias: op.atrasados,
-          totalAtrasado: op.totalAtrasado,
-        });
-        console.log(`[consignacionesAtrasadas] Aviso a ${para.map(d => d.Email).join(', ')}${copia.length ? ' (copia ' + copia.join(', ') + ')' : ''} — ${op.operacion}, ${op.atrasados.length} día(s)`);
+        const clave = para.map(d => d.Email.toLowerCase()).sort().join(',') + '|' + copia.map(c => c.toLowerCase()).sort().join(',');
+        if (!grupos.has(clave)) grupos.set(clave, { para, copia, regional: op.regional, operaciones: [] });
+        grupos.get(clave).operaciones.push({ operacion: op.operacion, dias: op.atrasados, totalAtrasado: op.totalAtrasado });
       } catch (err) {
-        console.error(`[consignacionesAtrasadas] Error notificando Operación="${op.operacion}":`, err.message);
+        console.error(`[consignacionesAtrasadas] Error resolviendo responsables de "${op.operacion}":`, err.message);
+      }
+    }
+    for (const g of grupos.values()) {
+      try {
+        await notificarConsignacionesAtrasadasOperacion({
+          destinatarios: g.para.map(d => d.Email),
+          copia: g.copia,
+          nombres: g.para.map(d => d.Nombre),
+          regional: g.regional,
+          operaciones: g.operaciones,
+          fechaLimite: limite,
+        });
+        console.log(`[consignacionesAtrasadas] Aviso a ${g.para.map(d => d.Email).join(', ')}${g.copia.length ? ' (copia ' + g.copia.join(', ') + ')' : ''} — ${g.operaciones.map(o => `${o.operacion} (${o.dias.length} día(s))`).join(', ')}`);
+      } catch (err) {
+        console.error(`[consignacionesAtrasadas] Error notificando ${g.operaciones.map(o => o.operacion).join(', ')}:`, err.message);
       }
     }
   } catch (err) {
@@ -266,8 +278,10 @@ function iniciarProgramadorConsignacionesAtrasadas() {
       const todayStr = nowColombia.toISOString().slice(0, 10);
       if (nowColombia.getUTCHours() === 7 && nowColombia.getUTCMinutes() === 40 && lastRunDate !== todayStr) {
         lastRunDate = todayStr;
+        if (!(await reclamarTareaDiaria('consignaciones_atrasadas', todayStr))) return;
         console.log(`[consignacionesAtrasadas] Triggering daily task at 7:40 AM Colombia time (${todayStr})`);
         await ejecutarReporteConsignacionesAtrasadas();
+        await terminarTareaDiaria('consignaciones_atrasadas', todayStr, 'ok');
       }
     } catch (err) {
       console.error('[consignacionesAtrasadas] Error checking daily scheduler time:', err.message);

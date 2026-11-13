@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { reclamarTareaDiaria, terminarTareaDiaria } = require('./tareaProgramadaUnica');
 const { transporter, EMAIL_FROM, FOOTER, encabezadoLogo, LOGO_HEADER_ATTACHMENT, COLOR_ENCABEZADO_AZUL } = require('./email');
 const { normalizar } = require('./maestroMenu');
 
@@ -168,7 +169,10 @@ function iniciarProgramadorAlertasCasos() {
     const hoy = ahora.toISOString().slice(0, 10);
     if (ahora.getUTCHours() === 7 && ahora.getUTCMinutes() === 25 && ultimoDia !== hoy) {
       ultimoDia = hoy;
-      enviarResumenAlertasCasos();
+      // Solo un servidor lo envía (hay dos servicios de Cloud Run con las tareas activas)
+      reclamarTareaDiaria('casos_medicos_alertas', hoy)
+        .then(ok => (ok ? Promise.resolve(enviarResumenAlertasCasos()).then(() => terminarTareaDiaria('casos_medicos_alertas', hoy, 'ok')) : null))
+        .catch(err => console.error('[casosMedicosAlertas] Error en el resumen diario:', err.message));
     }
   }, 30000);
 }

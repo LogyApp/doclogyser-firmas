@@ -2547,32 +2547,20 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
-async function notificarConsignacionesAtrasadasOperacion({ destinatarios, copia = [], nombres, operacion, fechaLimite, dias, totalAtrasado }) {
+// operaciones: [{ operacion, dias: [{ dia, servicios, total, totalDia }], totalAtrasado }]. Varias operaciones
+// van juntas cuando tienen los mismos destinatarios (p. ej. las que caen en los responsables de la regional).
+async function notificarConsignacionesAtrasadasOperacion({ destinatarios, copia = [], nombres, regional = '', operaciones, fechaLimite }) {
   const lista = (nombres || []).filter(Boolean);
   const saludo = lista.length > 1 ? `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}` : (lista[0] || 'equipo');
-  const asunto = `Recordatorio: consignaciones pendientes — Operación: ${operacion} — LOG&SER`;
+  const varias = operaciones.length > 1;
+  const asunto = varias
+    ? `Recordatorio: consignaciones pendientes — ${regional ? `Regional: ${regional}` : `${operaciones.length} operaciones`} — LOG&SER`
+    : `Recordatorio: consignaciones pendientes — Operación: ${operaciones[0].operacion} — LOG&SER`;
+  const totalGeneral = operaciones.reduce((s, o) => s + o.totalAtrasado, 0);
 
-  const filas = dias.map(d => `
-    <tr>
-      <td style="padding:8px;border:1px solid #ddd">${fechaLegibleConsig(d.dia)}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:center">${d.servicios}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(d.total)}${d.totalDia && d.total < d.totalDia ? `<div style="color:#888;font-size:.75rem">de ${pesosConsig(d.totalDia)}</div>` : ''}</td>
-    </tr>`).join('');
-
-  const cuerpo = `
-    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
-${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
-      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
-        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${escConsig(saludo)}</h2>
-        <p style="color:#555">
-          Le recordamos que en la operación <strong>${escConsig(operacion)}</strong> hay días con efectivo que aún no
-          tienen consignación registrada. Lo recaudado cada día debe consignarse al día siguiente.
-        </p>
-        <div style="margin:16px 0;padding:12px;background:#eef3fb;border-left:4px solid #1B2A5E;font-size:.88rem;color:#1B2A5E">
-          Este mensaje es informativo. Le pedimos registrar las consignaciones pendientes en
-          <strong>Contabilidad › Consignaciones</strong> para que no se acumulen más días.
-        </div>
-        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;border:1px solid #ddd">
+  const tablaOperacion = (o) => `
+        ${varias ? `<h3 style="color:#1B2A5E;font-size:.95rem;margin:18px 0 4px">${escConsig(o.operacion)}</h3>` : ''}
+        <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:.85rem;border:1px solid #ddd">
           <thead>
             <tr style="background:#f8f9fb">
               <th style="padding:8px;border:1px solid #ddd;text-align:left">Día</th>
@@ -2580,13 +2568,37 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
               <th style="padding:8px;border:1px solid #ddd;text-align:right">Valor pendiente</th>
             </tr>
           </thead>
-          <tbody>${filas}
+          <tbody>${o.dias.map(d => `
+            <tr>
+              <td style="padding:8px;border:1px solid #ddd">${fechaLegibleConsig(d.dia)}</td>
+              <td style="padding:8px;border:1px solid #ddd;text-align:center">${d.servicios}</td>
+              <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(d.total)}${d.totalDia && d.total < d.totalDia ? `<div style="color:#888;font-size:.75rem">de ${pesosConsig(d.totalDia)}</div>` : ''}</td>
+            </tr>`).join('')}
             <tr style="background:#f8f9fb;font-weight:bold">
-              <td style="padding:8px;border:1px solid #ddd" colspan="2">Total pendiente</td>
-              <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(totalAtrasado)}</td>
+              <td style="padding:8px;border:1px solid #ddd" colspan="2">Total pendiente${varias ? ` — ${escConsig(o.operacion)}` : ''}</td>
+              <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(o.totalAtrasado)}</td>
             </tr>
           </tbody>
-        </table>
+        </table>`;
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${escConsig(saludo)}</h2>
+        <p style="color:#555">
+          ${varias
+            ? `Le recordamos que en estas operaciones${regional ? ` de la regional <strong>${escConsig(regional)}</strong>` : ''} hay días con efectivo que aún no tienen consignación registrada:
+               <strong>${operaciones.map(o => escConsig(o.operacion)).join(', ')}</strong>.`
+            : `Le recordamos que en la operación <strong>${escConsig(operaciones[0].operacion)}</strong> hay días con efectivo que aún no tienen consignación registrada.`}
+          Lo recaudado cada día debe consignarse al día siguiente.
+        </p>
+        <div style="margin:16px 0;padding:12px;background:#eef3fb;border-left:4px solid #1B2A5E;font-size:.88rem;color:#1B2A5E">
+          Este mensaje es informativo. Le pedimos registrar las consignaciones pendientes en
+          <strong>Contabilidad › Consignaciones</strong> para que no se acumulen más días.
+        </div>
+        ${operaciones.map(tablaOperacion).join('')}
+        ${varias ? `<p style="color:#1a1a2e;font-weight:bold;margin-top:14px;text-align:right">Total pendiente: ${pesosConsig(totalGeneral)}</p>` : ''}
         <p style="color:#888;font-size:.8rem;margin-top:16px">
           Incluye los días hasta el ${fechaLegibleConsig(fechaLimite)}. Lo de ayer todavía se puede consignar hoy.
         </p>
