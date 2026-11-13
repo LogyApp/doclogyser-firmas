@@ -2397,10 +2397,12 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
-async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, scope, records }) {
-  const isRegional = rol === 'CoordinadorR';
-  const tipoScope = isRegional ? 'Regional' : 'Operación';
+// Destinatarios: Auxiliar y Coordinador de la Operación (o AuxiliarR/CoordinadorR de la Regional si la
+// Operación no tiene responsables), igual que el reporte de "Tomó Cargo" pendiente.
+async function notificarPendientesCoordinador({ destinatarios, copia = [], nombres, tipoScope, scope, records }) {
   const asunto = `Servicios con Forma de Pago Pendiente (4) — ${tipoScope}: ${scope} — LOG&SER`;
+  const lista = (nombres || []).filter(Boolean);
+  const saludo = lista.length > 1 ? `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}` : (lista[0] || 'equipo');
 
   const tableRows = records.map(r => `
     <tr>
@@ -2416,7 +2418,7 @@ async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, s
     <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
 ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
-        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${nombreCoordinador}</h2>
+        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${saludo}</h2>
         <p style="color:#555">
           Le informamos que tiene servicios en estado de pago <strong>Pendiente (Forma de Pago = 4)</strong> para su asignación (${tipoScope}: <strong>${scope}</strong>).
         </p>
@@ -2448,8 +2450,154 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 
   await transporter.sendMail({
     from: `"LOG&SER Facturación" <${EMAIL_FROM}>`,
-    to: email,
+    to: (destinatarios || []).join(', '),
+    cc: ['admin@logyser.com', ...copia].join(', '),
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
+// ── Consignaciones atrasadas (7:40 a. m.) ───────────────────────────────────
+// El efectivo de un día se consigna al día siguiente; atrasado = días de antes de ayer sin comprobante.
+const DIAS_SEMANA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function fechaLegibleConsig(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso || '—';
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12));
+  return `${DIAS_SEMANA_CORTO[d.getUTCDay()]} ${+m[3]} ${MESES_CORTO[+m[2] - 1]}`;
+}
+function pesosConsig(v) {
+  return `$ ${Math.round(Number(v) || 0).toLocaleString('es-CO')}`;
+}
+function escConsig(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function notificarConsignacionesAtrasadasReporte({ destinatarios, fechaReporte, fechaLimite, desde, atrasadas, alDia }) {
+  const totalGeneral = atrasadas.reduce((s, o) => s + o.totalAtrasado, 0);
+  const asunto = atrasadas.length
+    ? `Consignaciones atrasadas — ${atrasadas.length} operación(es) — ${fechaLegibleConsig(fechaReporte)} — LOG&SER`
+    : `Consignaciones al día — ${fechaLegibleConsig(fechaReporte)} — LOG&SER`;
+
+  const filas = atrasadas.map(o => `
+    <tr>
+      <td style="padding:8px;border:1px solid #ddd;font-weight:bold">${escConsig(o.operacion)}<div style="font-weight:normal;color:#888;font-size:.78rem">${escConsig(o.regional || '')}</div></td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;color:${o.atrasados.length >= 3 ? '#c0392b' : '#d68910'}">${o.atrasados.length}</td>
+      <td style="padding:8px;border:1px solid #ddd">${o.atrasados.map(d => `${fechaLegibleConsig(d.dia)} <span style="color:#888">(${pesosConsig(d.total)}${d.totalDia && d.total < d.totalDia ? ` de ${pesosConsig(d.totalDia)}` : ''})</span>`).join('<br>')}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(o.totalAtrasado)}</td>
+    </tr>`).join('');
+
+  const tabla = atrasadas.length ? `
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;border:1px solid #ddd">
+          <thead>
+            <tr style="background:#f8f9fb">
+              <th style="padding:8px;border:1px solid #ddd;text-align:left">Operación</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:center">Días atrasados</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:left">Días sin consignar (valor pendiente)</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>${filas}
+            <tr style="background:#f8f9fb;font-weight:bold">
+              <td style="padding:8px;border:1px solid #ddd" colspan="3">Total sin consignar</td>
+              <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(totalGeneral)}</td>
+            </tr>
+          </tbody>
+        </table>` : `
+        <div style="margin:16px 0;padding:12px;background:#eafaf1;border-left:4px solid #27ae60;color:#1e7e4a">
+          Todas las operaciones con efectivo están al día con sus consignaciones.
+        </div>`;
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin-top:0">Reporte de consignaciones atrasadas</h2>
+        <p style="color:#555">
+          El efectivo de cada día debe consignarse al día siguiente. Hoy (${fechaLegibleConsig(fechaReporte)}) aún se puede
+          consignar lo de ayer, por lo que se consideran <strong>atrasados</strong> los días hasta el
+          <strong>${fechaLegibleConsig(fechaLimite)}</strong> que no están cubiertos por una consignación
+          (revisión desde el ${fechaLegibleConsig(desde)}).
+        </p>
+        <p style="color:#888;font-size:.8rem">
+          Si una operación consigna varios días juntos, lo que la consignación trae de más sobre su propio día cubre
+          los días anteriores sin comprobante, empezando por los más antiguos. Cuando un día está cubierto solo en parte se muestra lo que falta.
+        </p>
+        <p style="color:#555;font-weight:bold;margin-bottom:8px">Operaciones atrasadas: ${atrasadas.length}</p>
+        ${tabla}
+        <p style="color:#555;font-weight:bold;margin:20px 0 6px">Operaciones al día: ${alDia.length}</p>
+        <p style="color:#555;font-size:.85rem;margin-top:0">${alDia.length ? alDia.map(escConsig).join(', ') : '—'}</p>
+        <p style="color:#888;font-size:.8rem;margin-top:20px">
+          Los responsables de cada operación atrasada recibieron un aviso informativo. El detalle está en
+          Contabilidad › Consignaciones.
+        </p>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Contabilidad" <${EMAIL_FROM}>`,
+    to: destinatarios.join(', '),
     cc: 'admin@logyser.com',
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
+async function notificarConsignacionesAtrasadasOperacion({ destinatarios, copia = [], nombres, operacion, fechaLimite, dias, totalAtrasado }) {
+  const lista = (nombres || []).filter(Boolean);
+  const saludo = lista.length > 1 ? `${lista.slice(0, -1).join(', ')} y ${lista[lista.length - 1]}` : (lista[0] || 'equipo');
+  const asunto = `Recordatorio: consignaciones pendientes — Operación: ${operacion} — LOG&SER`;
+
+  const filas = dias.map(d => `
+    <tr>
+      <td style="padding:8px;border:1px solid #ddd">${fechaLegibleConsig(d.dia)}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${d.servicios}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(d.total)}${d.totalDia && d.total < d.totalDia ? `<div style="color:#888;font-size:.75rem">de ${pesosConsig(d.totalDia)}</div>` : ''}</td>
+    </tr>`).join('');
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${escConsig(saludo)}</h2>
+        <p style="color:#555">
+          Le recordamos que en la operación <strong>${escConsig(operacion)}</strong> hay días con efectivo que aún no
+          tienen consignación registrada. Lo recaudado cada día debe consignarse al día siguiente.
+        </p>
+        <div style="margin:16px 0;padding:12px;background:#eef3fb;border-left:4px solid #1B2A5E;font-size:.88rem;color:#1B2A5E">
+          Este mensaje es informativo. Le pedimos registrar las consignaciones pendientes en
+          <strong>Contabilidad › Consignaciones</strong> para que no se acumulen más días.
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;border:1px solid #ddd">
+          <thead>
+            <tr style="background:#f8f9fb">
+              <th style="padding:8px;border:1px solid #ddd;text-align:left">Día</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:center">Servicios en efectivo</th>
+              <th style="padding:8px;border:1px solid #ddd;text-align:right">Valor pendiente</th>
+            </tr>
+          </thead>
+          <tbody>${filas}
+            <tr style="background:#f8f9fb;font-weight:bold">
+              <td style="padding:8px;border:1px solid #ddd" colspan="2">Total pendiente</td>
+              <td style="padding:8px;border:1px solid #ddd;text-align:right;white-space:nowrap">${pesosConsig(totalAtrasado)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="color:#888;font-size:.8rem;margin-top:16px">
+          Incluye los días hasta el ${fechaLegibleConsig(fechaLimite)}. Lo de ayer todavía se puede consignar hoy.
+        </p>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Contabilidad" <${EMAIL_FROM}>`,
+    to: destinatarios.join(', '),
+    cc: ['admin@logyser.com', ...copia].join(', '),
     subject: asunto,
     html: cuerpo,
     attachments: [LOGO_HEADER_ATTACHMENT],
@@ -2460,7 +2608,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 // A las 7:30am se avisa a los responsables de cada Operación (o Regional, si
 // no hay Auxiliar/Coordinador en la Operación) sobre los ingresos cuya Fecha
 // de Ingreso ya pasó y que aún no han sido confirmados con el botón "Tomó Cargo".
-async function notificarTomoCargoPendiente({ destinatarios, scopeLabel, registros }) {
+async function notificarTomoCargoPendiente({ destinatarios, copia = [], scopeLabel, registros }) {
   const asunto = `Ingresos sin confirmar "Tomó Cargo" — ${scopeLabel} — LOG&SER`;
 
   const tableRows = registros.map(r => `
@@ -2504,7 +2652,7 @@ ${encabezadoLogo('#e67e22')}
   await transporter.sendMail({
     from:    `"LOG&SER Nómina" <${EMAIL_FROM}>`,
     to:      destinatarios.join(', '),
-    cc:      'admin@logyser.com, contratacionnacional@logyser.com',
+    cc:      ['admin@logyser.com', 'contratacionnacional@logyser.com', ...copia].join(', '),
     subject: asunto,
     html:    cuerpo,
     attachments: [LOGO_HEADER_ATTACHMENT],
@@ -3519,6 +3667,8 @@ module.exports = {
   notificarReportePendientes,
   notificarPendientesCoordinador,
   notificarTomoCargoPendiente,
+  notificarConsignacionesAtrasadasReporte,
+  notificarConsignacionesAtrasadasOperacion,
   notificarTomoCargoConfirmado,
   transporter,
   HEADER,

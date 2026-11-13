@@ -218,17 +218,21 @@ if (tareasDesactivadas) {
   verificarEVSSTExpirados(); // verificación inicial al arrancar
   setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
 
-  // Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:30 AM Colombia)
+  // Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:35 AM Colombia)
   const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
   iniciarProgramadorFormaPago();
 
-  // Resumen diario de Casos Médicos en alerta (7:00 AM Colombia; Config_Parametros sst / Casos Medicos)
+  // Resumen diario de Casos Médicos en alerta (7:25 AM Colombia; Config_Parametros sst / Casos Medicos)
   const { iniciarProgramadorAlertasCasos } = require('./src/services/casosMedicosAlertas');
   iniciarProgramadorAlertasCasos();
 
   // Reporte diario de ingresos sin confirmar "Tomó Cargo" (a las 7:30 AM Colombia)
   const { iniciarProgramadorTomoCargo } = require('./src/services/tomoCargoNotifier');
   iniciarProgramadorTomoCargo();
+
+  // Reporte diario de consignaciones atrasadas (7:40 AM Colombia; Config_Parametros contabilidad / Consignaciones)
+  const { iniciarProgramadorConsignacionesAtrasadas } = require('./src/services/consignacionesAtrasadasNotifier');
+  iniciarProgramadorConsignacionesAtrasadas();
 
   // Programador de envíos de correos de Logysign en la fecha/hora seleccionada
   const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');

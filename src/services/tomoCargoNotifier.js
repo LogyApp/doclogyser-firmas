@@ -1,6 +1,6 @@
 const pool = require('./db');
 const { notificarTomoCargoPendiente } = require('./email');
-const { obtenerResponsablesOperacionRegional } = require('./configRetiro');
+const { resolverDestinatariosOperacion } = require('./configRetiro');
 
 let lastRunDate = '';
 
@@ -50,8 +50,9 @@ async function ejecutarNotificacionTomoCargo() {
 
     for (const grupo of grupos.values()) {
       try {
-        const responsables = await obtenerResponsablesOperacionRegional(grupo.operacion, grupo.regional);
-        const emails = [...new Set(responsables.map(d => d.Email).filter(Boolean))];
+        // Para: responsables de la Operación; copia: AuxiliarR/CoordinadorR de su Regional
+        const { para, copia } = await resolverDestinatariosOperacion(grupo.operacion, grupo.regional);
+        const emails = para.map(d => d.Email);
         if (!emails.length) {
           console.warn(`[tomoCargoNotifier] Sin responsables para Operación="${grupo.operacion}" Regional="${grupo.regional}" — se omite`);
           continue;
@@ -59,6 +60,7 @@ async function ejecutarNotificacionTomoCargo() {
         const scopeLabel = grupo.operacion ? `Operación: ${grupo.operacion}` : `Regional: ${grupo.regional}`;
         await notificarTomoCargoPendiente({
           destinatarios: emails,
+          copia,
           scopeLabel,
           registros: grupo.registros.map(r => ({
             trabajador:   limpiarNombre(r.Trabajador),
@@ -67,7 +69,7 @@ async function ejecutarNotificacionTomoCargo() {
             fechaIngreso: r.FechaIngreso,
           })),
         });
-        console.log(`[tomoCargoNotifier] Enviado a ${emails.join(', ')} (${scopeLabel}, ${grupo.registros.length} registro(s))`);
+        console.log(`[tomoCargoNotifier] Enviado a ${emails.join(', ')}${copia.length ? ' (copia ' + copia.join(', ') + ')' : ''} (${scopeLabel}, ${grupo.registros.length} registro(s))`);
       } catch (err) {
         console.error(`[tomoCargoNotifier] Error notificando grupo Operación="${grupo.operacion}":`, err.message);
       }

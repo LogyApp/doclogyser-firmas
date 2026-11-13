@@ -159,14 +159,14 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   }
 }
 
-// Revisa cada 30 segundos y envía el resumen a las 7:00 AM hora de Colombia
+// Revisa cada 30 segundos y envía el resumen a las 7:25 AM hora de Colombia
 // (mismo patrón que tomoCargoNotifier.js).
 function iniciarProgramadorAlertasCasos() {
   let ultimoDia = null;
   setInterval(() => {
     const ahora = new Date(Date.now() - 5 * 3600000);
     const hoy = ahora.toISOString().slice(0, 10);
-    if (ahora.getUTCHours() === 7 && ahora.getUTCMinutes() === 0 && ultimoDia !== hoy) {
+    if (ahora.getUTCHours() === 7 && ahora.getUTCMinutes() === 25 && ultimoDia !== hoy) {
       ultimoDia = hoy;
       enviarResumenAlertasCasos();
     }
