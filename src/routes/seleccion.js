@@ -14,7 +14,7 @@ const {
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
-const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar } = require('../services/docsSeleccion');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante } = require('../services/docsSeleccion');
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
 
@@ -487,6 +487,8 @@ router.get('/admin/:uuid', async (req, res) => {
         regionalSugerida,
         operacionSugerida,
         estadoProceso: a.estado_proceso,
+        puedeDesbloquear: String(a.estado_proceso || '').trim().toLowerCase() === 'bloqueado'
+          ? await puedeDesbloquearAspirante(usuario) : false,
         telefono: a.telefono || '',
         correoElectronico: a.correo_electronico || ''
       },
@@ -696,7 +698,7 @@ router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async
   }
 });
 
-// Cambiar estado del proceso del aspirante (Admin: Registro <-> En proceso)
+// Cambiar estado del proceso del aspirante (Admin: Registro <-> En proceso; bloqueado -> En proceso solo roles autorizados)
 router.post('/cambiar-estado-proceso', async (req, res) => {
   const { id_aspirante, nuevo_estado } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
@@ -707,16 +709,24 @@ router.post('/cambiar-estado-proceso', async (req, res) => {
       return res.status(400).send('Estado no permitido');
     }
 
-    let estadoAnterior = null;
+    const [aspRows] = await pool.execute(
+      'SELECT IdRequisicion, estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
+      [id_aspirante]
+    );
+    const estadoAnterior = aspRows.length ? aspRows[0].estado_proceso : null;
+
+    // Aspirante bloqueado (documento de identidad no coincide): solo los roles de Config_Parametros
+    // talenthub/Aspirantes "Roles que pueden desbloquear aspirantes" pueden pasarlo, y solo a "En proceso".
+    if (String(estadoAnterior || '').trim().toLowerCase() === 'bloqueado') {
+      if (nuevo_estado !== 'En proceso' || !(await puedeDesbloquearAspirante(usuario))) {
+        return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('El aspirante está bloqueado. Solo los roles autorizados (CoorSelección o Sistema) pueden pasarlo a "En proceso".')}`);
+      }
+    }
+
     if (nuevo_estado === 'En proceso') {
-      const [aspRows] = await pool.execute(
-        'SELECT IdRequisicion, estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
-        [id_aspirante]
-      );
       if (!aspRows.length || !aspRows[0].IdRequisicion) {
         return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible pasar a "En proceso": El aspirante no tiene una requisición vinculada.')}`);
       }
-      estadoAnterior = aspRows[0].estado_proceso;
 
       // Regla configurable: documentos obligatorios aprobados (Config_Parametros talenthub/Aspirantes)
       const validacion = await validarPasoEnProceso(id_aspirante);
@@ -2793,7 +2803,22 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
           </div>
 
           <!-- Botón de Estado / Fase -->
-          ${!bloqueado && asp.estadoProceso !== 'contratado' ? `
+          ${!bloqueado && asp.estadoProceso === 'bloqueado' ? `
+            <div class="shrink-0 flex items-center justify-end">
+              ${asp.puedeDesbloquear ? `
+                <button type="button" onclick="cambiarEstado('En proceso')"
+                  class="${asp.IdRequisicion ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} font-black text-[11px] uppercase tracking-wider py-1.5 px-3.5 rounded-xl transition-all inline-flex items-center gap-1.5"
+                  title="${asp.IdRequisicion ? 'Desbloquear y habilitar la fase de firmas' : 'Requiere una Requisición vinculada'}">
+                  <span>🔓</span> Desbloquear (Poner 'En Proceso')
+                </button>
+              ` : `
+                <span class="text-[10px] text-slate-500 font-bold max-w-[260px] text-right leading-snug">
+                  Aspirante bloqueado: solo CoorSelección o Sistema pueden desbloquearlo.
+                </span>
+              `}
+            </div>
+          ` : ''}
+          ${!bloqueado && asp.estadoProceso !== 'contratado' && asp.estadoProceso !== 'bloqueado' ? `
             <div class="shrink-0 flex items-center justify-end">
               ${asp.estadoProceso === 'Registro' ? `
                 <button type="button" onclick="cambiarEstado('En proceso')" 
@@ -3225,7 +3250,9 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
           alert('⚠️ No es posible habilitar la fase de firmas: el aspirante debe tener una Requisición vinculada.');
           return;
         }
-        const msg = nuevoEstado === 'En proceso' 
+        const msg = nuevoEstado === 'En proceso' && ${asp.estadoProceso === 'bloqueado' ? 'true' : 'false'}
+          ? '¿Deseas desbloquear al aspirante y pasarlo a "En proceso"? Verifica antes que su documento de identidad sea correcto. El aspirante podrá firmar los ' + ${docsFir.length} + ' documentos en su portal.'
+          : nuevoEstado === 'En proceso'
           ? '¿Deseas activar la fase de firmas? El aspirante podrá ver y firmar digitalmente los ' + ${docsFir.length} + ' documentos en su portal.'
           : '¿Deseas regresar el aspirante al estado Registro?';
         if (confirm(msg)) {
