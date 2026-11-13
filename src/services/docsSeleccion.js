@@ -106,6 +106,7 @@ const P = {
   AVISO_FIRMAS:           'Aviso a Selección cuando el aspirante completa las firmas',
   AVISO_FIRMAS_PARA:      'Aviso de firmas completas - Para:',
   AVISO_FIRMAS_COPIA:     'Aviso de firmas completas - Copia:',
+  ROLES_DESBLOQUEAR:      'Roles que pueden desbloquear aspirantes',
 };
 const DEFAULTS = {
   [P.EXIGIR_DOCS_EN_PROCESO]: '0',
@@ -116,6 +117,7 @@ const DEFAULTS = {
   [P.AVISO_FIRMAS]:           '1',
   [P.AVISO_FIRMAS_PARA]:      'CoorSelección',
   [P.AVISO_FIRMAS_COPIA]:     '',
+  [P.ROLES_DESBLOQUEAR]:      'Sistema, CoorSelección',
 };
 
 const TTL_MS = 5 * 60 * 1000;
@@ -276,12 +278,31 @@ async function validarFirmasParaContratar(idAspirante, operacion) {
   return { ok: estado.faltantes.length === 0, faltantes: estado.faltantes };
 }
 
+// ¿El usuario puede pasar un aspirante "bloqueado" a "En proceso"? (rol en talenthub/Aspirantes
+// "Roles que pueden desbloquear aspirantes"; por defecto Sistema y CoorSelección)
+async function puedeDesbloquearAspirante(usuarioId) {
+  if (!usuarioId) return false;
+  try {
+    const [[u], params] = await Promise.all([
+      pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]),
+      obtenerParametrosAspirantes(),
+    ]);
+    if (!u.length) return false;
+    const rol = normalizar(u[0].Rol);
+    return listaParametro(params, P.ROLES_DESBLOQUEAR).map(normalizar).includes(rol);
+  } catch (err) {
+    console.error('[docsSeleccion] No se pudo validar el permiso de desbloqueo:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
   PARAMETROS_ASPIRANTES: P,
   obtenerParametrosAspirantes,
   parametroActivo,
   listaParametro,
   validarPasoEnProceso,
+  puedeDesbloquearAspirante,
   validarFirmasParaContratar,
   estadoFirmasAspirante,
   normalizar,
