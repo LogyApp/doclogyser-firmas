@@ -17,6 +17,8 @@ const {
 const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante } = require('../services/docsSeleccion');
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
+const firmaUnica = require('../services/firmaUnica');
+const { generarHtmlFirmaUnica } = require('../services/vistaFirmaUnica');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -609,11 +611,49 @@ router.post('/enviar-correo-portal', async (req, res) => {
 // Rutas de Firma Digital de Selección
 // ══════════════════════════════════════════════════════════════
 
-// Vista interactiva para firmar documento individual
+// Firma única: el aspirante confirma su firma una vez y pasa documento por documento
+// (ver services/firmaUnica.js). ?doc=<Id> vuelve a firmar solo ese documento; ?todos=1 todos.
+router.get('/firma-unica/:uuid', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  const { uuid } = req.params;
+  const usuario = req.query.usuario || '';
+  try {
+    const soloDoc = req.query.doc ? Number(req.query.doc) || null : null;
+    const todos = req.query.todos === '1';
+    const datos = await firmaUnica.obtenerPasos(uuid, { soloDoc, todos });
+    if (!datos) return res.status(404).send('Aspirante no encontrado');
+    if (String(datos.motivoBloqueo || '').includes('bloqueado')) {
+      return res.redirect(`/seleccion/portal/${uuid}?usuario=${encodeURIComponent(usuario)}`);
+    }
+    res.send(generarHtmlFirmaUnica({ datos, usuario, bucket: BUCKET_ASPIRANTES, soloDoc, todos }));
+  } catch (err) {
+    console.error('Error al cargar la firma única:', err);
+    res.status(500).send('Error interno al cargar la firma de documentos: ' + err.message);
+  }
+});
+
+// Vista de un paso de la firma única (documento con los datos del aspirante y su formulario)
+router.get('/firma-unica/:uuid/paso', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  try {
+    const vista = await firmaUnica.vistaPaso(req.params.uuid, req.query.clave);
+    res.json({ ok: true, ...vista });
+  } catch (err) {
+    if (err.validacion) return res.status(400).json({ ok: false, error: err.message });
+    console.error('Error al cargar paso de la firma única:', err);
+    res.status(500).json({ ok: false, error: 'No se pudo cargar el documento. Intenta de nuevo.' });
+  }
+});
+
+// La pantalla de un solo documento se reemplazó por la firma única (con ?vista=individual se
+// conserva la pantalla anterior para documentos de una sola plantilla)
 router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   const { uuid, idConfigDoc } = req.params;
   const usuario = req.query.usuario || '';
+  if (req.query.vista !== 'individual') {
+    return res.redirect(`/seleccion/firma-unica/${uuid}?doc=${encodeURIComponent(idConfigDoc)}${usuario ? `&usuario=${encodeURIComponent(usuario)}` : ''}`);
+  }
 
   try {
     const datos = await obtenerDatosAspiranteParaFirma(uuid, idConfigDoc);
@@ -679,7 +719,8 @@ router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async
       bucketAspirantes: BUCKET_ASPIRANTES,
       ip: req.headers['x-forwarded-for'] || req.ip || req.socket?.remoteAddress,
       dispositivo: req.get('user-agent'),
-      respuestas: req.body.respuestas || null
+      respuestas: req.body.respuestas || null,
+      diligenciados: req.body.diligenciados || null
     });
 
     if (!yaEstabaFirmado) {
@@ -1496,7 +1537,31 @@ router.post('/finalizar-contratacion', async (req, res) => {
         (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Usuario, Observaciones)
         VALUES (UUID(), 'PEND', ?, ?, ?, 'Activo', ?, ?, ?, ?, ?, ?)`;
 
+    // Documentos por partes (ej. Formatos Italcol): cada formato pasa como su propio registro
+    // con la observación que lo identifica (Dynamic_hv_documentos_partes, ver seleccionFirmas.js)
+    let partesPorDoc = {};
+    try {
+      const [partes] = await connection.query(
+        'SELECT id_config_doc, gcs_path, observaciones FROM Dynamic_hv_documentos_partes WHERE id_aspirante = ? ORDER BY id_plantilla',
+        [id_aspirante]
+      );
+      partes.forEach(pt => { (partesPorDoc[Number(pt.id_config_doc)] ||= []).push(pt); });
+    } catch (errPartes) {
+      if (errPartes.code !== 'ER_NO_SUCH_TABLE') throw errPartes;
+      partesPorDoc = {};
+    }
+
     for (const doc of docs) {
+      const partesDoc = partesPorDoc[Number(doc.id_config_doc)];
+      if (partesDoc && partesDoc.length) {
+        for (const pt of partesDoc) {
+          await srcBucket.file(pt.gcs_path).copy(destBucket.file(pt.gcs_path)).catch(e => console.error("Error GCS Copy (parte):", e));
+          await connection.query(sqlDocTrabajador, [
+            regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, pt.gcs_path, nombreUsuario, pt.observaciones || null
+          ]);
+        }
+        continue;
+      }
       // Hoja de Vida: si el aspirante subió su propia versión, también se traslada (marcada en Observaciones)
       const rutaPropiaHv = Number(doc.id_config_doc) === ID_HOJA_VIDA ? rutaHvAspirante(doc.observaciones) : null;
 
@@ -1716,16 +1781,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
             class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
             Ver ↗
           </a>
-          ${puedeFirmar ? `<a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
-            class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs">
-            Firmar Digitalmente →
-          </a>` : ''}
-        ` : (puedeFirmar ? `
-          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
-            class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5">
-            <span>✍️</span> Abrir y Firmar →
-          </a>
-        ` : `<span class="text-[10px] font-bold text-slate-400 italic">Pendiente</span>`))}
+          ${puedeFirmar ? `<span class="text-[10px] font-black text-orange-700 bg-orange-50 px-3 py-1 rounded-lg uppercase tracking-wide">Por firmar</span>` : ''}
+        ` : `<span class="text-[10px] font-black ${puedeFirmar ? 'text-orange-700 bg-orange-50' : 'text-slate-400 bg-slate-50'} px-3 py-1 rounded-lg uppercase tracking-wide">${puedeFirmar ? 'Por firmar' : 'Pendiente'}</span>`)}
       </div>
     </div>`;
   };
@@ -1850,7 +1907,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 
         <div id="secFirmasContenido" class="p-6 md:p-8 border-t border-slate-100">
           <p class="text-slate-500 text-xs md:text-sm mb-6 font-medium">
-            Por favor lee cuidadosamente y estampa tu firma digital en cada uno de los siguientes documentos obligatorios para formalizar tu vinculación.
+            Confirmas tu firma una sola vez y luego revisas cada documento: los de lectura los aceptas y los que tienen preguntas los respondes. Al final se firman todos.
           </p>
 
           <!-- Barra de Progreso -->
@@ -1858,6 +1915,21 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
             <div class="bg-orange-500 h-full rounded-full transition-all duration-500" 
               style="width: ${Math.round((totalFirmados / (docsFirma.length || 1)) * 100)}%"></div>
           </div>
+
+          ${firmasAbiertas && totalFirmados < docsFirma.length ? `
+          <!-- Firma única: una sola firma para todos los documentos (services/firmaUnica.js).
+               Estilos en línea: seleccion.css es generado y no tiene todas las clases de este botón. -->
+          <a href="/seleccion/firma-unica/${uuid}${usuario ? `?usuario=${encodeURIComponent(usuario)}` : ''}"
+            style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin-bottom:24px;padding:16px 18px;border-radius:18px;background:#ea580c;color:#fff;text-decoration:none;box-shadow:0 10px 24px -8px rgba(234,88,12,.55)">
+            <span style="display:flex;align-items:center;gap:12px">
+              <span style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">✍️</span>
+              <span>
+                <span style="display:block;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.03em">Firmar mis documentos</span>
+                <span style="display:block;font-size:12px;font-weight:600;color:#ffedd5">${docsFirma.length - totalFirmados} pendiente(s) · una sola firma para todos</span>
+              </span>
+            </span>
+            <span style="font-size:26px;font-weight:900;flex-shrink:0">→</span>
+          </a>` : ''}
 
           <div class="space-y-3">
             ${docsFirma.map(renderDocFirma).join('')}

@@ -128,6 +128,42 @@ async function obtenerContactoEmergencia(idAspirante) {
   return rows[0] || null;
 }
 
+/**
+ * Variables propias de una parte (plantilla) de un documento de cliente. Las partes sin variables
+ * propias usan solo las variables generales de la firma.
+ * @param {string} nombreProceso  nombre_proceso de la plantilla
+ */
+async function variablesDeParte(nombreProceso, aspirante, diligenciados, fechaFirma = new Date()) {
+  if (nombreProceso === 'ITAL_EMERG') {
+    const contacto = aspirante && aspirante.id_aspirante ? await obtenerContactoEmergencia(aspirante.id_aspirante) : null;
+    return variablesEmergencias(aspirante, contacto, diligenciados || {}, fechaFirma);
+  }
+  return {};
+}
+
+/**
+ * Campos que el aspirante diligencia en la pantalla de firma (mismo formato del formulario de
+ * Selección, para recogerlos con recogerRespuestasFormulario). Vacío si la parte no pide nada.
+ */
+function htmlCamposPantalla(nombreProceso, valores = {}) {
+  const campos = CAMPOS_DILIGENCIAR[nombreProceso] || [];
+  if (!campos.length) return '';
+  const filas = campos.map(c => `
+    <div class="pregunta py-3 border-t border-slate-100 first:border-t-0" data-codigo="${escHtml(c.codigo)}" data-tipo="texto" data-obligatorio="${c.obligatorio ? 1 : 0}" data-texto="${escHtml(c.etiqueta)}">
+      <label class="block text-sm font-bold text-slate-800 mb-1">${escHtml(c.etiqueta)} ${c.obligatorio ? '<span class="text-red-500">*</span>' : ''}</label>
+      <input type="text" data-campo="r" maxlength="${c.max || 150}" value="${escHtml(valores[c.codigo] || '')}" placeholder="Ej.: Ninguna"
+        class="w-full border border-slate-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400">
+      ${c.ayuda ? `<p class="text-[11px] text-slate-500 mt-1">${escHtml(c.ayuda)}</p>` : ''}
+    </div>`).join('');
+  return `<section id="formularioDocumento" class="space-y-2">
+    <div class="border-b border-slate-100 pb-3">
+      <h2 class="text-base font-extrabold text-slate-900 uppercase tracking-tight flex items-center gap-2"><span>📝</span> Diligencia el formato</h2>
+      <p class="text-xs text-slate-500 mt-1">Estos datos solo se escriben en el formato de Italcol. Los campos con <span class="text-red-500">*</span> son obligatorios.</p>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl px-4">${filas}</div>
+  </section>`;
+}
+
 /** Plantillas de Italcol activas (documento 33), en orden de creación. */
 async function obtenerPlantillasItalcol() {
   const [rows] = await pool.execute(
@@ -140,6 +176,8 @@ async function obtenerPlantillasItalcol() {
 module.exports = {
   CAMPOS_DILIGENCIAR,
   validarDiligenciados,
+  variablesDeParte,
+  htmlCamposPantalla,
   variablesEmergencias,
   normalizarRh,
   obtenerContactoEmergencia,

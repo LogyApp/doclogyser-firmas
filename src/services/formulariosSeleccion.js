@@ -441,10 +441,13 @@ function htmlFormularioPantalla(preguntas, respuestas) {
 }
 
 // JavaScript de la pantalla: mostrar detalle con "Sí", botón "Ninguno" y recoger las respuestas
+// prepararFormulario(form) y recogerRespuestasFormulario(form) reciben el <section> del formulario;
+// sin parámetro usan #formularioDocumento (pantalla de un solo documento). La firma única
+// (varios documentos en la misma página) pasa el formulario de cada paso.
 const JS_FORMULARIO = `
-    (function () {
-      const form = document.getElementById('formularioDocumento');
-      if (!form) return;
+    function prepararFormulario(form) {
+      if (!form || form.dataset.preparado === '1') return;
+      form.dataset.preparado = '1';
       form.addEventListener('change', (ev) => {
         const preg = ev.target.closest('.pregunta');
         if (!preg) return;
@@ -538,10 +541,11 @@ const JS_FORMULARIO = `
         bloque.addEventListener('change', () => setTimeout(pintar, 0));
         pintar();
       });
-    })();
+    }
+    prepararFormulario(document.getElementById('formularioDocumento'));
 
-    function recogerRespuestasFormulario() {
-      const form = document.getElementById('formularioDocumento');
+    function recogerRespuestasFormulario(form) {
+      form = form || document.getElementById('formularioDocumento');
       if (!form) return { respuestas: null, faltantes: [] };
       const respuestas = {};
       const faltantes = [];
