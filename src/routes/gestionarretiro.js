@@ -6,6 +6,7 @@ const pool    = require('../services/db');
 const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ, generarTokenAutCesantias } = require('../services/token');
 const { obtenerCondicionRetiro, obtenerEstadoLogysign, obtenerPrefijoDoc, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, obtenerPermisosRetiro, obtenerPendientesLegalizacion } = require('../services/configRetiro');
 const { subirDocumentoRetiro } = require('../services/storage');
+const { programarRellenoVinculacion } = require('../services/rellenoAsistencia');
 const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
 const { regenerarAceptacionRenuncia } = require('./firmarenuncia');
 const { regenerarPazYSalvoFinal } = require('./pazysalvoarea');
@@ -661,6 +662,7 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
       `UPDATE \`Maestro_Vinculación\` SET \`Fecha de Retiro\` = ?, Usuario = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
       [nuevaFecha, usuario, fechaHoraBogota(), idVinculacion]
     );
+    programarRellenoVinculacion(idVinculacion, [fechaAnterior]); // mueve los días de Retirado a la nueva fecha
 
     const { regenerados, errores } = await regenerarDocumentosRetiro(idVinculacion, identificacion, fechaIngreso);
 

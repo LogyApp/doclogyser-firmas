@@ -698,6 +698,73 @@
     }
   }
 
+  /* ── Control de quincena (nomina-control-quincena.js) ─────────────────── */
+  .cq-barra { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .cq-barra select { padding:7px 10px; border:1px solid var(--border); border-radius:7px; background:var(--card-bg); color:var(--text); font-size:.84rem; }
+  .cq-barra .btn-reset { margin:0; }
+  .cq-nav-q { display:flex; align-items:center; gap:6px; }
+  .cq-nav-q .btn-reset { padding:4px 12px; font-size:1rem; line-height:1.2; }
+  .cq-nav-q .btn-reset:disabled { opacity:.35; cursor:not-allowed; }
+  .cq-q-txt { font-weight:700; font-size:.95rem; min-width:150px; text-align:center; color:var(--text); }
+  .cq-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:12px; }
+  .cq-kpi { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; }
+  .cq-kpi-val { font-size:1.35rem; font-weight:700; color:var(--text); line-height:1.15; font-variant-numeric:tabular-nums; }
+  .cq-kpi-lbl { font-size:.7rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; margin-top:2px; }
+  .cq-card { padding:0; overflow:hidden; }
+  .cq-ayuda, .cq-nota { font-size:.78rem; color:var(--text-muted); padding:10px 14px; }
+  .cq-vacio { padding:28px 16px; text-align:center; color:var(--text-muted); font-size:.88rem; }
+  .cq-error { color:var(--danger); }
+  .cq-tabla-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .cq-tabla { border-collapse:separate; border-spacing:0; width:100%; font-size:.78rem; }
+  .cq-tabla th, .cq-tabla td { border-bottom:1px solid var(--border); padding:6px 4px; text-align:center; white-space:nowrap; }
+  .cq-tabla thead th { position:sticky; top:0; background:var(--bg-elevated); color:var(--text-muted); font-weight:700; z-index:2; }
+  .cq-tabla .cq-op { position:sticky; left:0; background:var(--card-bg); text-align:left; min-width:170px; max-width:220px; padding-left:12px; z-index:1; white-space:normal; border-right:1px solid var(--border); }
+  .cq-tabla thead .cq-op { background:var(--bg-elevated); z-index:3; }
+  .cq-op-nom { font-weight:600; color:var(--text); font-size:.8rem; line-height:1.2; }
+  .cq-op-sub { font-size:.68rem; color:var(--text-muted); font-weight:500; }
+  .cq-th-dia { min-width:30px; line-height:1.1; }
+  .cq-dsem { display:block; font-size:.6rem; font-weight:600; opacity:.7; }
+  .cq-total { font-weight:700; min-width:64px; font-variant-numeric:tabular-nums; }
+  .cq-fila-op { cursor:pointer; }
+  .cq-fila-op:hover .cq-op { background:var(--bg-elevated); }
+  .cq-celda { font-weight:700; position:relative; font-variant-numeric:tabular-nums; }
+  .cq-punto { position:absolute; top:3px; right:3px; width:6px; height:6px; border-radius:50%; background:var(--warning); }
+  .cq-a100 { background:var(--success-soft); color:var(--success-dark); }
+  .cq-a90 { background:var(--warning-soft); color:var(--warning-dark); }
+  .cq-a70 { background:var(--warning-soft); color:var(--warning-dark); }
+  .cq-a0 { background:var(--danger-soft); color:var(--danger-dark); }
+  .cq-na { color:var(--text-muted); }
+  .cq-a100-txt { color:var(--success-dark); } .cq-a90-txt, .cq-a70-txt { color:var(--warning-dark); } .cq-a0-txt { color:var(--danger-dark); }
+  .cq-col-fut { background:repeating-linear-gradient(45deg, transparent, transparent 4px, var(--bg-elevated) 4px, var(--bg-elevated) 6px); color:var(--text-muted); }
+  .cq-planilla .cq-cod { font-weight:700; font-size:.7rem; min-width:30px; cursor:pointer; }
+  .cq-ok { background:var(--success-soft); color:var(--success-dark); }
+  .cq-relleno { background:var(--bg-elevated); color:var(--text-muted); }
+  .cq-pend { background:var(--danger-soft); color:var(--danger-dark); }
+  .cq-falta-rell { background:var(--info-soft); color:var(--info-dark); }
+  .cq-alerta { background:var(--warning-soft); color:var(--warning-dark); box-shadow:inset 0 0 0 1.5px var(--warning); }
+  .cq-futuro { background:transparent; }
+  .cq-det-hd { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 14px; border-bottom:1px solid var(--border); }
+  .cq-det-tit { font-weight:700; font-size:.98rem; color:var(--text); flex:1; min-width:160px; }
+  .cq-det-acc { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .cq-det-acc .btn-reset, .cq-volver { margin:0; }
+  .cq-btn-reg { padding:7px 14px; font-size:.8rem; }
+  .cq-chk { font-size:.78rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+  .cq-leyenda { display:flex; flex-wrap:wrap; gap:12px; padding:8px 14px; font-size:.72rem; color:var(--text-muted); }
+  .cq-leyenda i { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:5px; }
+  .cq-tip { margin:0 14px 8px; padding:8px 12px; border-radius:7px; background:var(--bg-elevated); font-size:.78rem; color:var(--text); }
+  .cq-bloque { margin:6px 14px 14px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:.8rem; }
+  .cq-bloque ul { margin:6px 0 0; padding-left:18px; } .cq-bloque li { margin:3px 0; }
+  .cq-bloque .cq-nota { padding:2px 0 0; }
+  .cq-bloque-tit { font-weight:700; color:var(--text); }
+  .cq-bloque-alerta { border-color:var(--warning); background:var(--warning-soft); }
+  @media (max-width: 600px) {
+    .cq-tabla .cq-op { min-width:120px; max-width:140px; padding-left:8px; }
+    .cq-q-txt { min-width:120px; font-size:.86rem; }
+    .cq-kpis { grid-template-columns:repeat(2, 1fr); }
+    .cq-kpi-val { font-size:1.1rem; }
+    .cq-det-acc { width:100%; }
+  }
+
   /* ── Estilos Biométrico Integrado en Nómina ────────────────────────────── */
   .bio-subnav {
     display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 2px solid var(--border); padding-bottom: 12px;
@@ -2062,6 +2129,27 @@
         <div class="page-sub">Registro diario de colaboradores por operación y reporte de novedades por fechas (incapacidades, vacaciones, permisos)</div>
       </div>
 
+      <div class="bio-subnav">
+        <button type="button" class="bio-subnav-btn active" id="asisSubBtnRegistros" onclick="switchAsisSubVista('registros')">Registros</button>
+        <button type="button" class="bio-subnav-btn" id="asisSubBtnControl" onclick="switchAsisSubVista('control')">Control de quincena</button>
+      </div>
+
+      <div id="asisVistaControl" style="display:none">
+        <div class="cq-barra">
+          <div class="cq-nav-q">
+            <button type="button" class="btn-reset" onclick="cqCambiarQuincena(-1)" aria-label="Quincena anterior">‹</button>
+            <span id="cqQuincenaTxt" class="cq-q-txt">—</span>
+            <button type="button" class="btn-reset" id="cqBtnSig" onclick="cqCambiarQuincena(1)" aria-label="Quincena siguiente">›</button>
+          </div>
+          <select id="cqRegional" onchange="cqCambiarRegional()" style="display:none"></select>
+          <button type="button" class="btn-reset" onclick="_cq.operacion ? cqAbrirOperacion(_cq.operacion) : cargarControlQuincena()">Actualizar</button>
+        </div>
+        <div class="cq-kpis" id="cqKpis"></div>
+        <div class="card cq-card"><div id="cqContenido"></div></div>
+      </div>
+
+      <div id="asisVistaRegistros">
+
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
           <button type="button" class="btn-guardar-ficha" onclick="abrirModalRegistroAsistencia('diaria')">
@@ -2179,6 +2267,7 @@
           </div>
         </div>
       </div>
+      </div><!-- /asisVistaRegistros -->
     </div>
 
   </div>
@@ -2250,9 +2339,9 @@
             ¿Es apoyo de otra operación?
           </label>
           <div id="asisWrapOpApoya" style="display:none; margin-top:10px;">
-            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">Escoge la operación que apoya:</label>
-            <select id="asisModalOpApoya" style="width:100%; margin-top:4px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
-              <option value="">Seleccione operación destino...</option>
+            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">¿De qué operación viene el colaborador que apoya?</label>
+            <select id="asisModalOpApoya" onchange="onOpApoyaChange()" style="width:100%; margin-top:4px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+              <option value="">Seleccione la operación de origen...</option>
             </select>
           </div>
         </div>
@@ -9977,7 +10066,8 @@
 <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/boton-sync.js" defer></script>
-<script src="/js/nomina-asistencia.js?v=20261113c"></script>
+<script src="/js/nomina-asistencia.js?v=20261114b"></script>
+<script src="/js/nomina-control-quincena.js?v=20261114a"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>
 </html>

@@ -31,6 +31,8 @@ const { obtenerPermisosActivos } = require('../services/configActivos');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 const { obtenerPermisosTraslados } = require('../services/configTraslados');
+const { programarRellenoVinculacion, sincronizarRelleno } = require('../services/rellenoAsistencia');
+const { obtenerControlQuincena } = require('../services/controlQuincena');
 const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
 const {
   buscarTrabajadorCesantias,
@@ -1131,6 +1133,7 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
       `UPDATE \`Maestro_Vinculación\` SET Estado = 'Retirado', usuarioactualiza = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
       [usuario, fechaHoraBogota(), idVinculacion]
     );
+    programarRellenoVinculacion(idVinculacion); // Retirado en los días siguientes de la quincena
 
     // Este es el momento en que Estado realmente pasa a Retirado (caso Antioquia,
     // Nómina ya había generado documentos antes sin marcarlo) — notificación completa.
@@ -1309,10 +1312,16 @@ router.post('/api/vinculacion/:id', async (req, res) => {
     campos.push('usuarioactualiza = ?', '`Fecha Actualización` = ?');
     valores.push(usuario, fechaHoraBogota(), idVinculacion);
 
+    const [antes] = await pool.execute(
+      "SELECT DATE_FORMAT(`Fecha de Ingreso`, '%Y-%m-%d') AS fi FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1",
+      [idVinculacion]
+    );
     await pool.execute(
       `UPDATE \`Maestro_Vinculación\` SET ${campos.join(', ')} WHERE \`Id Vinculación\` = ?`,
       valores
     );
+    // Fecha de ingreso u operación pueden cambiar: se acomoda el relleno de asistencia (Nuevo/Retirado/Traslado)
+    programarRellenoVinculacion(idVinculacion, antes.length ? [antes[0].fi] : []);
     await liberarEdicion(idVinculacion, usuario);
     res.json({ ok: true });
   } catch (err) {
@@ -2422,6 +2431,57 @@ async function verificarAccesoAsistenciaAPI(req, res, next) {
   }
 }
 
+// ── Control de quincena (controlQuincena.js) ────────────────────────────
+// Tablero por operación y día: plantilla de la quincena, pendientes, duplicados y conflictos.
+// Con ?operacion= y detalle=1 trae la planilla persona × día.
+router.get('/api/asistencia/control', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { fecha, regional, operacion, detalle } = req.query;
+    const datos = await obtenerControlQuincena(req.accesoAsistencia, {
+      fecha, regional: regional || '', operacion: operacion || '', detalle: detalle === '1' && !!operacion
+    });
+    res.json({ ok: true, ...datos });
+  } catch (err) {
+    console.error('[GET /api/asistencia/control]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Acomoda Nuevo / Retirado / Traslado de una persona o de toda la plantilla de una operación en la
+// quincena (rellenoAsistencia.js). Solo cambia lo que no cuadra con las fechas de vinculación y traslados.
+router.post('/api/asistencia/control/acomodar', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { identificacion, operacion, fecha } = req.body;
+    const acceso = req.accesoAsistencia;
+    const P = require('../services/plantillaAsistencia');
+    const q = P.quincenaDe(P.FECHA_RE.test(fecha || '') ? fecha : P.hoyColombia());
+    let ids = [];
+    if (operacion) {
+      if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
+        return res.status(403).json({ ok: false, error: 'No tiene acceso a esta operación' });
+      }
+      const personas = await P.cargarTramos({ desde: q.desde, hasta: q.hasta, operaciones: [operacion] });
+      ids = [...personas.keys()].map(Number);
+    } else if (identificacion) {
+      const personas = await P.cargarTramos({ desde: q.desde, hasta: q.hasta, identificaciones: [Number(identificacion)] });
+      const p = personas.get(String(Number(identificacion)));
+      if (!p) return res.status(404).json({ ok: false, error: 'La persona no tiene vinculación en esa quincena' });
+      if (!acceso.sinFiltro && !p.tramos.some(t => acceso.operacionesFiltro.includes(t.operacion))) {
+        return res.status(403).json({ ok: false, error: 'No tiene acceso a la operación de esta persona' });
+      }
+      ids = [p.identificacion];
+    } else {
+      return res.status(400).json({ ok: false, error: 'Indique la persona o la operación' });
+    }
+    const r = await sincronizarRelleno({ desde: q.desde, hasta: q.hasta, identificaciones: ids });
+    console.log(`[asistencia/control] ${req.usuarioId} acomodó ${operacion || identificacion} (${q.nombre}): +${r.insertados} / -${r.eliminados}`);
+    res.json({ ok: true, insertados: r.insertados, eliminados: r.eliminados, conflictos: r.conflictos.length });
+  } catch (err) {
+    console.error('[POST /api/asistencia/control/acomodar]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // 1. Catálogo de novedades
 router.get('/api/asistencia/novedades', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
@@ -2587,8 +2647,8 @@ router.post('/api/asistencia/diaria', verificarAccesoAsistenciaAPI, async (req, 
 
     res.json({ ok: true, ...resultado });
   } catch (err) {
-    console.error('[POST /api/asistencia/diaria]', err);
-    res.status(500).json({ ok: false, error: err.message });
+    if (!err.validacion) console.error('[POST /api/asistencia/diaria]', err);
+    res.status(err.validacion ? 400 : 500).json({ ok: false, error: err.message });
   }
 });
 
@@ -2670,8 +2730,8 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
 
     res.json({ ok: true, ...resultado });
   } catch (err) {
-    console.error('[POST /api/asistencia/novedad]', err);
-    res.status(500).json({ ok: false, error: err.message });
+    if (!err.validacion) console.error('[POST /api/asistencia/novedad]', err);
+    res.status(err.validacion ? 400 : 500).json({ ok: false, error: err.message });
   }
 });
 

@@ -234,6 +234,11 @@ if (tareasDesactivadas) {
   const { iniciarProgramadorConsignacionesAtrasadas } = require('./src/services/consignacionesAtrasadasNotifier');
   iniciarProgramadorConsignacionesAtrasadas();
 
+  // Relleno automático de asistencia (Nuevo / Retirado / Traslado) cada hora sobre la quincena actual y la
+  // anterior; solo si Config_Parametros nomina / Asistencia / Relleno_Automatico_Periodico = SI
+  const { iniciarProgramadorRelleno } = require('./src/services/rellenoAsistencia');
+  iniciarProgramadorRelleno();
+
   // Programador de envíos de correos de Logysign en la fecha/hora seleccionada
   const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');
   iniciarProgramadorEnvios();

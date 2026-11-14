@@ -297,10 +297,8 @@ function actualizarOperacionesApoyoRegional(opBase) {
     opsMismaRegional = cfg.opsPorRegional[regionalBase].filter(o => o !== opBase);
   }
 
-  // Si el usuario no tiene sinFiltro, intersectar con sus operaciones permitidas
-  if (!cfg.sinFiltro && cfg.operacionesFiltro && cfg.operacionesFiltro.length) {
-    opsMismaRegional = opsMismaRegional.filter(o => cfg.operacionesFiltro.includes(o));
-  }
+  // No se cruza con las operaciones del usuario: quien recibe el apoyo (operación destino) registra la
+  // asistencia de colaboradores que pertenecen a otra operación de su misma regional.
 
   opsMismaRegional.sort((a, b) => a.localeCompare(b, 'es'));
 
@@ -309,7 +307,7 @@ function actualizarOperacionesApoyoRegional(opBase) {
     return;
   }
 
-  let opts = '<option value="">Escoge la operación que apoya...</option>';
+  let opts = '<option value="">Seleccione la operación de origen...</option>';
   opsMismaRegional.forEach(o => {
     opts += `<option value="${esc(o)}">${esc(o)}</option>`;
   });
@@ -1510,13 +1508,15 @@ async function guardarAsistenciaDiaria() {
       throw new Error(data.error || 'No se pudo guardar la asistencia.');
     }
 
-    alert(`¡Asistencia guardada con éxito! Se registraron ${data.registrosInsertados} colaboradores en estado Yellow.`);
+    const avisosTxt = (data.avisos && data.avisos.length) ? `\n\nTenga en cuenta:\n• ${data.avisos.join('\n• ')}` : '';
+    alert(`¡Asistencia guardada con éxito! Se registraron ${data.registrosInsertados} colaboradores en estado Yellow.${avisosTxt}`);
     cerrarModalRegistroAsistencia();
     await onAsistenciaFiltroChange();
   } catch (err) {
     console.error('[asistencia] Error guardarAsistenciaDiaria:', err);
     if (errorMsg) {
       errorMsg.textContent = err.message || 'Error al guardar la asistencia';
+      errorMsg.style.whiteSpace = 'pre-line';
       errorMsg.style.display = 'block';
     } else {
       alert(`Error: ${err.message}`);
@@ -1922,6 +1922,7 @@ async function guardarNovedadRango() {
     console.error('[asistencia] Error guardarNovedadRango:', err);
     if (errorMsg) {
       errorMsg.textContent = err.message || 'Error al guardar la novedad';
+      errorMsg.style.whiteSpace = 'pre-line';
       errorMsg.style.display = 'block';
     } else {
       alert(`Error: ${err.message}`);
