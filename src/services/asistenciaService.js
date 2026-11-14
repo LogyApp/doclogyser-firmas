@@ -485,7 +485,7 @@ async function registrarAsistenciaDiaria({
         operacion, // Origen
         fechaRegistro,
         usuario,
-        area || null, // Disponible1
+        areaFinal || null, // Disponible1 (por defecto igual a Area)
         'Yellow', // Estado
         observaciones || null
       ]);
@@ -627,6 +627,17 @@ async function registrarNovedadPorRango({
       }
     }
 
+    let areaFinal = area;
+    if (!areaFinal) {
+      const [vRows] = await conn.execute(
+        'SELECT Area FROM `Maestro_Vinculación` WHERE `Identificación` = ? LIMIT 1',
+        [trab.identificacion]
+      );
+      if (vRows.length && vRows[0].Area) {
+        areaFinal = String(vRows[0].Area);
+      }
+    }
+
     // 1. Insertar cabecera en Dynamic_Registro_Asistencia con Disponible = 1
     await conn.execute(`
       INSERT INTO Dynamic_Registro_Asistencia (
@@ -643,7 +654,7 @@ async function registrarNovedadPorRango({
     `, [
       idRegistro,
       null, // En Dynamic_Registro_Asistencia la operacion principal es Origen; Operación solo se usa si hay apoyo
-      area || null,
+      areaFinal || null,
       novedad,
       trab.trabajador,
       diaInicio,
@@ -676,7 +687,7 @@ async function registrarNovedadPorRango({
         (novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) ? 'Incapacidad' : novedad,
         prefijoEfectivo,
         diaStr,
-        area || null,
+        areaFinal || null,
         trab.trabajador,
         trab.identificacion,
         trab.nombreCompleto,
@@ -878,6 +889,8 @@ async function listarAsistencias({
       DATE_FORMAT(da.\`Día\`, '%Y-%m-%d') AS dia,
       da.Area AS area,
       COALESCE(carea.AREA, da.Area) AS areaNombre,
+      da.Disponible1 AS disponible1,
+      COALESCE(capoyo.AREA, da.Disponible1) AS areaApoyoNombre,
       TRIM(SUBSTRING_INDEX(COALESCE(ms.Trabajador, da.Nombre, da.Trabajador, ''), '**', -1)) AS trabajador,
       COALESCE(ms.Identificación, da.Cédula) AS cedula,
       TRIM(SUBSTRING_INDEX(COALESCE(ms.Trabajador, da.Nombre, da.Trabajador, ''), '**', -1)) AS nombre,
@@ -901,6 +914,7 @@ async function listarAsistencias({
     LEFT JOIN Config_Asistencia ca ON da.Novedad = ca.Novedad
     LEFT JOIN Maestro_Segmentación ms ON da.Cédula = ms.Identificación
     LEFT JOIN Config_Area carea ON da.Area = carea.ID
+    LEFT JOIN Config_Area capoyo ON da.Disponible1 = capoyo.ID
     WHERE ${whereSql}
     ORDER BY da.\`Día\` DESC, da.\`Fecha Registro\` DESC, da.IdAsistencia DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -1106,6 +1120,88 @@ async function eliminarRegistroAsistencia({ idAsistencia, usuario, rol, operacio
 }
 
 /**
+ * Elimina registros de asistencia en lote validando permisos y bloqueo
+ */
+async function eliminarRegistrosAsistenciaLote({ idsAsistencia = [], usuario, rol, operacionesPermitidas = [], sinFiltro = false }) {
+  if (!idsAsistencia || !Array.isArray(idsAsistencia) || !idsAsistencia.length) {
+    throw new Error('No se enviaron registros para eliminar.');
+  }
+
+  const paramsCfg = await obtenerParametrosAsistencia();
+  const rolNorm = (rol || '').toLowerCase().trim();
+  const puedeTodos = paramsCfg.rolesEditarEliminarTodosEstados.map(r => r.toLowerCase().trim()).includes(rolNorm);
+  const puedeYellow = paramsCfg.rolesEditarEliminarYellow.map(r => r.toLowerCase().trim()).includes(rolNorm);
+
+  if (!puedeTodos && !puedeYellow) {
+    throw new Error('Tu rol no tiene permiso para eliminar registros.');
+  }
+
+  const placeholders = idsAsistencia.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT IdAsistencia, \`Operación\` as operacion, Novedad as novedad, DATE_FORMAT(\`Día\`, "%Y-%m-%d") as dia, Estado as estado 
+     FROM Dynamic_Asistencia 
+     WHERE IdAsistencia IN (${placeholders})`,
+    idsAsistencia
+  );
+
+  if (!rows.length) {
+    throw new Error('No se encontraron los registros seleccionados.');
+  }
+
+  const eliminables = [];
+  const noEliminables = [];
+
+  for (const rec of rows) {
+    if (!sinFiltro && !operacionesPermitidas.includes(rec.operacion)) {
+      noEliminables.push(`${rec.IdAsistencia}: Sin permiso en sede`);
+      continue;
+    }
+    const esAsistencia = (rec.novedad || '').trim().toLowerCase() === 'asistencia';
+    const esYellow = (rec.estado || '').toLowerCase() === 'yellow';
+
+    if (rec.estado === 'Green' && !puedeTodos) {
+      noEliminables.push(`${rec.IdAsistencia}: Bloqueado en Green`);
+      continue;
+    }
+    if (esYellow && !puedeTodos && esAsistencia) {
+      noEliminables.push(`${rec.IdAsistencia}: Asistencia no eliminable para este rol`);
+      continue;
+    }
+    if (!esYellow && !puedeTodos) {
+      noEliminables.push(`${rec.IdAsistencia}: Estado no permitido`);
+      continue;
+    }
+
+    if (!puedeTodos) {
+      const b = await verificarBloqueoNomina(rec.operacion, rec.dia, rol);
+      if (b.bloqueado) {
+        noEliminables.push(`${rec.IdAsistencia}: Bloqueado por nómina`);
+        continue;
+      }
+    }
+
+    eliminables.push(rec.IdAsistencia);
+  }
+
+  if (!eliminables.length) {
+    throw new Error(`Ningún registro pudo ser eliminado (${noEliminables.slice(0, 3).join(', ')})`);
+  }
+
+  const delPlaceholders = eliminables.map(() => '?').join(',');
+  await pool.query(
+    `DELETE FROM Dynamic_Asistencia WHERE IdAsistencia IN (${delPlaceholders})`,
+    eliminables
+  );
+
+  return {
+    ok: true,
+    eliminados: eliminables.length,
+    noEliminados: noEliminables.length,
+    detallesNoEliminados: noEliminables
+  };
+}
+
+/**
  * Edita un registro de asistencia validando permisos y bloqueo
  */
 async function editarRegistroAsistencia({
@@ -1119,6 +1215,7 @@ async function editarRegistroAsistencia({
   novedad,
   prefijoNovedad,
   area,
+  disponible1,
   apoyoOtraOperacion,
   operacionApoya,
   tipoIncapacidad,
@@ -1127,7 +1224,7 @@ async function editarRegistroAsistencia({
   observaciones
 }) {
   const [rows] = await pool.query(
-    'SELECT IdAsistencia, `Operación` as operacion, Novedad as novedad, TIME_FORMAT(`Hora Llegada`, "%H:%i") as horaLlegada, TIME_FORMAT(`Hora Salida`, "%H:%i") as horaSalida, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    'SELECT IdAsistencia, `Operación` as operacion, Area as area, Disponible1 as disponible1, Novedad as novedad, TIME_FORMAT(`Hora Llegada`, "%H:%i") as horaLlegada, TIME_FORMAT(`Hora Salida`, "%H:%i") as horaSalida, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
     [idAsistencia]
   );
   if (!rows.length) throw new Error('El registro no existe.');
@@ -1194,6 +1291,9 @@ async function editarRegistroAsistencia({
     }
   }
 
+  const actualizarDisponible1 = esAsistencia && disponible1 !== undefined;
+  const disponible1Final = actualizarDisponible1 ? (disponible1 || area || rec.area || null) : null;
+
   await pool.query(`
     UPDATE Dynamic_Asistencia SET
       \`Hora Llegada\` = ?,
@@ -1202,6 +1302,7 @@ async function editarRegistroAsistencia({
       Novedad = COALESCE(?, Novedad),
       \`Prefijo Novedad\` = COALESCE(?, \`Prefijo Novedad\`),
       Area = COALESCE(?, Area),
+      Disponible1 = CASE WHEN ? = 1 THEN ? ELSE Disponible1 END,
       \`Apoyo Otra Operación\` = COALESCE(?, \`Apoyo Otra Operación\`),
       \`Operación a la que Apoya\` = ?,
       \`Tipo Incapacidad\` = ?,
@@ -1216,6 +1317,8 @@ async function editarRegistroAsistencia({
     novedad || null,
     nuevoPrefijo || null,
     area || null,
+    actualizarDisponible1 ? 1 : 0,
+    disponible1Final,
     apoyoOtraOperacion || null,
     operacionApoya || null,
     tipoIncapacidad || null,
@@ -1239,6 +1342,7 @@ module.exports = {
   registrarNovedadPorRango,
   editarRegistroAsistencia,
   eliminarRegistroAsistencia,
+  eliminarRegistrosAsistenciaLote,
   listarAsistencias,
   obtenerMetricasAsistencia,
   calcularTiempoLaborado,

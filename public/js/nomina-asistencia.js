@@ -1042,7 +1042,7 @@ async function fetchAsistenciaData() {
   const emptyState = document.getElementById('asisEmptyState');
   const pagBar = document.getElementById('asisPaginacion');
 
-  if (tbody) tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando registros de asistencia...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:30px; color:var(--text-muted);">Cargando registros de asistencia...</td></tr>';
   if (emptyState) emptyState.style.display = 'none';
 
   const anio = document.getElementById('asisFilterAnio')?.value || '2026';
@@ -1105,10 +1105,11 @@ async function fetchAsistenciaData() {
       return;
     }
 
+    await asegurarAreasOperaciones(_asisState.registros);
     renderTablaAsistencias(_asisState.registros);
   } catch (err) {
     console.error('[asistencia] Error fetchAsistenciaData:', err);
-    if (tbody) tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#ef4444;">Error al cargar datos: ${esc(err.message)}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:20px; color:#ef4444;">Error al cargar datos: ${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -1120,6 +1121,135 @@ function limpiarNombreColaborador(str) {
 }
 
 // Renderizar filas de la tabla (Columna Día con círculo indicador de Estado)
+async function asegurarAreasOperaciones(registros) {
+  const ops = [...new Set((registros || []).map(r => r.operacion).filter(Boolean))];
+  const opsPorCargar = ops.filter(op => !_areasOperacionEditCache[op]);
+  if (opsPorCargar.length > 0) {
+    await Promise.all(opsPorCargar.map(async (op) => {
+      try {
+        const r = await fetch(`/nomina/api/asistencia/areas?usuario=${encodeURIComponent(usuario)}&operacion=${encodeURIComponent(op)}`);
+        const data = await r.json();
+        _areasOperacionEditCache[op] = data.areas || [];
+      } catch (e) {
+        console.warn('[asistencia] Error precargando áreas para', op, e);
+        _areasOperacionEditCache[op] = [];
+      }
+    }));
+  }
+}
+
+// ── Control de selección masiva para eliminación ──────────────────────────────
+function toggleSelectAllAsistencias(checked) {
+  const chks = document.querySelectorAll('.asis-chk-fila');
+  chks.forEach(c => { c.checked = checked; });
+  actualizarBarraAccionesLote();
+}
+
+function onAsisFilaCheckChange() {
+  const chks = document.querySelectorAll('.asis-chk-fila');
+  const todos = Array.from(chks).every(c => c.checked);
+  const alguno = Array.from(chks).some(c => c.checked);
+  const chkAll = document.getElementById('asisChkSelectAll');
+  if (chkAll) {
+    chkAll.checked = chks.length > 0 && todos;
+    chkAll.indeterminate = alguno && !todos;
+  }
+  actualizarBarraAccionesLote();
+}
+
+function actualizarBarraAccionesLote() {
+  const chks = document.querySelectorAll('.asis-chk-fila:checked');
+  const count = chks.length;
+  const barra = document.getElementById('asisBarraAccionesLote');
+  const lbl = document.getElementById('asisContadorLote');
+  if (barra) barra.style.display = count > 0 ? 'inline-flex' : 'none';
+  if (lbl) lbl.textContent = `${count} seleccionado${count === 1 ? '' : 's'}`;
+}
+
+async function eliminarAsistenciasSeleccionadas() {
+  const chks = document.querySelectorAll('.asis-chk-fila:checked');
+  const ids = Array.from(chks).map(c => c.value);
+  if (!ids.length) {
+    alert('No hay registros seleccionados para eliminar.');
+    return;
+  }
+
+  if (!confirm(`¿Está seguro de que desea eliminar los ${ids.length} registro(s) seleccionados? Esta acción no se puede deshacer.`)) {
+    return;
+  }
+
+  try {
+    const r = await fetch('/nomina/api/asistencia/eliminar-lote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) {
+      throw new Error(data.error || 'Error al eliminar registros');
+    }
+
+    alert(`Se eliminaron con éxito ${data.eliminados} registro(s).`);
+    const chkAll = document.getElementById('asisChkSelectAll');
+    if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+    actualizarBarraAccionesLote();
+    await fetchAsistenciaData();
+  } catch (err) {
+    console.error('[asistencia] Error eliminarAsistenciasSeleccionadas:', err);
+    alert(`Error al eliminar: ${err.message}`);
+  }
+}
+
+async function cambiarAreaApoyoInline(selectEl, idAsistencia, operacion, areaDefecto) {
+  const nuevoAreaId = selectEl.value || areaDefecto || null;
+  const prevValue = selectEl.getAttribute('data-prev') || '';
+  selectEl.disabled = true;
+  selectEl.style.boxShadow = '0 0 0 2px var(--accent)';
+
+  try {
+    const r = await fetch(`/nomina/api/asistencia/${encodeURIComponent(idAsistencia)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario,
+        novedad: 'Asistencia',
+        disponible1: nuevoAreaId
+      })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) {
+      throw new Error(data.error || 'Error al actualizar área apoyo');
+    }
+
+    // Actualizar datos locales en memoria
+    const reg = _asisState.registros.find(x => String(x.idAsistencia) === String(idAsistencia));
+    if (reg) {
+      reg.disponible1 = nuevoAreaId;
+      const areasOp = _areasOperacionEditCache[operacion] || [];
+      const matchArea = areasOp.find(a => String(a.id) === String(nuevoAreaId));
+      reg.areaApoyoNombre = matchArea ? matchArea.area : (nuevoAreaId || null);
+    }
+    selectEl.setAttribute('data-prev', nuevoAreaId);
+
+    // Feedback visual breve en verde
+    selectEl.style.boxShadow = '0 0 0 2px #16a34a';
+    setTimeout(() => {
+      selectEl.style.boxShadow = '';
+      selectEl.disabled = false;
+    }, 500);
+  } catch (err) {
+    console.error('[asistencia] Error cambiarAreaApoyoInline:', err);
+    alert(`No se pudo cambiar el Área Apoyo: ${err.message}`);
+    selectEl.value = prevValue;
+    selectEl.style.boxShadow = '0 0 0 2px #ef4444';
+    setTimeout(() => {
+      selectEl.style.boxShadow = '';
+      selectEl.disabled = false;
+    }, 1000);
+  }
+}
+
+// Renderizar filas de la tabla (Columna Día con círculo indicador de Estado)
 function renderTablaAsistencias(registros) {
   const tbody = document.getElementById('asistenciaBody');
   if (!tbody) return;
@@ -1127,6 +1257,15 @@ function renderTablaAsistencias(registros) {
   const cfg = obtenerConfigAsistencia();
   const puedeTodos = !!cfg.puedeEditarTodosEstados;
   const puedeYellow = !!cfg.puedeEditarYellow;
+  const puedeEliminar = puedeTodos || puedeYellow;
+
+  const thAcciones = document.getElementById('asisThAcciones');
+  if (thAcciones) {
+    thAcciones.style.display = puedeEliminar ? '' : 'none';
+  }
+  const chkAll = document.getElementById('asisChkSelectAll');
+  if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+  actualizarBarraAccionesLote();
 
   tbody.innerHTML = registros.map(r => {
     const estado = r.estado || 'Yellow';
@@ -1153,13 +1292,13 @@ function renderTablaAsistencias(registros) {
 
     const soportes = [];
     if (r.urlSoporte) {
-      soportes.push(`<a href="${esc(r.urlSoporte)}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" title="Ver Soporte" style="color:#0284c7; background:rgba(2,132,199,0.1);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>`);
+      soportes.push(`<a href="${esc(r.urlSoporte)}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" title="Ver Soporte" onclick="event.stopPropagation()" style="color:#0284c7; background:rgba(2,132,199,0.1);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>`);
     }
     if (r.urlIncapacidad) {
-      soportes.push(`<a href="${esc(r.urlIncapacidad)}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" title="Ver Incapacidad" style="color:#d97706; background:rgba(245,158,11,0.1);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg></a>`);
+      soportes.push(`<a href="${esc(r.urlIncapacidad)}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" title="Ver Incapacidad" onclick="event.stopPropagation()" style="color:#d97706; background:rgba(245,158,11,0.1);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg></a>`);
     }
     if (r.urlHistoriaClinica) {
-      soportes.push(`<a href="${esc(r.urlHistoriaClinica)}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" title="Ver Historia Clínica" style="color:#dc2626; background:rgba(239,68,68,0.1);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></a>`);
+      soportes.push(`<a href="${esc(r.urlHistoriaClinica)}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" title="Ver Historia Clínica" onclick="event.stopPropagation()" style="color:#dc2626; background:rgba(239,68,68,0.1);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></a>`);
     }
     const soportesHtml = soportes.length ? `<div style="display:flex; gap:6px;">${soportes.join('')}</div>` : '<span style="color:var(--text-muted); font-size:.78rem;">-</span>';
 
@@ -1173,32 +1312,47 @@ function renderTablaAsistencias(registros) {
     // Eliminación: Sistema y Nómina pueden todo. Demás roles solo si está en Yellow Y la novedad es diferente a Asistencia.
     const puedeEliminarFila = puedeTodos || (puedeYellow && esYellow && !esAsistencia);
 
-    let botonesAcciones = [];
-    if (puedeEditarFila) {
-      botonesAcciones.push(`
-        <button type="button" class="btn-icon-circle" title="Editar registro" onclick="abrirModalEditarAsistencia(${r.idAsistencia})" style="color:var(--accent); background:var(--bg-elevated); border:1px solid var(--border); padding:4px; border-radius:4px; cursor:pointer;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-        </button>
-      `);
-    }
-    if (puedeEliminarFila) {
-      botonesAcciones.push(`
-        <button type="button" class="btn-icon-circle" title="Eliminar registro" onclick="eliminarAsistenciaRegistro(${r.idAsistencia})" style="color:#ef4444; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:4px; border-radius:4px; cursor:pointer;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-        </button>
-      `);
+    // Columna ACCIONES al principio (con checkbox para lote y botón individual)
+    let tdAcciones = '';
+    if (puedeEliminar) {
+      tdAcciones = `
+        <td style="text-align:center;" onclick="event.stopPropagation()">
+          <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+            ${puedeEliminarFila ? `
+              <input type="checkbox" class="asis-chk-fila" value="${esc(r.idAsistencia)}" onchange="onAsisFilaCheckChange()" onclick="event.stopPropagation()" style="cursor:pointer;">
+              <button type="button" class="btn-icon-circle" title="Eliminar registro" onclick="event.stopPropagation(); eliminarAsistenciaRegistro('${esc(r.idAsistencia)}')" style="color:#ef4444; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:4px; border-radius:4px; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            ` : '<span style="color:var(--text-muted); font-size:.78rem;">-</span>'}
+          </div>
+        </td>
+      `;
     }
 
-    const accionesHtml = botonesAcciones.length
-      ? `<div style="display:flex; gap:6px; justify-content:center;">${botonesAcciones.join('')}</div>`
-      : '<span style="color:var(--text-muted); font-size:.78rem;">-</span>';
+    // Columna ÁREA APOYO (editable inline si es Asistencia y tiene permisos de edición, sin opción "Sin Apoyo")
+    let tdAreaApoyo = '';
+    const areasOp = _areasOperacionEditCache[r.operacion] || [];
+    const valApoyoEfectivo = String(r.disponible1 || r.area || '');
+    if (esAsistencia && puedeEditarFila) {
+      tdAreaApoyo = `
+        <td onclick="event.stopPropagation()" style="font-size:.82rem;">
+          <select class="asis-inline-area-apoyo" data-prev="${esc(valApoyoEfectivo)}" onchange="cambiarAreaApoyoInline(this, '${esc(r.idAsistencia)}', '${esc(r.operacion)}', '${esc(r.area || '')}')" onclick="event.stopPropagation()" style="width:100%; min-width:130px; max-width:160px; padding:3px 6px; font-size:.78rem; border:1px solid var(--border); border-radius:4px; background:var(--bg-elevated); color:var(--text); cursor:pointer;">
+            ${areasOp.map(a => `<option value="${a.id}" ${valApoyoEfectivo === String(a.id) ? 'selected' : ''}>${esc(a.area)}</option>`).join('')}
+          </select>
+        </td>
+      `;
+    } else {
+      tdAreaApoyo = `<td style="font-size:.82rem;">${esc(r.areaApoyoNombre || r.disponible1 || r.areaNombre || r.area || '-')}</td>`;
+    }
 
     return `
-      <tr class="cesantias-table-row">
+      <tr class="cesantias-table-row" style="${puedeEditarFila ? 'cursor:pointer;' : ''}" ${puedeEditarFila ? `onclick="abrirModalEditarAsistencia('${esc(r.idAsistencia)}')"` : ''}>
+        ${tdAcciones}
         <td style="font-weight:600; font-size:.82rem; white-space:nowrap;">${dotHtml}${esc(r.dia)}</td>
         <td style="font-size:.82rem; white-space:nowrap;">${esc(r.quincena || '-')}</td>
         <td style="font-size:.82rem;">${esc(r.operacion || '-')}</td>
         <td style="font-size:.82rem;">${esc(r.areaNombre || r.area || '-')}</td>
+        ${tdAreaApoyo}
         <td>
           <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(limpiarNombreColaborador(r.trabajador || r.nombre || ''))}</div>
           <div style="font-size:.74rem; color:var(--text-muted);">C.C. ${esc(r.cedula || '')}</div>
@@ -1212,13 +1366,10 @@ function renderTablaAsistencias(registros) {
           <div style="font-size:.78rem; font-weight:600;">${esc(r.usuario || '-')}</div>
           <div style="font-size:.72rem; color:var(--text-muted);">${esc(r.fechaRegistro || '')}</div>
         </td>
-        <td style="text-align:center;">${accionesHtml}</td>
       </tr>
     `;
   }).join('');
-}
-
-// ══════════════════════════════════════════════════════════════════════════
+}// ══════════════════════════════════════════════════════════════════════════
 // MODAL DE REGISTRO INTERACTIVO (INGRESAR EVENTO)
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -1785,8 +1936,36 @@ async function guardarNovedadRango() {
 // EDICIÓN Y ELIMINACIÓN DE REGISTROS (MODAL EDITAR)
 // ══════════════════════════════════════════════════════════════════════════
 
+const _areasOperacionEditCache = {};
+
+async function cargarAreasParaEdicion(operacion, idSeleccionado, areaOrigenDefecto) {
+  const sel = document.getElementById('asisEditAreaApoyo');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Cargando áreas...</option>';
+
+  let areas = _areasOperacionEditCache[operacion];
+  if (!areas) {
+    try {
+      const r = await fetch(`/nomina/api/asistencia/areas?usuario=${encodeURIComponent(usuario)}&operacion=${encodeURIComponent(operacion)}`);
+      const data = await r.json();
+      areas = data.areas || [];
+      _areasOperacionEditCache[operacion] = areas;
+    } catch (e) {
+      console.error('[asistencia] Error cargando áreas para edición:', e);
+      areas = [];
+    }
+  }
+
+  sel.innerHTML = areas.map(a => `<option value="${a.id}">${esc(a.area)}</option>`).join('');
+
+  const targetVal = String(idSeleccionado || areaOrigenDefecto || '');
+  if (targetVal) {
+    sel.value = targetVal;
+  }
+}
+
 function abrirModalEditarAsistencia(idAsistencia) {
-  const reg = _asisState.registros.find(r => r.idAsistencia === idAsistencia);
+  const reg = _asisState.registros.find(r => String(r.idAsistencia) === String(idAsistencia));
   if (!reg) return;
 
   const modal = document.getElementById('modalEditarAsistenciaOverlay');
@@ -1799,6 +1978,12 @@ function abrirModalEditarAsistencia(idAsistencia) {
   document.getElementById('asisEditColaborador').value = `${reg.cedula || ''} - ${limpiarNombreColaborador(reg.trabajador || reg.nombre || '')}`;
   document.getElementById('asisEditDia').value = reg.dia || '';
   document.getElementById('asisEditOperacion').value = reg.operacion || '';
+
+  const inputAreaOrigen = document.getElementById('asisEditAreaOrigen');
+  if (inputAreaOrigen) {
+    inputAreaOrigen.value = reg.areaNombre || reg.area || '';
+  }
+
   document.getElementById('asisEditNovedad').value = reg.novedad || 'Asistencia';
   document.getElementById('asisEditHoraEntrada').value = reg.horaLlegada || '';
   document.getElementById('asisEditHoraSalida').value = reg.horaSalida || '';
@@ -1815,6 +2000,9 @@ function abrirModalEditarAsistencia(idAsistencia) {
   }
 
   document.getElementById('asisEditObs').value = reg.observaciones || '';
+
+  // Cargar áreas de la operación para Área Apoyo
+  cargarAreasParaEdicion(reg.operacion, reg.disponible1, reg.area);
 
   onEditTipoNovedadChange();
 
@@ -1833,12 +2021,22 @@ function onEditTipoNovedadChange() {
   const nov = document.getElementById('asisEditNovedad')?.value || '';
   const wrapHorario = document.getElementById('asisEditWrapHorario');
   const wrapDiag = document.getElementById('asisEditWrapDiag');
+  const selAreaApoyo = document.getElementById('asisEditAreaApoyo');
+  const hintAreaApoyo = document.getElementById('asisEditAreaApoyoHint');
 
   const esAsistencia = nov === 'Asistencia';
   const esIncapacidad = nov.toLowerCase().includes('incapacidad');
 
   if (wrapHorario) wrapHorario.style.display = esAsistencia ? 'contents' : 'none';
   if (wrapDiag) wrapDiag.style.display = esIncapacidad ? 'block' : 'none';
+
+  if (selAreaApoyo) {
+    selAreaApoyo.disabled = !esAsistencia;
+    selAreaApoyo.style.opacity = esAsistencia ? '1' : '0.6';
+  }
+  if (hintAreaApoyo) {
+    hintAreaApoyo.style.display = esAsistencia ? 'none' : 'block';
+  }
 }
 
 async function guardarEdicionAsistencia() {
@@ -1854,6 +2052,13 @@ async function guardarEdicionAsistencia() {
   const codDiagnostico = document.getElementById('asisEditCodDiag')?.value || null;
   const diagnostico = document.getElementById('asisEditDiag')?.value || null;
   const observaciones = document.getElementById('asisEditObs')?.value || '';
+
+  const esAsistencia = novedad === 'Asistencia';
+  let areaApoyo = null;
+  if (esAsistencia) {
+    const regOrig = _asisState.registros.find(x => String(x.idAsistencia) === String(idAsistencia));
+    areaApoyo = document.getElementById('asisEditAreaApoyo')?.value || regOrig?.area || null;
+  }
 
   if (!idAsistencia || !dia || !novedad) {
     alert('Faltan campos obligatorios para actualizar el registro.');
@@ -1875,6 +2080,7 @@ async function guardarEdicionAsistencia() {
         novedad,
         horaEntrada,
         horaSalida,
+        disponible1: esAsistencia ? areaApoyo : undefined,
         codDiagnostico,
         diagnostico,
         observaciones

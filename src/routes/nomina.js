@@ -19,6 +19,7 @@ const {
   registrarNovedadPorRango,
   editarRegistroAsistencia,
   eliminarRegistroAsistencia,
+  eliminarRegistrosAsistenciaLote,
   listarAsistencias,
   obtenerMetricasAsistencia,
   obtenerQuincenaFecha,
@@ -2680,6 +2681,7 @@ router.put('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res)
     const idAsistencia = req.params.id;
     const {
       horaEntrada, horaSalida, horaLlegada, novedad, prefijoNovedad, area,
+      disponible1, areaApoyo,
       apoyoOtraOperacion, operacionApoya, tipoIncapacidad,
       codDiagnostico, diagnostico, observaciones
     } = req.body;
@@ -2692,6 +2694,7 @@ router.put('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res)
       novedad,
       prefijoNovedad,
       area,
+      disponible1: disponible1 !== undefined ? disponible1 : areaApoyo,
       apoyoOtraOperacion,
       operacionApoya,
       tipoIncapacidad,
@@ -2726,6 +2729,26 @@ router.delete('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, r
     res.json(resultado);
   } catch (err) {
     console.error('[DELETE /api/asistencia/:id]', err);
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+// 8. Eliminar registros de asistencia en lote
+router.post('/api/asistencia/eliminar-lote', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    const acceso = req.accesoAsistencia;
+
+    const resultado = await eliminarRegistrosAsistenciaLote({
+      idsAsistencia: ids,
+      usuario: req.usuarioId,
+      rol: req.usuarioRol,
+      operacionesPermitidas: acceso.operacionesFiltro,
+      sinFiltro: acceso.sinFiltro
+    });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[POST /api/asistencia/eliminar-lote]', err);
     res.status(400).json({ ok: false, error: err.message });
   }
 });

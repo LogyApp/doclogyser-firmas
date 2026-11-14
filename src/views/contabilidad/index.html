@@ -1055,6 +1055,27 @@
       background: var(--bg-elevated);
     }
 
+    #modalConsignacion .modal-card {
+      max-height: min(92vh, calc(100vh - 28px));
+      max-height: min(92dvh, calc(100dvh - 28px));
+    }
+
+    #modalConsignacion .modal-header,
+    #modalConsignacion .modal-footer {
+      flex-shrink: 0;
+    }
+
+    #formConsignacion {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    #formConsignacion .modal-body {
+      min-height: 0;
+    }
+
     .form-group {
       display: flex;
       flex-direction: column;

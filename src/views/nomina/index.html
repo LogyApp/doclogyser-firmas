@@ -2133,16 +2133,30 @@
       <!-- Tabla de Registros -->
       <div class="card" style="margin-top:14px;">
         <div class="barra-descarga">
-          <div class="contador-resultados" id="asisContador">Cargando registros...</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div class="contador-resultados" id="asisContador">Cargando registros...</div>
+            <div id="asisBarraAccionesLote" style="display:none; align-items:center; gap:8px;">
+              <span id="asisContadorLote" style="font-size:.82rem; font-weight:600; color:var(--text);">0 seleccionados</span>
+              <button type="button" class="btn-reset" onclick="eliminarAsistenciasSeleccionadas()" style="background:#ef4444; color:#fff; border:1px solid #dc2626; padding:4px 10px; border-radius:6px; font-size:.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Eliminar seleccionados
+              </button>
+            </div>
+          </div>
         </div>
         <div class="table-container" style="max-height: 600px; overflow-y: auto;">
           <table class="retiros-table" id="asistenciaTable">
             <thead>
-              <tr>
+              <tr id="asistenciaHeaderRow">
+                <th id="asisThAcciones" style="width:95px; text-align:center;">
+                  <input type="checkbox" id="asisChkSelectAll" onchange="toggleSelectAllAsistencias(this.checked)" title="Seleccionar todos para eliminar" style="cursor:pointer; vertical-align:middle; margin-right:4px;">
+                  Acciones
+                </th>
                 <th style="width:110px">Día</th>
                 <th style="width:125px">Quincena</th>
                 <th style="width:140px">Operación</th>
-                <th style="width:120px">Área</th>
+                <th style="width:120px">Área Origen</th>
+                <th style="width:150px">Área Apoyo</th>
                 <th style="width:230px">Colaborador</th>
                 <th style="width:160px">Novedad</th>
                 <th style="width:95px">Horario</th>
@@ -2150,7 +2164,6 @@
                 <th style="width:180px">Observación / Diagnóstico</th>
                 <th style="width:90px">Soportes</th>
                 <th style="width:130px">Registrado Por</th>
-                <th style="width:85px; text-align:center;">Acciones</th>
               </tr>
             </thead>
             <tbody id="asistenciaBody"></tbody>
@@ -2413,6 +2426,17 @@
         <div class="filtro-field">
           <label>Operación</label>
           <input type="text" id="asisEditOperacion" disabled style="background:var(--bg-elevated); opacity:0.85;">
+        </div>
+        <div class="filtro-field">
+          <label>Área Origen</label>
+          <input type="text" id="asisEditAreaOrigen" disabled style="background:var(--bg-elevated); opacity:0.85;">
+        </div>
+        <div class="filtro-field" id="asisEditWrapAreaApoyo">
+          <label id="asisEditLblAreaApoyo">Área Apoyo</label>
+          <select id="asisEditAreaApoyo" style="width:100%;">
+            <option value="">Seleccione área apoyo...</option>
+          </select>
+          <span id="asisEditAreaApoyoHint" style="font-size:.72rem; color:var(--text-muted); display:none;">Solo editable cuando la novedad es Asistencia</span>
         </div>
         <div class="filtro-field" style="grid-column: 1 / -1;">
           <label>Novedad / Evento *</label>
@@ -9953,7 +9977,7 @@
 <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/boton-sync.js" defer></script>
-<script src="/js/nomina-asistencia.js?v=20261105"></script>
+<script src="/js/nomina-asistencia.js?v=20261113c"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>
 </html>
