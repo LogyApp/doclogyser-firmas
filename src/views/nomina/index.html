@@ -2339,9 +2339,9 @@
             ¿Es apoyo de otra operación?
           </label>
           <div id="asisWrapOpApoya" style="display:none; margin-top:10px;">
-            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">Escoge la operación que apoya:</label>
-            <select id="asisModalOpApoya" style="width:100%; margin-top:4px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
-              <option value="">Seleccione operación destino...</option>
+            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">¿De qué operación viene el colaborador que apoya?</label>
+            <select id="asisModalOpApoya" onchange="onOpApoyaChange()" style="width:100%; margin-top:4px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+              <option value="">Seleccione la operación de origen...</option>
             </select>
           </div>
         </div>
@@ -10066,7 +10066,7 @@
 <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/boton-sync.js" defer></script>
-<script src="/js/nomina-asistencia.js?v=20261114a"></script>
+<script src="/js/nomina-asistencia.js?v=20261114b"></script>
 <script src="/js/nomina-control-quincena.js?v=20261114a"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>

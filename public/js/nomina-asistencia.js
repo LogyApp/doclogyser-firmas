@@ -297,10 +297,8 @@ function actualizarOperacionesApoyoRegional(opBase) {
     opsMismaRegional = cfg.opsPorRegional[regionalBase].filter(o => o !== opBase);
   }
 
-  // Si el usuario no tiene sinFiltro, intersectar con sus operaciones permitidas
-  if (!cfg.sinFiltro && cfg.operacionesFiltro && cfg.operacionesFiltro.length) {
-    opsMismaRegional = opsMismaRegional.filter(o => cfg.operacionesFiltro.includes(o));
-  }
+  // No se cruza con las operaciones del usuario: quien recibe el apoyo (operación destino) registra la
+  // asistencia de colaboradores que pertenecen a otra operación de su misma regional.
 
   opsMismaRegional.sort((a, b) => a.localeCompare(b, 'es'));
 
@@ -309,7 +307,7 @@ function actualizarOperacionesApoyoRegional(opBase) {
     return;
   }
 
-  let opts = '<option value="">Escoge la operación que apoya...</option>';
+  let opts = '<option value="">Seleccione la operación de origen...</option>';
   opsMismaRegional.forEach(o => {
     opts += `<option value="${esc(o)}">${esc(o)}</option>`;
   });
