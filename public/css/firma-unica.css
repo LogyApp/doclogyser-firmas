@@ -1,0 +1,86 @@
+/* Firma única (Portal del aspirante). Complementa seleccion.css (generado) con las clases que usa
+   esta pantalla y el formulario de los documentos y que seleccion.css no trae. Escrito a mano para no
+   depender del script externo de Tailwind (ver public/css/README.md). */
+.accent-\[\#F15A22\] { accent-color: #F15A22; }
+.align-bottom { vertical-align: bottom; }
+.bg-\[color\:var\(--navy\)\] { background-color: var(--navy); }
+.bg-\[color\:var\(--orange\)\] { background-color: var(--orange); }
+.text-\[color\:var\(--navy\)\] { color: var(--navy); }
+.text-\[color\:var\(--orange\)\] { color: var(--orange); }
+.border-\[color\:var\(--orange\)\] { border-color: var(--orange); }
+.border-t-\[color\:var\(--orange\)\] { border-top-color: var(--orange); }
+.border-\[3px\] { border-width: 3px; border-style: solid; }
+.bg-amber-500 { background-color: #f59e0b; }
+.bg-emerald-500 { background-color: #10b981; }
+.bg-red-500 { background-color: #ef4444; }
+.bg-orange-50\/60 { background-color: rgba(255, 247, 237, .6); }
+.bg-slate-900\/40 { background-color: rgba(15, 23, 42, .4); }
+.bg-white\/15 { background-color: rgba(255, 255, 255, .15); }
+.bg-white\/95 { background-color: rgba(255, 255, 255, .95); }
+.border-orange-300 { border-color: #fdba74; }
+.border-slate-500 { border-color: #64748b; }
+.border-slate-800 { border-color: #1e293b; }
+.shadow-slate-900\/10 { --tw-shadow-color: rgba(15, 23, 42, .1); }
+.bottom-0 { bottom: 0; }
+.bottom-12 { bottom: 3rem; }
+.left-6 { left: 1.5rem; }
+.right-6 { right: 1.5rem; }
+.inset-x-0 { left: 0; right: 0; }
+.divide-y > :not(:last-child) { border-bottom: 1px solid #f1f5f9; }
+.divide-slate-100 > :not(:last-child) { border-color: #f1f5f9; }
+.first\:border-t-0:first-child { border-top-width: 0; }
+.focus\:ring-2:focus { box-shadow: 0 0 0 2px var(--tw-ring-color, #fb923c); }
+.focus\:ring-orange-400:focus { --tw-ring-color: #fb923c; }
+.focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
+.h-1\.5 { height: .375rem; }
+.h-7 { height: 1.75rem; }
+.h-11 { height: 2.75rem; }
+.h-36 { height: 9rem; }
+.w-7 { width: 1.75rem; }
+.w-11 { width: 2.75rem; }
+.w-28 { width: 7rem; }
+.w-\[44\%\] { width: 44%; }
+.w-\[56\%\] { width: 56%; }
+.max-h-\[75vh\] { max-height: 75vh; }
+.max-h-full { max-height: 100%; }
+.leading-none { line-height: 1; }
+.mb-1\.5 { margin-bottom: .375rem; }
+.mr-3 { margin-right: .75rem; }
+.mr-4 { margin-right: 1rem; }
+.mt-2\.5 { margin-top: .625rem; }
+.overflow-auto { overflow: auto; }
+.overflow-x-auto { overflow-x: auto; }
+.p-1\.5 { padding: .375rem; }
+.p-2\.5 { padding: .625rem; }
+.p-5 { padding: 1.25rem; }
+.pb-8 { padding-bottom: 2rem; }
+.pl-5 { padding-left: 1.25rem; }
+.pt-4 { padding-top: 1rem; }
+.px-1\.5 { padding-left: .375rem; padding-right: .375rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.py-2\.5 { padding-top: .625rem; padding-bottom: .625rem; }
+.py-3\.5 { padding-top: .875rem; padding-bottom: .875rem; }
+.pointer-events-none { pointer-events: none; }
+.rounded-sm { border-radius: .25rem; }
+.rounded-t-3xl { border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem; }
+.space-y-2 > :not(:last-child) { margin-bottom: .5rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+@media (min-width: 640px) {
+  .sm\:col-span-3 { grid-column: span 3 / span 3; }
+  .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sm\:p-4 { padding: 1rem; }
+  .sm\:p-6 { padding: 1.5rem; }
+  .sm\:text-2xl { font-size: 1.5rem; line-height: 2rem; }
+  .sm\:w-64 { width: 16rem; }
+  .sm\:block { display: block; }
+}
+@media (min-width: 1024px) {
+  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.backdrop-blur { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.h-2 { height: .5rem; }
+.h-3 { height: .75rem; }
+.w-1 { width: .25rem; }
+.w-3 { width: .75rem; }
+.pb-1 { padding-bottom: .25rem; }
+.px-1 { padding-left: .25rem; padding-right: .25rem; }

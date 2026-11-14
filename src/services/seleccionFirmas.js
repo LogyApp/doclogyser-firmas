@@ -4,8 +4,10 @@ const pool = require('./db');
 const { generarPDFDesdeHTML } = require('./renderer');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
 const { reemplazarVariables, aplicarFormatoPlantilla, firmaConFecha } = require('./plantilla');
-const { LOGO_BASE64 } = require('./assets');
+const { LOGO_BASE64, LOGO_ITALCOL_BASE64 } = require('./assets');
 const formularios = require('./formulariosSeleccion');
+// Formatos de cliente con varias plantillas por documento (hoy Italcol, documento 33)
+const formatosCliente = require('./formatosItalcol');
 
 // La lista de documentos para firma sale de Config_Doc_Trabajador (Clasificacion
 // "3. Documentos para Firmas") y la regla por operación de Config_Parametros:
@@ -74,19 +76,7 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     // (los archivos de src/templates/seleccion quedan como base para SST).
     // El encabezado toma código, versión y fecha del formato de la misma fila.
     if (plantillaRows.length > 0 && plantillaRows[0].contenido_html) {
-      const fila = plantillaRows[0];
-      const fechaFormato = fila.fecha_version
-        ? (fila.fecha_version instanceof Date
-            ? fila.fecha_version.toISOString().slice(0, 10)
-            : String(fila.fecha_version).slice(0, 10)).split('-').reverse().join('/')
-        : '';
-      contenidoHtml = aplicarFormatoPlantilla(fila.contenido_html, {
-        codigo: fila.codigo_formato ? String(fila.codigo_formato).trim() : '',
-        version: fila.version_formato ? String(fila.version_formato).trim() : '',
-        fecha: fechaFormato
-      });
-      // Si la plantilla no tiene fecha del formato, no se muestra el marcador
-      contenidoHtml = contenidoHtml.replace(/\{\{\s*(codigo_formato|version_formato|fecha_formato)\s*\}\}/g, '');
+      contenidoHtml = prepararContenidoPlantilla(plantillaRows[0]);
     }
   }
 
@@ -174,6 +164,61 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
     motivoManual,
     formulario: { preguntas, respuestas }
   };
+}
+
+// Contenido de una fila de Maestro_Plantillas con el código, versión y fecha del formato aplicados
+function prepararContenidoPlantilla(fila) {
+  const fechaFormato = fila.fecha_version
+    ? (fila.fecha_version instanceof Date
+        ? fila.fecha_version.toISOString().slice(0, 10)
+        : String(fila.fecha_version).slice(0, 10)).split('-').reverse().join('/')
+    : '';
+  const contenido = aplicarFormatoPlantilla(fila.contenido_html, {
+    codigo: fila.codigo_formato ? String(fila.codigo_formato).trim() : '',
+    version: fila.version_formato ? String(fila.version_formato).trim() : '',
+    fecha: fechaFormato
+  });
+  // Si la plantilla no tiene fecha del formato, no se muestra el marcador
+  return contenido.replace(/\{\{\s*(codigo_formato|version_formato|fecha_formato)\s*\}\}/g, '');
+}
+
+// ── Documentos por partes ────────────────────────────────────────────────────
+// Un documento de firma puede tener varias plantillas en Maestro_Plantillas (columna id_config_doc).
+// Ej.: Formatos Italcol (documento 33) = SIG, Emergencias, Alcohol y Celular. Al firmar se genera
+// un PDF por plantilla (se guardan en Dynamic_hv_documentos_partes con su observaciones) y uno
+// unido para el documento. Al contratar, cada parte pasa a Maestro_docTrabajador con su observación.
+async function obtenerPartesDocumento(idConfigDoc) {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id_plantilla, nombre_proceso, observaciones, codigo_formato, version_formato, fecha_version, contenido_html
+         FROM Maestro_Plantillas WHERE id_config_doc = ? AND activo = 1 ORDER BY id_plantilla`,
+      [Number(idConfigDoc)]
+    );
+    return rows.filter(r => r.contenido_html);
+  } catch (err) {
+    if (err.code === 'ER_BAD_FIELD_ERROR') return [];   // columna id_config_doc aún no creada
+    throw err;
+  }
+}
+
+// "13 de noviembre de 2026, 18:30" (mismo formato de {{fecha_generacion}})
+function textoFechaCorta(fecha) {
+  return String(fecha.texto).replace(' a las ', ', ').replace(/:\d{2}$/, '');
+}
+
+const PLACEHOLDER_FIRMA_PARTE = '<span style="font-family:Arial,sans-serif;font-style:italic;font-size:8pt;color:#94a3b8">[Tu firma]</span>';
+
+// HTML de una parte con sus variables (vista previa si no hay firma)
+async function htmlParte(datos, parte, { diligenciados = {}, firmaHtml = null, fechaFirma = null } = {}) {
+  const extra = await formatosCliente.variablesDeParte(parte.nombre_proceso, datos.aspirante, diligenciados, new Date());
+  const vars = {
+    ...datos.variables,
+    logo_italcol: LOGO_ITALCOL_BASE64,
+    ...(fechaFirma ? { fecha_generacion: escHtml(textoFechaCorta(fechaFirma)) } : {}),
+    ...extra,
+    firma_colaborador: firmaHtml || PLACEHOLDER_FIRMA_PARTE
+  };
+  return reemplazarVariables(prepararContenidoPlantilla(parte), vars);
 }
 
 // {{formulario_respuestas}} (bloque con todas las respuestas) y {{resp_<codigo>}} por pregunta
@@ -631,7 +676,138 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
 </html>`;
 }
 
-async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null, respuestas = null, regenerar = false }) {
+// Guarda la firma nueva en el bucket de firmas y devuelve la imagen en base64 (lista para el PDF)
+async function prepararImagenFirma({ aspirante, idAspirante, firmaBase64, esNuevaFirma }) {
+  let firmaFinalBase64 = firmaBase64;
+  if (esNuevaFirma && firmaBase64.startsWith('data:image/')) {
+    const base64Data = firmaBase64.replace(/^data:image\/\w+;base64,/, '');
+    const bufferFirma = Buffer.from(base64Data, 'base64');
+    try {
+      const firmaUrlGcs = await subirFirma(aspirante.identificacion, bufferFirma);
+      await pool.execute(
+        'UPDATE Dynamic_hv_aspirante SET firma_url = ? WHERE id_aspirante = ?',
+        [firmaUrlGcs, idAspirante]
+      );
+    } catch (saveErr) {
+      console.warn('[Firma] No se pudo guardar firma individual en firmas-images:', saveErr.message);
+    }
+  }
+
+  // Si la firma es una URL de GCS, se convierte a base64 para inyectarla en Puppeteer
+  if (firmaFinalBase64.startsWith('http://') || firmaFinalBase64.startsWith('https://')) {
+    try {
+      const respImg = await fetch(firmaFinalBase64);
+      if (respImg.ok) {
+        const arrBuf = await respImg.arrayBuffer();
+        const mime = respImg.headers.get('content-type') || 'image/png';
+        firmaFinalBase64 = `data:${mime};base64,${Buffer.from(arrBuf).toString('base64')}`;
+      }
+    } catch (fetchErr) {
+      console.warn('[Firma] Error al convertir firma_url a base64:', fetchErr.message);
+    }
+  }
+  return firmaFinalBase64;
+}
+
+function bucketDe(nombre) {
+  const { Storage } = require('@google-cloud/storage');
+  const storage = process.env.GCS_KEYFILE
+    ? new Storage({ keyFilename: path.resolve(process.env.GCS_KEYFILE) })
+    : new Storage();
+  return storage.bucket(nombre);
+}
+
+// Firma de un documento por partes: valida lo que el aspirante diligenció, genera un PDF por
+// plantilla (mismo diseño del cliente, con la firma y su fecha) y un PDF unido para el documento.
+// Los formatos de cliente no llevan el recuadro de huella (cambiaría su diseño): la huella queda en la base.
+async function procesarFirmaPorPartes({ datos, partes, idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip, dispositivo, diligenciados }) {
+  const { aspirante, prefijo } = datos;
+
+  // 1. Lo que el aspirante debe diligenciar (no se guarda en la base: solo llena el formato)
+  const dil = {};
+  for (const parte of partes) {
+    if (formatosCliente.CAMPOS_DILIGENCIAR[parte.nombre_proceso]) {
+      dil[parte.nombre_proceso] = formatosCliente.validarDiligenciados(parte.nombre_proceso, (diligenciados || {})[parte.nombre_proceso] || {});
+    }
+  }
+
+  const firmaImg = await prepararImagenFirma({ aspirante, idAspirante, firmaBase64, esNuevaFirma });
+  const fechaFirma = ahoraColombia();
+  const ipFirma = (ip || '').toString().split(',')[0].trim().slice(0, 64) || null;
+  const dispositivoFirma = (dispositivo || '').toString().slice(0, 255) || null;
+  const firmaHtml = `<img src="${firmaImg}" style="max-height:100%;max-width:100%;object-fit:contain;display:block;margin:0 auto" alt="Firma Colaborador"/>`;
+  const bucket = bucketDe(bucketAspirantes);
+  const sha = (x) => crypto.createHash('sha256').update(x).digest('hex');
+
+  // 2. Un PDF por parte
+  const generadas = [];
+  for (const parte of partes) {
+    const html = await htmlParte(datos, parte, { diligenciados: dil[parte.nombre_proceso] || {}, firmaHtml, fechaFirma });
+    console.log(`[Firma Selección] Generando ${parte.nombre_proceso} (Aspirante ${idAspirante})...`);
+    const pdf = await generarPDFDesdeHTML(html);
+    const gcsParte = `${aspirante.identificacion}/${aspirante.identificacion}.${prefijo}.${parte.nombre_proceso}.${idAspirante}.pdf`;
+    await bucket.file(gcsParte).save(pdf, { contentType: 'application/pdf', metadata: { cacheControl: 'no-cache, max-age=0' } });
+    generadas.push({
+      parte, pdf, gcsPath: gcsParte, hash: sha(pdf),
+      codigo: sha([idAspirante, idConfigDoc, parte.id_plantilla, aspirante.identificacion, fechaFirma.sql, ipFirma || '', html].join('|')).slice(0, 16).toUpperCase()
+    });
+  }
+
+  // 3. PDF unido del documento (es el que se ve en el portal y en el Panel Admin)
+  const { PDFDocument } = require('pdf-lib');
+  const unido = await PDFDocument.create();
+  for (const g of generadas) {
+    const doc = await PDFDocument.load(g.pdf);
+    (await unido.copyPages(doc, doc.getPageIndices())).forEach(pg => unido.addPage(pg));
+  }
+  const pdfUnido = Buffer.from(await unido.save());
+  const gcsPath = `${aspirante.identificacion}/${aspirante.identificacion}.${prefijo}.${idAspirante}.pdf`;
+  await bucket.file(gcsPath).save(pdfUnido, { contentType: 'application/pdf', metadata: { cacheControl: 'no-cache, max-age=0' } });
+
+  await pool.execute(`
+    INSERT INTO Dynamic_hv_documentos (id_aspirante, id_config_doc, gcs_path, estado, fuente)
+    VALUES (?, ?, ?, 'Firmado', 'Sistema')
+    ON DUPLICATE KEY UPDATE gcs_path = VALUES(gcs_path), estado = 'Firmado', fuente = 'Sistema', fecha_actualizacion = CURRENT_TIMESTAMP
+  `, [idAspirante, idConfigDoc, gcsPath]);
+
+  const codigoDoc = sha(generadas.map(g => g.codigo).join('|')).slice(0, 16).toUpperCase();
+  try {
+    await pool.execute(
+      `UPDATE Dynamic_hv_documentos
+       SET fecha_firma = ?, ip_firma = ?, dispositivo_firma = ?, hash_firma = ?, codigo_verificacion = ?
+       WHERE id_aspirante = ? AND id_config_doc = ?`,
+      [fechaFirma.sql, ipFirma, dispositivoFirma, sha(pdfUnido), codigoDoc, idAspirante, idConfigDoc]
+    );
+  } catch (errHuella) {
+    console.warn('[Firma Selección] No se pudo guardar la huella de la firma:', errHuella.message);
+  }
+
+  // 4. Registro de cada parte (requiere migraciones/2026-11-13_firma_unica_partes.sql)
+  try {
+    for (const g of generadas) {
+      await pool.execute(`
+        INSERT INTO Dynamic_hv_documentos_partes
+          (id_aspirante, id_config_doc, id_plantilla, nombre_proceso, observaciones, gcs_path, fecha_firma, ip_firma, hash_pdf, codigo_verificacion)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE nombre_proceso = VALUES(nombre_proceso), observaciones = VALUES(observaciones),
+          gcs_path = VALUES(gcs_path), fecha_firma = VALUES(fecha_firma), ip_firma = VALUES(ip_firma),
+          hash_pdf = VALUES(hash_pdf), codigo_verificacion = VALUES(codigo_verificacion)
+      `, [idAspirante, Number(idConfigDoc), g.parte.id_plantilla, g.parte.nombre_proceso, g.parte.observaciones || null,
+          g.gcsPath, fechaFirma.sql, ipFirma, g.hash, g.codigo]);
+    }
+  } catch (errPartes) {
+    console.warn('[Firma Selección] No se pudieron registrar las partes del documento:', errPartes.message);
+  }
+
+  return {
+    ok: true,
+    gcsPath,
+    partes: generadas.map(g => ({ observaciones: g.parte.observaciones, gcsPath: g.gcsPath })),
+    redirect: `/seleccion/portal/${idAspirante}?msg=firmado`
+  };
+}
+
+async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip = null, dispositivo = null, respuestas = null, regenerar = false, diligenciados = null }) {
   const datos = await obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc);
   if (!datos) {
     throw new Error('Aspirante no encontrado');
@@ -686,39 +862,22 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     await formularios.guardarRespuestas(idAspirante, idConfigDoc, validacion.respuestas);
     Object.assign(variables, variablesFormulario(preguntas, validacion.respuestas));
   }
+
+  // Documento por partes (ej. Formatos Italcol): un PDF por plantilla y uno unido
+  const partes = await obtenerPartesDocumento(idConfigDoc);
+  if (partes.length) {
+    if (regenerar) {
+      throw Object.assign(new Error('Este documento tiene varios formatos que el aspirante diligencia al firmar: no se puede regenerar. Pide al aspirante volver a firmarlo.'), { validacion: true });
+    }
+    return procesarFirmaPorPartes({
+      datos, partes, idAspirante, idConfigDoc, firmaBase64, esNuevaFirma, bucketAspirantes, ip, dispositivo, diligenciados
+    });
+  }
+
   if (!contenidoHtml) {
     throw new Error(`Plantilla no encontrada para el documento ${prefijo}`);
   }
-
-  // 1. Si es nueva firma, guardarla en el bucket de firmas
-  let firmaFinalBase64 = firmaBase64;
-  if (esNuevaFirma && firmaBase64.startsWith('data:image/')) {
-    const base64Data = firmaBase64.replace(/^data:image\/\w+;base64,/, '');
-    const bufferFirma = Buffer.from(base64Data, 'base64');
-    try {
-      const firmaUrlGcs = await subirFirma(aspirante.identificacion, bufferFirma);
-      await pool.execute(
-        'UPDATE Dynamic_hv_aspirante SET firma_url = ? WHERE id_aspirante = ?',
-        [firmaUrlGcs, idAspirante]
-      );
-    } catch (saveErr) {
-      console.warn('[Firma] No se pudo guardar firma individual en firmas-images:', saveErr.message);
-    }
-  }
-
-  // 2. Si firmaBase64 es una URL de GCS, convertirla a base64 para inyección segura en Puppeteer
-  if (firmaFinalBase64.startsWith('http://') || firmaFinalBase64.startsWith('https://')) {
-    try {
-      const respImg = await fetch(firmaFinalBase64);
-      if (respImg.ok) {
-        const arrBuf = await respImg.arrayBuffer();
-        const mime = respImg.headers.get('content-type') || 'image/png';
-        firmaFinalBase64 = `data:${mime};base64,${Buffer.from(arrBuf).toString('base64')}`;
-      }
-    } catch (fetchErr) {
-      console.warn('[Firma] Error al convertir firma_url a base64:', fetchErr.message);
-    }
-  }
+  const firmaFinalBase64 = await prepararImagenFirma({ aspirante, idAspirante, firmaBase64, esNuevaFirma });
 
   // 3. Preparar HTML completo con firma (con la fecha y hora de firma debajo, como en LogySign)
   const fechaFirma = huellaPrevia ? fechaDesdeSql(huellaPrevia.fecha_firma) : ahoraColombia();
@@ -755,11 +914,7 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
   const pdfBuffer = await generarPDFDesdeHTML(htmlCompleto);
 
   // 5. Guardar en GCS (hojas_vida_logyser)
-  const { Storage } = require('@google-cloud/storage');
-  const storage = process.env.GCS_KEYFILE
-    ? new Storage({ keyFilename: path.resolve(process.env.GCS_KEYFILE) })
-    : new Storage();
-  const bucket = storage.bucket(bucketAspirantes);
+  const bucket = bucketDe(bucketAspirantes);
 
   const gcsPath = `${aspirante.identificacion}/${aspirante.identificacion}.${prefijo}.${idAspirante}.pdf`;
   const file = bucket.file(gcsPath);
@@ -806,6 +961,9 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
 }
 
 module.exports = {
+  obtenerPartesDocumento,
+  htmlParte,
+  prepararContenidoPlantilla,
   regenerarDocumentoFirmado,
   motivoBloqueoFirma,
   obtenerDocsFirmaParaOperacion,
