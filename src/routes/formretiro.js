@@ -11,6 +11,7 @@ const {
 } = require('../services/storage');
 const { notificarRetiro, notificarInicioLegalizacionSinRetirar, notificarDocumentoRetiroTrabajador } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
+const { programarRellenoVinculacion } = require('../services/rellenoAsistencia');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenAutCesantias, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas, notificarAreasPendientesPazYSalvo } = require('../services/pazYSalvoService');
@@ -843,6 +844,8 @@ router.post('/:idVinculacion', async (req, res) => {
     params.push(idVin);
 
     await pool.execute(query, params);
+    // Retirado en los días siguientes de la quincena (o se mueven si se corrigió la fecha)
+    programarRellenoVinculacion(idVin, [vin['Fecha de Retiro']]);
 
     if (estado === 'Retirado') {
       // Estado sí cambió en esta petición: notificación completa de retiro.

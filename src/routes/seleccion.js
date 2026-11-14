@@ -18,6 +18,7 @@ const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante,
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
 const firmaUnica = require('../services/firmaUnica');
+const { programarRelleno } = require('../services/rellenoAsistencia');
 const { generarHtmlFirmaUnica } = require('../services/vistaFirmaUnica');
 
 // Multer in-memory storage
@@ -1583,6 +1584,8 @@ router.post('/finalizar-contratacion', async (req, res) => {
     await connection.query('UPDATE Dynamic_hv_aspirante SET estado_proceso = "contratado", Usuario = ? WHERE id_aspirante = ?', [nombreUsuario, id_aspirante]);
 
     await connection.commit();
+    // "Nuevo" en los días de la quincena anteriores al ingreso (reemplaza el trigger trg_MaestroVinculacion_AfterInsert)
+    programarRelleno(a.identificacion, [fecha_ingreso]);
 
     // Notificación de nuevo ingreso: solo después de confirmar la transacción y en
     // segundo plano, para no demorar ni afectar la contratación.

@@ -10,6 +10,7 @@ const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { notificarCreacionRequisicion } = require('../services/email');
 const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
 const { obtenerPermisosActivos } = require('../services/configActivos');
+const { programarRellenoVinculacion } = require('../services/rellenoAsistencia');
 const {
   obtenerTipoDocumentoConfig,
   obtenerVinculacionReciente,
@@ -3765,7 +3766,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
 
     if (opcionKey === 'colaboradores') {
       const [exist] = await pool.execute(
-        'SELECT `Id Vinculación`, `Identificación`, `Operación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? OR (`Identificación` = ? AND Estado = ?) ORDER BY `Fecha de Ingreso` DESC, `Fecha Actualización` DESC LIMIT 1', [id, id, estadoNorm]
+        "SELECT `Id Vinculación`, `Identificación`, `Operación`, DATE_FORMAT(`Fecha de Ingreso`, '%Y-%m-%d') AS fi, DATE_FORMAT(`Fecha de Retiro`, '%Y-%m-%d') AS fr FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? OR (`Identificación` = ? AND Estado = ?) ORDER BY `Fecha de Ingreso` DESC, `Fecha Actualización` DESC LIMIT 1", [id, id, estadoNorm]
       );
       if (!exist.length) return res.status(404).json({ error: 'Registro de vinculación no encontrado.' });
       if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(exist[0]['Operación'])) {
@@ -3794,6 +3795,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
          WHERE \`Id Vinculación\` = ?`,
         [nuevaRegional, nuevaOperacion, nuevoEstado, nuevoCargo, nuevaArea, nuevaFechaIngreso, nuevaFechaRetiro, usuarioAuditoria, exist[0]['Id Vinculación']]
       );
+      programarRellenoVinculacion(exist[0]['Id Vinculación'], [exist[0].fi, exist[0].fr]);
 
       return res.json({ ok: true, mensaje: 'Registro de Colaboradores actualizado correctamente.' });
     }

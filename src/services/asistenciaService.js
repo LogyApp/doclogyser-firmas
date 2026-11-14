@@ -1,5 +1,11 @@
 const pool = require('./db');
 const crypto = require('crypto');
+const { reglasHabilitadas, validarAsistenciaDiaria, validarNovedadRango } = require('./reglasAsistencia');
+
+const NOVEDAD_AOO = 'Apoyo a Otra Operación';
+function errorValidacion(errores) {
+  return Object.assign(new Error(`No se puede guardar:\n• ${errores.join('\n• ')}`), { validacion: true });
+}
 
 // Meses en español para formato de IdRegistro y Quincena
 const MESES_ABR = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
@@ -424,6 +430,23 @@ async function registrarAsistenciaDiaria({
     throw new Error('No se encontraron los datos de los trabajadores seleccionados en Maestro_Segmentación.');
   }
 
+  // Reglas de plantilla (reglasAsistencia.js): un registro por persona y día, y apoyos
+  const esApoyo = apoyoOtraOperacion === 'SI' && operacionApoya && operacionApoya !== operacion;
+  let ajustes = { aooInsertar: [], aooActualizar: [], convertirAAOO: new Map() };
+  if (await reglasHabilitadas()) {
+    ajustes = await validarAsistenciaDiaria({
+      operacion, dia, esApoyo, operacionApoya, prefijo: prefijoNovedad,
+      trabajadores: trabRows.map(t => ({ identificacion: t.identificacion, nombre: t.nombreCompleto || t.trabajador }))
+    });
+    if (ajustes.errores.length) throw errorValidacion(ajustes.errores);
+    // La operación de origen también debe estar abierta para ponerle "Apoyo a Otra Operación"
+    for (const op of new Set(ajustes.aooInsertar.map(a => a.opCasa))) {
+      const b = await verificarBloqueoNomina(op, dia, rol);
+      if (b.bloqueado) throw errorValidacion([`No se puede registrar "Apoyo a Otra Operación" en ${op}: ${b.mensaje}`]);
+    }
+  }
+  const avisos = [];
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -464,6 +487,17 @@ async function registrarAsistenciaDiaria({
       const pos = idx + 1;
       const idAsistencia = `${idRegistro}_T${pos}`;
       const opEfectiva = apoyoOtraOperacion === 'SI' ? (operacionApoya || operacion) : operacion;
+      // Ese día ya trabajó como apoyo en otra operación: prima el destino y aquí queda "Apoyo a Otra Operación"
+      const apoyoEn = ajustes.convertirAAOO.get(String(t.identificacion));
+      if (apoyoEn) {
+        avisos.push(`${t.nombreCompleto || t.trabajador}: ese día trabajó como apoyo en ${apoyoEn}; se guardó como "Apoyo a Otra Operación".`);
+        rowsToInsert.push([
+          idAsistencia, idRegistro, operacion, NOVEDAD_AOO, 'AOO', dia, area || null, t.trabajador,
+          t.identificacion, t.nombreCompleto, null, null, null, null, 'NO', apoyoEn, operacion,
+          fechaRegistro, usuario, area || null, 'Yellow', `Apoyo registrado por ${apoyoEn}`
+        ]);
+        return;
+      }
 
       rowsToInsert.push([
         idAsistencia,
@@ -502,11 +536,40 @@ async function registrarAsistenciaDiaria({
       ) VALUES ?
     `, [rowsToInsert]);
 
+    // Apoyo: en la operación de origen queda "Apoyo a Otra Operación" (se crea o reemplaza la Asistencia)
+    const trabPorId = new Map(trabRows.map(t => [String(t.identificacion), t]));
+    let n = 0;
+    for (const a of ajustes.aooInsertar) {
+      const t = trabPorId.get(String(a.trabajador.identificacion));
+      if (!t) continue;
+      n += 1;
+      await conn.query(`
+        INSERT INTO Dynamic_Asistencia (
+          IdAsistencia, IdRegistro, \`Operación\`, Novedad, \`Prefijo Novedad\`, Día, Trabajador, Cédula, Nombre,
+          \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`, Origen, \`Fecha Registro\`, Usuario, Estado, Observaciones
+        ) VALUES (?, ?, ?, ?, 'AOO', ?, ?, ?, ?, 'NO', ?, ?, ?, ?, 'Yellow', ?)
+      `, [`${idRegistro}_A${n}`, idRegistro, a.opCasa, NOVEDAD_AOO, dia, t.trabajador, t.identificacion, t.nombreCompleto,
+          a.operacionApoyada, a.opCasa, fechaRegistro, usuario, `Automático: apoyo en ${a.operacionApoyada}`]);
+    }
+    for (const a of ajustes.aooActualizar) {
+      await conn.query(`
+        UPDATE Dynamic_Asistencia
+           SET Novedad = ?, \`Prefijo Novedad\` = 'AOO', \`Operación a la que Apoya\` = ?, \`Hora Llegada\` = NULL,
+               \`Hora Salida\` = NULL, \`Tiempo Laborado\` = NULL,
+               Observaciones = LEFT(CONCAT_WS(' | ', Observaciones, ?), 255)
+         WHERE IdAsistencia = ?
+      `, [NOVEDAD_AOO, a.operacionApoyada, `Cambiado a apoyo: lo registró ${a.operacionApoyada}`, a.id]);
+    }
+    if (ajustes.aooActualizar.length) {
+      avisos.push(`${ajustes.aooActualizar.length} asistencia(s) en la operación de origen se cambiaron a "Apoyo a Otra Operación".`);
+    }
+
     await conn.commit();
     return {
       success: true,
       idRegistro,
-      registrosInsertados: rowsToInsert.length
+      registrosInsertados: rowsToInsert.length,
+      avisos
     };
   } catch (err) {
     await conn.rollback();
@@ -593,6 +656,15 @@ async function registrarNovedadPorRango({
   }
   const trab = tRows[0];
   const opFinal = operacion || trab.operacion;
+
+  if (await reglasHabilitadas()) {
+    const fin = new Date(fInicio.getTime() + (diasTotales - 1) * 86400000).toISOString().slice(0, 10);
+    const errores = await validarNovedadRango({
+      operacion: opFinal, identificacion: trab.identificacion, nombre: trab.nombreCompleto || trab.trabajador,
+      desde: diaInicio, hasta: fin
+    });
+    if (errores.length) throw errorValidacion(errores);
+  }
 
   // Si es Incapacidad con sub-tipo, obtener prefijo de Config_Asistencia
   let prefijoEfectivo = prefijoNovedad || 'NOV';

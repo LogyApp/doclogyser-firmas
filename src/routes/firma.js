@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
+const { programarRelleno } = require('../services/rellenoAsistencia');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const {
@@ -353,57 +354,9 @@ router.post('/:proceso/:id', async (req, res) => {
       ? (typeof t.fecha_traslado === 'string' ? t.fecha_traslado : t.fecha_traslado.toISOString()).slice(0, 10)
       : null;
 
-    if (fechaTrasladoStr) {
-      const diaTraslado = parseInt(fechaTrasladoStr.slice(8, 10), 10);
-
-      if (diaTraslado !== 1 && diaTraslado !== 16) {
-        const [areaRows] = await pool.execute(
-          'SELECT Area FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-          [t['Identificación']]
-        );
-        const area = areaRows.length ? areaRows[0].Area : null;
-
-        let fechaFinal = null;
-        const [mfRows] = await pool.execute(
-          'SELECT Quincena, Año FROM Maestro_Fechas WHERE Fecha = ? LIMIT 1',
-          [fechaTrasladoStr]
-        );
-        if (mfRows.length) {
-          const [cqRows] = await pool.execute(
-            'SELECT `Fecha Final` FROM Config_Quincenas WHERE Quincena = ? AND Año = ? LIMIT 1',
-            [mfRows[0].Quincena, mfRows[0].Año]
-          );
-          if (cqRows.length) fechaFinal = cqRows[0]['Fecha Final'];
-        }
-
-        await pool.execute(
-          `INSERT INTO Dynamic_Registro_Asistencia
-           (IdRegistro, Operación, Area, Evento, Novedad, \`Apoyo de Otra Operación\`,
-            Trabajador, Trabajador2, Día, \`Fecha Final\`,
-            \`Hora Entrada\`, \`Hora Salida\`, \`Operación a la que apoya\`,
-            Incapacidad, \`Cod Diagnostico\`, Diagnostico,
-            \`PDF Incapacidad\`, \`PDF Historia Clinica\`, \`PDF Soporte\`,
-            Origen, \`Fecha Registro\`, Usuario, Contador, Contador2, Disponible)
-           VALUES (?, ?, ?, 'Novedad', 'Traslado', 'NO',
-                   NULL, ?, ?, ?,
-                   NULL, NULL, NULL,
-                   NULL, NULL, NULL,
-                   NULL, NULL, ?,
-                   ?, ?, 'Sistema', NULL, NULL, 0)`,
-          [
-            uuidv4(),
-            t.operacion_origen,
-            area,
-            t.Trabajador,
-            fechaTrasladoStr,
-            fechaFinal,
-            urlDoc,
-            t.operacion_origen,
-            t.Fecha_Registro,
-          ]
-        );
-      }
-    }
+    // Relleno de asistencia con "Traslado": en el origen desde el día del traslado hasta el fin de la
+    // quincena y en el destino desde el inicio de la quincena hasta el día anterior (rellenoAsistencia.js)
+    programarRelleno(t['Identificación'], fechaTrasladoStr ? [fechaTrasladoStr] : []);
 
     const [uRows] = await pool.execute(
       'SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [t.Usuario]
