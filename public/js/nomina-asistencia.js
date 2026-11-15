@@ -1,3 +1,14 @@
+function getUsuarioAsistencia() {
+  if (typeof usuario !== 'undefined' && usuario) return usuario;
+  if (window.usuario) return window.usuario;
+  if (window._cfg && window._cfg.usuario) return window._cfg.usuario;
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('usuario')) return p.get('usuario');
+  } catch (e) {}
+  return '';
+}
+
 /**
  * Módulo de Asistencia y Novedades para Nómina (LogyApp)
  * Gestiona filtros con conteos interactivos (Año, Quincena, Día, Regional, Operación, Novedad),
@@ -31,6 +42,7 @@ const _asisState = {
   trabajadoresOperacion: [],
   trabajadoresNovedad: [],
   trabajadoresSeleccionados: new Map(), // identificacion -> { identificacion, nombreCompleto, ... }
+  trabajadoresSeleccionadosNov: new Map(), // Para novedades sin rango (Fecha Final != SI)
   modoRegistro: 'diaria', // 'diaria' | 'novedad'
   debounceTimer: null
 };
@@ -252,6 +264,12 @@ async function seleccionarOperacionModal(tipo, operacion) {
     _asisState.areaSeleccionadaNovedad = null;
     _asisState.trabajadoresNovedad = [];
 
+    const selNovCurrent = document.getElementById('asisModalNovedad');
+    if (selNovCurrent && selNovCurrent.value === 'Apoyo a Otra Operación') {
+      const ops = obtenerOperacionesMismaRegional(operacion);
+      renderizarSelectorApoyoRegional('novedad', ops, '');
+    }
+
     const hiddenColab = document.getElementById('asisModalIdTrabajadorNovedad');
     if (hiddenColab) hiddenColab.value = '';
 
@@ -265,53 +283,97 @@ async function seleccionarOperacionModal(tipo, operacion) {
 }
 
 /**
- * Filtra las operaciones disponibles para apoyo: solo las de la misma Regional que la operación base
+ * Retorna las operaciones de la misma regional excluyendo la operación base
  */
-function actualizarOperacionesApoyoRegional(opBase) {
-  const selOpApoya = document.getElementById('asisModalOpApoya');
-  const chkApoyo = document.getElementById('asisModalChkApoyo');
-  const wrapApoyo = document.getElementById('asisWrapOpApoya');
-
-  if (chkApoyo) chkApoyo.checked = false;
-  if (wrapApoyo) wrapApoyo.style.display = 'none';
-  if (!selOpApoya) return;
-
-  if (!opBase) {
-    selOpApoya.innerHTML = '<option value="">Seleccione primero la operación base...</option>';
-    return;
-  }
-
-  const cfg = obtenerConfigAsistencia();
+function obtenerOperacionesMismaRegional(opBase) {
+  if (!opBase) return [];
+  const cfg = typeof obtenerConfigAsistencia === 'function' ? obtenerConfigAsistencia() : {};
+  const mapa = cfg.todasOpsPorRegional || cfg.opsPorRegional || {};
   let regionalBase = '';
-
-  for (const [reg, ops] of Object.entries(cfg.opsPorRegional || {})) {
-    if (ops.includes(opBase)) {
+  for (const [reg, ops] of Object.entries(mapa)) {
+    if (Array.isArray(ops) && ops.includes(opBase)) {
       regionalBase = reg;
       break;
     }
   }
+  if (!regionalBase || !mapa[regionalBase]) return [];
+  const res = mapa[regionalBase].filter(o => o !== opBase);
+  res.sort((a, b) => a.localeCompare(b, 'es'));
+  return res;
+}
 
-  // Operaciones de la misma regional excluyendo la operación base
-  let opsMismaRegional = [];
-  if (regionalBase && cfg.opsPorRegional && cfg.opsPorRegional[regionalBase]) {
-    opsMismaRegional = cfg.opsPorRegional[regionalBase].filter(o => o !== opBase);
-  }
-
-  // No se cruza con las operaciones del usuario: quien recibe el apoyo (operación destino) registra la
-  // asistencia de colaboradores que pertenecen a otra operación de su misma regional.
-
-  opsMismaRegional.sort((a, b) => a.localeCompare(b, 'es'));
+/**
+ * Renderiza selector de operación de apoyo (en forma de botones si <= 5, o dropdown si > 5)
+ */
+function renderizarSelectorApoyoRegional(tipo, opsMismaRegional, valorActual) {
+  const containerId = tipo === 'diaria' ? 'asisModalOpApoyaContainer' : 'asisModalOpApoyaNovedadContainer';
+  const hiddenId = tipo === 'diaria' ? 'asisModalOpApoya' : 'asisModalOpApoyaNovedad';
+  const container = document.getElementById(containerId);
+  const hiddenInput = document.getElementById(hiddenId);
+  if (!container || !hiddenInput) return;
 
   if (!opsMismaRegional.length) {
-    selOpApoya.innerHTML = '<option value="">No hay otras operaciones en la misma regional</option>';
+    hiddenInput.value = '';
+    container.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">No hay otras operaciones en la misma regional.</span>';
     return;
   }
 
-  let opts = '<option value="">Seleccione la operación de origen...</option>';
-  opsMismaRegional.forEach(o => {
-    opts += `<option value="${esc(o)}">${esc(o)}</option>`;
-  });
-  selOpApoya.innerHTML = opts;
+  if (opsMismaRegional.length <= 5) {
+    container.innerHTML = `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+        ${opsMismaRegional.map(op => `
+          <button type="button" class="asis-op-btn ${tipo === 'diaria' ? 'asis-op-apoya-btn-diaria' : 'asis-op-apoya-btn-nov'} ${op === valorActual ? 'active' : ''}" data-op="${esc(op)}" onclick="seleccionarOpApoyaModal('${tipo}', '${esc(op)}')">
+            ${esc(op)}
+          </button>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <select class="filtro-field" style="width:100%; max-width:340px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;" onchange="seleccionarOpApoyaModal('${tipo}', this.value)">
+        <option value="">${tipo === 'diaria' ? 'Seleccione la operación de origen...' : 'Seleccione la operación destino...'}</option>
+        ${opsMismaRegional.map(op => `<option value="${esc(op)}" ${op === valorActual ? 'selected' : ''}>${esc(op)}</option>`).join('')}
+      </select>
+    `;
+  }
+}
+
+function seleccionarOpApoyaModal(tipo, op) {
+  const hiddenId = tipo === 'diaria' ? 'asisModalOpApoya' : 'asisModalOpApoyaNovedad';
+  const containerId = tipo === 'diaria' ? 'asisModalOpApoyaContainer' : 'asisModalOpApoyaNovedadContainer';
+  const btnClass = tipo === 'diaria' ? '.asis-op-apoya-btn-diaria' : '.asis-op-apoya-btn-nov';
+  const hiddenInput = document.getElementById(hiddenId);
+  const container = document.getElementById(containerId);
+
+  if (hiddenInput) hiddenInput.value = op || '';
+  if (container) {
+    container.querySelectorAll(btnClass).forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-op') === String(op));
+    });
+    const sel = container.querySelector('select');
+    if (sel && sel.value !== op) sel.value = op || '';
+  }
+
+  if (tipo === 'diaria') {
+    onOpApoyaChange();
+  }
+}
+
+/**
+ * Filtra las operaciones disponibles para apoyo: solo las de la misma Regional que la operación base
+ */
+function actualizarOperacionesApoyoRegional(opBase) {
+  const hiddenOpApoya = document.getElementById('asisModalOpApoya');
+  const chkApoyo = document.getElementById('asisModalChkApoyo');
+  const wrapApoyo = document.getElementById('asisWrapOpApoya');
+
+  if (hiddenOpApoya) hiddenOpApoya.value = '';
+  if (chkApoyo) chkApoyo.checked = false;
+  if (wrapApoyo) wrapApoyo.style.display = 'none';
+
+  if (!opBase) return;
+  const ops = obtenerOperacionesMismaRegional(opBase);
+  renderizarSelectorApoyoRegional('diaria', ops, '');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1176,11 +1238,20 @@ async function eliminarAsistenciasSeleccionadas() {
     return;
   }
 
+  const usr = getUsuarioAsistencia();
+  if (!usr) {
+    alert('No se pudo determinar el usuario actual. Por favor recargue la página.');
+    return;
+  }
+
   try {
-    const r = await fetch('/nomina/api/asistencia/eliminar-lote', {
+    const r = await fetch(`/nomina/api/asistencia/eliminar-lote?usuario=${encodeURIComponent(usr)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids })
+      headers: {
+        'Content-Type': 'application/json',
+        'x-usuario': usr
+      },
+      body: JSON.stringify({ ids, usuario: usr })
     });
     const data = await r.json();
     if (!r.ok || !data.ok) {
@@ -1565,11 +1636,13 @@ async function cargarTrabajadoresNovedad() {
     _asisState.trabajadoresNovedad = lista;
 
     if (!lista.length) {
-      container.innerHTML = '<span style="font-size:.82rem; color:var(--text-muted); font-style:italic;">No se encontraron colaboradores en esta operación y área.</span>';
+      if (container) container.innerHTML = '<span style="font-size:.82rem; color:var(--text-muted); font-style:italic;">No se encontraron colaboradores en esta operación y área.</span>';
+      const cNov = document.getElementById('asisListaTrabajadoresCheckboxesNov');
+      if (cNov) cNov.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">No se encontraron colaboradores en esta operación y área.</div>';
       return;
     }
 
-    renderSelectorColaboradorNovedad(lista);
+    refrescarTrabajadoresNovedadSegunModo();
   } catch (err) {
     console.error('[asistencia] Error cargarTrabajadoresNovedad:', err);
     if (container) {
@@ -1623,6 +1696,107 @@ function onSeleccionarColaboradorNovedad(val) {
       badge.style.display = 'none';
     }
   }
+}
+
+function refrescarTrabajadoresNovedadSegunModo() {
+  const selNov = document.getElementById('asisModalNovedad');
+  const optNov = selNov?.options[selNov?.selectedIndex];
+  const esRango = optNov?.getAttribute('data-rango') === '1';
+  const lista = _asisState.trabajadoresNovedad || [];
+
+  if (esRango) {
+    renderSelectorColaboradorNovedad(lista);
+  } else {
+    renderCheckboxesTrabajadoresNov(lista);
+  }
+}
+
+function renderCheckboxesTrabajadoresNov(lista) {
+  const container = document.getElementById('asisListaTrabajadoresCheckboxesNov');
+  if (!container) return;
+
+  if (!lista.length) {
+    container.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;">No se encontraron colaboradores para este filtro.</div>';
+    return;
+  }
+
+  container.innerHTML = lista.map(t => {
+    const isChecked = _asisState.trabajadoresSeleccionadosNov.has(t.identificacion);
+    const badgeRetirado = t.estado === 'Retirado' ? '<span style="font-size:10px; padding:1px 6px; border-radius:4px; background:#fee2e2; color:#b91c1c; font-weight:700; margin-left:6px;">RETIRADO</span>' : '';
+    return `
+      <label style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; user-select:none; transition:background .12s;" onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'">
+        <input type="checkbox" value="${t.identificacion}" ${isChecked ? 'checked' : ''} onchange="toggleTrabajadorSeleccionadoNov('${t.identificacion}')" style="width:16px; height:16px; cursor:pointer;">
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(t.nombreCompleto || t.trabajador || '')} ${badgeRetirado}</div>
+          <div style="font-size:.74rem; color:var(--text-muted);">Cédula: ${esc(t.identificacion)} · Cargo: ${esc(t.cargo || 'Operativo')}</div>
+        </div>
+      </label>
+    `;
+  }).join('');
+}
+
+function filtrarColaboradoresNovedad() {
+  const q = (document.getElementById('asisBuscarColaboradorNovedad')?.value || '').toLowerCase().trim();
+  if (!q) {
+    renderCheckboxesTrabajadoresNov(_asisState.trabajadoresNovedad);
+    return;
+  }
+  const filtrados = (_asisState.trabajadoresNovedad || []).filter(t => 
+    (t.nombreCompleto || t.trabajador || '').toLowerCase().includes(q) || 
+    String(t.identificacion || '').toLowerCase().includes(q)
+  );
+  renderCheckboxesTrabajadoresNov(filtrados);
+}
+
+function toggleTrabajadorSeleccionadoNov(identificacion) {
+  const t = (_asisState.trabajadoresNovedad || []).find(x => String(x.identificacion) === String(identificacion));
+  if (!t) return;
+
+  if (_asisState.trabajadoresSeleccionadosNov.has(identificacion)) {
+    _asisState.trabajadoresSeleccionadosNov.delete(identificacion);
+  } else {
+    _asisState.trabajadoresSeleccionadosNov.set(identificacion, t);
+  }
+  actualizarChipsSeleccionadosNov();
+}
+
+function seleccionarTodosTrabajadoresNovedad(marcar) {
+  if (marcar) {
+    (_asisState.trabajadoresNovedad || []).forEach(t => {
+      _asisState.trabajadoresSeleccionadosNov.set(t.identificacion, t);
+    });
+  } else {
+    _asisState.trabajadoresSeleccionadosNov.clear();
+  }
+  renderCheckboxesTrabajadoresNov(_asisState.trabajadoresNovedad);
+  actualizarChipsSeleccionadosNov();
+}
+
+function actualizarChipsSeleccionadosNov() {
+  const container = document.getElementById('asisChipsSeleccionadosNov');
+  const contador = document.getElementById('asisContadorSeleccionadosNov');
+  const n = _asisState.trabajadoresSeleccionadosNov.size;
+
+  if (contador) contador.textContent = `(${n} seleccionado${n === 1 ? '' : 's'})`;
+  if (!container) return;
+
+  if (n === 0) {
+    container.innerHTML = '<span style="font-size:.78rem; color:var(--text-muted); font-style:italic;">Ningún colaborador seleccionado aún.</span>';
+    return;
+  }
+
+  container.innerHTML = Array.from(_asisState.trabajadoresSeleccionadosNov.values()).map(t => `
+    <span style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft, rgba(37,99,235,0.1)); border:1px solid var(--accent, #2563eb); border-radius:14px; padding:2px 8px; font-size:.74rem; font-weight:600; color:var(--text);">
+      ${esc(t.nombreCompleto || t.trabajador || '')}
+      <button type="button" onclick="quitarTrabajadorSeleccionadoNov('${t.identificacion}')" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:.85rem; line-height:1; padding:0;">✕</button>
+    </span>
+  `).join('');
+}
+
+function quitarTrabajadorSeleccionadoNov(identificacion) {
+  _asisState.trabajadoresSeleccionadosNov.delete(identificacion);
+  renderCheckboxesTrabajadoresNov(_asisState.trabajadoresNovedad);
+  actualizarChipsSeleccionadosNov();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1755,22 +1929,50 @@ function onTipoNovedadModalChange() {
   const tipoDoc = Number(opt?.getAttribute('data-tipodoc') || 0);
   const descSoporte = opt?.getAttribute('data-descsop') || '';
 
-  // 1. Visibilidad de Fecha Final
+  // 1. Alternar entre Colaborador Único (Rango) y Colaboradores Múltiples (Un solo día)
+  const secUnico = document.getElementById('asisSecColabUnicoNovedad');
+  const secMultiple = document.getElementById('asisSecColabMultipleNovedad');
   const wrapDiaFin = document.getElementById('asisWrapDiaFin');
+  const wrapBadgeDias = document.getElementById('asisWrapBadgeDias');
+  const labelDiaInicio = document.getElementById('asisLabelDiaInicio');
   const inputDiaInicio = document.getElementById('asisModalDiaInicio');
   const inputDiaFin = document.getElementById('asisModalDiaFin');
 
-  if (wrapDiaFin) {
-    if (esRango) {
-      wrapDiaFin.style.display = 'block';
-    } else {
-      wrapDiaFin.style.display = 'none';
-      if (inputDiaInicio && inputDiaFin) {
-        inputDiaFin.value = inputDiaInicio.value;
-      }
+  if (esRango) {
+    if (secUnico) secUnico.style.display = 'block';
+    if (secMultiple) secMultiple.style.display = 'none';
+    if (wrapDiaFin) wrapDiaFin.style.display = 'block';
+    if (wrapBadgeDias) wrapBadgeDias.style.display = 'flex';
+    if (labelDiaInicio) labelDiaInicio.textContent = 'Fecha Inicio *';
+  } else {
+    if (secUnico) secUnico.style.display = 'none';
+    if (secMultiple) secMultiple.style.display = 'block';
+    if (wrapDiaFin) wrapDiaFin.style.display = 'none';
+    if (wrapBadgeDias) wrapBadgeDias.style.display = 'none';
+    if (labelDiaInicio) labelDiaInicio.textContent = 'Día de la Novedad *';
+    if (inputDiaInicio && inputDiaFin) {
+      inputDiaFin.value = inputDiaInicio.value;
     }
   }
-  calcularDiasNovedad();
+
+  // Operación a la que apoya (si la novedad es "Apoyo a Otra Operación")
+  const wrapOpApoyaNov = document.getElementById('asisWrapOpApoyaNovedad');
+  const opNovedad = document.getElementById('asisModalOpNovedad')?.value || '';
+  if (wrapOpApoyaNov) {
+    if (novedad === 'Apoyo a Otra Operación') {
+      wrapOpApoyaNov.style.display = 'block';
+      const ops = obtenerOperacionesMismaRegional(opNovedad);
+      const currVal = document.getElementById('asisModalOpApoyaNovedad')?.value || '';
+      renderizarSelectorApoyoRegional('novedad', ops, currVal);
+    } else {
+      wrapOpApoyaNov.style.display = 'none';
+      const hiddenNov = document.getElementById('asisModalOpApoyaNovedad');
+      if (hiddenNov) hiddenNov.value = '';
+    }
+  }
+
+  // Refrescar lista de colaboradores según el modo seleccionado
+  refrescarTrabajadoresNovedadSegunModo();
 
   // 2. Visibilidad de Incapacidad vs Soporte
   const secIncapacidad = document.getElementById('asisSecIncapacidad');
@@ -1791,6 +1993,8 @@ function onTipoNovedadModalChange() {
       if (secSoporte) secSoporte.style.display = 'none';
     }
   }
+
+  calcularDiasNovedad();
 }
 
 // Guardar Novedad por Rango de Fechas
@@ -1799,7 +2003,6 @@ async function guardarNovedadRango() {
   const errorMsg = document.getElementById('asisModalErrorNovedad');
   if (errorMsg) errorMsg.style.display = 'none';
 
-  const trabajadorId = document.getElementById('asisModalIdTrabajadorNovedad')?.value;
   const operacion = document.getElementById('asisModalOpNovedad')?.value;
   const area = document.getElementById('asisModalAreaNovedad')?.value || '';
   const novedadSel = document.getElementById('asisModalNovedad');
@@ -1830,28 +2033,43 @@ async function guardarNovedadRango() {
     alert('Por favor seleccione el área.');
     return;
   }
-  if (!trabajadorId) {
-    alert('Por favor busque y seleccione el colaborador.');
-    return;
-  }
   if (!novedad) {
     alert('Por favor seleccione el tipo de novedad.');
     return;
   }
-  if (!diaInicio) {
-    alert('Por favor ingrese la fecha de inicio.');
+  const esApoyoAOtraOp = novedad === 'Apoyo a Otra Operación';
+  const opApoyaNovedad = document.getElementById('asisModalOpApoyaNovedad')?.value;
+  if (esApoyoAOtraOp && !opApoyaNovedad) {
+    alert('Por favor seleccione la Operación a la que Apoya.');
     return;
   }
-  if (esRango && !diaFin) {
-    alert('Por favor ingrese la fecha de fin.');
+  if (!diaInicio) {
+    alert('Por favor ingrese la fecha.');
     return;
+  }
+
+  const trabajadorId = document.getElementById('asisModalIdTrabajadorNovedad')?.value;
+  if (esRango) {
+    if (!trabajadorId) {
+      alert('Por favor busque y seleccione exactamente un colaborador para el rango de fechas.');
+      return;
+    }
+    if (!diaFin) {
+      alert('Por favor ingrese la fecha de fin.');
+      return;
+    }
+  } else {
+    if (!_asisState.trabajadoresSeleccionadosNov || !_asisState.trabajadoresSeleccionadosNov.size) {
+      alert('Debe seleccionar al menos un colaborador de la lista.');
+      return;
+    }
   }
 
   const d1 = new Date(diaInicio + 'T12:00:00Z');
   const d2 = new Date(diaFin + 'T12:00:00Z');
-  const diasTotales = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const diasTotales = esRango ? (Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1) : 1;
 
-  if (diasTotales <= 0) {
+  if (esRango && diasTotales <= 0) {
     alert('La fecha final debe ser igual o posterior a la fecha de inicio.');
     return;
   }
@@ -1885,10 +2103,22 @@ async function guardarNovedadRango() {
 
   const formData = new FormData();
   formData.append('usuario', usuario);
-  formData.append('trabajadorIdentificacion', trabajadorId);
+  if (esRango) {
+    formData.append('trabajadorIdentificacion', trabajadorId);
+    formData.append('esRango', 'true');
+  } else {
+    const idsNov = Array.from(_asisState.trabajadoresSeleccionadosNov.keys());
+    formData.append('trabajadoresIds', JSON.stringify(idsNov));
+    formData.append('dia', diaInicio);
+    formData.append('esRango', 'false');
+  }
   formData.append('operacion', operacion || '');
   formData.append('area', area);
   formData.append('novedad', novedad);
+  if (esApoyoAOtraOp) {
+    formData.append('operacionApoya', opApoyaNovedad);
+    formData.append('apoyoOtraOperacion', 'SI');
+  }
   formData.append('prefijoNovedad', prefijoNovedad);
   formData.append('diaInicio', diaInicio);
   formData.append('diaFin', diaFin);
@@ -1915,7 +2145,12 @@ async function guardarNovedadRango() {
       throw new Error(data.error || 'No se pudo guardar la novedad.');
     }
 
-    alert(`¡Novedad registrada con éxito! Se crearon ${data.diasRegistrados} días en el historial.`);
+    const msgExito = esRango
+      ? `¡Novedad registrada con éxito! Se crearon ${data.diasRegistrados} días en el historial.`
+      : `¡Novedad registrada con éxito! Se registraron ${data.registrosInsertados || 1} colaboradores.`;
+    alert(msgExito);
+    _asisState.trabajadoresSeleccionadosNov.clear();
+    actualizarChipsSeleccionadosNov();
     cerrarModalRegistroAsistencia();
     await onAsistenciaFiltroChange();
   } catch (err) {
@@ -2117,9 +2352,20 @@ async function eliminarAsistenciaRegistro(idAsistencia) {
     return;
   }
 
+  const usr = getUsuarioAsistencia();
+  if (!usr) {
+    alert('No se pudo determinar el usuario actual. Por favor recargue la página.');
+    return;
+  }
+
   try {
-    const r = await fetch(`/nomina/api/asistencia/${idAsistencia}?usuario=${encodeURIComponent(usuario)}`, {
-      method: 'DELETE'
+    const r = await fetch(`/nomina/api/asistencia/${encodeURIComponent(idAsistencia)}?usuario=${encodeURIComponent(usr)}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-usuario': usr
+      },
+      body: JSON.stringify({ usuario: usr })
     });
     const data = await r.json();
 

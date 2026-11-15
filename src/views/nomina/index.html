@@ -532,6 +532,24 @@
       font-size: .64rem;
       padding: 2px 6px;
     }
+    .celda-act-area {
+      min-width: 140px;
+    }
+    .act-select-area {
+      width: 100%;
+      min-width: 130px;
+      padding: 3px 6px;
+      font-size: .74rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+    }
+    .act-select-area:focus {
+      border-color: var(--primario);
+    }
     .btn-retirar, .btn-tomo-cargo {
       padding: 3px 7px;
       font-size: .68rem;
@@ -1476,6 +1494,7 @@
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="actFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="actFilterOperacion"></select></div>
+            <div class="filtro-field"><label>Área</label><select id="actFilterArea" disabled><option value="">— Seleccione primero Operación —</option></select></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosActivos()">&#8635; Limpiar filtros</button>
         </div>
@@ -1493,9 +1512,9 @@
             <thead>
               <tr>
                 <th style="width:190px" class="no-sort">Acciones</th>
-                <th style="width:110px" data-sort="Regional">Regional<span id="actSort-Regional" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="Operacion">Operación<span id="actSort-Operacion" class="sort-indicator"></span></th>
                 <th style="width:200px" data-sort="Trabajador">Trabajador<span id="actSort-Trabajador" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="Area">Área<span id="actSort-Area" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="Cargo">Cargo<span id="actSort-Cargo" class="sort-indicator"></span></th>
                 <th style="width:120px" data-sort="FechaIngreso">Fecha de Ingreso<span id="actSort-FechaIngreso" class="sort-indicator"></span></th>
                 <th style="width:110px" data-sort="Usuario">Usuario<span id="actSort-Usuario" class="sort-indicator"></span></th>
@@ -2339,10 +2358,11 @@
             ¿Es apoyo de otra operación?
           </label>
           <div id="asisWrapOpApoya" style="display:none; margin-top:10px;">
-            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted);">¿De qué operación viene el colaborador que apoya?</label>
-            <select id="asisModalOpApoya" onchange="onOpApoyaChange()" style="width:100%; margin-top:4px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
-              <option value="">Seleccione la operación de origen...</option>
-            </select>
+            <label style="font-size:.78rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">¿De qué operación viene el colaborador que apoya? *</label>
+            <input type="hidden" id="asisModalOpApoya" value="">
+            <div id="asisModalOpApoyaContainer" style="margin-top:4px; min-height:36px; display:flex; align-items:center;">
+              <span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero la operación destino.</span>
+            </div>
           </div>
         </div>
 
@@ -2380,7 +2400,7 @@
         </div>
       </div>
 
-      <!-- ════════ FORMULARIO: NOVEDAD POR RANGO DE FECHAS ════════ -->
+      <!-- ════════ FORMULARIO: REPORTE DE NOVEDADES ════════ -->
       <div id="asisFormNovedad" style="display:none;">
         <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom:14px;">
           <div class="filtro-field">
@@ -2397,15 +2417,7 @@
           </div>
         </div>
 
-        <!-- Selección de Colaborador (Uno solo según Operación y Área) -->
-        <div class="filtro-field" style="margin-bottom:14px;">
-          <label>Colaborador * <span style="font-size:.76rem; font-weight:normal; color:var(--text-muted);">(Seleccione exactamente un colaborador)</span></label>
-          <input type="hidden" id="asisModalIdTrabajadorNovedad" value="">
-          <div id="asisModalColabNovedadContainer" style="margin-top:4px;">
-            <span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación y un área para cargar los colaboradores.</span>
-          </div>
-        </div>
-
+        <!-- Tipo de Novedad (Primero que los colaboradores para definir si es rango o un solo día) -->
         <div class="filtros-grid" style="grid-template-columns: 1fr; margin-bottom:14px;">
           <div class="filtro-field">
             <label>Tipo de Novedad *</label>
@@ -2415,16 +2427,61 @@
           </div>
         </div>
 
+        <!-- Operación a la que Apoya (Visible si Novedad es "Apoyo a Otra Operación") -->
+        <div id="asisWrapOpApoyaNovedad" style="display:none; margin-bottom:14px; padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px;">
+          <label style="font-size:.78rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:4px;">Operación a la que Apoya *</label>
+          <input type="hidden" id="asisModalOpApoyaNovedad" value="">
+          <div id="asisModalOpApoyaNovedadContainer" style="margin-top:4px; min-height:36px; display:flex; align-items:center;">
+            <span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero la operación origen.</span>
+          </div>
+        </div>
+
+        <!-- 1. Caso Rango (Fecha Final = SI): Selección de UN SOLO Colaborador -->
+        <div class="filtro-field" id="asisSecColabUnicoNovedad" style="margin-bottom:14px;">
+          <label>Colaborador * <span style="font-size:.76rem; font-weight:normal; color:var(--text-muted);">(Seleccione exactamente un colaborador para el rango de fechas)</span></label>
+          <input type="hidden" id="asisModalIdTrabajadorNovedad" value="">
+          <div id="asisModalColabNovedadContainer" style="margin-top:4px;">
+            <span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación y un área para cargar los colaboradores.</span>
+          </div>
+        </div>
+
+        <!-- 2. Caso No Rango (Fecha Final != SI): Selección MÚLTIPLE de Colaboradores -->
+        <div id="asisSecColabMultipleNovedad" style="display:none; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:14px;">
+          <div style="padding:10px 14px; background:var(--bg-elevated); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <strong style="font-size:.86rem;">Colaboradores Activos</strong>
+              <span id="asisContadorSeleccionadosNov" style="font-size:.78rem; color:var(--text-muted); margin-left:6px;">(0 seleccionados)</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn-reset" onclick="seleccionarTodosTrabajadoresNovedad(true)" style="padding:3px 8px; font-size:.74rem;">Seleccionar todos</button>
+              <button type="button" class="btn-reset" onclick="seleccionarTodosTrabajadoresNovedad(false)" style="padding:3px 8px; font-size:.74rem;">Deseleccionar</button>
+            </div>
+          </div>
+          <div style="padding:8px 12px; border-bottom:1px solid var(--border);">
+            <input type="search" id="asisBuscarColaboradorNovedad" placeholder="&#128269; Filtrar colaborador por nombre o cédula..." oninput="filtrarColaboradoresNovedad()" style="width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:.82rem;">
+          </div>
+          <div id="asisListaTrabajadoresCheckboxesNov" style="max-height:220px; overflow-y:auto;">
+            <div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;" id="asisMsgSinAreaNov">Seleccione una operación y un área para cargar los colaboradores.</div>
+          </div>
+          <div style="padding:8px 12px; background:var(--bg-elevated); border-top:1px solid var(--border);">
+            <div style="font-size:.76rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Colaboradores seleccionados:</div>
+            <div id="asisChipsSeleccionadosNov" style="display:flex; flex-wrap:wrap; gap:6px; max-height:70px; overflow-y:auto;">
+              <span style="font-size:.78rem; color:var(--text-muted); font-style:italic;">Ningún colaborador seleccionado aún.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fechas del Evento -->
         <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:14px;">
           <div class="filtro-field">
-            <label>Fecha Inicio *</label>
+            <label id="asisLabelDiaInicio">Fecha Inicio *</label>
             <input type="date" id="asisModalDiaInicio" onchange="calcularDiasNovedad()">
           </div>
-          <div class="filtro-field">
+          <div class="filtro-field" id="asisWrapDiaFin">
             <label>Fecha Fin *</label>
             <input type="date" id="asisModalDiaFin" onchange="calcularDiasNovedad()">
           </div>
-          <div class="filtro-field" style="display:flex; flex-direction:column; justify-content:center;">
+          <div class="filtro-field" id="asisWrapBadgeDias" style="display:flex; flex-direction:column; justify-content:center;">
             <label>Días de Novedad</label>
             <div id="asisBadgeDiasNovedad" style="font-size:.9rem; font-weight:700; color:var(--accent); padding:7px 0;">1 día(s)</div>
           </div>
@@ -3752,6 +3809,8 @@
   const _cfg = __CONFIG__;
   window._cfg = _cfg;
   const { usuario, usuarioNombre, rol, puedeGenerarDocs, tabs } = _cfg;
+  window.usuario = usuario;
+  window.rol = rol;
   // El botón "Sociodemografica" de la Ficha solo se muestra a roles con esa Sección en Maestro_Menu
   if (!_cfg.puedeVerSociodemografica) {
     const btnSocioFicha = document.getElementById('btnSocioFichaModal');
@@ -5165,15 +5224,17 @@
   // ═══════════════════════════════════════════════════════════════════════
   // Pestaña ACTIVOS
   // ═══════════════════════════════════════════════════════════════════════
-  const _activosState = { allData: [], counts: { regionales: {}, operaciones: {} }, sortCol: 'FechaIngreso', sortOrder: 'desc', cargado: false };
+  const _activosState = { allData: [], counts: { regionales: {}, operaciones: {} }, areasPorOperacion: {}, sortCol: 'FechaIngreso', sortOrder: 'desc', cargado: false };
   const actFilterRegional      = document.getElementById('actFilterRegional');
   const actFilterOperacion     = document.getElementById('actFilterOperacion');
+  const actFilterArea          = document.getElementById('actFilterArea');
   const actFilterIdentificacion = document.getElementById('actFilterIdentificacion');
 
   function actualizarBadgeFiltrosActivos() {
     let n = 0;
     if (actFilterRegional.value) n++;
     if (actFilterOperacion.value) n++;
+    if (actFilterArea.value) n++;
     if (actFilterIdentificacion.value.trim()) n++;
     const badge = document.getElementById('actFiltrosBadge');
     badge.textContent = n;
@@ -5182,6 +5243,9 @@
   function resetFiltrosActivos() {
     actFilterRegional.value = '';
     actFilterOperacion.value = '';
+    actFilterArea.value = '';
+    actFilterArea.disabled = true;
+    actFilterArea.innerHTML = '<option value="">— Seleccione primero Operación —</option>';
     actFilterIdentificacion.value = '';
     fetchDataActivos();
   }
@@ -5219,11 +5283,55 @@
       if (op === selectedOp) opt.selected = true;
       actFilterOperacion.appendChild(opt);
     });
+
+    // Opciones y conteos de Área (solo habilitado si hay Operación seleccionada)
+    const selectedArea = actFilterArea.value;
+    actFilterArea.innerHTML = '';
+    if (!selectedOp) {
+      actFilterArea.disabled = true;
+      const optPrompt = document.createElement('option');
+      optPrompt.value = '';
+      optPrompt.textContent = '— Seleccione primero Operación —';
+      actFilterArea.appendChild(optPrompt);
+    } else {
+      actFilterArea.disabled = false;
+      const areaCounts = _activosState.counts.areas || {};
+      const opAreas = (_activosState.areasPorOperacion && _activosState.areasPorOperacion[selectedOp]) || [];
+      const totalArea = Object.values(areaCounts).reduce((a, b) => Number(a) + Number(b), 0);
+      const optAllA = document.createElement('option');
+      optAllA.value = '';
+      optAllA.textContent = `Todas las áreas (${totalArea})`;
+      actFilterArea.appendChild(optAllA);
+
+      opAreas.forEach(a => {
+        const count = areaCounts[String(a.id)] || 0;
+        const opt = document.createElement('option');
+        opt.value = String(a.id);
+        opt.textContent = `${a.area} (${count})`;
+        if (String(a.id) === selectedArea) opt.selected = true;
+        actFilterArea.appendChild(opt);
+      });
+
+      if (areaCounts['sin_area']) {
+        const optSin = document.createElement('option');
+        optSin.value = 'sin_area';
+        optSin.textContent = `Sin Área (${areaCounts['sin_area']})`;
+        if (selectedArea === 'sin_area') optSin.selected = true;
+        actFilterArea.appendChild(optSin);
+      }
+    }
   }
 
   if (tabs.activo) {
-    actFilterRegional.addEventListener('change', fetchDataActivos);
-    actFilterOperacion.addEventListener('change', fetchDataActivos);
+    actFilterRegional.addEventListener('change', () => {
+      actFilterArea.value = '';
+      fetchDataActivos();
+    });
+    actFilterOperacion.addEventListener('change', () => {
+      actFilterArea.value = '';
+      fetchDataActivos();
+    });
+    actFilterArea.addEventListener('change', fetchDataActivos);
     let debounceAct = null;
     actFilterIdentificacion.addEventListener('input', () => { clearTimeout(debounceAct); debounceAct = setTimeout(fetchDataActivos, 350); });
   }
@@ -5233,6 +5341,7 @@
     const params = new URLSearchParams({ usuario });
     if (actFilterRegional.value) params.set('regional', actFilterRegional.value);
     if (actFilterOperacion.value) params.set('operacion', actFilterOperacion.value);
+    if (actFilterArea.value) params.set('area', actFilterArea.value);
     if (actFilterIdentificacion.value.trim()) params.set('busqueda', actFilterIdentificacion.value.trim());
     try {
       const resp = await fetch('/nomina/api/activos?' + params.toString());
@@ -5240,6 +5349,7 @@
       if (!resp.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la información')); return; }
       _activosState.allData = data.results || [];
       _activosState.counts  = data.counts || { regionales: {}, operaciones: {} };
+      _activosState.areasPorOperacion = data.areasPorOperacion || {};
       _activosState.total = Number(data.total || 0);
       _activosState.cargado = true;
       updateFilterOptionsWithCountsActivos();
@@ -5463,7 +5573,7 @@
         return 0;
       });
     }
-    ['IdVinculacion','Regional','Operacion','Trabajador','Cargo','FechaIngreso','Usuario','FechaActualizacion'].forEach(k => {
+    ['IdVinculacion','Operacion','Trabajador','Area','Cargo','FechaIngreso','Usuario','FechaActualizacion'].forEach(k => {
       const span = document.getElementById('actSort-' + k);
       if (!span) return;
       span.textContent = _activosState.sortCol === k ? (_activosState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
@@ -5492,12 +5602,34 @@
     document.getElementById('actEmptyState').style.display = _activosState.allData.length ? 'none' : 'block';
     const ROLES_CONFIRMAN_ESTADO = ['Coordinador', 'CoordinadorR', 'Auxiliar', 'AuxiliarR'];
     _activosState.allData.forEach(row => {
+      const opAreas = (_activosState.areasPorOperacion && _activosState.areasPorOperacion[row.Operacion]) || [];
+      let areaOptionsHtml = '<option value="">— Seleccionar —</option>';
+      let areaEncontrada = false;
+      opAreas.forEach(a => {
+        const esSel = (row.AreaId && Number(row.AreaId) === Number(a.id)) ||
+                      (row.Area && String(row.Area).trim().toLowerCase() === String(a.area).trim().toLowerCase());
+        if (esSel) areaEncontrada = true;
+        areaOptionsHtml += `<option value="${a.id}" ${esSel ? 'selected' : ''}>${esc(a.area)}</option>`;
+      });
+      if (!areaEncontrada && (row.Area || row.AreaId)) {
+        areaOptionsHtml += `<option value="${row.AreaId || ''}" selected>${esc(row.Area || 'Área actual')} (actual)</option>`;
+      }
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td></td>
-        <td>${esc(row.Regional)}</td>
         <td>${esc(row.Operacion)}</td>
         <td>${esc(row.Trabajador)}</td>
+        <td class="celda-act-area">
+          <select class="act-select-area"
+                  data-id="${esc(row.IdVinculacion)}"
+                  data-prev-value="${esc(row.AreaId || '')}"
+                  onclick="event.stopPropagation()"
+                  onmousedown="event.stopPropagation()"
+                  onchange="guardarAreaActivoDirecto(this, '${esc(row.IdVinculacion)}')">
+            ${areaOptionsHtml}
+          </select>
+        </td>
         <td>${esc(row.Cargo)}</td>
         <td class="col-fecha-ingreso">${formatFechaCorta(row.FechaIngreso)}</td>
         <td>${esc(row.Usuario)}</td>
@@ -5552,6 +5684,59 @@
       tr.addEventListener('click', () => abrirFichaVinculacion(row.IdVinculacion));
       body.appendChild(tr);
     });
+  }
+
+  async function guardarAreaActivoDirecto(selectEl, idVinculacion) {
+    const nuevoIdArea = selectEl.value;
+    const prevValue = selectEl.getAttribute('data-prev-value') || '';
+    if (nuevoIdArea === prevValue) return;
+
+    selectEl.disabled = true;
+    selectEl.style.transition = 'border-color .2s, box-shadow .2s';
+    selectEl.style.borderColor = 'var(--text-muted)';
+
+    try {
+      const resp = await fetch('/nomina/api/vinculacion/' + encodeURIComponent(idVinculacion), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario,
+          area: nuevoIdArea ? parseInt(nuevoIdArea, 10) : null
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || 'No se pudo actualizar el área');
+      }
+
+      selectEl.setAttribute('data-prev-value', nuevoIdArea);
+      const optSel = selectEl.options[selectEl.selectedIndex];
+      const nuevoNombre = optSel ? optSel.textContent.replace(' (actual)', '').trim() : '';
+
+      const item = _activosState.allData.find(x => x.IdVinculacion === idVinculacion);
+      if (item) {
+        item.AreaId = nuevoIdArea ? parseInt(nuevoIdArea, 10) : null;
+        item.Area = nuevoNombre;
+      }
+
+      selectEl.style.borderColor = 'var(--ok, #10b981)';
+      selectEl.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.2)';
+      setTimeout(() => {
+        selectEl.style.borderColor = '';
+        selectEl.style.boxShadow = '';
+      }, 1200);
+    } catch (err) {
+      alert('Error al actualizar el área: ' + (err.message || 'Error desconocido'));
+      selectEl.value = prevValue;
+      selectEl.style.borderColor = 'var(--peligro, #ef4444)';
+      selectEl.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+      setTimeout(() => {
+        selectEl.style.borderColor = '';
+        selectEl.style.boxShadow = '';
+      }, 1500);
+    } finally {
+      selectEl.disabled = false;
+    }
   }
 
   async function confirmarEstadoRetirado(idVinculacion, btn) {
@@ -9895,7 +10080,7 @@
     tabDestino = 'activos';
   } else if (tabParam === 'retiros' || tabParam === 'retiro') {
     tabDestino = 'retiros';
-  } else if (tabParam === 'bloqueo' || tabParam === 'bloqueodatos') {
+  } else if (tabParam === 'bloqueo' || tabParam === 'bloqueodatos' || tabParam === 'control-quincena' || tabParam === 'control_quincena' || tabParam === 'controlquincena') {
     tabDestino = 'bloqueo';
   } else if (tabParam === 'biometrico' || tabParam === 'bio') {
     tabDestino = 'biometrico';
@@ -10000,6 +10185,25 @@
     switchTab('cesantias');
   } else if (tabDestino === 'asistencia' && tabs.asistencia) {
     switchTab('asistencia');
+    const quincenaUrlParam = paramsUrl.get('quincena') || '';
+    if (quincenaUrlParam) {
+      setTimeout(() => {
+        const selQ = document.getElementById('asisFilterQuincena');
+        if (selQ) {
+          selQ.value = quincenaUrlParam;
+          if (typeof onQuincenaFiltroChangeAsistencia === 'function') onQuincenaFiltroChangeAsistencia();
+        }
+      }, 300);
+    }
+    const abrirEventoParam = paramsUrl.get('evento') || paramsUrl.get('crear') || paramsUrl.get('nuevo') || paramsUrl.get('ingresar') || (paramsUrl.get('modal') === 'evento');
+    if (abrirEventoParam) {
+      const modoEvento = (paramsUrl.get('modo') || 'diaria').toLowerCase();
+      setTimeout(() => {
+        if (typeof abrirModalRegistroAsistencia === 'function') {
+          abrirModalRegistroAsistencia(modoEvento === 'novedad' ? 'novedad' : 'diaria');
+        }
+      }, 250);
+    }
   } else if (tabDestino === 'produccion' && tabs.produccion) {
     const subParamProd = (paramsUrl.get('subtab') || '').toLowerCase().trim();
     if (tabs.produccion[subParamProd]) _prodState.activeSubTab = subParamProd;

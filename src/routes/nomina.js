@@ -17,6 +17,7 @@ const {
   buscarTrabajadoresVinculacion,
   registrarAsistenciaDiaria,
   registrarNovedadPorRango,
+  registrarNovedadDia,
   editarRegistroAsistencia,
   eliminarRegistroAsistencia,
   eliminarRegistrosAsistenciaLote,
@@ -408,6 +409,10 @@ router.get('/', async (req, res) => {
           sinFiltro: accesoAsistencia.sinFiltro,
           operacionesFiltro: accesoAsistencia.operacionesFiltro || [],
           opsPorRegional: accesoAsistencia.opsPorRegional || {},
+          todasOpsPorRegional: await (async () => {
+            const [tOps] = await pool.execute("SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN");
+            return agruparOperacionesPorRegional(tOps);
+          })(),
           regionalesFiltro: Object.keys(accesoAsistencia.opsPorRegional || {}).sort((a, b) => a.localeCompare(b, 'es')),
           regional: accesoAsistencia.regional || '',
           operacion: accesoAsistencia.operacion || '',
@@ -592,7 +597,7 @@ router.get('/api/retiros', async (req, res) => {
 // ── Activos: filtros compartidos (tabla y descarga) ────────────────────────
 // Seguridad: solo las operaciones que el usuario ve según Maestro_Menu
 // (Sección 'Activo'). Filtros: los mismos que aplica en pantalla.
-function construirFiltrosActivos(acceso, { regional, operacion, busqueda }) {
+function construirFiltrosActivos(acceso, { regional, operacion, area, busqueda }) {
   const securityConds  = ["v.Estado = 'Activo'"];
   const securityParams = [];
   if (!acceso.sinFiltro) {
@@ -603,6 +608,12 @@ function construirFiltrosActivos(acceso, { regional, operacion, busqueda }) {
   }
   const fReg = regional  ? { cond: 'v.`Regional` = ?',  param: regional }  : null;
   const fOp  = operacion ? { cond: 'v.`Operación` = ?', param: operacion } : null;
+  let fArea = null;
+  if (area === 'sin_area') {
+    fArea = { cond: '(v.`Area` IS NULL OR v.`Area` = 0)', params: [] };
+  } else if (area) {
+    fArea = { cond: 'v.`Area` = ?', param: parseInt(area, 10) || area };
+  }
   const fBus = filtroBusqueda(busqueda);
   const buildWhere = (filtersList) => {
     const c = [...securityConds];
@@ -610,7 +621,7 @@ function construirFiltrosActivos(acceso, { regional, operacion, busqueda }) {
     filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(...(f.params || [f.param])); } });
     return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
   };
-  return { fReg, fOp, fBus, buildWhere, todos: buildWhere([fReg, fOp, fBus]) };
+  return { fReg, fOp, fArea, fBus, buildWhere, todos: buildWhere([fReg, fOp, fArea, fBus]) };
 }
 
 // Límites del reporte (Config_Parametros, nomina / Activos, Condición 'Filas').
@@ -707,6 +718,7 @@ async function enviarReporte(req, res, { formato, sql, params, columnas, hoja, a
 const COLUMNAS_REPORTE_ACTIVOS = [
   { titulo: 'Identificación',      campo: 'Identificacion',     tipo: 'numero', ancho: 16 },
   { titulo: 'Trabajador',          campo: 'Trabajador',         tipo: 'texto',  ancho: 38 },
+  { titulo: 'Área',                campo: 'Area',               tipo: 'texto',  ancho: 24 },
   { titulo: 'Cargo',               campo: 'Cargo',              tipo: 'texto',  ancho: 32 },
   { titulo: 'Regional',            campo: 'Regional',           tipo: 'texto',  ancho: 16 },
   { titulo: 'Operación',           campo: 'Operacion',          tipo: 'texto',  ancho: 24 },
@@ -720,6 +732,7 @@ const SELECT_REPORTE_ACTIVOS = `
   SELECT
     v.\`Identificación\`      AS Identificacion,
     v.\`Trabajador\`          AS Trabajador,
+    ca.AREA                 AS Area,
     v.\`Cargo\`               AS Cargo,
     v.\`Regional\`            AS Regional,
     v.\`Operación\`           AS Operacion,
@@ -727,7 +740,8 @@ const SELECT_REPORTE_ACTIVOS = `
     v.\`Usuario\`             AS Usuario,
     v.\`Fecha Actualización\` AS FechaActualizacion,
     v.\`Id Vinculación\`      AS IdVinculacion
-  FROM \`Maestro_Vinculación\` v`;
+  FROM \`Maestro_Vinculación\` v
+  LEFT JOIN \`Config_Area\` ca ON ca.ID = v.\`Area\``;
 
 // "Identificación ** NOMBRE" → "NOMBRE"
 function nombreSinIdentificacion(trabajador) {
@@ -738,17 +752,17 @@ function nombreSinIdentificacion(trabajador) {
 // ── GET /api/activos ─────────────────────────────────────────────────────
 router.get('/api/activos', async (req, res) => {
   try {
-    const { usuario, regional, operacion, busqueda } = req.query;
+    const { usuario, regional, operacion, area, busqueda } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoNomina(usuario, 'Activo');
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const filtros = construirFiltrosActivos(acceso, { regional, operacion, busqueda });
+    const filtros = construirFiltrosActivos(acceso, { regional, operacion, area, busqueda });
     if (!filtros) {
-      return res.json({ results: [], counts: { regionales: {}, operaciones: {} }, total: 0 });
+      return res.json({ results: [], counts: { regionales: {}, operaciones: {}, areas: {} }, total: 0 });
     }
-    const { fReg, fOp, fBus, buildWhere, todos: listFilter } = filtros;
+    const { fReg, fOp, fArea, fBus, buildWhere, todos: listFilter } = filtros;
 
     const listQuery = `
       SELECT
@@ -757,36 +771,77 @@ router.get('/api/activos', async (req, res) => {
         v.\`Regional\`           AS Regional,
         v.\`Operación\`          AS Operacion,
         v.\`Trabajador\`         AS Trabajador,
+        v.\`Area\`               AS AreaId,
+        ca.AREA                AS Area,
         v.\`Cargo\`              AS Cargo,
         v.\`Fecha de Ingreso\`   AS FechaIngreso,
         v.\`Usuario\`            AS Usuario,
         v.\`Fecha Actualización\` AS FechaActualizacion,
         v.\`Motivo del Retiro\`  AS MotivoRetiro
       FROM \`Maestro_Vinculación\` v
+      LEFT JOIN \`Config_Area\` ca ON ca.ID = v.\`Area\`
       ${listFilter.where}
       ORDER BY v.\`Fecha de Ingreso\` DESC
       LIMIT 500
     `;
 
-    const cReg = buildWhere([fOp, fBus]);
-    const cOp  = buildWhere([fReg, fBus]);
+    const cReg  = buildWhere([fOp, fArea, fBus]);
+    const cOp   = buildWhere([fReg, fArea, fBus]);
+    const cArea = buildWhere([fReg, fOp, fBus]);
 
-    const [[results], [regRows], [opRows], [totRows]] = await Promise.all([
+    const queries = [
       pool.execute(listQuery, listFilter.params),
       pool.execute(`SELECT v.\`Regional\` AS Regional, COUNT(*) as total FROM \`Maestro_Vinculación\` v ${cReg.where} GROUP BY v.\`Regional\``, cReg.params),
       pool.execute(`SELECT v.\`Operación\` AS Operacion, COUNT(*) as total FROM \`Maestro_Vinculación\` v ${cOp.where} GROUP BY v.\`Operación\``, cOp.params),
       pool.execute(`SELECT COUNT(*) AS total FROM \`Maestro_Vinculación\` v ${listFilter.where}`, listFilter.params),
-    ]);
+      pool.execute("SELECT ID AS id, AREA AS area, `OPERACIÓN` AS operacion, ADMINISTRATIVO AS administrativo FROM Config_Area ORDER BY AREA ASC"),
+    ];
+
+    if (operacion) {
+      queries.push(
+        pool.execute(
+          `SELECT v.\`Area\` AS AreaId, COUNT(*) as total
+           FROM \`Maestro_Vinculación\` v
+           ${cArea.where}
+           GROUP BY v.\`Area\``,
+          cArea.params
+        )
+      );
+    }
+
+    const [
+      [results],
+      [regRows],
+      [opRows],
+      [totRows],
+      [areaCatalogoRows],
+      areaCountResult
+    ] = await Promise.all(queries);
 
     const regCounts = {};
     regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = Number(r.total); });
     const opCounts = {};
     opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = Number(r.total); });
 
+    const areaCounts = {};
+    if (areaCountResult && areaCountResult[0]) {
+      areaCountResult[0].forEach(r => {
+        const key = r.AreaId !== null && r.AreaId !== undefined ? String(r.AreaId) : 'sin_area';
+        areaCounts[key] = Number(r.total);
+      });
+    }
+
+    const areasPorOperacion = {};
+    areaCatalogoRows.forEach(a => {
+      if (!areasPorOperacion[a.operacion]) areasPorOperacion[a.operacion] = [];
+      areasPorOperacion[a.operacion].push({ id: a.id, area: a.area, administrativo: a.administrativo });
+    });
+
     res.json({
       results,
-      counts: { regionales: regCounts, operaciones: opCounts },
+      counts: { regionales: regCounts, operaciones: opCounts, areas: areaCounts },
       total: Number(totRows[0].total),
+      areasPorOperacion,
     });
   } catch (err) {
     console.error('[nomina] GET /api/activos', err);
@@ -2417,7 +2472,8 @@ const uploadAsistencia = multer({ storage: multer.memoryStorage(), limits: { fil
 
 async function verificarAccesoAsistenciaAPI(req, res, next) {
   try {
-    const usuario = req.query.usuario || req.body.usuario || req.headers['x-usuario'];
+    let usuario = req.query.usuario || (req.body && req.body.usuario) || req.headers['x-usuario'];
+    if (typeof usuario === 'string') usuario = usuario.trim();
     if (!usuario) return res.status(401).json({ ok: false, error: 'Usuario no proporcionado' });
     const acceso = await computarAccesoNomina(usuario, 'Asistencia');
     if (!acceso) return res.status(403).json({ ok: false, error: 'No tienes permisos para Asistencia y Novedades' });
@@ -2661,7 +2717,8 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
   try {
     const {
       trabajadorIdentificacion, operacion, area, novedad, prefijoNovedad,
-      diaInicio, diaFin, codDiagnostico, diagnostico, tipoIncapacidad, observaciones
+      diaInicio, diaFin, codDiagnostico, diagnostico, tipoIncapacidad, observaciones,
+      operacionApoya, apoyoOtraOperacion
     } = req.body;
 
     let urlSoporte = null;
@@ -2709,24 +2766,60 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
       }
     }
 
-    const resultado = await registrarNovedadPorRango({
-      trabajadorIdentificacion,
-      operacion,
-      area,
-      novedad,
-      prefijoNovedad,
-      diaInicio,
-      diaFin,
-      codDiagnostico,
-      diagnostico,
-      tipoIncapacidad,
-      urlSoporte,
-      urlIncapacidad,
-      urlHistoriaClinica,
-      observaciones,
-      usuario: req.usuarioId,
-      rol: req.usuarioRol
-    });
+    const { trabajadoresIds, dia } = req.body;
+
+    // Verificar si la novedad requiere Fecha Final (es rango) según Config_Asistencia
+    const [cfgNov] = await pool.query('SELECT \`Fecha Final\` AS requiereFechaFinal FROM Config_Asistencia WHERE Novedad = ? LIMIT 1', [novedad]);
+    const esRango = cfgNov.length && String(cfgNov[0].requiereFechaFinal || '').trim().toUpperCase() === 'SI';
+
+    let resultado;
+    if (esRango) {
+      resultado = await registrarNovedadPorRango({
+        trabajadorIdentificacion,
+        operacion,
+        area,
+        novedad,
+        prefijoNovedad,
+        diaInicio,
+        diaFin: diaFin || diaInicio,
+        codDiagnostico,
+        diagnostico,
+        tipoIncapacidad,
+        urlSoporte,
+        urlIncapacidad,
+        urlHistoriaClinica,
+        observaciones,
+        usuario: req.usuarioId,
+        rol: req.usuarioRol
+      });
+    } else {
+      let idsColab = [];
+      if (trabajadoresIds) {
+        idsColab = Array.isArray(trabajadoresIds) ? trabajadoresIds : JSON.parse(trabajadoresIds || '[]');
+      } else if (trabajadorIdentificacion) {
+        idsColab = [trabajadorIdentificacion];
+      }
+
+      resultado = await registrarNovedadDia({
+        trabajadoresIds: idsColab,
+        operacion,
+        area,
+        novedad,
+        prefijoNovedad,
+        dia: dia || diaInicio,
+        codDiagnostico,
+        diagnostico,
+        tipoIncapacidad,
+        urlSoporte,
+        urlIncapacidad,
+        urlHistoriaClinica,
+        observaciones,
+        operacionApoya,
+        apoyoOtraOperacion,
+        usuario: req.usuarioId,
+        rol: req.usuarioRol
+      });
+    }
 
     res.json({ ok: true, ...resultado });
   } catch (err) {

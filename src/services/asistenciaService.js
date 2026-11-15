@@ -482,6 +482,7 @@ async function registrarAsistenciaDiaria({
     ]);
 
     // 3. Preparar Bulk Insert en Dynamic_Asistencia
+    const areaFinal = area || null;
     const rowsToInsert = [];
     trabRows.forEach((t, idx) => {
       const pos = idx + 1;
@@ -767,11 +768,11 @@ async function registrarNovedadPorRango({
         null, // Hora Salida
         null, // Tiempo Laborado
         null, // Valor Destajo
-        'NO',
-        null,
+        apoyoVal, // Apoyo Otra Operación
+        opDestinoApoyo, // Operación a la que Apoya
         codDiagValido,
         diagValido,
-        observaciones || null,
+        observaciones || (opDestinoApoyo ? `Apoyo a ${opDestinoApoyo}` : null),
         urlSoporte || null,
         urlIncapacidad || null,
         urlHistoriaClinica || null,
@@ -855,6 +856,248 @@ async function registrarNovedadPorRango({
   } catch (err) {
     await conn.rollback();
     console.error('[asistenciaService] Error en registrarNovedadPorRango:', err);
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Registra novedad para un día específico con uno o múltiples colaboradores (cuando Fecha Final !== 'SI')
+ * En Dynamic_Registro_Asistencia se llena la columna 'Trabajador' con la lista y 'Trabajador2' queda NULL.
+ */
+async function registrarNovedadDia({
+  trabajadoresIds,
+  operacion,
+  area,
+  novedad,
+  prefijoNovedad,
+  dia,
+  codDiagnostico = null,
+  diagnostico = null,
+  tipoIncapacidad = null,
+  urlSoporte = null,
+  urlIncapacidad = null,
+  urlHistoriaClinica = null,
+  observaciones = null,
+  operacionApoya = null,
+  apoyoOtraOperacion = 'NO',
+  usuario,
+  rol = ''
+}) {
+  if (!trabajadoresIds || !trabajadoresIds.length || !dia || !novedad) {
+    throw new Error('Faltan datos obligatorios para registrar la novedad (colaboradores, día o novedad).');
+  }
+
+  // Validación de permisos de fechas futuras
+  const paramsCfg = await obtenerParametrosAsistencia();
+  const puedeDiasFuturos = (paramsCfg.rolesRegistrarDiasFuturos || ['Sistema', 'Nomina'])
+    .map(r => r.toLowerCase().trim())
+    .includes((rol || '').toLowerCase().trim());
+  const hoy = obtenerHoyColombia();
+  if (!puedeDiasFuturos && dia > hoy) {
+    throw new Error(`No tiene permisos para iniciar novedades en fechas futuras (${dia}).`);
+  }
+
+  // Validación de Bloqueo de Nómina
+  const bloqueo = await verificarBloqueoNomina(operacion, dia, rol);
+  if (bloqueo.bloqueado) {
+    throw new Error(bloqueo.mensaje);
+  }
+
+  // Consultar datos de los trabajadores en Maestro_Segmentación
+  const placeholders = trabajadoresIds.map(() => '?').join(',');
+  const [trabRows] = await pool.query(`
+    SELECT 
+      Identificación AS identificacion,
+      Trabajador AS trabajador,
+      TRIM(REGEXP_REPLACE(CONCAT_WS(' ', 
+        TRIM(\`Primer Nombre\`), 
+        TRIM(IFNULL(\`Segundo Nombre\`, '')), 
+        TRIM(\`Primer Apellido\`), 
+        TRIM(IFNULL(\`Segundo Apellido\`, ''))
+      ), '[[:space:]]+', ' ')) AS nombreCompleto,
+      \`Operación\` AS operacion
+    FROM Maestro_Segmentación
+    WHERE Identificación IN (${placeholders}) OR Trabajador IN (${placeholders})
+  `, [...trabajadoresIds, ...trabajadoresIds]);
+
+  if (!trabRows.length) {
+    throw new Error('No se encontraron los datos de los colaboradores seleccionados en Maestro_Segmentación.');
+  }
+
+  const opFinal = operacion || trabRows[0].operacion;
+  let prefijoEfectivo = prefijoNovedad || 'NOV';
+  let tipoDocIncapacidad = '31';
+  if ((novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) && tipoIncapacidad) {
+    const [incRows] = await pool.query(
+      "SELECT \`Prefijo Novedad\` AS prefijo, TipoDocumento FROM Config_Asistencia WHERE Novedad = ? AND Evento = 'Incapacidad' LIMIT 1",
+      [tipoIncapacidad]
+    );
+    if (incRows.length && incRows[0].prefijo) {
+      prefijoEfectivo = incRows[0].prefijo;
+    }
+    if (incRows.length && incRows[0].TipoDocumento) {
+      tipoDocIncapacidad = String(incRows[0].TipoDocumento);
+    }
+  }
+
+  const idRegistro = generarIdRegistro(prefijoEfectivo, dia);
+  const fechaRegistro = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    let codDiagValido = null;
+    let diagValido = diagnostico ? diagnostico.substring(0, 300) : null;
+    if (codDiagnostico && codDiagnostico.trim()) {
+      const [cdRows] = await conn.execute('SELECT Cod, \`Descripción\` FROM Config_Diagnostico WHERE Cod = ? LIMIT 1', [codDiagnostico.trim().toUpperCase()]);
+      if (cdRows.length) {
+        codDiagValido = cdRows[0].Cod;
+        if (!diagValido) diagValido = cdRows[0]['Descripción'] ? cdRows[0]['Descripción'].substring(0, 300) : null;
+      }
+    }
+
+    const areaFinal = area || null;
+    const listaNombresTrabajador = trabRows.map(t => t.trabajador).join(' , ');
+
+    // 1. Insertar cabecera en Dynamic_Registro_Asistencia
+    // Para novedades de 1 solo día (Fecha Final != 'SI'), se usa columna Trabajador,
+    // Trabajador2 queda NULL y Fecha Final queda NULL.
+    const esApoyo = novedad === 'Apoyo a Otra Operación' || apoyoOtraOperacion === 'SI';
+    const opDestinoApoyo = esApoyo ? (operacionApoya || null) : null;
+    const apoyoVal = esApoyo ? 'SI' : 'NO';
+
+    await conn.execute(`
+      INSERT INTO Dynamic_Registro_Asistencia (
+        IdRegistro, \`Operación\`, Area, Evento, Novedad, \`Apoyo de Otra Operación\`,
+        Trabajador, Día, \`Fecha Final\`, Incapacidad, \`Cod Diagnostico\`, Diagnostico,
+        \`PDF Incapacidad\`, \`PDF Historia Clinica\`, \`PDF Soporte\`,
+        \`Operación a la que apoya\`,
+        Origen, \`Fecha Registro\`, Usuario, Disponible
+      ) VALUES (
+        ?, ?, ?, 'Novedad', ?, ?,
+        ?, ?, NULL, ?, ?, ?,
+        ?, ?, ?,
+        ?,
+        ?, ?, ?, 1
+      )
+    `, [
+      idRegistro,
+      opDestinoApoyo,
+      areaFinal,
+      novedad,
+      apoyoVal,
+      listaNombresTrabajador,
+      dia,
+      tipoIncapacidad || null,
+      codDiagValido,
+      diagnostico || null,
+      urlIncapacidad || '',
+      urlHistoriaClinica || '',
+      urlSoporte || '',
+      opDestinoApoyo,
+      opFinal,
+      fechaRegistro,
+      usuario
+    ]);
+
+    // 2. Insertar registros en Dynamic_Asistencia (uno por cada colaborador)
+    const rowsToInsert = [];
+    trabRows.forEach((t, idx) => {
+      const pos = idx + 1;
+      const idAsistencia = `${idRegistro}_T${pos}`;
+
+      rowsToInsert.push([
+        idAsistencia,
+        idRegistro,
+        opFinal,
+        (novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) ? 'Incapacidad' : novedad,
+        prefijoEfectivo,
+        dia,
+        areaFinal,
+        t.trabajador,
+        t.identificacion,
+        t.nombreCompleto,
+        null, // Hora Llegada
+        null, // Hora Salida
+        null, // Tiempo Laborado
+        null, // Valor Destajo
+        'NO',
+        null,
+        codDiagValido,
+        diagValido,
+        observaciones || null,
+        urlSoporte || null,
+        urlIncapacidad || null,
+        urlHistoriaClinica || null,
+        opFinal, // Origen
+        fechaRegistro,
+        usuario,
+        areaFinal, // Disponible1 (por defecto igual a Area)
+        'Yellow',
+        tipoIncapacidad || null
+      ]);
+    });
+
+    await conn.query(`
+      INSERT INTO Dynamic_Asistencia (
+        IdAsistencia, IdRegistro, \`Operación\`, Novedad, \`Prefijo Novedad\`,
+        Día, Area, Trabajador, Cédula, Nombre,
+        \`Hora Llegada\`, \`Hora Salida\`, \`Tiempo Laborado\`, \`Valor Destajo\`,
+        \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`,
+        \`Cod Diagnostico\`, Diagnostico, Observaciones,
+        \`Archivo Soporte\`, \`Archivo Incapacidad\`, \`Archivo Historia Clinica\`,
+        Origen, \`Fecha Registro\`, Usuario, Disponible1,
+        Estado, \`Tipo Incapacidad\`
+      ) VALUES ?
+    `, [rowsToInsert]);
+
+    // 3. Documentos de soporte si aplica
+    if (urlIncapacidad || urlHistoriaClinica || urlSoporte) {
+      const [opInfo] = await conn.execute('SELECT REGIONAL FROM Maestro_Operaciones WHERE \`OPERACIÓN\` = ? LIMIT 1', [opFinal]);
+      const regional = opInfo.length ? opInfo[0].REGIONAL : null;
+
+      for (const t of trabRows) {
+        const [vincInfo] = await conn.execute('SELECT Estado, \`Fecha de Ingreso\` FROM Maestro_Vinculación WHERE \`Identificación\` = ? LIMIT 1', [t.identificacion]);
+        const estadoVinc = vincInfo.length ? vincInfo[0].Estado : 'Activo';
+        const fechaIngresoVinc = vincInfo.length ? vincInfo[0]['Fecha de Ingreso'] : null;
+
+        if (urlIncapacidad) {
+          await registrarDocumentoSoporte(conn, {
+            idReferencia: idRegistro, regional, operacion: opFinal, identificacion: t.identificacion,
+            estadoVinc, fechaIngresoVinc, tipoDoc: tipoDocIncapacidad || '31', urlDoc: urlIncapacidad, fechaReg: fechaRegistro, usuario,
+            observaciones: tipoIncapacidad || novedad
+          });
+        }
+        if (urlHistoriaClinica) {
+          await registrarDocumentoSoporte(conn, {
+            idReferencia: idRegistro, regional, operacion: opFinal, identificacion: t.identificacion,
+            estadoVinc, fechaIngresoVinc, tipoDoc: '32', urlDoc: urlHistoriaClinica, fechaReg: fechaRegistro, usuario,
+            observaciones: 'Historia Clínica'
+          });
+        }
+        if (urlSoporte) {
+          await registrarDocumentoSoporte(conn, {
+            idReferencia: idRegistro, regional, operacion: opFinal, identificacion: t.identificacion,
+            estadoVinc, fechaIngresoVinc, tipoDoc: '33', urlDoc: urlSoporte, fechaReg: fechaRegistro, usuario,
+            observaciones: 'Soporte / Permiso'
+          });
+        }
+      }
+    }
+
+    await conn.commit();
+    return {
+      success: true,
+      idRegistro,
+      diasRegistrados: 1,
+      registrosInsertados: rowsToInsert.length
+    };
+  } catch (err) {
+    await conn.rollback();
+    console.error('[asistenciaService] Error en registrarNovedadDia:', err);
     throw err;
   } finally {
     conn.release();
@@ -1412,6 +1655,7 @@ module.exports = {
   buscarTrabajadoresVinculacion,
   registrarAsistenciaDiaria,
   registrarNovedadPorRango,
+  registrarNovedadDia,
   editarRegistroAsistencia,
   eliminarRegistroAsistencia,
   eliminarRegistrosAsistenciaLote,
