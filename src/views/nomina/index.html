@@ -10196,6 +10196,11 @@
     switchTab('cesantias');
   } else if (tabDestino === 'asistencia' && tabs.asistencia) {
     switchTab('asistencia');
+    // ?subtab=control abre el Control de quincena (con &operacion= abre su planilla; &fecha=AAAA-MM-DD otra quincena)
+    const subParamAsis = (paramsUrl.get('subtab') || paramsUrl.get('vista') || '').toLowerCase().replace(/[\s_-]/g, '');
+    if (['control', 'controlquincena', 'controldequincena'].includes(subParamAsis) && typeof switchAsisSubVista === 'function') {
+      setTimeout(() => switchAsisSubVista('control', { operacion: operacionParam, fecha: paramsUrl.get('fecha') || '' }), 200);
+    }
     const quincenaUrlParam = paramsUrl.get('quincena') || '';
     if (quincenaUrlParam) {
       setTimeout(() => {
@@ -10282,7 +10287,7 @@
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/boton-sync.js" defer></script>
 <script src="/js/nomina-asistencia.js?v=20261116c"></script>
-<script src="/js/nomina-control-quincena.js?v=20261114a"></script>
+<script src="/js/nomina-control-quincena.js?v=20261116a"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>
 </html>
