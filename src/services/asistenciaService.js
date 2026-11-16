@@ -1105,7 +1105,9 @@ async function registrarNovedadDia({
 }
 
 /**
- * Consulta el listado de asistencias y novedades con paginación y filtros
+ * Consulta el listado de asistencias y novedades con paginación y filtros.
+ * Se filtra y agrupa por Origen (la operación que registró), igual que la vista de AppSheet: un apoyo
+ * aparece en la operación donde trabajó (que lo registró) y su "Apoyo a Otra Operación" en la suya.
  */
 async function listarAsistencias({
   operacionesPermitidas = [],
@@ -1130,10 +1132,10 @@ async function listarAsistencias({
 
   // Filtro de seguridad por operaciones permitidas
   if (operacion) {
-    whereClauses.push('da.`Operación` = ?');
+    whereClauses.push('da.Origen = ?');
     params.push(operacion);
   } else if (operacionesPermitidas && operacionesPermitidas.length > 0) {
-    whereClauses.push(`da.\`Operación\` IN (${operacionesPermitidas.map(() => '?').join(',')})`);
+    whereClauses.push(`da.Origen IN (${operacionesPermitidas.map(() => '?').join(',')})`);
     params.push(...operacionesPermitidas);
   }
 
@@ -1183,7 +1185,7 @@ async function listarAsistencias({
   const [cRows] = await pool.execute(
     `SELECT COUNT(*) AS total 
      FROM Dynamic_Asistencia da 
-     LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN 
+     LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN 
      LEFT JOIN \`Maestro_Segmentación\` ms ON da.Cédula = ms.Identificación
      WHERE ${whereSql}`,
     params
@@ -1196,7 +1198,7 @@ async function listarAsistencias({
       da.IdAsistencia AS idAsistencia,
       da.IdRegistro AS idRegistro,
       da.Estado AS estado,
-      da.\`Operación\` AS operacion,
+      da.Origen AS operacion,
       COALESCE(mo.REGIONAL, '') AS regional,
       da.Novedad AS novedad,
       da.\`Prefijo Novedad\` AS prefijoNovedad,
@@ -1225,7 +1227,7 @@ async function listarAsistencias({
       da.Estado AS estado,
       da.Quincena AS quincena
     FROM Dynamic_Asistencia da
-    LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN
+    LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
     LEFT JOIN Config_Asistencia ca ON da.Novedad = ca.Novedad
     LEFT JOIN Maestro_Segmentación ms ON da.Cédula = ms.Identificación
     LEFT JOIN Config_Area carea ON da.Area = carea.ID
@@ -1261,10 +1263,10 @@ async function obtenerMetricasAsistencia({
   const commonParams = [];
 
   if (operacion) {
-    commonWhere.push('da.`Operación` = ?');
+    commonWhere.push('da.Origen = ?');
     commonParams.push(operacion);
   } else if (operacionesPermitidas && operacionesPermitidas.length > 0) {
-    commonWhere.push(`da.\`Operación\` IN (${operacionesPermitidas.map(() => '?').join(',')})`);
+    commonWhere.push(`da.Origen IN (${operacionesPermitidas.map(() => '?').join(',')})`);
     commonParams.push(...operacionesPermitidas);
   }
 
@@ -1289,7 +1291,7 @@ async function obtenerMetricasAsistencia({
   const [quincenasRows] = await pool.query(`
     SELECT da.Quincena AS quincena, COUNT(*) AS totalCount
     FROM Dynamic_Asistencia da
-    LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN
+    LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
     WHERE ${qWhere.join(' AND ')} AND da.Quincena IS NOT NULL AND da.Quincena != ''
     GROUP BY da.Quincena
     ORDER BY MIN(da.\`Día\`) DESC
@@ -1309,7 +1311,7 @@ async function obtenerMetricasAsistencia({
     const [dRows] = await pool.query(`
       SELECT DATE_FORMAT(da.\`Día\`, '%Y-%m-%d') AS dia, COUNT(*) AS totalCount
       FROM Dynamic_Asistencia da
-      LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN
+      LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
       WHERE ${dWhere.join(' AND ')}
       GROUP BY da.\`Día\`
       ORDER BY da.\`Día\` DESC
@@ -1335,13 +1337,13 @@ async function obtenerMetricasAsistencia({
   const [regOpsRows] = await pool.query(`
     SELECT 
       COALESCE(mo.REGIONAL, 'SIN REGIONAL') AS regional,
-      da.\`Operación\` AS operacion,
+      da.Origen AS operacion,
       COUNT(*) AS totalCount
     FROM Dynamic_Asistencia da
-    LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN
+    LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
     WHERE ${roWhere.join(' AND ')}
-    GROUP BY mo.REGIONAL, da.\`Operación\`
-    ORDER BY mo.REGIONAL, da.\`Operación\`
+    GROUP BY mo.REGIONAL, da.Origen
+    ORDER BY mo.REGIONAL, da.Origen
   `, roParams);
 
   // 4. Novedades (filtra por quincena, dia, regional, operacion)
@@ -1365,7 +1367,7 @@ async function obtenerMetricasAsistencia({
       COALESCE(ca.Color, '#FFFFFF') AS color,
       COUNT(*) AS totalCount
     FROM Dynamic_Asistencia da
-    LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN
+    LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
     LEFT JOIN Config_Asistencia ca ON da.Novedad = ca.Novedad
     WHERE ${novWhere.join(' AND ')}
     GROUP BY da.Novedad, ca.Color
@@ -1382,7 +1384,7 @@ async function obtenerMetricasAsistencia({
   const [tRow] = await pool.query(`
     SELECT COUNT(*) AS total
     FROM Dynamic_Asistencia da
-    LEFT JOIN Maestro_Operaciones mo ON da.\`Operación\` = mo.OPERACIÓN
+    LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
     WHERE ${totalWhere.join(' AND ')}
   `, totalParams);
 
@@ -1401,7 +1403,7 @@ async function obtenerMetricasAsistencia({
  */
 async function eliminarRegistroAsistencia({ idAsistencia, usuario, rol, operacionesPermitidas = [], sinFiltro = false }) {
   const [rows] = await pool.query(
-    'SELECT IdAsistencia, `Operación` as operacion, Novedad as novedad, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    'SELECT IdAsistencia, Origen as operacion, Novedad as novedad, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
     [idAsistencia]
   );
   if (!rows.length) throw new Error('El registro no existe.');
@@ -1453,7 +1455,7 @@ async function eliminarRegistrosAsistenciaLote({ idsAsistencia = [], usuario, ro
 
   const placeholders = idsAsistencia.map(() => '?').join(',');
   const [rows] = await pool.query(
-    `SELECT IdAsistencia, \`Operación\` as operacion, Novedad as novedad, DATE_FORMAT(\`Día\`, "%Y-%m-%d") as dia, Estado as estado 
+    `SELECT IdAsistencia, Origen as operacion, Novedad as novedad, DATE_FORMAT(\`Día\`, "%Y-%m-%d") as dia, Estado as estado 
      FROM Dynamic_Asistencia 
      WHERE IdAsistencia IN (${placeholders})`,
     idsAsistencia
@@ -1539,7 +1541,7 @@ async function editarRegistroAsistencia({
   observaciones
 }) {
   const [rows] = await pool.query(
-    'SELECT IdAsistencia, `Operación` as operacion, Area as area, Disponible1 as disponible1, Novedad as novedad, TIME_FORMAT(`Hora Llegada`, "%H:%i") as horaLlegada, TIME_FORMAT(`Hora Salida`, "%H:%i") as horaSalida, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    'SELECT IdAsistencia, Origen as operacion, Area as area, Disponible1 as disponible1, Novedad as novedad, TIME_FORMAT(`Hora Llegada`, "%H:%i") as horaLlegada, TIME_FORMAT(`Hora Salida`, "%H:%i") as horaSalida, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
     [idAsistencia]
   );
   if (!rows.length) throw new Error('El registro no existe.');
