@@ -5296,7 +5296,9 @@
     } else {
       actFilterArea.disabled = false;
       const areaCounts = _activosState.counts.areas || {};
-      const opAreas = (_activosState.areasPorOperacion && _activosState.areasPorOperacion[selectedOp]) || [];
+      // Solo áreas administrativas de la operación (Config_Area.ADMINISTRATIVO = 'V')
+      const opAreas = ((_activosState.areasPorOperacion && _activosState.areasPorOperacion[selectedOp]) || [])
+        .filter(a => String(a.administrativo || '').trim().toUpperCase() === 'V');
       const totalArea = Object.values(areaCounts).reduce((a, b) => Number(a) + Number(b), 0);
       const optAllA = document.createElement('option');
       optAllA.value = '';
