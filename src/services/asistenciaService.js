@@ -1104,6 +1104,14 @@ async function registrarNovedadDia({
   }
 }
 
+/** Filtro por Área (ID de Config_Area en Dynamic_Asistencia.Area); 'sin_area' = registros sin área. */
+function filtroArea(area, where, params) {
+  if (!area) return;
+  if (area === 'sin_area') { where.push("(da.Area IS NULL OR da.Area = '')"); return; }
+  where.push('da.Area = ?');
+  params.push(String(area));
+}
+
 /**
  * Consulta el listado de asistencias y novedades con paginación y filtros.
  * Se filtra y agrupa por Origen (la operación que registró), igual que la vista de AppSheet: un apoyo
@@ -1112,6 +1120,7 @@ async function registrarNovedadDia({
 async function listarAsistencias({
   operacionesPermitidas = [],
   operacion = '',
+  area = '',
   regional = '',
   anio = '',
   quincena = '',
@@ -1138,6 +1147,8 @@ async function listarAsistencias({
     whereClauses.push(`da.Origen IN (${operacionesPermitidas.map(() => '?').join(',')})`);
     params.push(...operacionesPermitidas);
   }
+
+  filtroArea(area, whereClauses, params);
 
   if (regional) {
     whereClauses.push('mo.REGIONAL = ?');
@@ -1256,6 +1267,7 @@ async function obtenerMetricasAsistencia({
   dia = '',
   regional = '',
   operacion = '',
+  area = '',
   novedad = '',
   busqueda = ''
 }) {
@@ -1280,6 +1292,11 @@ async function obtenerMetricasAsistencia({
     commonWhere.push('(da.Nombre LIKE ? OR CAST(da.Cédula AS CHAR) LIKE ? OR da.Trabajador LIKE ?)');
     commonParams.push(qLike, qLike, qLike);
   }
+
+  // Base sin el filtro de Área (para contar las áreas); el resto de conteos sí lo aplica
+  const sinAreaWhere = [...commonWhere];
+  const sinAreaParams = [...commonParams];
+  filtroArea(area, commonWhere, commonParams);
 
   // 1. Quincenas del año seleccionado (no filtra por quincena, ni dia, ni novedad)
   const qWhere = [...commonWhere];
@@ -1374,6 +1391,34 @@ async function obtenerMetricasAsistencia({
     ORDER BY totalCount DESC
   `, novParams);
 
+  // 4b. Áreas de la operación escogida (filtra por quincena, día y novedad; no por área)
+  let areasRows = [];
+  if (operacion) {
+    const aWhere = [...sinAreaWhere];
+    const aParams = [...sinAreaParams];
+    if (quincena) { aWhere.push('da.Quincena = ?'); aParams.push(quincena); }
+    if (dia) { aWhere.push('da.`Día` = ?'); aParams.push(dia); }
+    if (novedad) { aWhere.push('da.Novedad = ?'); aParams.push(novedad); }
+    const [aRows] = await pool.query(`
+      SELECT da.Area AS area, MAX(car.AREA) AS nombre, COUNT(*) AS totalCount
+        FROM Dynamic_Asistencia da
+        LEFT JOIN Config_Area car ON CAST(car.ID AS CHAR) = da.Area
+       WHERE ${aWhere.join(' AND ')}
+       GROUP BY da.Area
+    `, aParams);
+    const porArea = new Map();
+    aRows.forEach(r => {
+      const vacia = r.area == null || String(r.area).trim() === '';
+      const clave = vacia ? 'sin_area' : String(r.area);
+      const nombre = vacia ? 'Sin área' : (r.nombre || `Área ${r.area}`);
+      const previo = porArea.get(clave);
+      if (previo) previo.totalCount += Number(r.totalCount || 0);
+      else porArea.set(clave, { area: clave, nombre, totalCount: Number(r.totalCount || 0) });
+    });
+    areasRows = [...porArea.values()].sort((a, b) =>
+      (a.area === 'sin_area') - (b.area === 'sin_area') || a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
   // 5. Total registros con todos los filtros activos
   const totalWhere = [...roWhere];
   const totalParams = [...roParams];
@@ -1393,7 +1438,8 @@ async function obtenerMetricasAsistencia({
     quincenas: quincenasRows,
     dias: diasRows,
     regionalesOps: regOpsRows,
-    novedades: novRows
+    novedades: novRows,
+    areas: areasRows
   };
 }
 

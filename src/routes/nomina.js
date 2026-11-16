@@ -2613,7 +2613,7 @@ router.get('/api/asistencia/trabajadores', verificarAccesoAsistenciaAPI, async (
 // 3. Métricas y conteos interactivos para filtros de asistencia
 router.get('/api/asistencia/metricas', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
-    const { anio, quincena, dia, regional, operacion, novedad, busqueda } = req.query;
+    const { anio, quincena, dia, regional, operacion, area, novedad, busqueda } = req.query;
     const acceso = req.accesoAsistencia;
 
     if (operacion && !acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
@@ -2627,6 +2627,7 @@ router.get('/api/asistencia/metricas', verificarAccesoAsistenciaAPI, async (req,
       dia: dia || '',
       regional: regional || '',
       operacion: operacion || '',
+      area: operacion ? (area || '') : '',
       novedad: novedad || '',
       busqueda: busqueda || ''
     });
@@ -2641,7 +2642,7 @@ router.get('/api/asistencia/metricas', verificarAccesoAsistenciaAPI, async (req,
 // 4. Listar registros de asistencia y novedades
 router.get('/api/asistencia/registros', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
-    const { anio, quincena, dia, regional, operacion, fechaInicio, fechaFin, novedad, busqueda, pagina, limite } = req.query;
+    const { anio, quincena, dia, regional, operacion, area, fechaInicio, fechaFin, novedad, busqueda, pagina, limite } = req.query;
     const acceso = req.accesoAsistencia;
 
     // Validación de seguridad de operación
@@ -2656,6 +2657,7 @@ router.get('/api/asistencia/registros', verificarAccesoAsistenciaAPI, async (req
       dia: dia || '',
       regional: regional || '',
       operacion: operacion || '',
+      area: operacion ? (area || '') : '',
       fechaInicio: fechaInicio || '',
       fechaFin: fechaFin || '',
       novedad: novedad || '',

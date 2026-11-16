@@ -845,6 +845,7 @@ async function cargarMetricasAsistencia() {
   const dia = quincena ? (document.getElementById('asisFilterDia')?.value || '') : '';
   const regional = document.getElementById('asisFilterRegional')?.value || '';
   const operacion = document.getElementById('asisFilterOperacion')?.value || '';
+  const area = operacion ? (document.getElementById('asisFilterArea')?.value || '') : '';
   const novedad = document.getElementById('asisFilterNovedad')?.value || '';
   const q = document.getElementById('asisFilterBuscar')?.value || '';
 
@@ -855,6 +856,7 @@ async function cargarMetricasAsistencia() {
     dia,
     regional,
     operacion,
+    area,
     novedad,
     busqueda: q
   });
@@ -947,6 +949,9 @@ function actualizarSelectoresConMetricas(metricas) {
     opSel.innerHTML = opOpts;
   }
 
+  // 3b. Selector Área (solo con una operación escogida)
+  pintarFiltroAreaAsistencia(metricas.areas);
+
   // 4. Selector Novedades
   const novSel = document.getElementById('asisFilterNovedad');
   if (novSel) {
@@ -962,6 +967,38 @@ function actualizarSelectoresConMetricas(metricas) {
   }
 
   actualizarBadgeFiltrosAsistencia();
+}
+
+function pintarFiltroAreaAsistencia(areas) {
+  const sel = document.getElementById('asisFilterArea');
+  if (!sel) return;
+  const hayOp = !!document.getElementById('asisFilterOperacion')?.value;
+  if (!hayOp) {
+    sel.innerHTML = '<option value="">— Seleccione primero Operación —</option>';
+    sel.disabled = true;
+    sel.title = 'Escoja primero una operación';
+    return;
+  }
+  const cur = sel.value;
+  const lista = areas || [];
+  const total = lista.reduce((acc, a) => acc + Number(a.totalCount || 0), 0);
+  let opts = `<option value="">Todas las áreas (${formatMiles(total)})</option>`;
+  lista.forEach(a => {
+    const v = String(a.area);
+    opts += `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(a.nombre)} (${formatMiles(a.totalCount)})</option>`;
+  });
+  if (cur && !lista.some(a => String(a.area) === cur)) {
+    opts += `<option value="${esc(cur)}" selected>Área escogida (0)</option>`;
+  }
+  sel.innerHTML = opts;
+  sel.disabled = false;
+  sel.title = '';
+}
+
+function onAsistenciaOperacionChange() {
+  const sel = document.getElementById('asisFilterArea');
+  if (sel) sel.value = '';
+  onAsistenciaFiltroChange();
 }
 
 function pintarFiltroDiaAsistencia(dias) {
@@ -1010,6 +1047,7 @@ function actualizarBadgeFiltrosAsistencia() {
   if (document.getElementById('asisFilterDia')?.value) activos++;
   if (document.getElementById('asisFilterRegional')?.value) activos++;
   if (document.getElementById('asisFilterOperacion')?.value) activos++;
+  if (document.getElementById('asisFilterArea')?.value) activos++;
   if (document.getElementById('asisFilterNovedad')?.value) activos++;
   if (document.getElementById('asisFilterBuscar')?.value) activos++;
   const badge = document.getElementById('asisFiltrosBadge');
@@ -1045,6 +1083,8 @@ function onAsistenciaRegionalChange() {
     opSel.innerHTML = opOpts;
     opSel.value = '';
   }
+  const selArea = document.getElementById('asisFilterArea');
+  if (selArea) selArea.value = '';
   onAsistenciaFiltroChange();
 }
 
@@ -1069,6 +1109,8 @@ async function limpiarFiltrosAsistencia() {
   if (selReg) selReg.value = '';
   const selOp = document.getElementById('asisFilterOperacion');
   if (selOp) selOp.value = '';
+  const selArea = document.getElementById('asisFilterArea');
+  if (selArea) selArea.value = '';
   const selNov = document.getElementById('asisFilterNovedad');
   if (selNov) selNov.value = '';
   const fBuscar = document.getElementById('asisFilterBuscar');
@@ -1110,6 +1152,7 @@ async function fetchAsistenciaData() {
   const dia = quincena ? (document.getElementById('asisFilterDia')?.value || '') : '';
   const regional = document.getElementById('asisFilterRegional')?.value || '';
   const operacion = document.getElementById('asisFilterOperacion')?.value || '';
+  const area = operacion ? (document.getElementById('asisFilterArea')?.value || '') : '';
   const novedad = document.getElementById('asisFilterNovedad')?.value || '';
   const q = (document.getElementById('asisFilterBuscar')?.value || '').toLowerCase().trim();
 
@@ -1120,6 +1163,7 @@ async function fetchAsistenciaData() {
     dia,
     regional,
     operacion,
+    area,
     novedad,
     busqueda: q,
     pagina: _asisState.pagina,

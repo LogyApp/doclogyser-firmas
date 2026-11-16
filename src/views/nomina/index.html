@@ -2220,8 +2220,14 @@
             </div>
             <div class="filtro-field">
               <label>Operación</label>
-              <select id="asisFilterOperacion" onchange="onAsistenciaFiltroChange()">
+              <select id="asisFilterOperacion" onchange="onAsistenciaOperacionChange()">
                 <option value="">Todas las operaciones</option>
+              </select>
+            </div>
+            <div class="filtro-field">
+              <label>Área</label>
+              <select id="asisFilterArea" onchange="onAsistenciaFiltroChange()" disabled title="Escoja primero una operación">
+                <option value="">— Seleccione primero Operación —</option>
               </select>
             </div>
             <div class="filtro-field">
