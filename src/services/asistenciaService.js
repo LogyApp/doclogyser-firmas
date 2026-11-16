@@ -544,13 +544,19 @@ async function registrarAsistenciaDiaria({
       const t = trabPorId.get(String(a.trabajador.identificacion));
       if (!t) continue;
       n += 1;
+      // Área del trabajador en su operación (Maestro_Vinculación), para Area y Disponible1
+      const [vArea] = await conn.query(
+        "SELECT Area FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY (Estado = 'Activo') DESC, `Fecha de Ingreso` DESC LIMIT 1",
+        [t.identificacion]
+      );
+      const areaCasa = vArea.length && vArea[0].Area != null ? String(vArea[0].Area) : null;
       await conn.query(`
         INSERT INTO Dynamic_Asistencia (
-          IdAsistencia, IdRegistro, \`Operación\`, Novedad, \`Prefijo Novedad\`, Día, Trabajador, Cédula, Nombre,
-          \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`, Origen, \`Fecha Registro\`, Usuario, Estado, Observaciones
-        ) VALUES (?, ?, ?, ?, 'AOO', ?, ?, ?, ?, 'NO', ?, ?, ?, ?, 'Yellow', ?)
-      `, [`${idRegistro}_A${n}`, idRegistro, a.opCasa, NOVEDAD_AOO, dia, t.trabajador, t.identificacion, t.nombreCompleto,
-          a.operacionApoyada, a.opCasa, fechaRegistro, usuario, `Automático: apoyo en ${a.operacionApoyada}`]);
+          IdAsistencia, IdRegistro, \`Operación\`, Novedad, \`Prefijo Novedad\`, Día, Area, Trabajador, Cédula, Nombre,
+          \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`, Origen, \`Fecha Registro\`, Usuario, Disponible1, Estado, Observaciones
+        ) VALUES (?, ?, ?, ?, 'AOO', ?, ?, ?, ?, ?, 'NO', ?, ?, ?, ?, ?, 'Yellow', ?)
+      `, [`${idRegistro}_A${n}`, idRegistro, a.opCasa, NOVEDAD_AOO, dia, areaCasa, t.trabajador, t.identificacion, t.nombreCompleto,
+          a.operacionApoyada, a.opCasa, fechaRegistro, usuario, areaCasa, `Automático: apoyo en ${a.operacionApoyada}`]);
     }
     for (const a of ajustes.aooActualizar) {
       await conn.query(`
@@ -1104,6 +1110,14 @@ async function registrarNovedadDia({
   }
 }
 
+/** Filtro por Área (ID de Config_Area en Dynamic_Asistencia.Area); 'sin_area' = registros sin área. */
+function filtroArea(area, where, params) {
+  if (!area) return;
+  if (area === 'sin_area') { where.push("(da.Area IS NULL OR da.Area = '')"); return; }
+  where.push('da.Area = ?');
+  params.push(String(area));
+}
+
 /**
  * Consulta el listado de asistencias y novedades con paginación y filtros.
  * Se filtra y agrupa por Origen (la operación que registró), igual que la vista de AppSheet: un apoyo
@@ -1112,6 +1126,7 @@ async function registrarNovedadDia({
 async function listarAsistencias({
   operacionesPermitidas = [],
   operacion = '',
+  area = '',
   regional = '',
   anio = '',
   quincena = '',
@@ -1138,6 +1153,8 @@ async function listarAsistencias({
     whereClauses.push(`da.Origen IN (${operacionesPermitidas.map(() => '?').join(',')})`);
     params.push(...operacionesPermitidas);
   }
+
+  filtroArea(area, whereClauses, params);
 
   if (regional) {
     whereClauses.push('mo.REGIONAL = ?');
@@ -1199,6 +1216,7 @@ async function listarAsistencias({
       da.IdRegistro AS idRegistro,
       da.Estado AS estado,
       da.Origen AS operacion,
+      da.\`Operación\` AS operacionTrabajador,
       COALESCE(mo.REGIONAL, '') AS regional,
       da.Novedad AS novedad,
       da.\`Prefijo Novedad\` AS prefijoNovedad,
@@ -1256,6 +1274,7 @@ async function obtenerMetricasAsistencia({
   dia = '',
   regional = '',
   operacion = '',
+  area = '',
   novedad = '',
   busqueda = ''
 }) {
@@ -1280,6 +1299,11 @@ async function obtenerMetricasAsistencia({
     commonWhere.push('(da.Nombre LIKE ? OR CAST(da.Cédula AS CHAR) LIKE ? OR da.Trabajador LIKE ?)');
     commonParams.push(qLike, qLike, qLike);
   }
+
+  // Base sin el filtro de Área (para contar las áreas); el resto de conteos sí lo aplica
+  const sinAreaWhere = [...commonWhere];
+  const sinAreaParams = [...commonParams];
+  filtroArea(area, commonWhere, commonParams);
 
   // 1. Quincenas del año seleccionado (no filtra por quincena, ni dia, ni novedad)
   const qWhere = [...commonWhere];
@@ -1374,6 +1398,34 @@ async function obtenerMetricasAsistencia({
     ORDER BY totalCount DESC
   `, novParams);
 
+  // 4b. Áreas de la operación escogida (filtra por quincena, día y novedad; no por área)
+  let areasRows = [];
+  if (operacion) {
+    const aWhere = [...sinAreaWhere];
+    const aParams = [...sinAreaParams];
+    if (quincena) { aWhere.push('da.Quincena = ?'); aParams.push(quincena); }
+    if (dia) { aWhere.push('da.`Día` = ?'); aParams.push(dia); }
+    if (novedad) { aWhere.push('da.Novedad = ?'); aParams.push(novedad); }
+    const [aRows] = await pool.query(`
+      SELECT da.Area AS area, MAX(car.AREA) AS nombre, COUNT(*) AS totalCount
+        FROM Dynamic_Asistencia da
+        LEFT JOIN Config_Area car ON CAST(car.ID AS CHAR) = da.Area
+       WHERE ${aWhere.join(' AND ')}
+       GROUP BY da.Area
+    `, aParams);
+    const porArea = new Map();
+    aRows.forEach(r => {
+      const vacia = r.area == null || String(r.area).trim() === '';
+      const clave = vacia ? 'sin_area' : String(r.area);
+      const nombre = vacia ? 'Sin área' : (r.nombre || `Área ${r.area}`);
+      const previo = porArea.get(clave);
+      if (previo) previo.totalCount += Number(r.totalCount || 0);
+      else porArea.set(clave, { area: clave, nombre, totalCount: Number(r.totalCount || 0) });
+    });
+    areasRows = [...porArea.values()].sort((a, b) =>
+      (a.area === 'sin_area') - (b.area === 'sin_area') || a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
   // 5. Total registros con todos los filtros activos
   const totalWhere = [...roWhere];
   const totalParams = [...roParams];
@@ -1393,7 +1445,8 @@ async function obtenerMetricasAsistencia({
     quincenas: quincenasRows,
     dias: diasRows,
     regionalesOps: regOpsRows,
-    novedades: novRows
+    novedades: novRows,
+    areas: areasRows
   };
 }
 
@@ -1648,7 +1701,38 @@ async function editarRegistroAsistencia({
   return { ok: true, idAsistencia };
 }
 
+/**
+ * Cambia solo el Área (Area y Disponible1) de un registro de Nuevo, Retirado o Traslado.
+ * El personal administrativo de la operación la completa (casi siempre llega vacía), por eso se permite
+ * aunque Nómina haya bloqueado la quincena o el registro esté en Green: no cambia días ni novedades.
+ * @param {string|null} area  ID de Config_Area de la operación (ADMINISTRATIVO = 'V'), o vacío para quitarla
+ */
+async function editarAreaRelleno({ idAsistencia, area, operacionesPermitidas = [], sinFiltro = false }) {
+  const [rows] = await pool.query(
+    'SELECT IdAsistencia, Origen AS operacion, `Prefijo Novedad` AS prefijo FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    [idAsistencia]
+  );
+  if (!rows.length) throw Object.assign(new Error('El registro no existe.'), { validacion: true });
+  const rec = rows[0];
+  if (!['NVO', 'RET', 'TRAS'].includes(String(rec.prefijo || '').toUpperCase())) {
+    throw Object.assign(new Error('Solo se puede cambiar el área así en registros de Nuevo, Retirado o Traslado.'), { validacion: true });
+  }
+  if (!sinFiltro && !operacionesPermitidas.includes(rec.operacion)) {
+    throw Object.assign(new Error('No tienes permiso para operar en esta sede.'), { validacion: true });
+  }
+  let areaFinal = null;
+  if (area !== undefined && area !== null && String(area).trim() !== '') {
+    const areas = await obtenerAreasOperacion(rec.operacion);
+    const a = areas.find(x => String(x.id) === String(area));
+    if (!a) throw Object.assign(new Error(`El área no pertenece a ${rec.operacion}.`), { validacion: true });
+    areaFinal = String(a.id);
+  }
+  await pool.query('UPDATE Dynamic_Asistencia SET Area = ?, Disponible1 = ? WHERE IdAsistencia = ?', [areaFinal, areaFinal, idAsistencia]);
+  return { ok: true, idAsistencia, area: areaFinal };
+}
+
 module.exports = {
+  editarAreaRelleno,
   obtenerCatalogoNovedades,
   obtenerParametrosAsistencia,
   verificarBloqueoNomina,

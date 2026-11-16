@@ -2220,8 +2220,14 @@
             </div>
             <div class="filtro-field">
               <label>Operación</label>
-              <select id="asisFilterOperacion" onchange="onAsistenciaFiltroChange()">
+              <select id="asisFilterOperacion" onchange="onAsistenciaOperacionChange()">
                 <option value="">Todas las operaciones</option>
+              </select>
+            </div>
+            <div class="filtro-field">
+              <label>Área</label>
+              <select id="asisFilterArea" onchange="onAsistenciaFiltroChange()" disabled title="Escoja primero una operación">
+                <option value="">— Seleccione primero Operación —</option>
               </select>
             </div>
             <div class="filtro-field">
@@ -10275,7 +10281,7 @@
 <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/boton-sync.js" defer></script>
-<script src="/js/nomina-asistencia.js?v=20261114b"></script>
+<script src="/js/nomina-asistencia.js?v=20261116c"></script>
 <script src="/js/nomina-control-quincena.js?v=20261114a"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>

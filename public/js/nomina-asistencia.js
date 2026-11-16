@@ -845,6 +845,7 @@ async function cargarMetricasAsistencia() {
   const dia = quincena ? (document.getElementById('asisFilterDia')?.value || '') : '';
   const regional = document.getElementById('asisFilterRegional')?.value || '';
   const operacion = document.getElementById('asisFilterOperacion')?.value || '';
+  const area = operacion ? (document.getElementById('asisFilterArea')?.value || '') : '';
   const novedad = document.getElementById('asisFilterNovedad')?.value || '';
   const q = document.getElementById('asisFilterBuscar')?.value || '';
 
@@ -855,6 +856,7 @@ async function cargarMetricasAsistencia() {
     dia,
     regional,
     operacion,
+    area,
     novedad,
     busqueda: q
   });
@@ -947,6 +949,9 @@ function actualizarSelectoresConMetricas(metricas) {
     opSel.innerHTML = opOpts;
   }
 
+  // 3b. Selector Área (solo con una operación escogida)
+  pintarFiltroAreaAsistencia(metricas.areas);
+
   // 4. Selector Novedades
   const novSel = document.getElementById('asisFilterNovedad');
   if (novSel) {
@@ -962,6 +967,38 @@ function actualizarSelectoresConMetricas(metricas) {
   }
 
   actualizarBadgeFiltrosAsistencia();
+}
+
+function pintarFiltroAreaAsistencia(areas) {
+  const sel = document.getElementById('asisFilterArea');
+  if (!sel) return;
+  const hayOp = !!document.getElementById('asisFilterOperacion')?.value;
+  if (!hayOp) {
+    sel.innerHTML = '<option value="">— Seleccione primero Operación —</option>';
+    sel.disabled = true;
+    sel.title = 'Escoja primero una operación';
+    return;
+  }
+  const cur = sel.value;
+  const lista = areas || [];
+  const total = lista.reduce((acc, a) => acc + Number(a.totalCount || 0), 0);
+  let opts = `<option value="">Todas las áreas (${formatMiles(total)})</option>`;
+  lista.forEach(a => {
+    const v = String(a.area);
+    opts += `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(a.nombre)} (${formatMiles(a.totalCount)})</option>`;
+  });
+  if (cur && !lista.some(a => String(a.area) === cur)) {
+    opts += `<option value="${esc(cur)}" selected>Área escogida (0)</option>`;
+  }
+  sel.innerHTML = opts;
+  sel.disabled = false;
+  sel.title = '';
+}
+
+function onAsistenciaOperacionChange() {
+  const sel = document.getElementById('asisFilterArea');
+  if (sel) sel.value = '';
+  onAsistenciaFiltroChange();
 }
 
 function pintarFiltroDiaAsistencia(dias) {
@@ -1010,6 +1047,7 @@ function actualizarBadgeFiltrosAsistencia() {
   if (document.getElementById('asisFilterDia')?.value) activos++;
   if (document.getElementById('asisFilterRegional')?.value) activos++;
   if (document.getElementById('asisFilterOperacion')?.value) activos++;
+  if (document.getElementById('asisFilterArea')?.value) activos++;
   if (document.getElementById('asisFilterNovedad')?.value) activos++;
   if (document.getElementById('asisFilterBuscar')?.value) activos++;
   const badge = document.getElementById('asisFiltrosBadge');
@@ -1045,6 +1083,8 @@ function onAsistenciaRegionalChange() {
     opSel.innerHTML = opOpts;
     opSel.value = '';
   }
+  const selArea = document.getElementById('asisFilterArea');
+  if (selArea) selArea.value = '';
   onAsistenciaFiltroChange();
 }
 
@@ -1069,6 +1109,8 @@ async function limpiarFiltrosAsistencia() {
   if (selReg) selReg.value = '';
   const selOp = document.getElementById('asisFilterOperacion');
   if (selOp) selOp.value = '';
+  const selArea = document.getElementById('asisFilterArea');
+  if (selArea) selArea.value = '';
   const selNov = document.getElementById('asisFilterNovedad');
   if (selNov) selNov.value = '';
   const fBuscar = document.getElementById('asisFilterBuscar');
@@ -1110,6 +1152,7 @@ async function fetchAsistenciaData() {
   const dia = quincena ? (document.getElementById('asisFilterDia')?.value || '') : '';
   const regional = document.getElementById('asisFilterRegional')?.value || '';
   const operacion = document.getElementById('asisFilterOperacion')?.value || '';
+  const area = operacion ? (document.getElementById('asisFilterArea')?.value || '') : '';
   const novedad = document.getElementById('asisFilterNovedad')?.value || '';
   const q = (document.getElementById('asisFilterBuscar')?.value || '').toLowerCase().trim();
 
@@ -1120,6 +1163,7 @@ async function fetchAsistenciaData() {
     dia,
     regional,
     operacion,
+    area,
     novedad,
     busqueda: q,
     pagina: _asisState.pagina,
@@ -1269,6 +1313,31 @@ async function eliminarAsistenciasSeleccionadas() {
   }
 }
 
+async function cambiarAreaRellenoInline(selectEl, idAsistencia) {
+  const nuevaArea = selectEl.value || '';
+  const prev = selectEl.getAttribute('data-prev') || '';
+  selectEl.disabled = true;
+  try {
+    const r = await fetch(`/nomina/api/asistencia/${encodeURIComponent(idAsistencia)}/area`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, area: nuevaArea })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo cambiar el área');
+    const reg = _asisState.registros.find(x => String(x.idAsistencia) === String(idAsistencia));
+    if (reg) { reg.area = data.area; reg.disponible1 = data.area; }
+    selectEl.setAttribute('data-prev', nuevaArea);
+    selectEl.style.borderColor = nuevaArea ? 'var(--border)' : 'var(--warning, #f59e0b)';
+    selectEl.style.boxShadow = '0 0 0 2px #16a34a';
+    setTimeout(() => { selectEl.style.boxShadow = ''; selectEl.disabled = false; fetchAsistenciaData(); }, 500);
+  } catch (err) {
+    alert(`No se pudo cambiar el área: ${err.message}`);
+    selectEl.value = prev;
+    selectEl.disabled = false;
+  }
+}
+
 async function cambiarAreaApoyoInline(selectEl, idAsistencia, operacion, areaDefecto) {
   const nuevoAreaId = selectEl.value || areaDefecto || null;
   const prevValue = selectEl.getAttribute('data-prev') || '';
@@ -1402,7 +1471,19 @@ function renderTablaAsistencias(registros) {
     let tdAreaApoyo = '';
     const areasOp = _areasOperacionEditCache[r.operacion] || [];
     const valApoyoEfectivo = String(r.disponible1 || r.area || '');
-    if (esAsistencia && puedeEditarFila) {
+    const esRelleno = ['NVO', 'RET', 'TRAS'].includes(String(r.prefijoNovedad || '').toUpperCase());
+    if (esRelleno) {
+      // Nuevo / Retirado / Traslado: el área siempre se puede completar (aunque Nómina haya bloqueado)
+      const valArea = String(r.area || '');
+      tdAreaApoyo = `
+        <td onclick="event.stopPropagation()" style="font-size:.82rem;">
+          <select class="asis-inline-area-apoyo" data-prev="${esc(valArea)}" onchange="cambiarAreaRellenoInline(this, '${esc(r.idAsistencia)}')" onclick="event.stopPropagation()" title="Área del colaborador en este registro de ${esc(r.novedad || '')}" style="width:100%; min-width:130px; max-width:160px; padding:3px 6px; font-size:.78rem; border:1px solid ${valArea ? 'var(--border)' : 'var(--warning, #f59e0b)'}; border-radius:4px; background:var(--bg-elevated); color:var(--text); cursor:pointer;">
+            <option value="" ${valArea ? '' : 'selected'}>— Sin área —</option>
+            ${areasOp.map(a => `<option value="${a.id}" ${valArea === String(a.id) ? 'selected' : ''}>${esc(a.area)}</option>`).join('')}
+          </select>
+        </td>
+      `;
+    } else if (esAsistencia && puedeEditarFila) {
       tdAreaApoyo = `
         <td onclick="event.stopPropagation()" style="font-size:.82rem;">
           <select class="asis-inline-area-apoyo" data-prev="${esc(valApoyoEfectivo)}" onchange="cambiarAreaApoyoInline(this, '${esc(r.idAsistencia)}', '${esc(r.operacion)}', '${esc(r.area || '')}')" onclick="event.stopPropagation()" style="width:100%; min-width:130px; max-width:160px; padding:3px 6px; font-size:.78rem; border:1px solid var(--border); border-radius:4px; background:var(--bg-elevated); color:var(--text); cursor:pointer;">
@@ -1424,6 +1505,12 @@ function renderTablaAsistencias(registros) {
         ${tdAreaApoyo}
         <td>
           <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(limpiarNombreColaborador(r.trabajador || r.nombre || ''))}</div>
+          ${r.operacionTrabajador && r.operacion && r.operacionTrabajador !== r.operacion
+            ? `<div title="El colaborador pertenece a otra operación (apoyo)" style="display:inline-block; margin-top:2px; font-size:.7rem; font-weight:700; padding:1px 7px; border-radius:4px; background:var(--info-soft, #dbeafe); color:var(--info-dark, #1e40af);">De ${esc(r.operacionTrabajador)}</div>`
+            : ''}
+          ${(String(r.prefijoNovedad || '').toUpperCase() === 'AOO' || r.novedad === 'Apoyo a Otra Operación') && r.operacionApoya && r.operacionApoya !== r.operacion
+            ? `<div title="Ese día estuvo apoyando en otra operación" style="display:inline-block; margin-top:2px; font-size:.7rem; font-weight:700; padding:1px 7px; border-radius:4px; background:var(--warning-soft, #fef3c7); color:var(--warning-dark, #92400e);">En ${esc(r.operacionApoya)}</div>`
+            : ''}
           <div style="font-size:.74rem; color:var(--text-muted);">C.C. ${esc(r.cedula || '')}</div>
         </td>
         <td>${badgeNov}</td>

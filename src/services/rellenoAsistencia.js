@@ -99,13 +99,14 @@ async function sincronizarRelleno({ desde, hasta, identificaciones = null, soloS
     const [existentes] = await conn.query(
       `SELECT da.IdAsistencia AS id, da.\`Cédula\` AS cedula, DATE_FORMAT(da.\`Día\`, '%Y-%m-%d') AS dia,
               da.\`Operación\` AS operacion, da.Origen AS origen, da.\`Prefijo Novedad\` AS prefijo,
-              da.\`Apoyo Otra Operación\` AS apoyo, da.Estado AS estado
+              da.\`Apoyo Otra Operación\` AS apoyo, da.Estado AS estado, da.Area AS area
          FROM Dynamic_Asistencia da
         WHERE da.\`Día\` BETWEEN ? AND ? ${filtroIds}
           AND EXISTS (SELECT 1 FROM \`Maestro_Vinculación\` v WHERE v.\`Identificación\` = da.\`Cédula\`)`,
       [ini, fin, ...(ids || [])]
     );
 
+    const areaRealPorOperacion = new Map(); // "cedula|operacion" -> { dia, area }
     const rellenosPorPersona = new Map();   // cedula -> Map("dia|op" -> [filas])
     const realesPorPersona = new Map();     // cedula -> Map("dia|op" -> fila)
     for (const r of existentes) {
@@ -122,10 +123,25 @@ async function sincronizarRelleno({ desde, hasta, identificaciones = null, soloS
         const m = realesPorPersona.get(k);
         // Un registro real cuenta para su operación (Operación y Origen, por los apoyos guardados al revés)
         m.set(`${r.dia}|${r.operacion}`, r);
+        // Último área con que la persona trabajó en cada operación (para el Traslado en el origen)
+        if (r.area != null && String(r.area).trim() !== '') {
+          const ka = `${k}|${r.operacion}`;
+          const previa = areaRealPorOperacion.get(ka);
+          if (!previa || r.dia > previa.dia) areaRealPorOperacion.set(ka, { dia: r.dia, area: String(r.area) });
+        }
         if (r.origen) m.set(`${r.dia}|${r.origen}`, r);
       }
     }
 
+    // Área del relleno (Area y Disponible1): en la operación actual de la persona, el Área de su
+    // vinculación (Nuevo, Retirado, Traslado en el destino); en una operación anterior (Traslado en el
+    // origen), el último área con que trabajó allí. Si no hay, queda vacía y la operación la pone.
+    const areaDe = (persona, esp) => {
+      const ultimo = persona.tramos[persona.tramos.length - 1] || {};
+      if (esp.operacion === ultimo.operacion) return esp.area != null && String(esp.area) !== '' ? String(esp.area) : null;
+      const real = areaRealPorOperacion.get(`${persona.identificacion}|${esp.operacion}`);
+      return real ? real.area : null;
+    };
     const borrar = [];
     const insertar = [];
     const conflictos = [];
@@ -160,8 +176,8 @@ async function sincronizarRelleno({ desde, hasta, identificaciones = null, soloS
         }
         insertar.push([
           idRelleno(esp.prefijo, esp.dia), idRelleno(esp.prefijo, esp.dia), esp.operacion,
-          novedades[esp.prefijo], esp.prefijo, esp.dia, esp.area, persona.trabajador, persona.identificacion,
-          (persona.nombre || '').slice(0, 100), 'NO', esp.operacion, 'Sistema', esp.area, 'Yellow', OBSERVACION
+          novedades[esp.prefijo], esp.prefijo, esp.dia, areaDe(persona, esp), persona.trabajador, persona.identificacion,
+          (persona.nombre || '').slice(0, 100), 'NO', esp.operacion, 'Sistema', areaDe(persona, esp), 'Yellow', OBSERVACION
         ]);
       }
     }
