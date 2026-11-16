@@ -135,7 +135,10 @@ function cqPintarTablero(d) {
       if (c.dia > d.hoy) return `<td class="cq-col-fut"></td>`;
       const alerta = c.duplicados + c.conflictos;
       const tip = `${c.dia}: ${c.esperados - c.pendientes} de ${c.esperados}` + (c.pendientes ? ` · faltan ${c.pendientes}` : '') + (alerta ? ` · ${alerta} con alerta` : '') + (c.apoyosRecibidos ? ` · ${c.apoyosRecibidos} apoyos recibidos` : '');
-      return `<td class="cq-celda ${cqColorAvance(c.avance)}" title="${cqEsc(tip)}">${c.pendientes ? c.pendientes : '✓'}${alerta ? '<span class="cq-punto"></span>' : ''}</td>`;
+      // Porcentaje del día en entero; con faltantes se redondea hacia abajo para no mostrar "100% - 1"
+      const pct = c.avance == null ? '—' : `${c.pendientes ? Math.floor(c.avance) : Math.round(c.avance)}%`;
+      const texto = c.pendientes ? `${pct} - ${c.pendientes}` : pct;
+      return `<td class="cq-celda ${cqColorAvance(c.avance)}" title="${cqEsc(tip)}">${texto}${alerta ? '<span class="cq-punto"></span>' : ''}</td>`;
     }).join('');
     return `<tr class="cq-fila-op" data-op="${cqEsc(o.operacion)}" onclick="cqAbrirOperacion(this.dataset.op)">
       <th class="cq-op"><div class="cq-op-nom">${cqEsc(o.operacion)}</div><div class="cq-op-sub">${cqEsc(o.regional)} · ${o.plantilla} personas</div></th>
@@ -144,7 +147,7 @@ function cqPintarTablero(d) {
     </tr>`;
   }).join('');
   el.innerHTML = `
-    <div class="cq-ayuda">Cada casilla muestra cuántas personas <b>faltan</b> por registrar asistencia o novedad ese día (✓ = completo). El punto naranja indica registros repetidos o que no corresponden. Toque una operación para ver quiénes son.</div>
+    <div class="cq-ayuda">Cada casilla muestra el porcentaje registrado ese día y, si no está completo, cuántas personas <b>faltan</b> por registrar asistencia o novedad (por ejemplo, 60% - 5). El punto naranja indica registros repetidos o que no corresponden. Toque una operación para ver quiénes son.</div>
     <div class="cq-tabla-wrap"><table class="cq-tabla">
       <thead><tr><th class="cq-op">Operación</th><th class="cq-total">Avance</th>${cab}</tr></thead>
       <tbody>${filas}</tbody>
