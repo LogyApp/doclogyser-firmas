@@ -1313,6 +1313,31 @@ async function eliminarAsistenciasSeleccionadas() {
   }
 }
 
+async function cambiarAreaRellenoInline(selectEl, idAsistencia) {
+  const nuevaArea = selectEl.value || '';
+  const prev = selectEl.getAttribute('data-prev') || '';
+  selectEl.disabled = true;
+  try {
+    const r = await fetch(`/nomina/api/asistencia/${encodeURIComponent(idAsistencia)}/area`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, area: nuevaArea })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo cambiar el área');
+    const reg = _asisState.registros.find(x => String(x.idAsistencia) === String(idAsistencia));
+    if (reg) { reg.area = data.area; reg.disponible1 = data.area; }
+    selectEl.setAttribute('data-prev', nuevaArea);
+    selectEl.style.borderColor = nuevaArea ? 'var(--border)' : 'var(--warning, #f59e0b)';
+    selectEl.style.boxShadow = '0 0 0 2px #16a34a';
+    setTimeout(() => { selectEl.style.boxShadow = ''; selectEl.disabled = false; fetchAsistenciaData(); }, 500);
+  } catch (err) {
+    alert(`No se pudo cambiar el área: ${err.message}`);
+    selectEl.value = prev;
+    selectEl.disabled = false;
+  }
+}
+
 async function cambiarAreaApoyoInline(selectEl, idAsistencia, operacion, areaDefecto) {
   const nuevoAreaId = selectEl.value || areaDefecto || null;
   const prevValue = selectEl.getAttribute('data-prev') || '';
@@ -1446,7 +1471,19 @@ function renderTablaAsistencias(registros) {
     let tdAreaApoyo = '';
     const areasOp = _areasOperacionEditCache[r.operacion] || [];
     const valApoyoEfectivo = String(r.disponible1 || r.area || '');
-    if (esAsistencia && puedeEditarFila) {
+    const esRelleno = ['NVO', 'RET', 'TRAS'].includes(String(r.prefijoNovedad || '').toUpperCase());
+    if (esRelleno) {
+      // Nuevo / Retirado / Traslado: el área siempre se puede completar (aunque Nómina haya bloqueado)
+      const valArea = String(r.area || '');
+      tdAreaApoyo = `
+        <td onclick="event.stopPropagation()" style="font-size:.82rem;">
+          <select class="asis-inline-area-apoyo" data-prev="${esc(valArea)}" onchange="cambiarAreaRellenoInline(this, '${esc(r.idAsistencia)}')" onclick="event.stopPropagation()" title="Área del colaborador en este registro de ${esc(r.novedad || '')}" style="width:100%; min-width:130px; max-width:160px; padding:3px 6px; font-size:.78rem; border:1px solid ${valArea ? 'var(--border)' : 'var(--warning, #f59e0b)'}; border-radius:4px; background:var(--bg-elevated); color:var(--text); cursor:pointer;">
+            <option value="" ${valArea ? '' : 'selected'}>— Sin área —</option>
+            ${areasOp.map(a => `<option value="${a.id}" ${valArea === String(a.id) ? 'selected' : ''}>${esc(a.area)}</option>`).join('')}
+          </select>
+        </td>
+      `;
+    } else if (esAsistencia && puedeEditarFila) {
       tdAreaApoyo = `
         <td onclick="event.stopPropagation()" style="font-size:.82rem;">
           <select class="asis-inline-area-apoyo" data-prev="${esc(valApoyoEfectivo)}" onchange="cambiarAreaApoyoInline(this, '${esc(r.idAsistencia)}', '${esc(r.operacion)}', '${esc(r.area || '')}')" onclick="event.stopPropagation()" style="width:100%; min-width:130px; max-width:160px; padding:3px 6px; font-size:.78rem; border:1px solid var(--border); border-radius:4px; background:var(--bg-elevated); color:var(--text); cursor:pointer;">

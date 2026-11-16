@@ -18,7 +18,7 @@ const {
   registrarAsistenciaDiaria,
   registrarNovedadPorRango,
   registrarNovedadDia,
-  editarRegistroAsistencia,
+  editarRegistroAsistencia, editarAreaRelleno,
   eliminarRegistroAsistencia,
   eliminarRegistrosAsistenciaLote,
   listarAsistencias,
@@ -2831,6 +2831,23 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
 });
 
 // 6. Editar registro de asistencia
+// Área de un registro de Nuevo / Retirado / Traslado (se permite aunque Nómina haya bloqueado)
+router.put('/api/asistencia/:id/area', verificarAccesoAsistenciaAPI, async (req, res) => {
+  try {
+    const acceso = req.accesoAsistencia;
+    const r = await editarAreaRelleno({
+      idAsistencia: req.params.id,
+      area: req.body.area,
+      operacionesPermitidas: acceso.operacionesFiltro,
+      sinFiltro: acceso.sinFiltro
+    });
+    res.json(r);
+  } catch (err) {
+    if (!err.validacion) console.error('[PUT /api/asistencia/:id/area]', err);
+    res.status(err.validacion ? 400 : 500).json({ ok: false, error: err.message });
+  }
+});
+
 router.put('/api/asistencia/:id', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
     const idAsistencia = req.params.id;

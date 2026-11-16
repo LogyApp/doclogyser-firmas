@@ -1701,7 +1701,38 @@ async function editarRegistroAsistencia({
   return { ok: true, idAsistencia };
 }
 
+/**
+ * Cambia solo el Área (Area y Disponible1) de un registro de Nuevo, Retirado o Traslado.
+ * El personal administrativo de la operación la completa (casi siempre llega vacía), por eso se permite
+ * aunque Nómina haya bloqueado la quincena o el registro esté en Green: no cambia días ni novedades.
+ * @param {string|null} area  ID de Config_Area de la operación (ADMINISTRATIVO = 'V'), o vacío para quitarla
+ */
+async function editarAreaRelleno({ idAsistencia, area, operacionesPermitidas = [], sinFiltro = false }) {
+  const [rows] = await pool.query(
+    'SELECT IdAsistencia, Origen AS operacion, `Prefijo Novedad` AS prefijo FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
+    [idAsistencia]
+  );
+  if (!rows.length) throw Object.assign(new Error('El registro no existe.'), { validacion: true });
+  const rec = rows[0];
+  if (!['NVO', 'RET', 'TRAS'].includes(String(rec.prefijo || '').toUpperCase())) {
+    throw Object.assign(new Error('Solo se puede cambiar el área así en registros de Nuevo, Retirado o Traslado.'), { validacion: true });
+  }
+  if (!sinFiltro && !operacionesPermitidas.includes(rec.operacion)) {
+    throw Object.assign(new Error('No tienes permiso para operar en esta sede.'), { validacion: true });
+  }
+  let areaFinal = null;
+  if (area !== undefined && area !== null && String(area).trim() !== '') {
+    const areas = await obtenerAreasOperacion(rec.operacion);
+    const a = areas.find(x => String(x.id) === String(area));
+    if (!a) throw Object.assign(new Error(`El área no pertenece a ${rec.operacion}.`), { validacion: true });
+    areaFinal = String(a.id);
+  }
+  await pool.query('UPDATE Dynamic_Asistencia SET Area = ?, Disponible1 = ? WHERE IdAsistencia = ?', [areaFinal, areaFinal, idAsistencia]);
+  return { ok: true, idAsistencia, area: areaFinal };
+}
+
 module.exports = {
+  editarAreaRelleno,
   obtenerCatalogoNovedades,
   obtenerParametrosAsistencia,
   verificarBloqueoNomina,
