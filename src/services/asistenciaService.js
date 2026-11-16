@@ -544,13 +544,19 @@ async function registrarAsistenciaDiaria({
       const t = trabPorId.get(String(a.trabajador.identificacion));
       if (!t) continue;
       n += 1;
+      // Área del trabajador en su operación (Maestro_Vinculación), para Area y Disponible1
+      const [vArea] = await conn.query(
+        "SELECT Area FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY (Estado = 'Activo') DESC, `Fecha de Ingreso` DESC LIMIT 1",
+        [t.identificacion]
+      );
+      const areaCasa = vArea.length && vArea[0].Area != null ? String(vArea[0].Area) : null;
       await conn.query(`
         INSERT INTO Dynamic_Asistencia (
-          IdAsistencia, IdRegistro, \`Operación\`, Novedad, \`Prefijo Novedad\`, Día, Trabajador, Cédula, Nombre,
-          \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`, Origen, \`Fecha Registro\`, Usuario, Estado, Observaciones
-        ) VALUES (?, ?, ?, ?, 'AOO', ?, ?, ?, ?, 'NO', ?, ?, ?, ?, 'Yellow', ?)
-      `, [`${idRegistro}_A${n}`, idRegistro, a.opCasa, NOVEDAD_AOO, dia, t.trabajador, t.identificacion, t.nombreCompleto,
-          a.operacionApoyada, a.opCasa, fechaRegistro, usuario, `Automático: apoyo en ${a.operacionApoyada}`]);
+          IdAsistencia, IdRegistro, \`Operación\`, Novedad, \`Prefijo Novedad\`, Día, Area, Trabajador, Cédula, Nombre,
+          \`Apoyo Otra Operación\`, \`Operación a la que Apoya\`, Origen, \`Fecha Registro\`, Usuario, Disponible1, Estado, Observaciones
+        ) VALUES (?, ?, ?, ?, 'AOO', ?, ?, ?, ?, ?, 'NO', ?, ?, ?, ?, ?, 'Yellow', ?)
+      `, [`${idRegistro}_A${n}`, idRegistro, a.opCasa, NOVEDAD_AOO, dia, areaCasa, t.trabajador, t.identificacion, t.nombreCompleto,
+          a.operacionApoyada, a.opCasa, fechaRegistro, usuario, areaCasa, `Automático: apoyo en ${a.operacionApoyada}`]);
     }
     for (const a of ajustes.aooActualizar) {
       await conn.query(`
