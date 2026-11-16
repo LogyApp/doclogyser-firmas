@@ -4394,7 +4394,9 @@
   function sincronizarUrlPestana(tab, subTab) {
     const url = new URL(window.location);
     url.searchParams.set('tab', tab === 'asistencia' ? 'asistenciaynovedades' : tab);
+    const vistaControl = document.getElementById('asisVistaControl');
     if ((tab === 'biometrico' || tab === 'traslados' || tab === 'produccion') && subTab) url.searchParams.set('subtab', subTab);
+    else if (tab === 'asistencia' && vistaControl && vistaControl.style.display === 'block') url.searchParams.set('subtab', 'control');
     else url.searchParams.delete('subtab');
     history.replaceState(null, '', url);
   }
@@ -10198,8 +10200,13 @@
     switchTab('asistencia');
     // ?subtab=control abre el Control de quincena (con &operacion= abre su planilla; &fecha=AAAA-MM-DD otra quincena)
     const subParamAsis = (paramsUrl.get('subtab') || paramsUrl.get('vista') || '').toLowerCase().replace(/[\s_-]/g, '');
-    if (['control', 'controlquincena', 'controldequincena'].includes(subParamAsis) && typeof switchAsisSubVista === 'function') {
-      setTimeout(() => switchAsisSubVista('control', { operacion: operacionParam, fecha: paramsUrl.get('fecha') || '' }), 200);
+    // Se espera a DOMContentLoaded: nomina-control-quincena.js se carga al final del body, después de este script
+    if (['control', 'controlquincena', 'controldequincena'].includes(subParamAsis)) {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (typeof switchAsisSubVista === 'function') {
+          switchAsisSubVista('control', { operacion: operacionParam, fecha: paramsUrl.get('fecha') || '' });
+        }
+      });
     }
     const quincenaUrlParam = paramsUrl.get('quincena') || '';
     if (quincenaUrlParam) {
