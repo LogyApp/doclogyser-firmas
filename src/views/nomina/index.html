@@ -5296,7 +5296,9 @@
     } else {
       actFilterArea.disabled = false;
       const areaCounts = _activosState.counts.areas || {};
-      const opAreas = (_activosState.areasPorOperacion && _activosState.areasPorOperacion[selectedOp]) || [];
+      // Solo áreas administrativas de la operación (Config_Area.ADMINISTRATIVO = 'V')
+      const opAreas = ((_activosState.areasPorOperacion && _activosState.areasPorOperacion[selectedOp]) || [])
+        .filter(a => String(a.administrativo || '').trim().toUpperCase() === 'V');
       const totalArea = Object.values(areaCounts).reduce((a, b) => Number(a) + Number(b), 0);
       const optAllA = document.createElement('option');
       optAllA.value = '';
@@ -5602,7 +5604,10 @@
     document.getElementById('actEmptyState').style.display = _activosState.allData.length ? 'none' : 'block';
     const ROLES_CONFIRMAN_ESTADO = ['Coordinador', 'CoordinadorR', 'Auxiliar', 'AuxiliarR'];
     _activosState.allData.forEach(row => {
-      const opAreas = (_activosState.areasPorOperacion && _activosState.areasPorOperacion[row.Operacion]) || [];
+      // Solo áreas administrativas de la operación (Config_Area.ADMINISTRATIVO = 'V'); si el colaborador
+      // tiene otra, se muestra como "(actual)"
+      const opAreas = ((_activosState.areasPorOperacion && _activosState.areasPorOperacion[row.Operacion]) || [])
+        .filter(a => String(a.administrativo || '').trim().toUpperCase() === 'V');
       let areaOptionsHtml = '<option value="">— Seleccionar —</option>';
       let areaEncontrada = false;
       opAreas.forEach(a => {
