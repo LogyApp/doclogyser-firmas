@@ -181,7 +181,9 @@ async function initAsistenciaNomina() {
   // 6. Montar dropzones de evidencias
   montarZonasArchivoAsistencia();
 
-  // 7. Cargar métricas y registros iniciales
+  // 7. Por defecto, la quincena actual; luego cargar métricas y registros iniciales
+  const actual = asisQuincenaDeHoy();
+  asisPonerQuincena(actual.anio, actual.nombre);
   await cargarMetricasAsistencia();
   await fetchAsistenciaData();
 }
@@ -893,6 +895,7 @@ function actualizarSelectoresConMetricas(metricas) {
     }
     qSel.innerHTML = qOpts;
   }
+  asisPintarNavQuincena();
 
   // 2. Selector Día (depende de Quincena)
   pintarFiltroDiaAsistencia(metricas.dias);
@@ -1043,7 +1046,10 @@ function actualizarBadgeFiltrosAsistencia() {
   let activos = 0;
   const anio = document.getElementById('asisFilterAnio')?.value;
   if (anio && anio !== 'todos' && anio !== '2026') activos++;
-  if (document.getElementById('asisFilterQuincena')?.value) activos++;
+  // La quincena actual es el valor por defecto: no cuenta como filtro
+  const qVal = document.getElementById('asisFilterQuincena')?.value;
+  const qHoy = asisQuincenaDeHoy();
+  if (qVal && !(qVal === qHoy.nombre && anio === qHoy.anio)) activos++;
   if (document.getElementById('asisFilterDia')?.value) activos++;
   if (document.getElementById('asisFilterRegional')?.value) activos++;
   if (document.getElementById('asisFilterOperacion')?.value) activos++;
@@ -1058,6 +1064,67 @@ function onQuincenaFiltroChangeAsistencia() {
   const diaSel = document.getElementById('asisFilterDia');
   if (diaSel) diaSel.value = '';
   onAsistenciaFiltroChange();
+}
+
+// ── Navegador de quincena (‹ 11. Noviembre Q2 ›), igual al del Control de quincena ──
+const ASIS_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+function asisNombreQuincena(mes, q) { return `${mes}. ${ASIS_MESES[mes - 1]} Q${q}`; }
+
+/** { anio, nombre, mes, q } de la quincena de hoy (hora Colombia) */
+function asisQuincenaDeHoy() {
+  const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+  const mes = Number(hoy.slice(5, 7));
+  const q = Number(hoy.slice(8, 10)) <= 15 ? 1 : 2;
+  return { anio: hoy.slice(0, 4), mes, q, nombre: asisNombreQuincena(mes, q) };
+}
+
+/** Escoge año y quincena en los filtros (agrega la opción si aún no existe) */
+function asisPonerQuincena(anio, nombre) {
+  const selAnio = document.getElementById('asisFilterAnio');
+  if (selAnio) {
+    if (![...selAnio.options].some(o => o.value === anio)) selAnio.insertAdjacentHTML('afterbegin', `<option value="${esc(anio)}">${esc(anio)}</option>`);
+    selAnio.value = anio;
+  }
+  const selQ = document.getElementById('asisFilterQuincena');
+  if (selQ) {
+    if (![...selQ.options].some(o => o.value === nombre)) selQ.insertAdjacentHTML('beforeend', `<option value="${esc(nombre)}">${esc(nombre)}</option>`);
+    selQ.value = nombre;
+  }
+  asisPintarNavQuincena();
+}
+
+function asisPintarNavQuincena() {
+  const txt = document.getElementById('asisQuincenaTxt');
+  if (!txt) return;
+  const nombre = document.getElementById('asisFilterQuincena')?.value || '';
+  const anio = document.getElementById('asisFilterAnio')?.value || '';
+  const hoy = asisQuincenaDeHoy();
+  txt.textContent = nombre ? (anio && anio !== 'todos' && anio !== hoy.anio ? `${nombre} · ${anio}` : nombre) : 'Todas las quincenas';
+  // No se avanza más allá de la quincena actual
+  const sig = document.getElementById('asisBtnQuincenaSig');
+  if (sig) sig.disabled = !!nombre && nombre === hoy.nombre && anio === hoy.anio;
+}
+
+function asisCambiarQuincena(delta) {
+  const hoy = asisQuincenaDeHoy();
+  const nombre = document.getElementById('asisFilterQuincena')?.value || '';
+  const anioSel = document.getElementById('asisFilterAnio')?.value || '';
+  const m = /^(\d{1,2})\.\s.*Q([12])$/.exec(nombre);
+  // Sin quincena escogida (Todas) se parte de la actual
+  let anio = m && /^\d{4}$/.test(anioSel) ? Number(anioSel) : Number(hoy.anio);
+  let mes = m ? Number(m[1]) : hoy.mes;
+  let q = m ? Number(m[2]) : hoy.q;
+  if (m) {
+    q += delta;
+    if (q > 2) { q = 1; mes += 1; }
+    if (q < 1) { q = 2; mes -= 1; }
+    if (mes > 12) { mes = 1; anio += 1; }
+    if (mes < 1) { mes = 12; anio -= 1; }
+  }
+  if (anio * 1000 + mes * 10 + q > Number(hoy.anio) * 1000 + hoy.mes * 10 + hoy.q) return;
+  asisPonerQuincena(String(anio), asisNombreQuincena(mes, q));
+  onQuincenaFiltroChangeAsistencia();
 }
 
 function onAsistenciaRegionalChange() {
@@ -1095,10 +1162,9 @@ async function onAsistenciaFiltroChange() {
 }
 
 async function limpiarFiltrosAsistencia() {
-  const selAnio = document.getElementById('asisFilterAnio');
-  if (selAnio) selAnio.value = '2026';
-  const selQ = document.getElementById('asisFilterQuincena');
-  if (selQ) selQ.value = '';
+  // Vuelve al valor por defecto: la quincena actual
+  const actual = asisQuincenaDeHoy();
+  asisPonerQuincena(actual.anio, actual.nombre);
   const selDia = document.getElementById('asisFilterDia');
   if (selDia) {
     selDia.value = '';
