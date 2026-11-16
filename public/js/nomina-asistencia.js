@@ -1468,6 +1468,9 @@ function renderTablaAsistencias(registros) {
         ${tdAreaApoyo}
         <td>
           <div style="font-weight:700; font-size:.84rem; color:var(--text);">${esc(limpiarNombreColaborador(r.trabajador || r.nombre || ''))}</div>
+          ${r.operacionTrabajador && r.operacion && r.operacionTrabajador !== r.operacion
+            ? `<div title="El colaborador pertenece a otra operación (apoyo)" style="display:inline-block; margin-top:2px; font-size:.7rem; font-weight:700; padding:1px 7px; border-radius:4px; background:var(--info-soft, #dbeafe); color:var(--info-dark, #1e40af);">De ${esc(r.operacionTrabajador)}</div>`
+            : ''}
           <div style="font-size:.74rem; color:var(--text-muted);">C.C. ${esc(r.cedula || '')}</div>
         </td>
         <td>${badgeNov}</td>

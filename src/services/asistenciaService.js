@@ -1210,6 +1210,7 @@ async function listarAsistencias({
       da.IdRegistro AS idRegistro,
       da.Estado AS estado,
       da.Origen AS operacion,
+      da.\`Operación\` AS operacionTrabajador,
       COALESCE(mo.REGIONAL, '') AS regional,
       da.Novedad AS novedad,
       da.\`Prefijo Novedad\` AS prefijoNovedad,
