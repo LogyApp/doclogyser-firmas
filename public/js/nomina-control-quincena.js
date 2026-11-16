@@ -41,16 +41,27 @@ function cqCabeceraDia(iso) {
   return `<span class="cq-dsem">${CQ_DIAS_SEM[d.getUTCDay()]}</span>${Number(iso.slice(8, 10))}`;
 }
 
-function switchAsisSubVista(vista) {
+/**
+ * @param {string} vista  'registros' | 'control'
+ * @param {object} opciones  { operacion, fecha } para abrir el control directo (desde la URL)
+ */
+function switchAsisSubVista(vista, opciones = {}) {
   document.getElementById('asisSubBtnRegistros').classList.toggle('active', vista === 'registros');
   document.getElementById('asisSubBtnControl').classList.toggle('active', vista === 'control');
   document.getElementById('asisVistaRegistros').style.display = vista === 'registros' ? 'block' : 'none';
   document.getElementById('asisVistaControl').style.display = vista === 'control' ? 'block' : 'none';
-  if (vista === 'control' && !_cq.datos) iniciarControlQuincena();
+  if (vista === 'control' && (!_cq.iniciado || opciones.operacion || opciones.fecha)) iniciarControlQuincena(opciones);
+  // Refleja la subpestaña en la URL (para compartir o recargar el enlace)
+  try {
+    const url = new URL(window.location);
+    if (vista === 'control') url.searchParams.set('subtab', 'control'); else url.searchParams.delete('subtab');
+    history.replaceState(null, '', url);
+  } catch (_) { /* sin cambio de URL */ }
 }
 
-function iniciarControlQuincena() {
-  _cq.fecha = cqHoy();
+function iniciarControlQuincena({ operacion = '', fecha = '' } = {}) {
+  _cq.iniciado = true;
+  _cq.fecha = /^\d{4}-\d{2}-\d{2}$/.test(fecha || '') ? fecha : cqHoy();
   const cfg = typeof obtenerConfigAsistencia === 'function' ? obtenerConfigAsistencia() : {};
   const regionales = Object.keys(cfg.opsPorRegional || {}).sort((a, b) => a.localeCompare(b, 'es'));
   const sel = document.getElementById('cqRegional');
@@ -58,7 +69,7 @@ function iniciarControlQuincena() {
     sel.innerHTML = '<option value="">Todas las regionales</option>' + regionales.map(r => `<option value="${cqEsc(r)}">${cqEsc(r)}</option>`).join('');
     sel.style.display = regionales.length > 1 ? '' : 'none';
   }
-  cargarControlQuincena();
+  if (operacion) cqAbrirOperacion(operacion); else cargarControlQuincena();
 }
 
 function cqCambiarQuincena(delta) {
