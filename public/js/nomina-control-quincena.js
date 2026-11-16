@@ -51,6 +51,12 @@ function switchAsisSubVista(vista, opciones = {}) {
   document.getElementById('asisVistaRegistros').style.display = vista === 'registros' ? 'block' : 'none';
   document.getElementById('asisVistaControl').style.display = vista === 'control' ? 'block' : 'none';
   if (vista === 'control' && (!_cq.iniciado || opciones.operacion || opciones.fecha)) iniciarControlQuincena(opciones);
+  // Refleja la subpestaña en la URL (para compartir o recargar el enlace)
+  try {
+    const url = new URL(window.location);
+    if (vista === 'control') url.searchParams.set('subtab', 'control'); else url.searchParams.delete('subtab');
+    history.replaceState(null, '', url);
+  } catch (_) { /* sin cambio de URL */ }
 }
 
 function iniciarControlQuincena({ operacion = '', fecha = '' } = {}) {
