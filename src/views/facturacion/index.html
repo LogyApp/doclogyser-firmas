@@ -4203,7 +4203,7 @@
           <div class="form-group" id="ms-idrecibo-wrap">
             <label>Recibo</label>
             <div id="ms-idrecibo-info" style="padding:9px 12px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; font-size:0.88rem;">-</div>
-            <select id="ms-idrecibo-select" style="display:none; margin-top:6px;"></select>
+            <select id="ms-idrecibo-select" style="display:none; margin-top:6px;" onchange="confirmarCambioReciboServicio(this)"></select>
           </div>
 
           <div class="form-group">
@@ -12063,7 +12063,7 @@
       const selRecibo = document.getElementById('ms-idrecibo-select');
       if (puedeReasignar) {
         selRecibo.style.display = 'block';
-        selRecibo.innerHTML = (allRecibos || []).map(r => `<option value="${esc(r.idrecibo)}" ${r.idrecibo === modalServicio.idRecibo ? 'selected' : ''}>${esc(r.consecutivo_recibo || r.idrecibo)} — ${esc(r.operacion)}</option>`).join('');
+        cargarRecibosReasignarServicio(selRecibo, existente?.['Hora Inicio'] ? fechaForm(existente['Hora Inicio']) : '');
       } else {
         selRecibo.style.display = 'none';
       }
@@ -12279,6 +12279,51 @@
       overlayServicio.classList.remove('open');
       cerrarModalBack(overlayServicio._backEntry);
       overlayServicio._backEntry = null;
+    }
+
+    // Recibos a los que se puede pasar el servicio: los de su misma operación con servicios hasta
+    // DIAS_RECIBOS_REASIGNAR días antes o después del servicio (se consultan aparte, no dependen de
+    // lo cargado en la pestaña Recibos). El recibo actual siempre queda en la lista y escogido.
+    const DIAS_RECIBOS_REASIGNAR = 20;
+    async function cargarRecibosReasignarServicio(sel, horaInicio) {
+      const idActual = modalServicio.idRecibo, idServicio = modalServicio.idServicio;
+      const textoActual = document.getElementById('ms-idrecibo-info').textContent;
+      const opcion = (valor, texto) => `<option value="${esc(valor)}" ${valor === idActual ? 'selected' : ''}>${esc(texto)}</option>`;
+      sel.innerHTML = opcion(idActual, textoActual);
+      sel.dataset.anterior = idActual;
+      sel.disabled = true;
+      try {
+        const base = horaInicio ? new Date(horaInicio.slice(0, 10) + 'T12:00:00') : new Date();
+        const dia = (n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario, operacion: msContexto.operacion || '',
+          desde: dia(-DIAS_RECIBOS_REASIGNAR), hasta: dia(DIAS_RECIBOS_REASIGNAR),
+          sortCol: 'consecutivo_recibo', sortDir: 'DESC', limit: 1000
+        });
+        const resp = await fetch(`/facturacion/api/recibos?${params.toString()}`);
+        if (!resp.ok) throw new Error('Error al cargar recibos');
+        const filas = (await resp.json()).rows || [];
+        if (modalServicio.idServicio !== idServicio) return; // se abrió otro servicio mientras cargaba
+        const otros = filas.filter(r => r.idrecibo !== idActual).map(r => opcion(r.idrecibo,
+          [r.consecutivo_recibo || r.idrecibo, r.placa, r.nombres || r.cliente_credito, r.quincena && `${r.quincena} día ${r.dia}`].filter(Boolean).join(' — ')));
+        sel.innerHTML = opcion(idActual, textoActual) + otros.join('');
+        sel.dataset.anterior = idActual;
+        if (!otros.length) sel.title = `No hay otros recibos de ${msContexto.operacion || 'esta operación'} con servicios ${DIAS_RECIBOS_REASIGNAR} días antes o después de este servicio.`;
+      } catch (err) {
+        console.error('[cargarRecibosReasignarServicio]', err);
+      } finally {
+        sel.disabled = false;
+      }
+    }
+
+    // Pasar el servicio a otro recibo se confirma al escogerlo: si no confirma, vuelve el recibo anterior.
+    function confirmarCambioReciboServicio(sel) {
+      const anterior = sel.dataset.anterior || '';
+      if (sel.value === anterior) return;
+      const texto = (valor) => [...sel.options].find(o => o.value === valor)?.textContent || valor;
+      const ok = confirm(`¿Seguro que quiere pasar este servicio a otro recibo?\n\nRecibo actual: ${texto(anterior)}\nRecibo nuevo: ${texto(sel.value)}\n\nEl cambio se aplica al guardar el servicio.`);
+      if (ok) sel.dataset.anterior = sel.value;
+      else sel.value = anterior;
     }
 
     function setEstadoServicio(estado) {
