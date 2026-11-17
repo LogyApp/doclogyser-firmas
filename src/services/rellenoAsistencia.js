@@ -3,6 +3,7 @@
  * Relleno automático de la quincena en Dynamic_Asistencia con las novedades de sistema:
  *   - Nuevo (NVO):     días de la quincena antes de la Fecha de Ingreso.
  *   - Retirado (RET):  días de la quincena después de la Fecha de Retiro (solo con Estado = Retirado).
+ *                      Con "No tomó cargo", desde el mismo día del ingreso (ver plantillaAsistencia.js).
  *   - Traslado (TRAS): en la operación de origen, desde el día del traslado hasta el fin de la quincena;
  *                      en la de destino, desde el inicio de la quincena hasta el día anterior al traslado.
  * Así cada operación completa la quincena con las mismas personas con que la empezó.
@@ -55,8 +56,13 @@ function rellenosEsperados(persona, desde, hasta) {
     const dias = P.diasEntre(q.desde, q.hasta);
     const opDia = dias.map(d => P.operacionDelDia(persona, d));
     const operaciones = [...new Set(opDia.filter(Boolean))];
+    // "No tomó cargo": la operación no tiene días laborados; el Retirado empieza el día del ingreso
+    const inicioSinDias = new Map();
+    P.tramosSinDias(persona, q).forEach(t => {
+      if (!operaciones.includes(t.operacion)) { operaciones.push(t.operacion); inicioSinDias.set(t.operacion, dias.indexOf(t.desde)); }
+    });
     for (const op of operaciones) {
-      const idxPrimero = opDia.indexOf(op);
+      const idxPrimero = inicioSinDias.has(op) ? inicioSinDias.get(op) : opDia.indexOf(op);
       const area = (persona.tramos.find(t => t.operacion === op) || {}).area || null;
       dias.forEach((d, i) => {
         if (opDia[i] === op) return;

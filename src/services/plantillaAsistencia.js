@@ -5,7 +5,8 @@
  *
  * No se usa el estado de hoy: se reconstruye la historia con
  *   - Maestro_Vinculación: Fecha de Ingreso y, si está Retirado, Fecha de Retiro (puede haber varias
- *     vinculaciones de la misma persona, una por cada contratación);
+ *     vinculaciones de la misma persona, una por cada contratación). Con "No tomó cargo" (Config_Parametros
+ *     nomina / Retiros / Motivos de retiro sin días laborados) la vinculación no tiene ningún día laborado;
  *   - Dynamic_traslados_trabajador (firmados): antes de fecha_traslado la persona estaba en la
  *     operación de origen y desde ese día en la de destino.
  * El último tramo de cada vinculación usa la Operación de Maestro_Vinculación (la vigente).
@@ -13,6 +14,7 @@
  * Las quincenas son del 1 al 15 y del 16 al último día del mes (igual que Dynamic_Asistencia.Quincena).
  */
 const pool = require('./db');
+const { obtenerMotivosSinDias, normalizarTexto } = require('./configRetiro');
 
 // ── Fechas en texto AAAA-MM-DD ────────────────────────────────────────────────
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -91,7 +93,7 @@ async function cargarTramos({ desde, hasta, identificaciones = null, operaciones
             COALESCE(s.Trabajador, v.Trabajador) AS trabajador, v.\`Operación\` AS operacion,
             v.Area AS area, v.Cargo AS cargo, v.Estado AS estado,
             DATE_FORMAT(v.\`Fecha de Ingreso\`, '%Y-%m-%d') AS ingreso,
-            DATE_FORMAT(v.\`Fecha de Retiro\`, '%Y-%m-%d') AS retiro
+            DATE_FORMAT(v.\`Fecha de Retiro\`, '%Y-%m-%d') AS retiro, v.\`Motivo del Retiro\` AS motivo
        FROM \`Maestro_Vinculación\` v
        LEFT JOIN \`Maestro_Segmentación\` s ON s.\`Identificación\` = v.\`Identificación\`
       WHERE ${cond.join(' AND ')}
@@ -117,6 +119,8 @@ async function cargarTramos({ desde, hasta, identificaciones = null, operaciones
     traslPorId.get(k).push(t);
   });
 
+  const motivosSinDias = await obtenerMotivosSinDias();
+
   const personas = new Map();
   vincs.forEach((v, i) => {
     const sig = vincs[i + 1];
@@ -134,6 +138,14 @@ async function cargarTramos({ desde, hasta, identificaciones = null, operaciones
       });
     }
     const p = personas.get(k);
+    // "No tomó cargo" (Motivos de retiro sin días laborados): no laboró ningún día, así que el tramo
+    // termina el día antes del ingreso (sin días) y el Retirado empieza el mismo día del ingreso.
+    if (v.estado === 'Retirado' && motivosSinDias.includes(normalizarTexto(v.motivo))) {
+      const hasta = sumarDias(v.ingreso, -1);
+      p.vinculaciones.push({ desde: v.ingreso, hasta, idVinculacion: v.idVinculacion });
+      p.tramos.push({ area: v.area, cargo: v.cargo, idVinculacion: v.idVinculacion, operacion: v.operacion, desde: v.ingreso, hasta, sinDias: true });
+      continue;
+    }
     const fin = v.estado === 'Retirado' && v.retiro ? v.retiro : null;
     p.vinculaciones.push({ desde: v.ingreso, hasta: fin, idVinculacion: v.idVinculacion });
 
@@ -163,6 +175,10 @@ function operacionDelDia(persona, dia) {
 }
 function tramoDelDia(persona, dia) {
   return persona.tramos.find(x => x.desde <= dia && (!x.hasta || dia <= x.hasta)) || null;
+}
+/** Vinculaciones sin días laborados ("No tomó cargo") cuyo ingreso cae en la quincena q */
+function tramosSinDias(persona, q) {
+  return persona.tramos.filter(t => t.sinDias && t.desde >= q.desde && t.desde <= q.hasta);
 }
 
 /**
@@ -196,5 +212,5 @@ async function cargarBloqueos(conn = pool) {
 
 module.exports = {
   FECHA_RE, aIso, sumarDias, hoyColombia, quincenaDe, nombreQuincena, diasEntre, minIso, maxIso,
-  nombreDeTrabajador, cargarTramos, operacionDelDia, tramoDelDia, cargarBloqueos
+  nombreDeTrabajador, cargarTramos, operacionDelDia, tramoDelDia, tramosSinDias, cargarBloqueos
 };

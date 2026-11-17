@@ -103,6 +103,10 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
       const t = P.tramoDelDia(p, d);
       if (t && setOps.has(t.operacion) && !excluidos.has(NORMALIZAR(t.cargo))) opsDeLaPersona.add(t.operacion);
     });
+    // "No tomó cargo": sin días laborados, pero sigue en la plantilla para revisar su Nuevo / Retirado
+    P.tramosSinDias(p, q).forEach(t => {
+      if (setOps.has(t.operacion) && !excluidos.has(NORMALIZAR(t.cargo))) opsDeLaPersona.add(t.operacion);
+    });
     opsDeLaPersona.forEach(o => plantilla.get(o).push(p));
   }
 

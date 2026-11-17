@@ -16,7 +16,7 @@ const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver'
 const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenAutCesantias, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas, notificarAreasPendientesPazYSalvo } = require('../services/pazYSalvoService');
 const { obtenerPermisosActivos } = require('../services/configActivos');
-const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, obtenerPermisosRetiro, nominaDebeMarcarRetirado, obtenerResponsablesConfirmarRetiro } = require('../services/configRetiro');
+const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, obtenerPermisosRetiro, nominaDebeMarcarRetirado, obtenerResponsablesConfirmarRetiro, obtenerMotivosOcultosFormulario, normalizarTexto } = require('../services/configRetiro');
 
 const router   = express.Router();
 const FORM_HTML = path.join(__dirname, '../views/formretiro/form.html');
@@ -698,6 +698,9 @@ router.get('/:idVinculacion', async (req, res) => {
     const puedeRegistrar = !yaRetirado;
 
     const condicionesMotivo = await obtenerCondicionesRetiro();
+    // "Motivos ocultos en formulario de retiro" (p. ej. No tomó cargo, que se registra desde Activos)
+    const motivosOcultos = await obtenerMotivosOcultosFormulario();
+    const motivosFormulario = Object.keys(condicionesMotivo).filter(m => !motivosOcultos.includes(normalizarTexto(m)));
 
     // Docs subidos en Paso 1 (Carta de Renuncia y ED) para mostrar estado en el resumen
     let docCR = null;
@@ -734,7 +737,7 @@ router.get('/:idVinculacion', async (req, res) => {
       cargo:           vin.Cargo || '',
       fechaIngreso:    formatFechaCO(vin['Fecha de Ingreso']),
       rawFechaIngreso: toDateStr(vin['Fecha de Ingreso']),
-      motivos:          Object.keys(condicionesMotivo),
+      motivos:          motivosFormulario,
       condicionesMotivo,
       yaRetirado,
       retiroInfo: yaRetirado ? {
@@ -795,6 +798,15 @@ router.post('/:idVinculacion', async (req, res) => {
     if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
     const vin = vinRows[0];
     const identificacion = vin['Identificación'];
+
+    // Un motivo oculto del formulario (p. ej. No tomó cargo, botón de Activos) solo se acepta si la
+    // vinculación ya lo tenía (edición de un retiro registrado).
+    if ((await obtenerMotivosOcultosFormulario()).includes(normalizarTexto(motivoRetiro))) {
+      const [mRows] = await pool.execute('SELECT `Motivo del Retiro` AS motivo FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1', [idVinculacion]);
+      if (normalizarTexto(mRows[0] && mRows[0].motivo) !== normalizarTexto(motivoRetiro)) {
+        return res.status(400).json({ ok: false, error: `"${motivoRetiro}" se registra con el botón "No tomó cargo" de Nómina › Activos` });
+      }
+    }
 
     // Roles fuera de "Puede editar retiro registrado" siempre deben confirmar
     // "Retirado". Nómina también queda obligada en las Operaciones de "Operación

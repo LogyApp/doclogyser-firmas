@@ -89,6 +89,8 @@ const P = {
   CARGOS_COPIA_SST:          'Cargos con copia SST',
   NOTIF_COPIA_SST:           'Notificación de retiro - Copia cargos SST:',
   HABILITAR_NOTIFICACIONES:  'Habilitar notificaciones de correo en Retiros',
+  MOTIVOS_SIN_DIAS:          'Motivos de retiro sin días laborados',
+  MOTIVOS_OCULTOS_FORM:      'Motivos ocultos en formulario de retiro',
 };
 
 const DEFAULTS_RETIROS = {
@@ -109,7 +111,12 @@ const DEFAULTS_RETIROS = {
   [P.CARGOS_COPIA_SST]:          'ANALISTA DE SST, AUXILIAR SST',
   [P.NOTIF_COPIA_SST]:           'LiderSst',
   [P.HABILITAR_NOTIFICACIONES]:  '1',
+  [P.MOTIVOS_SIN_DIAS]:          'No tomó cargo',
+  [P.MOTIVOS_OCULTOS_FORM]:      'No tomó cargo',
 };
+
+// Motivo que registra el botón "No tomó cargo" de Nómina › Activos (fila de Config_condicion_retiros)
+const MOTIVO_NO_TOMO_CARGO = 'No tomó cargo';
 
 // Roles que se resuelven según la Operación del trabajador (no se envía a todos
 // los usuarios con ese rol). Ver resolverResponsablesRetiro.
@@ -150,6 +157,19 @@ function estaEnParametro(params, concepto, valor) {
   if (!String(valor || '').trim()) return false;
   const buscado = normalizarTexto(valor);
   return listaParametro(params, concepto).some(item => normalizarTexto(item) === buscado);
+}
+
+// Motivos de retiro (normalizados) con los que la persona no laboró ningún día: el Retirado de
+// la asistencia empieza el mismo día del ingreso (plantillaAsistencia.js).
+async function obtenerMotivosSinDias() {
+  const params = await obtenerParametrosRetiros();
+  return listaParametro(params, P.MOTIVOS_SIN_DIAS).map(normalizarTexto);
+}
+
+// Motivos que no se ofrecen en el formulario de retiro (se registran por otro camino)
+async function obtenerMotivosOcultosFormulario() {
+  const params = await obtenerParametrosRetiros();
+  return listaParametro(params, P.MOTIVOS_OCULTOS_FORM).map(normalizarTexto);
 }
 
 function parametroActivo(params, concepto) {
@@ -556,6 +576,10 @@ module.exports = {
   obtenerPendientesLegalizacion,
   obtenerResponsablesOperacionRegional,
   resolverDestinatariosOperacion,
+  obtenerMotivosSinDias,
+  obtenerMotivosOcultosFormulario,
+  normalizarTexto,
+  MOTIVO_NO_TOMO_CARGO,
   PARAMETROS_RETIROS: P,
   DEFAULTS_RETIROS,
 };

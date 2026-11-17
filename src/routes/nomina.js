@@ -26,7 +26,7 @@ const {
   obtenerQuincenaFecha,
 } = require('../services/asistenciaService');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
-const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido } = require('../services/configRetiro');
+const { obtenerCondicionesRetiro, obtenerCondicionRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido, MOTIVO_NO_TOMO_CARGO } = require('../services/configRetiro');
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
 const { obtenerPermisosActivos } = require('../services/configActivos');
 const { marcarNotificado } = require('../services/retiroNotifier');
@@ -1150,6 +1150,89 @@ router.post('/api/tomo-cargo', async (req, res) => {
     })();
   } catch (err) {
     console.error('[nomina] POST /api/tomo-cargo', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/no-tomo-cargo ──────────────────────────────────────────────
+// Contratación confirma que un ingreso nuevo NO tomó el cargo (mismos roles que "Tomó Cargo").
+// Queda Retirado con Motivo "No tomó cargo" y Fecha de Retiro = Fecha de Ingreso; el relleno de
+// asistencia pone Retirado desde el mismo día del ingreso (plantillaAsistencia.js) y se envía el
+// correo interno de retiro, igual que el formulario de retiro.
+// Si la persona ya tiene asistencia o novedades registradas desde su ingreso, primero se devuelven
+// para que el usuario confirme (forzar = true).
+router.post('/api/no-tomo-cargo', async (req, res) => {
+  try {
+    const { idVinculacion, usuario, forzar } = req.body;
+    if (!idVinculacion || !usuario) return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+
+    const [uRows] = await pool.execute('SELECT Nombre, Rol, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const usu = uRows[0] || {};
+    const permisos = await obtenerPermisosActivos(usu.Rol || '');
+    if (!permisos.puedeConfirmarTomaCargo) {
+      return res.status(403).json({ ok: false, error: 'Su rol no tiene permiso para confirmar si tomó el cargo' });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT \`Id Vinculación\`, \`Identificación\`, Trabajador, Cargo, \`Operación\`, Estado,
+              DATE_FORMAT(\`Fecha de Ingreso\`, '%Y-%m-%d') AS fechaIngreso,
+              DATE_FORMAT(\`Fecha de Retiro\`, '%Y-%m-%d') AS fechaRetiro, \`Motivo del Retiro\`
+       FROM \`Maestro_Vinculación\`
+       WHERE \`Id Vinculación\` = ? LIMIT 1`,
+      [idVinculacion]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const vin = rows[0];
+    const motivoActual = String(vin['Motivo del Retiro'] || '').trim();
+    if (motivoActual === 'SI') return res.status(409).json({ ok: false, error: 'Ya se había confirmado que tomó el cargo' });
+    if (vin.Estado !== 'Activo' || motivoActual) {
+      return res.status(409).json({ ok: false, error: 'El trabajador ya tiene un retiro registrado' });
+    }
+    if (!vin.fechaIngreso) return res.status(400).json({ ok: false, error: 'La vinculación no tiene Fecha de Ingreso' });
+    if (!(await obtenerCondicionRetiro(MOTIVO_NO_TOMO_CARGO))) {
+      return res.status(500).json({ ok: false, error: `El motivo "${MOTIVO_NO_TOMO_CARGO}" no existe en Config_condicion_retiros` });
+    }
+
+    // Asistencia o novedades reales desde el ingreso (los rellenos Nuevo / Retirado / Traslado no cuentan)
+    if (!forzar) {
+      const [reg] = await pool.execute(
+        `SELECT DATE_FORMAT(\`Día\`, '%Y-%m-%d') AS dia, Novedad AS novedad, \`Operación\` AS operacion
+           FROM Dynamic_Asistencia
+          WHERE \`Cédula\` = ? AND \`Día\` >= ?
+            AND UPPER(COALESCE(\`Prefijo Novedad\`, '')) NOT IN ('NVO', 'RET', 'TRAS')
+          ORDER BY \`Día\` LIMIT 20`,
+        [vin['Identificación'], vin.fechaIngreso]
+      );
+      if (reg.length) return res.status(409).json({ ok: false, requiereConfirmar: true, registros: reg });
+    }
+
+    const ahora = fechaHoraBogota();
+    await pool.execute(
+      `UPDATE \`Maestro_Vinculación\`
+       SET Estado = 'Retirado', \`Motivo del Retiro\` = ?, \`Fecha de Retiro\` = \`Fecha de Ingreso\`,
+           Usuario = ?, usuarioactualiza = ?, \`Fecha Actualización\` = ?
+       WHERE \`Id Vinculación\` = ? AND Estado = 'Activo'`,
+      [MOTIVO_NO_TOMO_CARGO, usuario, usuario, ahora, idVinculacion]
+    );
+    programarRellenoVinculacion(idVinculacion, [vin.fechaRetiro].filter(Boolean));
+    res.json({ ok: true });
+
+    notificarRetiro({
+      trabajador:       vin.Trabajador,
+      identificacion:   String(vin['Identificación']),
+      cargo:            vin.Cargo,
+      operacion:        vin['Operación'],
+      fechaIngreso:     vin.fechaIngreso,
+      fechaRetiro:      vin.fechaIngreso,
+      motivoRetiro:     MOTIVO_NO_TOMO_CARGO,
+      registradoPor:    usu.Nombre || usuario,
+      emailRegistrador: usu.Email || null,
+      rolRegistrador:   usu.Rol || '',
+    })
+      .then(enviado => enviado && marcarNotificado(idVinculacion))
+      .catch(e => console.error('[nomina] correo de retiro (no tomó cargo):', e.message));
+  } catch (err) {
+    console.error('[nomina] POST /api/no-tomo-cargo', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

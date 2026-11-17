@@ -196,6 +196,12 @@
   }
   .btn-tomo-cargo:hover { background: var(--primary-dark); }
   .btn-tomo-cargo:disabled { background: var(--border-strong); color: var(--text-muted); cursor: default; }
+  .btn-no-tomo-cargo {
+    background: transparent; color: var(--retiro); border: 1.5px solid var(--retiro); padding: 5px 12px;
+    border-radius: 6px; font-size: .78rem; font-weight: 700; cursor: pointer;
+  }
+  .btn-no-tomo-cargo:hover { background: var(--retiro); color: var(--text-inverse); }
+  .btn-no-tomo-cargo:disabled { opacity: .5; cursor: default; }
   .celda-acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; white-space: normal !important; }
 
   .sort-indicator { font-size: .7rem; color: var(--text-muted); margin-left: 4px; }
@@ -550,7 +556,7 @@
     .act-select-area:focus {
       border-color: var(--primario);
     }
-    .btn-retirar, .btn-tomo-cargo {
+    .btn-retirar, .btn-tomo-cargo, .btn-no-tomo-cargo {
       padding: 3px 7px;
       font-size: .68rem;
       border-radius: 4px;
@@ -5691,6 +5697,15 @@
         celdaAcciones.appendChild(btnTomoCargo);
       }
 
+      // "No tomó cargo": mismos roles que "Tomó Cargo", mientras no se haya confirmado.
+      const sinMotivo = !row.MotivoRetiro || !String(row.MotivoRetiro).trim();
+      if (sinMotivo && tabs.activo && tabs.activo.puedeConfirmarTomaCargo) {
+        const btnNoTomo = document.createElement('button');
+        btnNoTomo.type = 'button'; btnNoTomo.className = 'btn-no-tomo-cargo'; btnNoTomo.textContent = 'No tomó cargo';
+        btnNoTomo.onclick = (e) => { e.stopPropagation(); confirmarNoTomoCargo(row, btnNoTomo); };
+        celdaAcciones.appendChild(btnNoTomo);
+      }
+
       // Antioquia: Nómina genera documentos sin marcar Retirado; el Coordinador/Auxiliar
       // responsable confirma aquí el cambio de Estado una vez ya está todo gestionado.
       const tieneMotivoRetiro = row.MotivoRetiro && row.MotivoRetiro.trim() && row.MotivoRetiro !== 'SI';
@@ -5789,6 +5804,32 @@
       });
       const data = await resp.json();
       if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo confirmar')); btn.disabled = false; return; }
+      fetchDataActivos();
+    } catch { alert('Error de conexión.'); btn.disabled = false; }
+  }
+
+  // Retira a la persona con Motivo "No tomó cargo" y Fecha de Retiro = Fecha de Ingreso.
+  // Si ya tiene asistencia o novedades desde su ingreso, se muestran y se pide confirmar de nuevo.
+  async function confirmarNoTomoCargo(row, btn) {
+    const nombre = String(row.Trabajador || '').replace(/^\d+\s*\*\*\s*/, '');
+    const fecha = formatFechaCorta(row.FechaIngreso);
+    if (!confirm(`¿Confirma que ${nombre} NO tomó el cargo?\n\nQuedará Retirado con motivo "No tomó cargo" y fecha de retiro ${fecha} (la misma del ingreso). La asistencia se marcará como Retirado desde ese día y se enviará el correo de retiro a los responsables de la operación.`)) return;
+    btn.disabled = true;
+    const enviar = async (forzar) => {
+      const resp = await fetch('/nomina/api/no-tomo-cargo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idVinculacion: row.IdVinculacion, usuario, forzar }),
+      });
+      return { resp, data: await resp.json() };
+    };
+    try {
+      let { resp, data } = await enviar(false);
+      if (data.requiereConfirmar) {
+        const lista = data.registros.map(r => `• ${r.dia}: ${r.novedad || 'Asistencia'} (${r.operacion || ''})`).join('\n');
+        if (!confirm(`${nombre} ya tiene registros desde su ingreso:\n\n${lista}\n\nEsos registros no se borran; quedarán como alerta en Control de quincena para corregirlos. ¿Desea continuar?`)) { btn.disabled = false; return; }
+        ({ resp, data } = await enviar(true));
+      }
+      if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo registrar')); btn.disabled = false; return; }
       fetchDataActivos();
     } catch { alert('Error de conexión.'); btn.disabled = false; }
   }
