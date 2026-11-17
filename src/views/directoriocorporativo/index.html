@@ -1075,6 +1075,16 @@
     }
     .tk-modal-acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
     .tk-nota { margin-top: 12px; font-size: .78rem; color: var(--text-muted); }
+    /* Navegador de quincena (‹ 11. Noviembre Q2 ›), igual al de Asistencia y Facturación */
+    .tk-nav-q { display: flex; align-items: center; gap: 6px; }
+    .tk-nav-q button { background: none; border: 1.5px solid var(--border); color: var(--text-muted); padding: 4px 12px; border-radius: 6px; font-size: 1rem; line-height: 1.2; font-weight: 600; cursor: pointer; }
+    .tk-nav-q button:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text); }
+    .tk-nav-q button:disabled { opacity: .35; cursor: not-allowed; }
+    .tk-q-txt { font-weight: 700; font-size: .95rem; min-width: 150px; text-align: center; color: var(--text); }
+    /* Gestionar ticket: Pendiente / Rechazado / Resuelto */
+    .tk-acc-grupo { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tk-acc { flex: 1 1 110px; border: 1.5px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 8px; padding: 8px 10px; font-weight: 700; font-size: .84rem; cursor: pointer; }
+    .tk-acc.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
     /* Celular: barra lateral oculta (se abre con ☰) y header móvil, igual que Facturación */
     @media (max-width: 900px) {
@@ -1100,6 +1110,9 @@
       .page-title { font-size: 1.02rem; line-height: 1.25; }
       .page-sub { font-size: .70rem; line-height: 1.3; margin-top: 1px; }
       .page-hd-actions { gap: 6px; }
+      .tk-acciones { width: 100%; }
+      .tk-nav-q { flex: 1 1 auto; justify-content: space-between; }
+      .tk-q-txt { min-width: 120px; font-size: .86rem; }
       .btn-primary, .page-hd-actions .btn-header { padding: 5px 10px; font-size: .74rem; border-radius: 6px; gap: 5px; }
       .card { padding: 9px 9px; margin-bottom: 8px; border-radius: 8px; }
       .card-titulo { font-size: .74rem; margin-bottom: 6px; }
@@ -1281,7 +1294,13 @@
           <div class="page-title">Directorio · Tickets</div>
           <div class="page-sub" id="tkSubtitulo">Tickets que has puesto desde cualquier módulo</div>
         </div>
-        <div class="page-hd-actions"></div>
+        <div class="page-hd-actions tk-acciones">
+          <div class="tk-nav-q">
+            <button type="button" onclick="tkCambiarQuincena(-1)" aria-label="Quincena anterior">‹</button>
+            <span id="tkQuincenaTxt" class="tk-q-txt">—</span>
+            <button type="button" id="tkQuincenaSig" onclick="tkCambiarQuincena(1)" aria-label="Quincena siguiente">›</button>
+          </div>
+        </div>
       </div>
 
       <!-- Chips de Estado con conteo -->
@@ -1299,8 +1318,8 @@
         </div>
         <div class="filtros-body" id="tkFiltrosBody" style="display: none;">
           <div class="filtros-grid">
-            <div class="filtro-field"><label>Desde</label><input type="date" id="tkDesde" onchange="cambiarFechasTickets()"></div>
-            <div class="filtro-field"><label>Hasta</label><input type="date" id="tkHasta" onchange="cambiarFechasTickets()"></div>
+            <div class="filtro-field"><label>Año</label><select id="tkAnio" onchange="tkCambiarAnio()"></select></div>
+            <div class="filtro-field"><label>Quincena</label><select id="tkQuincena" onchange="tkElegirQuincena()"></select></div>
             <div class="filtro-field"><label>Módulo</label><select id="tkModulo" onchange="cambiarFiltroTicket('modulo', this.value)"><option value="">Todos los módulos</option></select></div>
             <div class="filtro-field"><label>Regional</label><select id="tkRegional" onchange="cambiarFiltroTicket('regional', this.value)"><option value="">Todas las regionales</option></select></div>
             <div class="filtro-field"><label>Operación</label><select id="tkOperacion" onchange="cambiarFiltroTicket('operacion', this.value)"><option value="">Todas las operaciones</option></select></div>
@@ -1308,10 +1327,6 @@
           </div>
           <div class="filtros-pie">
             <div class="filtros-rangos">
-              <button type="button" class="btn-reset tk-rango" data-rango="quincena" onclick="rangoTickets('quincena')">Quincena actual</button>
-              <button type="button" class="btn-reset tk-rango" data-rango="30" onclick="rangoTickets(30)">30 días</button>
-              <button type="button" class="btn-reset tk-rango" data-rango="90" onclick="rangoTickets(90)">3 meses</button>
-              <button type="button" class="btn-reset tk-rango" data-rango="365" onclick="rangoTickets(365)">1 año</button>
               <label class="filtro-check" id="tkMiosWrap" style="display: none;"><input type="checkbox" id="tkMios" onchange="cargarTickets()"> Solo mis tickets</label>
             </div>
             <button type="button" class="btn-reset" onclick="limpiarFiltrosTickets()">↺ Limpiar filtros</button>
@@ -1324,7 +1339,7 @@
         <table class="data-table" id="tabla-tickets">
           <thead>
             <tr>
-              <th style="width: 52px; text-align: center;" title="Editar (solo quien lo puso, En Proceso o Pendiente)">✏️</th>
+              <th style="width: 52px; text-align: center;" title="Editar (quien lo puso, En Proceso o Pendiente) o Gestionar (quien resuelve tickets del módulo)">✏️</th>
               <th style="width: 120px;" data-sort="estado">Estado<span class="sort-indicator"></span></th>
               <th style="width: 110px;" data-sort="ticket">Ticket<span class="sort-indicator"></span></th>
               <th style="width: 145px;" data-sort="fechaRegistro">Fecha Registro<span class="sort-indicator"></span></th>
@@ -1746,7 +1761,8 @@
     // Cada usuario ve solo los tickets que puso; los roles de Config_Parametros
     // (directorio / Tickets / "Roles que ven todos los tickets", por defecto Sistema) ven todos.
     const tkState = {
-      cargado: false, datos: null, temporizador: null, rango: 'quincena',
+      cargado: false, datos: null, temporizador: null,
+      anio: '', mes: 0, q: 0,   // quincena escogida (mes 0 = todas las quincenas del año)
       filtros: { estado: '', modulo: '', regional: '', operacion: '', solicitante: '' },
       orden: { col: 'fechaRegistro', dir: 'desc' }
     };
@@ -1770,12 +1786,85 @@
       const c = tkColores(estado);
       return `<span class="badge" style="background:${c.bg}; color:${c.color};">${tkEsc(estado || 'Sin estado')}</span>`;
     }
-    function tkFechaMenos(dias) {
-      const d = new Date(Date.now() - dias * 86400000);
-      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
+    // ── Quincena (1 al 15 y 16 a fin de mes, mismo nombre que Maestro_Fechas: "11. Noviembre Q2") ──
+    const TK_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const TK_PRIMER_ANIO = 2025;
+    function tkNombreQuincena(mes, q) { return `${mes}. ${TK_MESES[mes - 1]} Q${q}`; }
+    function tkQuincenaDeHoy() {
+      const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      return { anio: hoy.slice(0, 4), mes: Number(hoy.slice(5, 7)), q: Number(hoy.slice(8, 10)) <= 15 ? 1 : 2, hoy };
+    }
+    function tkEsQuincenaActual() {
+      const h = tkQuincenaDeHoy();
+      return tkState.anio === h.anio && tkState.mes === h.mes && tkState.q === h.q;
+    }
+    /** { desde, hasta } de la quincena escogida, o del año completo si son todas */
+    function tkRangoFechas() {
+      const h = tkQuincenaDeHoy();
+      if (tkState.anio === 'todos') return { desde: `${TK_PRIMER_ANIO}-01-01`, hasta: h.hoy };
+      const a = Number(tkState.anio);
+      if (!tkState.mes) return { desde: `${a}-01-01`, hasta: `${a}-12-31` };
+      const mm = String(tkState.mes).padStart(2, '0');
+      const ultimo = new Date(Date.UTC(a, tkState.mes, 0)).getUTCDate();
+      return tkState.q === 1 ? { desde: `${a}-${mm}-01`, hasta: `${a}-${mm}-15` } : { desde: `${a}-${mm}-16`, hasta: `${a}-${mm}-${ultimo}` };
+    }
+    function tkPintarSelectoresQuincena() {
+      const h = tkQuincenaDeHoy();
+      const selAnio = document.getElementById('tkAnio');
+      let anios = '';
+      for (let a = Number(h.anio); a >= TK_PRIMER_ANIO; a--) anios += `<option value="${a}"${String(a) === tkState.anio ? ' selected' : ''}>${a}</option>`;
+      selAnio.innerHTML = anios + `<option value="todos"${tkState.anio === 'todos' ? ' selected' : ''}>Todos los años</option>`;
+      // Quincenas del año escogido, de la más reciente a la más antigua (hasta la actual)
+      const selQ = document.getElementById('tkQuincena');
+      let opts = `<option value="">Todas las quincenas</option>`;
+      if (tkState.anio !== 'todos') {
+        const ultimoMes = tkState.anio === h.anio ? h.mes : 12;
+        for (let m = ultimoMes; m >= 1; m--) {
+          [2, 1].forEach(q => {
+            if (tkState.anio === h.anio && m === h.mes && q > h.q) return;
+            const v = `${m}-${q}`;
+            opts += `<option value="${v}"${tkState.mes === m && tkState.q === q ? ' selected' : ''}>${tkNombreQuincena(m, q)}</option>`;
+          });
+        }
+      }
+      selQ.innerHTML = opts;
+      selQ.disabled = tkState.anio === 'todos';
+      // Navegador
+      document.getElementById('tkQuincenaTxt').textContent = tkState.anio === 'todos' ? 'Todos los años'
+        : (tkState.mes ? tkNombreQuincena(tkState.mes, tkState.q) + (tkState.anio !== h.anio ? ` · ${tkState.anio}` : '') : `Todas · ${tkState.anio}`);
+      document.getElementById('tkQuincenaSig').disabled = tkEsQuincenaActual();
+    }
+    function tkIrAQuincenaActual() {
+      const h = tkQuincenaDeHoy();
+      Object.assign(tkState, { anio: h.anio, mes: h.mes, q: h.q });
+    }
+    function tkCambiarQuincena(delta) {
+      const h = tkQuincenaDeHoy();
+      // Sin quincena escogida (todas) se parte de la actual
+      if (tkState.anio === 'todos' || !tkState.mes) { tkIrAQuincenaActual(); cargarTickets(); return; }
+      let a = Number(tkState.anio), m = tkState.mes, q = tkState.q + delta;
+      if (q > 2) { q = 1; m += 1; }
+      if (q < 1) { q = 2; m -= 1; }
+      if (m > 12) { m = 1; a += 1; }
+      if (m < 1) { m = 12; a -= 1; }
+      if (a * 1000 + m * 10 + q > Number(h.anio) * 1000 + h.mes * 10 + h.q) return;
+      Object.assign(tkState, { anio: String(a), mes: m, q });
+      cargarTickets();
+    }
+    function tkCambiarAnio() {
+      tkState.anio = document.getElementById('tkAnio').value;
+      tkState.mes = 0; tkState.q = 0;
+      cargarTickets();
+    }
+    function tkElegirQuincena() {
+      const v = document.getElementById('tkQuincena').value;
+      const [m, q] = v ? v.split('-').map(Number) : [0, 0];
+      tkState.mes = m; tkState.q = q;
+      cargarTickets();
     }
     function iniciarTickets() {
       tkState.cargado = true;
+      tkIrAQuincenaActual();
       cargarTickets();
     }
     // Filtros plegados por defecto (la búsqueda queda siempre a la vista)
@@ -1784,24 +1873,6 @@
       const abrir = body.style.display === 'none';
       body.style.display = abrir ? 'block' : 'none';
       document.getElementById('tkFiltrosChevron').style.transform = abrir ? 'rotate(90deg)' : 'rotate(0deg)';
-    }
-    function marcarRangoTickets() {
-      document.querySelectorAll('.tk-rango').forEach(b => b.classList.toggle('activo', b.dataset.rango === String(tkState.rango)));
-    }
-    function rangoTickets(rango) {
-      tkState.rango = rango;
-      if (rango === 'quincena') {
-        document.getElementById('tkDesde').value = '';
-        document.getElementById('tkHasta').value = '';
-      } else {
-        document.getElementById('tkDesde').value = tkFechaMenos(rango);
-        document.getElementById('tkHasta').value = tkFechaMenos(0);
-      }
-      cargarTickets();
-    }
-    function cambiarFechasTickets() {
-      tkState.rango = '';
-      cargarTickets();
     }
     function cambiarFiltroTicket(campo, valor) {
       tkState.filtros[campo] = valor;
@@ -1812,18 +1883,18 @@
       tkState.filtros = { estado: '', modulo: '', regional: '', operacion: '', solicitante: '' };
       document.getElementById('tkBuscar').value = '';
       document.getElementById('tkMios').checked = false;
-      rangoTickets('quincena');
+      tkIrAQuincenaActual();
+      cargarTickets();
     }
     function buscarTicketsDiferido() {
       clearTimeout(tkState.temporizador);
       tkState.temporizador = setTimeout(cargarTickets, 350);
     }
     async function cargarTickets() {
-      const qs = new URLSearchParams({ usuario: paramUsuario });
-      const desde = document.getElementById('tkDesde').value;
-      const hasta = document.getElementById('tkHasta').value;
-      if (desde) qs.set('desde', desde);
-      if (hasta) qs.set('hasta', hasta);
+      if (!tkState.anio) tkIrAQuincenaActual();
+      const { desde, hasta } = tkRangoFechas();
+      const qs = new URLSearchParams({ usuario: paramUsuario, desde, hasta });
+      tkPintarSelectoresQuincena();
       const q = document.getElementById('tkBuscar').value.trim();
       if (q) qs.set('q', q);
       if (document.getElementById('tkMios').checked) qs.set('mios', '1');
@@ -1834,8 +1905,6 @@
         const data = await r.json();
         if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudieron cargar los tickets.');
         tkState.datos = data;
-        if (!desde) document.getElementById('tkDesde').value = data.desde;
-        if (!hasta) document.getElementById('tkHasta').value = data.hasta;
         renderTickets();
       } catch (e) {
         document.getElementById('tkContador').textContent = e.message;
@@ -1866,16 +1935,19 @@
       const d = tkState.datos;
       const f = tkState.filtros;
       const verTodos = Boolean(d.verTodos);
-      document.getElementById('tkSubtitulo').textContent = verTodos
-        ? 'Tickets de todos los usuarios y módulos. Quien puso el ticket lo edita mientras esté En Proceso o Pendiente.'
-        : 'Tickets que has puesto desde cualquier módulo. Puedes editarlos mientras estén En Proceso o Pendiente.';
-      document.getElementById('tkMiosWrap').style.display = verTodos ? 'inline-flex' : 'none';
-      document.getElementById('tkCampoSolicitante').style.display = verTodos ? '' : 'none';
+      const verSolicitantes = Boolean(d.verSolicitantes);
+      document.getElementById('tkSubtitulo').textContent = d.resuelve
+        ? (verTodos ? 'Tickets de todos los usuarios y módulos. Con 🛠️ Gestionar los pasa a Pendiente, Rechazado o Resuelto con la respuesta.'
+                    : 'Tus tickets y los de los módulos que resuelves. Con 🛠️ Gestionar los pasa a Pendiente, Rechazado o Resuelto con la respuesta.')
+        : (verTodos ? 'Tickets de todos los usuarios y módulos. Quien puso el ticket lo edita mientras esté En Proceso o Pendiente.'
+                    : 'Tickets que has puesto desde cualquier módulo. Puedes editarlos mientras estén En Proceso o Pendiente.');
+      document.getElementById('tkMiosWrap').style.display = verSolicitantes ? 'inline-flex' : 'none';
+      document.getElementById('tkCampoSolicitante').style.display = verSolicitantes ? '' : 'none';
 
       llenarSelectConConteo('tkModulo', d.facetas.modulo, f.modulo, 'Todos los módulos');
       llenarSelectConConteo('tkRegional', d.facetas.regional, f.regional, 'Todas las regionales');
       llenarSelectConConteo('tkOperacion', d.facetas.operacion, f.operacion, 'Todas las operaciones');
-      if (verTodos) llenarSelectConConteo('tkSolicitante', d.facetas.solicitante, f.solicitante, 'Todos los solicitantes');
+      if (verSolicitantes) llenarSelectConConteo('tkSolicitante', d.facetas.solicitante, f.solicitante, 'Todos los solicitantes');
 
       // Chips de estado con conteo (cuentan con los demás filtros aplicados)
       const conteo = {};
@@ -1887,14 +1959,15 @@
         TK_ESTADOS.concat(extras).map(e => chip(e.key, e.label, conteo[e.key] || 0)).join('');
 
       const activos = Object.entries(f).filter(([k, v]) => v && k !== 'estado').length
-        + (tkState.rango !== 'quincena' ? 1 : 0) + (document.getElementById('tkMios').checked ? 1 : 0);
+        + (tkEsQuincenaActual() ? 0 : 1) + (document.getElementById('tkMios').checked ? 1 : 0);
       const badge = document.getElementById('tkFiltrosBadge');
       badge.textContent = activos;
       badge.style.display = activos ? 'inline-flex' : 'none';
-      marcarRangoTickets();
 
+      const periodo = tkState.anio === 'todos' ? 'de todos los años'
+        : (tkState.mes ? `de la quincena ${tkNombreQuincena(tkState.mes, tkState.q)} ${tkState.anio}` : `de todo ${tkState.anio}`);
       document.getElementById('tkContador').textContent =
-        `${d.total.toLocaleString('es-CO')} ticket${d.total === 1 ? '' : 's'} del ${d.desde} al ${d.hasta}${d.truncado ? ' · se muestran los 5.000 más recientes, acota las fechas' : ''}`;
+        `${d.total.toLocaleString('es-CO')} ticket${d.total === 1 ? '' : 's'} ${periodo}${d.truncado ? ' · se muestran los 5.000 más recientes, escoge una quincena' : ''}`;
 
       document.querySelectorAll('#tabla-tickets thead th[data-sort]').forEach(th => {
         const activa = th.dataset.sort === tkState.orden.col;
@@ -1910,7 +1983,7 @@
       }
       body.innerHTML = tkState.vista.map((t, i) => `
         <tr onclick="verTicket(${i})" title="Clic para ver el detalle">
-          <td style="text-align:center; padding-left:4px; padding-right:4px; text-overflow:clip;">${t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Editar ticket" aria-label="Editar ticket" onclick="event.stopPropagation(); editarTicket(${i})">✏️</button>` : ''}</td>
+          <td style="text-align:center; padding-left:4px; padding-right:4px; text-overflow:clip;">${t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Editar ticket" aria-label="Editar ticket" onclick="event.stopPropagation(); editarTicket(${i})">✏️</button>` : ''}${t.puedeResolver && !t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Gestionar ticket" aria-label="Gestionar ticket" onclick="event.stopPropagation(); gestionarTicket(${i})">🛠️</button>` : ''}</td>
           <td>${tkBadge(t.estado)}</td>
           <td style="font-weight:700;">${tkEsc(t.ticket)}</td>
           <td>${tkEsc(t.fechaRegistro)}</td>
@@ -1949,9 +2022,65 @@
         ${fila('Finalizado', tkEsc(t.fechaFinalizacion))}
         ${fila('Satisfacción', t.satisfaccion ? '★'.repeat(Number(t.satisfaccion)) : '')}
         ${fila('Sugerencia', multilinea(t.sugerencia))}
-        ${t.puedeEditar
-          ? `<div class="tk-modal-acciones"><button type="button" class="btn-header accent" onclick="editarTicket(${i})">✏️ Editar</button></div>`
+        ${t.puedeEditar || t.puedeResolver
+          ? `<div class="tk-modal-acciones">
+              ${t.puedeResolver ? `<button type="button" class="btn-header${t.puedeEditar ? '' : ' accent'}" onclick="gestionarTicket(${i})">🛠️ Gestionar</button>` : ''}
+              ${t.puedeEditar ? `<button type="button" class="btn-header accent" onclick="editarTicket(${i})">✏️ Editar</button>` : ''}
+            </div>`
           : '<div class="tk-nota">Solo quien puso el ticket puede editarlo, y solo mientras esté En Proceso o Pendiente.</div>'}`);
+    }
+    // Gestionar (resolver): roles de Config_Parametros directorio / Tickets / "Resolver tickets"
+    function gestionarTicket(i) {
+      const t = tkState.vista[i];
+      const multilinea = v => tkEsc(v).replace(/\n/g, '<br>');
+      tkState.accion = '';
+      abrirModalTicket(`🛠️ Gestionar ticket #${tkEsc(t.ticket)}`, `
+        <div style="margin-bottom:10px;">${tkBadge(t.estado)} <span style="color:var(--text-muted); font-size:.82rem;">${tkEsc(t.modulo)} · ${tkEsc(t.operacion || '')} · ${tkEsc(t.solicitante || '')}</span></div>
+        <div class="tk-det-fila"><span>Motivo</span><div>${tkEsc(t.motivo || '—')}</div></div>
+        <div class="tk-det-fila"><span>Descripción</span><div>${multilinea(t.descripcion || '—')}</div></div>
+        ${t.telefono ? `<div class="tk-det-fila"><span>Teléfono</span><div>${tkEsc(t.telefono)}</div></div>` : ''}
+        ${t.evidencia ? `<div class="tk-det-fila"><span>Evidencia</span><div><a href="${tkEsc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a></div></div>` : ''}
+        <div class="tk-form-campo" style="margin-top:14px;"><label>Acción a ejecutar *</label>
+          <div class="tk-acc-grupo">
+            <button type="button" class="tk-acc" data-acc="Pendiente" onclick="tkElegirAccion(this)">🟡 Pendiente</button>
+            <button type="button" class="tk-acc" data-acc="Rechazado" onclick="tkElegirAccion(this)">🔴 Rechazado</button>
+            <button type="button" class="tk-acc" data-acc="Resuelto" onclick="tkElegirAccion(this)">🟢 Resuelto</button>
+          </div>
+        </div>
+        <div class="tk-form-campo"><label>Respuesta para quien puso el ticket *</label><textarea id="tkGesRespuesta" rows="4">${tkEsc(t.observaciones || '')}</textarea></div>
+        <div class="tk-modal-acciones">
+          <button type="button" class="btn-header" onclick="cerrarModalTicket()">Cancelar</button>
+          <button type="button" class="btn-header accent" id="tkGesGuardar" onclick="guardarGestionTicket(${i})">Guardar</button>
+        </div>`);
+    }
+    function tkElegirAccion(btn) {
+      tkState.accion = btn.dataset.acc;
+      document.querySelectorAll('.tk-acc').forEach(b => b.classList.toggle('sel', b === btn));
+    }
+    async function guardarGestionTicket(i) {
+      const t = tkState.vista[i];
+      const observaciones = document.getElementById('tkGesRespuesta').value.trim();
+      if (!tkState.accion) return showToast('Escoge una acción: Pendiente, Rechazado o Resuelto.', 'error');
+      if (!observaciones) return showToast('Escribe la respuesta para quien puso el ticket.', 'error');
+      const btn = document.getElementById('tkGesGuardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        const r = await fetch(`/tickets/api/ticket/${encodeURIComponent(t.ticket)}/estado`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: paramUsuario, estado: tkState.accion, observaciones })
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo actualizar el ticket.');
+        cerrarModalTicket();
+        showToast(`Ticket #${t.ticket} quedó ${data.ticket.estado}.`);
+        cargarTickets();
+      } catch (e) {
+        showToast(e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+      }
     }
     async function editarTicket(i) {
       const t = tkState.vista[i];
