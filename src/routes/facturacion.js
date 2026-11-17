@@ -4540,13 +4540,13 @@ router.get('/api/recibos', async (req, res) => {
     const filtroEstado = sqlEstadoRecibo(req.query.estado);
     if (filtroEstado) whereClauses.push(filtroEstado);
 
-    // Filtros de fecha Desde y Hasta (sobre dr.Fecha)
+    // Filtros de fecha Desde y Hasta (sobre dr.`Fecha Servicio` = servicio más reciente del recibo)
     if (desde) {
-      whereClauses.push('dr.Fecha >= ?');
+      whereClauses.push('dr.`Fecha Servicio` >= ?');
       params.push(desde.length <= 10 ? `${desde} 00:00:00` : desde);
     }
     if (hasta) {
-      whereClauses.push('dr.Fecha <= ?');
+      whereClauses.push('dr.`Fecha Servicio` <= ?');
       params.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
     }
 
@@ -4555,22 +4555,22 @@ router.get('/api/recibos', async (req, res) => {
     let anioNum = null;
     if (anioFiltro !== 'todos') {
       anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
-      whereClauses.push('dr.Fecha >= ? AND dr.Fecha <= ?');
+      whereClauses.push('dr.`Fecha Servicio` >= ? AND dr.`Fecha Servicio` <= ?');
       params.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
 
     // Mes
     if (mes && mes !== 'todos') {
-      whereClauses.push(sqlFiltroMes('dr.Fecha', mes, anioNum, params));
+      whereClauses.push(sqlFiltroMes('dr.`Fecha Servicio`', mes, anioNum, params));
     }
 
     // Quincena (como rango de fechas para usar el índice de Fecha)
     if (quincena && quincena !== 'todas') {
-      whereClauses.push(sqlRangosFecha('dr.Fecha', await rangosQuincena(quincena, anioNum), params));
+      whereClauses.push(sqlRangosFecha('dr.`Fecha Servicio`', await rangosQuincena(quincena, anioNum), params));
     }
 
     // Día (se escoge dentro de la quincena)
-    const filtroDia = sqlFiltroDia('dr.Fecha', dia, params);
+    const filtroDia = sqlFiltroDia('dr.`Fecha Servicio`', dia, params);
     if (filtroDia) whereClauses.push(filtroDia);
 
     // Regional
@@ -4658,7 +4658,7 @@ router.get('/api/recibos', async (req, res) => {
       LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = dr.\`Operación\`
       LEFT JOIN Maestro_Clientes mc ON mc.\`Código\` = dr.Nit
       LEFT JOIN Config_Categoria_Serv ccs ON ccs.Id = dr.Categoria
-      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.Fecha)
+      LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(dr.\`Fecha Servicio\`)
       ${whereSql}
       ORDER BY ${orderCol} ${orderDir}, dr.IdRecibo DESC
       LIMIT ? OFFSET ?
@@ -4811,11 +4811,11 @@ router.get('/api/recibos/metricas', async (req, res) => {
     }
 
     if (desde) {
-      commonWhere.push('dr.Fecha >= ?');
+      commonWhere.push('dr.`Fecha Servicio` >= ?');
       commonParams.push(desde.length <= 10 ? `${desde} 00:00:00` : desde);
     }
     if (hasta) {
-      commonWhere.push('dr.Fecha <= ?');
+      commonWhere.push('dr.`Fecha Servicio` <= ?');
       commonParams.push(hasta.length <= 10 ? `${hasta} 23:59:59` : hasta);
     }
 
@@ -4823,7 +4823,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
     let anioNum = null;
     if (anioFiltro !== 'todos') {
       anioNum = parseInt(anioFiltro, 10) || anioActualBogota();
-      commonWhere.push('dr.Fecha >= ? AND dr.Fecha <= ?');
+      commonWhere.push('dr.`Fecha Servicio` >= ? AND dr.`Fecha Servicio` <= ?');
       commonParams.push(`${anioNum}-01-01 00:00:00`, `${anioNum}-12-31 23:59:59`);
     }
 
@@ -4836,7 +4836,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
       commonParams.push(operacion);
     }
     if (mes && mes !== 'todos') {
-      commonWhere.push(sqlFiltroMes('dr.Fecha', mes, anioNum, commonParams));
+      commonWhere.push(sqlFiltroMes('dr.`Fecha Servicio`', mes, anioNum, commonParams));
     }
     // Quincena: se convierte en rangos de fecha (se aplica a todas las agrupaciones menos Meses/Quincenas)
     const rangosQ = (quincena && quincena !== 'todas') ? await rangosQuincena(quincena, anioNum) : null;
@@ -4884,9 +4884,9 @@ router.get('/api/recibos/metricas', async (req, res) => {
     const modWhere = [...commonWhere];
     const modParams = [...commonParams];
     if (rangosQ) {
-      modWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, modParams));
+      modWhere.push(sqlRangosFecha('dr.`Fecha Servicio`', rangosQ, modParams));
     }
-    const diaMod = sqlFiltroDia('dr.Fecha', dia, modParams);
+    const diaMod = sqlFiltroDia('dr.`Fecha Servicio`', dia, modParams);
     if (diaMod) modWhere.push(diaMod);
     const whereSqlMod = modWhere.length ? `WHERE ${modWhere.join(' AND ')}` : '';
     const q_modRows = pool.query(`
@@ -4906,9 +4906,9 @@ router.get('/api/recibos/metricas', async (req, res) => {
     const dropdownWhere = [...commonWhere];
     const dropdownParams = [...commonParams];
     if (rangosQ) {
-      dropdownWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, dropdownParams));
+      dropdownWhere.push(sqlRangosFecha('dr.`Fecha Servicio`', rangosQ, dropdownParams));
     }
-    const diaDropdown = sqlFiltroDia('dr.Fecha', dia, dropdownParams);
+    const diaDropdown = sqlFiltroDia('dr.`Fecha Servicio`', dia, dropdownParams);
     if (diaDropdown) dropdownWhere.push(diaDropdown);
     if (modalidad && modalidad !== 'todas') {
       dropdownWhere.push('dr.Modalidad = ?');
@@ -4950,7 +4950,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
         ROUND(SUM(t.sumTotal)) as sumTotal
       FROM (
         SELECT
-          DATE(dr.Fecha) as dia,
+          DATE(dr.\`Fecha Servicio\`) as dia,
           COUNT(DISTINCT dr.IdRecibo) as totalCount,
           SUM(${subtotalExpr}) as sumSubtotal,
           SUM(${totalExpr}) as sumTotal
@@ -4958,7 +4958,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
         LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
         LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
         ${whereSqlFechas}
-        GROUP BY DATE(dr.Fecha)
+        GROUP BY DATE(dr.\`Fecha Servicio\`)
       ) t
       LEFT JOIN Maestro_Fechas mf ON mf.Fecha = t.dia
       GROUP BY MONTH(t.dia), mf.Quincena
@@ -4967,12 +4967,12 @@ router.get('/api/recibos/metricas', async (req, res) => {
     // Días de la quincena escogida (filtro Día): todos los filtros menos el propio Día
     const diasWhere = [...fechasWhere];
     const diasParams = [...fechasParams];
-    if (rangosQ) diasWhere.push(sqlRangosFecha('dr.Fecha', rangosQ, diasParams));
+    if (rangosQ) diasWhere.push(sqlRangosFecha('dr.`Fecha Servicio`', rangosQ, diasParams));
     const q_diasRows = rangosQ ? pool.query(`
       SELECT DATE_FORMAT(t.dia, '%Y-%m-%d') as dia, t.totalCount, ROUND(t.sumSubtotal) as sumSubtotal, ROUND(t.sumTotal) as sumTotal
       FROM (
         SELECT
-          DATE(dr.Fecha) as dia,
+          DATE(dr.\`Fecha Servicio\`) as dia,
           COUNT(DISTINCT dr.IdRecibo) as totalCount,
           SUM(${subtotalExpr}) as sumSubtotal,
           SUM(${totalExpr}) as sumTotal
@@ -4980,7 +4980,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
         LEFT JOIN Dynamic_Servicios ds ON ds.IdRecibo = dr.IdRecibo
         LEFT JOIN Maestro_Operaciones mo ON dr.\`Operación\` = mo.OPERACIÓN
         WHERE ${diasWhere.join(' AND ')}
-        GROUP BY DATE(dr.Fecha)
+        GROUP BY DATE(dr.\`Fecha Servicio\`)
       ) t
       ORDER BY t.dia
     `, diasParams) : Promise.resolve([[]]);
