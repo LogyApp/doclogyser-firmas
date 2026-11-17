@@ -778,11 +778,11 @@ async function registrarNovedadPorRango({
         null, // Hora Salida
         null, // Tiempo Laborado
         null, // Valor Destajo
-        apoyoVal, // Apoyo Otra Operación
-        opDestinoApoyo, // Operación a la que Apoya
+        'NO', // Apoyo Otra Operación (las novedades por rango no son apoyos; ver registrarNovedadDia)
+        null, // Operación a la que Apoya
         codDiagValido,
         diagValido,
-        observaciones || (opDestinoApoyo ? `Apoyo a ${opDestinoApoyo}` : null),
+        observaciones || null,
         urlSoporte || null,
         urlIncapacidad || null,
         urlHistoriaClinica || null,
