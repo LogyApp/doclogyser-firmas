@@ -466,6 +466,13 @@
       color: var(--text);
     }
 
+    /* Navegador de quincena de Servicios y Recibos (‹ 11. Noviembre Q2 ›) */
+    .fq-nav { display: flex; align-items: center; gap: 6px; }
+    .fq-nav button { background: none; border: 1.5px solid var(--border); color: var(--text-muted); padding: 4px 12px; border-radius: 6px; font-size: 1rem; line-height: 1.2; font-weight: 600; cursor: pointer; transition: var(--transition); }
+    .fq-nav button:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text); }
+    .fq-nav button:disabled { opacity: .35; cursor: not-allowed; }
+    .fq-txt { font-weight: 700; font-size: .95rem; min-width: 150px; text-align: center; color: var(--text); }
+
     /* Botones primarios corporativos */
     .btn-primary {
       background: var(--accent);
@@ -1099,6 +1106,10 @@
         margin-bottom: 6px;
         gap: 6px;
       }
+      /* Quincena a todo el ancho; los botones debajo */
+      .fq-acciones { width: 100%; }
+      .fq-nav { flex: 1 1 100%; justify-content: space-between; }
+      .fq-txt { min-width: 120px; font-size: .86rem; }
       .page-title {
         font-size: 1.02rem;
         line-height: 1.25;
@@ -1621,7 +1632,12 @@
             <div class="page-title">Facturación · Servicios</div>
             <div class="page-sub">Historial operativo de servicios prestados, liquidación de tarifas e impuestos</div>
           </div>
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <div class="fq-acciones" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="fq-nav">
+              <button type="button" onclick="facCambiarQuincena('serv', -1)" aria-label="Quincena anterior">‹</button>
+              <span id="serv-quincena-txt" class="fq-txt">—</span>
+              <button type="button" id="serv-quincena-sig" onclick="facCambiarQuincena('serv', 1)" aria-label="Quincena siguiente">›</button>
+            </div>
             <button type="button" class="btn-sync btn-sync-escritorio" onclick="sincronizarFacturacion(this)" title="Sincronizar" aria-label="Sincronizar"><svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg></button>
             <button type="button" class="btn-secondary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
@@ -1905,7 +1921,12 @@
             <div class="page-title">Facturación · Recibos</div>
             <div class="page-sub">Consulta de recibos consolidados, desglose de impuestos y validación operativa</div>
           </div>
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <div class="fq-acciones" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="fq-nav">
+              <button type="button" onclick="facCambiarQuincena('recib', -1)" aria-label="Quincena anterior">‹</button>
+              <span id="recib-quincena-txt" class="fq-txt">—</span>
+              <button type="button" id="recib-quincena-sig" onclick="facCambiarQuincena('recib', 1)" aria-label="Quincena siguiente">›</button>
+            </div>
             <button type="button" class="btn-sync btn-sync-escritorio" onclick="sincronizarFacturacion(this)" title="Sincronizar" aria-label="Sincronizar"><svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg></button>
             <button type="button" class="btn-secondary" id="btn-carga-masiva-recibos" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
@@ -5081,6 +5102,8 @@
           recibQ.value = CONFIG.quincenaActual;
         }
       }
+      facPintarNavQuincena('serv');
+      facPintarNavQuincena('recib');
 
       // Los datos de cada pestaña se cargan al abrirla (switchMainTab, más abajo): así la
       // pestaña visible no espera a Servicios, Bloqueos, Clientes Crédito y Tickets.
@@ -8705,6 +8728,59 @@
       if (pre === 'serv') onServicioFilterChange(); else onReciboFilterChange();
     }
 
+    // ── Navegador de quincena (‹ 11. Noviembre Q2 ›) de Servicios y Recibos, igual al de Asistencia ──
+    function facNombreQuincena(mes, q) {
+      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      return `${mes}. ${meses[mes - 1]} Q${q}`;
+    }
+
+    /** { anio, mes, q, nombre } de la quincena de hoy (hora Colombia) */
+    function facQuincenaDeHoy() {
+      const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+      const mes = Number(hoy.slice(5, 7));
+      const q = Number(hoy.slice(8, 10)) <= 15 ? 1 : 2;
+      return { anio: hoy.slice(0, 4), mes, q, nombre: facNombreQuincena(mes, q) };
+    }
+
+    function facPintarNavQuincena(pre) {
+      const txt = document.getElementById(`${pre}-quincena-txt`);
+      if (!txt) return;
+      const nombre = document.getElementById(`${pre}-filtro-quincena`)?.value || '';
+      const anio = document.getElementById(`${pre}-filtro-anio`)?.value || '';
+      const hoy = facQuincenaDeHoy();
+      txt.textContent = nombre ? (anio && anio !== 'todos' && anio !== hoy.anio ? `${nombre} · ${anio}` : nombre) : 'Todas las quincenas';
+      // No se avanza más allá de la quincena actual
+      const sig = document.getElementById(`${pre}-quincena-sig`);
+      if (sig) sig.disabled = !!nombre && nombre === hoy.nombre && anio === hoy.anio;
+    }
+
+    function facCambiarQuincena(pre, delta) {
+      const hoy = facQuincenaDeHoy();
+      const selQ = document.getElementById(`${pre}-filtro-quincena`);
+      const selAnio = document.getElementById(`${pre}-filtro-anio`);
+      if (!selQ || !selAnio) return;
+      const m = /^(\d{1,2})\.\s.*Q([12])$/.exec(selQ.value || '');
+      // Sin quincena escogida (Todas) se parte de la actual
+      let anio = m && /^\d{4}$/.test(selAnio.value) ? Number(selAnio.value) : Number(hoy.anio);
+      let mes = m ? Number(m[1]) : hoy.mes;
+      let q = m ? Number(m[2]) : hoy.q;
+      if (m) {
+        q += delta;
+        if (q > 2) { q = 1; mes += 1; }
+        if (q < 1) { q = 2; mes -= 1; }
+        if (mes > 12) { mes = 1; anio += 1; }
+        if (mes < 1) { mes = 12; anio -= 1; }
+      }
+      if (anio * 1000 + mes * 10 + q > Number(hoy.anio) * 1000 + hoy.mes * 10 + hoy.q) return;
+      const nombre = facNombreQuincena(mes, q);
+      if (![...selAnio.options].some(o => o.value === String(anio))) selAnio.insertAdjacentHTML('afterbegin', `<option value="${anio}">${anio}</option>`);
+      selAnio.value = String(anio);
+      if (![...selQ.options].some(o => o.value === nombre)) selQ.insertAdjacentHTML('beforeend', `<option value="${esc(nombre)}">${esc(nombre)}</option>`);
+      selQ.value = nombre;
+      facPintarNavQuincena(pre);
+      onQuincenaFiltroChange(pre);
+    }
+
     function pintarFiltroDia(pre, dias, sumaDe) {
       const diaSel = document.getElementById(`${pre}-filtro-dia`);
       if (!diaSel) return;
@@ -9030,6 +9106,7 @@
         qOpts += `<option value="${esc(curQ)}" selected>${esc(curQ)} (0) ($ 0)</option>`;
       }
       qSel.innerHTML = qOpts;
+      facPintarNavQuincena('serv');
       pintarFiltroDia('serv', metricasServicios.dias, d => modoSumas === 'total' ? d.sumTotalPago : d.sumValorBase);
 
       // 5. Clientes a Facturar (Ascendente A-Z)
@@ -9838,6 +9915,7 @@
         qOpts += `<option value="${esc(curQ)}" selected>${esc(curQ)} (0) ($ 0)</option>`;
       }
       qSel.innerHTML = qOpts;
+      facPintarNavQuincena('recib');
       pintarFiltroDia('recib', metricasRecibos.dias, d => recibModoSumas === 'total' ? d.sumTotal : d.sumSubtotal);
 
       // 5. Clientes a Facturar (Ascendente)
