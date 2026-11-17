@@ -425,6 +425,7 @@ router.get('/', async (req, res) => {
           puedeRegistrarDiasFuturos: paramsAsistencia?.rolesRegistrarDiasFuturos?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeVerNovedadesSistema: paramsAsistencia?.rolesVerNovedadesSistema?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeExcluirCargos: paramsAsistencia?.rolesExencionCargosAsistencia?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeApoyoCualquierOperacion: paramsAsistencia?.rolesApoyoCualquierOperacion?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           ...(paramsAsistencia || {}),
         } : null,
       },

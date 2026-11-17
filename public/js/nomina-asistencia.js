@@ -15,7 +15,8 @@ function getUsuarioAsistencia() {
  * catálogo dinámico con códigos de color de Config_Asistencia adaptados a modo claro/oscuro,
  * selección interactiva de Operación (chips si < 5, select si >= 5),
  * selección obligatoria de Área (Config_Area donde ADMINISTRATIVO='V') para habilitar colaboradores,
- * soporte para apoyo a otra operación restringido a operaciones de la misma regional,
+ * soporte para apoyo a otra operación restringido a operaciones de la misma regional (salvo los roles de
+ * Roles_Apoyo_Cualquier_Operacion),
  * dropzones para soporte/incapacidades con cámara y drag&drop,
  * y permisos por rol para registrar días futuros, editar/eliminar registros en estado Yellow o sin importar estado.
  */
@@ -285,12 +286,17 @@ async function seleccionarOperacionModal(tipo, operacion) {
 }
 
 /**
- * Retorna las operaciones de la misma regional excluyendo la operación base
+ * Retorna las operaciones de la misma regional excluyendo la operación base.
+ * Los roles de Config_Parametros nomina / Asistencia / Roles_Apoyo_Cualquier_Operacion ven todas las operaciones.
  */
 function obtenerOperacionesMismaRegional(opBase) {
   if (!opBase) return [];
   const cfg = typeof obtenerConfigAsistencia === 'function' ? obtenerConfigAsistencia() : {};
   const mapa = cfg.todasOpsPorRegional || cfg.opsPorRegional || {};
+  if (cfg.puedeApoyoCualquierOperacion) {
+    const todas = [...new Set(Object.values(mapa).flat())].filter(o => o && o !== opBase);
+    return todas.sort((a, b) => a.localeCompare(b, 'es'));
+  }
   let regionalBase = '';
   for (const [reg, ops] of Object.entries(mapa)) {
     if (Array.isArray(ops) && ops.includes(opBase)) {

@@ -162,7 +162,8 @@ async function obtenerParametrosAsistencia() {
       'AUXILIAR SST',
       'ANALISTA DE SST'
     ],
-    rolesExencionCargosAsistencia: ['Sistema', 'Nomina']
+    rolesExencionCargosAsistencia: ['Sistema', 'Nomina'],
+    rolesApoyoCualquierOperacion: ['Sistema', 'Nomina']
   };
   for (const r of rows) {
     if (r.Concepto === 'Dias_Maximos_Pasados') {
@@ -191,6 +192,9 @@ async function obtenerParametrosAsistencia() {
     }
     if (r.Concepto === 'Roles_Exencion_Cargos_Asistencia') {
       config.rolesExencionCargosAsistencia = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Apoyo_Cualquier_Operacion') {
+      config.rolesApoyoCualquierOperacion = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
     }
   }
   return config;
