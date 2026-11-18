@@ -5233,6 +5233,31 @@ async function resolverRetenciones({ rolPrivilegiado, payload, nit, operacion, s
   };
 }
 
+// Recalcula Retefuente/ReteIVA/ReteICA de un recibo RECAUDO con su subtotal real (suma de sus
+// servicios), igual que las fórmulas de AppSheet. El recibo se crea con subtotal 0, así que las
+// retenciones que dependen del valor (ReteICA y, para clientes no obligatorios, Fuente/IVA) solo
+// quedan bien si se recalculan al agregar, editar, mover o eliminar servicios.
+async function recalcularRetencionesRecibo(idRecibo) {
+  if (!idRecibo) return;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT Modalidad, Nit, `Operación` AS operacion FROM Dynamic_Recibos WHERE IdRecibo = ? LIMIT 1',
+      [idRecibo]
+    );
+    if (!rows.length || String(rows[0].Modalidad || '').toUpperCase() !== 'RECAUDO') return;
+    const r = rows[0];
+    const nit = r.Nit ? Number(r.Nit) : null;
+    const subtotal = await obtenerSubtotalRecibo(idRecibo);
+    const sug = sugerirRetenciones({ nit, operacion: r.operacion, subtotal }, await obtenerFlagsCliente(nit), await getImpuestos());
+    await pool.execute(
+      'UPDATE Dynamic_Recibos SET Retefuente = ?, ReteIVA = ?, ReteICA = ? WHERE IdRecibo = ?',
+      [sug.retefuente === 'V' ? 'V' : null, sug.reteiva === 'V' ? 'V' : null, sug.reteica === 'V' ? 'V' : null, idRecibo]
+    );
+  } catch (err) {
+    console.error('[facturacion] Error recalculando retenciones del recibo', idRecibo, err.message);
+  }
+}
+
 // ── GET /api/clientes/buscar (búsqueda libre por Razón Social o Nit/Código) ─────
 router.get('/api/clientes/buscar', async (req, res) => {
   try {
@@ -6251,6 +6276,7 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       ]
     );
 
+    await recalcularRetencionesRecibo(idRecibo);
     res.json({ ok: true, idServicio });
   } catch (err) {
     console.error('[facturacion] POST /api/recibos/:idRecibo/servicios:', err);
@@ -6496,6 +6522,9 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
         .catch((err) => console.error('[facturacion] Aviso de Foto de Transferencia pendiente:', err.message));
     }
 
+    // Subtotal del recibo cambió (valor, cantidad o se movió a otro recibo): recalcular retenciones
+    await recalcularRetencionesRecibo(idReciboFinal);
+    if (idReciboFinal !== existente.IdRecibo) await recalcularRetencionesRecibo(existente.IdRecibo);
     res.json({ ok: true, idServicio });
   } catch (err) {
     console.error('[facturacion] PUT /api/servicios/:idServicio:', err);
@@ -6523,6 +6552,7 @@ router.delete('/api/servicios/:idServicio', async (req, res) => {
     }
 
     await pool.execute('DELETE FROM Dynamic_Servicios WHERE IdServicio = ?', [idServicio]);
+    await recalcularRetencionesRecibo(existRows[0].IdRecibo);
     res.json({ ok: true, idServicio });
   } catch (err) {
     console.error('[facturacion] DELETE /api/servicios/:idServicio:', err);
