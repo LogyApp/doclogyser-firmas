@@ -1381,8 +1381,21 @@ router.get('/api/operaciones/:regional', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 
 router.post('/finalizar-contratacion', async (req, res) => {
-  const { id_aspirante, regional, operacion, fecha_ingreso } = req.body;
+  const { id_aspirante, regional, operacion, fecha_ingreso, confirmar_rechazados } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
+
+  // Documentos rechazados: no se finaliza sin la confirmación del aviso (y no se trasladan)
+  try {
+    const [rech] = await pool.execute(
+      "SELECT COALESCE(NULLIF(TRIM(c.Documento), ''), c.Prefijo) AS nombre FROM Dynamic_hv_documentos d JOIN Config_Doc_Trabajador c ON c.Id = d.id_config_doc WHERE d.id_aspirante = ? AND d.estado = 'Rechazado'",
+      [id_aspirante]
+    );
+    if (rech.length && String(confirmar_rechazados || '') !== '1') {
+      return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('Hay documentos rechazados: ' + rech.map(r => r.nombre).join(', ') + '. Corrígelos o confirma el aviso para finalizar.')}`);
+    }
+  } catch (errRech) {
+    console.error('Error revisando documentos rechazados:', errRech.message);
+  }
 
   // Regla configurable: todas las firmas completas (según la operación de la requisición,
   // que es la que definió qué documentos debía firmar el aspirante)
@@ -1527,7 +1540,8 @@ router.post('/finalizar-contratacion', async (req, res) => {
     // 7. Traslado de Archivos
     const [docs] = await connection.query(`
         SELECT d.*, c.Prefijo FROM Dynamic_hv_documentos d 
-        JOIN Config_Doc_Trabajador c ON d.id_config_doc = c.Id WHERE d.id_aspirante = ?
+        JOIN Config_Doc_Trabajador c ON d.id_config_doc = c.Id
+        WHERE d.id_aspirante = ? AND COALESCE(d.estado, '') <> 'Rechazado'
     `, [id_aspirante]);
     
     const srcBucket = getBucketAspirantes();
@@ -2779,6 +2793,11 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
   `;
 
   const totalFirmados = docsFir.filter(d => mapa[d.id] && ['Firmado', 'Aprobado'].includes(mapa[d.id].estado)).length;
+  // Documentos rechazados: se avisa al finalizar y no pasan a Maestro_docTrabajador
+  const docsRechazados = [...docsAsp, ...docsTec, ...docsFir]
+    .filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i)
+    .filter(d => mapa[d.id] && String(mapa[d.id].estado || '').toLowerCase() === 'rechazado')
+    .map(d => d.nombre || d.etiqueta || `Documento ${d.id}`);
 
   return `
   <!DOCTYPE html>
@@ -3098,6 +3117,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
         <h3 class="text-xl font-black text-slate-800 mb-6 italic uppercase tracking-tighter border-b-2 border-slate-100 pb-2">Datos de Vinculación</h3>
         <form id="formFinal" action="/seleccion/finalizar-contratacion?usuario=${usuario}" method="POST">
           <input type="hidden" name="id_aspirante" value="${uuid}">
+          <input type="hidden" name="confirmar_rechazados" id="confirmarRechazados" value="">
           <div class="mb-4">
             <label class="block text-xs font-bold text-slate-500 uppercase mb-1 tracking-widest">Regional</label>
             <select id="selectRegional" name="regional" required class="w-full border-2 border-slate-100 rounded-xl p-3 focus:border-blue-500 outline-none bg-slate-50 font-bold text-slate-700">
@@ -3290,6 +3310,14 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
         if (!idRequisicion || idRequisicion === 'null' || idRequisicion === '') {
           alert('ERROR: Esta hoja de vida no está vinculada a ninguna requisición activa.');
           return;
+        }
+        const rechazados = ${JSON.stringify(docsRechazados).replace(/</g, '\\u003c')};
+        if (rechazados.length) {
+          const ok = confirm('ATENCIÓN: hay ' + rechazados.length + ' documento(s) RECHAZADO(S):\\n\\n• ' + rechazados.join('\\n• ') +
+            '\\n\\nLos documentos rechazados NO pasarán a la Sociodemográfica (documentos del trabajador). Lo ideal es corregirlos antes de finalizar.' +
+            '\\n\\n¿Deseas finalizar de todas formas?');
+          if (!ok) return;
+          document.getElementById('confirmarRechazados').value = '1';
         }
         if(confirm('¿Confirmas que deseas enviar los datos a la Sociodemográfica? Esta acción bloqueará ediciones posteriores.')) {
           document.getElementById('modalContratacion').classList.remove('hidden');
