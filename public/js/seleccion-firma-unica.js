@@ -82,8 +82,11 @@
         no_disponible: ['Aún no disponible', 'text-slate-500 bg-slate-100'], pendiente: ['Pendiente', 'text-orange-700 bg-orange-50'] }[d.estado] || ['', ''];
       return '<li class="py-3 flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-sm font-bold text-slate-800">' + esc(d.nombre) + '</p>'
         + (d.motivo ? '<p class="text-[11px] text-slate-500 mt-0.5">' + esc(d.motivo) + '</p>' : '') + '</div>'
-        + '<div class="flex items-center gap-2 shrink-0"><span class="chip ' + est[1] + '">' + est[0] + '</span>'
-        + (d.gcsPath && (d.estado === 'firmado' || d.estado === 'aprobado') ? '<a class="text-xs font-extrabold text-blue-700" target="_blank" href="' + esc(urlPdf(d.gcsPath)) + '">PDF ↗</a>' : '') + '</div></li>';
+        + (function() {
+            const esMF = (d.proceso === 'MF') || ((d.nombre || '').toLowerCase().includes('manual de funciones'));
+            return '<div class="flex items-center gap-2 shrink-0"><span class="chip ' + est[1] + '">' + est[0] + '</span>'
+              + (esMF && d.gcsPath && (d.estado === 'firmado' || d.estado === 'aprobado') ? '<a class="text-xs font-extrabold text-blue-700" target="_blank" href="' + esc(urlPdf(d.gcsPath)) + '">PDF ↗</a>' : '') + '</div>';
+          })() + '</li>';
     }).join('');
     const hayFirmados = docs.some(d => d.estado === 'firmado');
     let cabecera;
@@ -546,9 +549,10 @@
   function mostrarFin() {
     $('listaFin').innerHTML = docsAFirmar.map(d => {
       const r = E.firmados[d.id] || {};
-      const subPartes = (r.partes || []).map(pt => '<a target="_blank" class="block text-xs font-bold text-blue-700 mt-1" href="' + esc(urlPdf(pt.gcsPath)) + '">' + esc(pt.observaciones || 'Formato') + ' ↗</a>').join('');
+      const esMF = (d.proceso === 'MF') || ((d.nombre || '').toLowerCase().includes('manual de funciones'));
+      const subPartes = esMF ? (r.partes || []).map(pt => '<a target="_blank" class="block text-xs font-bold text-blue-700 mt-1" href="' + esc(urlPdf(pt.gcsPath)) + '">' + esc(pt.observaciones || 'Formato') + ' ↗</a>').join('') : '';
       return '<li class="py-3"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-slate-800">✓ ' + esc(d.nombre) + '</span>'
-        + (r.gcsPath ? '<a target="_blank" class="shrink-0 text-xs font-extrabold text-white bg-[color:var(--navy)] px-3 py-1.5 rounded-lg" href="' + esc(urlPdf(r.gcsPath)) + '">Ver PDF</a>' : '') + '</div>'
+        + (esMF && r.gcsPath ? '<a target="_blank" class="shrink-0 text-xs font-extrabold text-white bg-[color:var(--navy)] px-3 py-1.5 rounded-lg" href="' + esc(urlPdf(r.gcsPath)) + '">Ver PDF</a>' : '') + '</div>'
         + (subPartes ? '<div class="pl-5 mt-1">' + subPartes + '</div>' : '') + '</li>';
     }).join('');
     mostrarPantalla('pantallaFin');

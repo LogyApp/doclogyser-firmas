@@ -364,7 +364,7 @@ router.get('/portal/:uuid', async (req, res) => {
 
   try {
     const [ [aspiranteRows], [cargados], docsSel ] = await Promise.all([
-      pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso, IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT primer_nombre, identificacion, pdf_public_url, estado_proceso, docs_pendientes_vinculacion, IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
       pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
       obtenerDocsSeleccion()
     ]);
@@ -393,6 +393,15 @@ router.get('/portal/:uuid', async (req, res) => {
       if (reqRows.length > 0) {
         operacionAspirante = (reqRows[0]['Operación'] || '').toString().trim();
       }
+    } else {
+      // Buscar en Maestro_Vinculación si viene desde vinculación/CloudDocs
+      const [vRows] = await pool.execute(
+        'SELECT `Operación` FROM Maestro_Vinculación WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [asp.identificacion]
+      );
+      if (vRows.length > 0) {
+        operacionAspirante = (vRows[0]['Operación'] || '').toString().trim();
+      }
     }
 
     const docsFirmaFiltrados = (await obtenerDocsFirmaParaOperacion(operacionAspirante))
@@ -403,10 +412,25 @@ router.get('/portal/:uuid', async (req, res) => {
       mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path };
     });
 
+    try {
+      const [docsTrab] = await pool.execute(
+        'SELECT TipoDocumento, Doc FROM Maestro_docTrabajador WHERE `Identificación` = ?',
+        [asp.identificacion]
+      );
+      docsTrab.forEach(dt => {
+        const id = Number(dt.TipoDocumento);
+        if (!mapaDocs[id]) {
+          mapaDocs[id] = { estado: 'Firmado', path: dt.Doc };
+        }
+      });
+    } catch (errMdt) {
+      console.warn('[Portal Aspirante] No se pudo consultar Maestro_docTrabajador:', errMdt.message);
+    }
+
     const docHv = docsSel.aspirante.find(d => d.id === ID_HOJA_VIDA);
     const filaHv = cargados.find(c => Number(c.id_config_doc) === ID_HOJA_VIDA);
     const hvPropiaPath = filaHv ? rutaHvAspirante(filaHv.observaciones) : null;
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion, docHv ? docHv.etiqueta : undefined, hvPropiaPath));
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion || Boolean(operacionAspirante), docHv ? docHv.etiqueta : undefined, hvPropiaPath, Boolean(asp.docs_pendientes_vinculacion)));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -1668,7 +1692,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null, docsPendientesVinculacion = false) {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -1714,8 +1738,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     </script>
   `;
 
-  // Condición: Firmas activas solo si está En Proceso o Contratado Y tiene Requisición vinculada
-  const estadoHabilitado = (estadoProceso === 'En proceso' || estadoProceso === 'contratado') && tieneRequisicion;
+  // Condición: Firmas activas si está En Proceso o si está Contratado con documentos pendientes de vinculación
+  const estadoHabilitado = (estadoProceso === 'En proceso' || (estadoProceso === 'contratado' && docsPendientesVinculacion)) && tieneRequisicion;
   const allUploaded = docs.every(doc => mapaDocs[doc.id]);
   const totalCargados = docs.filter(d => mapaDocs[d.id]).length;
   const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && ['Firmado', 'Aprobado'].includes(mapaDocs[d.id].estado)).length;
@@ -1798,15 +1822,15 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     </div>`;
   };
 
-  // Firmar o volver a firmar solo en "En proceso"; si el documento está aprobado o el aspirante
-  // ya fue contratado, queda solo para ver.
-  const firmasAbiertas = estadoProceso === 'En proceso';
+  // Firmar o volver a firmar en "En proceso" o si tiene documentos pendientes de vinculación
+  const firmasAbiertas = estadoProceso === 'En proceso' || (estadoProceso === 'contratado' && docsPendientesVinculacion);
   const renderDocFirma = (doc, idx) => {
     const data = mapaDocs[doc.id];
     const estaAprobado = data && data.estado === 'Aprobado';
     const estaFirmado = data && (data.estado === 'Firmado' || estaAprobado);
     const estaCargado = data && !estaFirmado;
     const puedeFirmar = firmasAbiertas && !estaAprobado;
+    const esManualFunciones = doc.prefijo === 'MF' || (doc.nombre || '').toLowerCase().includes('manual de funciones');
 
     return `
     <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaFirmado ? 'border-emerald-200 bg-emerald-50/50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} rounded-2xl shadow-xs transition-all hover:border-slate-200">
@@ -1823,20 +1847,24 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
       <div class="flex items-center gap-2 mt-3 md:mt-0">
         ${estaFirmado ? `
           <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">${estaAprobado ? '✓ Aprobado' : '✓ Firmado'}</span>
-          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
-            class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
-            Ver PDF ↗
-          </a>
+          ${esManualFunciones ? `
+            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
+              class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
+              Ver PDF ↗
+            </a>
+          ` : ''}
           ${puedeFirmar ? `<a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
             class="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">
             Volver a firmar
           </a>` : ''}
         ` : (estaCargado ? `
           <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
-          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
-            class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
-            Ver ↗
-          </a>
+          ${esManualFunciones ? `
+            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
+              class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
+              Ver ↗
+            </a>
+          ` : ''}
           ${puedeFirmar ? `<span class="text-[10px] font-black text-orange-700 bg-orange-50 px-3 py-1 rounded-lg uppercase tracking-wide">Por firmar</span>` : ''}
         ` : `<span class="text-[10px] font-black ${puedeFirmar ? 'text-orange-700 bg-orange-50' : 'text-slate-400 bg-slate-50'} px-3 py-1 rounded-lg uppercase tracking-wide">${puedeFirmar ? 'Por firmar' : 'Pendiente'}</span>`)}
       </div>

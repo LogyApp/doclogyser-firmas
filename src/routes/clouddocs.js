@@ -13,6 +13,13 @@ const {
 } = require('../services/clouddocsRequests');
 
 const { accesoSeccion } = require('../services/maestroMenu');
+const {
+  obtenerRolesPermitidosFirmas,
+  verificarPermisoFirmas,
+  obtenerDetallePortalTrabajador,
+  actualizarContactoTrabajador,
+  enviarCorreoPortalTrabajador
+} = require('../services/clouddocsFirmas');
 
 const router = express.Router();
 
@@ -35,10 +42,13 @@ router.get('/', async (req, res) => {
     // Botón "Sociodemografica" en la ventana de documentos del trabajador: solo para roles con
     // la Sección Sociodemografica del módulo talenthub en Maestro_Menu.
     const puedeVerSociodemografica = Boolean(await accesoSeccion('talenthub', acceso.rol, 'Sociodemografica').catch(() => null));
+    const rolesFirmas = await obtenerRolesPermitidosFirmas();
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
-      puedeVerSociodemografica
+      puedeVerSociodemografica,
+      rolesFirmasActivos: rolesFirmas.rolesActivos,
+      rolesFirmasRetirados: rolesFirmas.rolesRetirados
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -95,7 +105,8 @@ router.get('/api/trabajadores', async (req, res) => {
         mv.Operación AS operacion,
         mv.Estado AS estado,
         DATE_FORMAT(mv.max_fecha_ingreso, '%Y-%m-%d') AS fechaIngreso,
-        COALESCE(d.doc_count, 0) AS documentosCount
+        COALESCE(d.doc_count, 0) AS documentosCount,
+        COALESCE(f.firmas_count, 0) AS firmasCount
       FROM Maestro_Segmentación s
       JOIN (
         SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado, v1.\`Fecha de Ingreso\` AS max_fecha_ingreso
@@ -111,6 +122,21 @@ router.get('/api/trabajadores', async (req, res) => {
         FROM Maestro_docTrabajador
         GROUP BY Identificación
       ) d ON s.Identificación = d.Identificación
+      LEFT JOIN (
+        SELECT Identificación, COUNT(DISTINCT doc_id) AS firmas_count
+        FROM (
+          SELECT Identificación, CAST(TipoDocumento AS UNSIGNED) AS doc_id
+          FROM Maestro_docTrabajador
+          WHERE TipoDocumento IN ('2', '16', '20', '33', '39', '48', '49')
+          UNION
+          SELECT CAST(h.identificacion AS UNSIGNED) AS Identificación, d.id_config_doc AS doc_id
+          FROM Dynamic_hv_aspirante h
+          JOIN Dynamic_hv_documentos d ON h.id_aspirante = d.id_aspirante
+          WHERE d.id_config_doc IN (2, 16, 20, 33, 39, 48, 49)
+            AND d.estado IN ('Firmado', 'Aprobado')
+        ) uf
+        GROUP BY Identificación
+      ) f ON s.Identificación = f.Identificación
       ${whereClause}
       ORDER BY mv.max_fecha_ingreso DESC, mv.Operación ASC, mv.Estado ASC, s.Trabajador ASC
       LIMIT 1000
@@ -120,6 +146,113 @@ router.get('/api/trabajadores', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[cloud-docs] GET /api/trabajadores:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Verificar permiso de firmas para un trabajador específico
+router.get('/api/trabajador/:id/permiso-firmas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, estado } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    let estadoTrabajador = estado;
+    if (!estadoTrabajador) {
+      const [vinc] = await pool.execute(
+        'SELECT Estado FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [id]
+      );
+      estadoTrabajador = vinc.length ? vinc[0].Estado : 'Activo';
+    }
+
+    const permitido = await verificarPermisoFirmas(acceso.rol, estadoTrabajador);
+    res.json({ ok: true, permitido, rol: acceso.rol, estado: estadoTrabajador });
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/trabajador/:id/permiso-firmas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Generar / obtener portal de firmas del trabajador (sin disparar correos automáticos)
+router.post('/api/trabajador/:id/generar-portal-firmas', express.json(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.query.usuario || req.body.usuario;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [vinc] = await pool.execute(
+      'SELECT Estado FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [id]
+    );
+    const estadoTrabajador = vinc.length ? vinc[0].Estado : 'Activo';
+
+    const permitido = await verificarPermisoFirmas(acceso.rol, estadoTrabajador);
+    if (!permitido) {
+      return res.status(403).json({
+        error: `Tu rol (${acceso.rol}) no tiene autorización para gestionar firmas de trabajadores ${estadoTrabajador === 'Retirado' ? 'retirados' : 'activos'}.`
+      });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const detalle = await obtenerDetallePortalTrabajador({ identificacion: id, usuario, baseUrl });
+    res.json(detalle);
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/trabajador/:id/generar-portal-firmas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Actualizar contacto (teléfono / correo) del trabajador
+router.post('/api/trabajador/:id/actualizar-contacto', express.json(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, telefono, correo } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    await actualizarContactoTrabajador({ identificacion: id, telefono, correo, usuario });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/trabajador/:id/actualizar-contacto:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Enviar correo manual con el enlace del portal
+router.post('/api/trabajador/:id/enviar-correo-portal', express.json(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, correo } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [vinc] = await pool.execute(
+      'SELECT Estado FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [id]
+    );
+    const estadoTrabajador = vinc.length ? vinc[0].Estado : 'Activo';
+
+    const permitido = await verificarPermisoFirmas(acceso.rol, estadoTrabajador);
+    if (!permitido) {
+      return res.status(403).json({ error: 'No autorizado para enviar portal a este trabajador' });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const resultado = await enviarCorreoPortalTrabajador({ identificacion: id, correo, baseUrl, usuario });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/trabajador/:id/enviar-correo-portal:', err);
     res.status(500).json({ error: err.message });
   }
 });

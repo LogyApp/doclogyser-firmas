@@ -29,9 +29,6 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
   if (!aspRows.length) return null;
   const aspirante = aspRows[0];
 
-  if (!aspirante.IdRequisicion) {
-    throw new Error("El aspirante no tiene una requisición vinculada.");
-  }
   if (aspirante.estado_proceso !== 'En proceso' && aspirante.estado_proceso !== 'contratado') {
     throw new Error("El aspirante no se encuentra en estado 'En proceso'.");
   }
@@ -39,7 +36,7 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
   const docItem = await obtenerDocFirma(idConfigDoc);
   const prefijo = docItem ? docItem.prefijo : null;
 
-  // Requisición
+  // Requisición o vinculación laboral
   let cargo = 'Colaborador';
   let operacion = '';
   let regional = '';
@@ -53,6 +50,21 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
       operacion = reqRows[0]['Operación'] || operacion;
       regional = reqRows[0]['Regional'] || regional;
     }
+  } else {
+    // Si no tiene requisición vinculada (o viene desde CloudDocs), consultar Maestro_Vinculación
+    const [vincRows] = await pool.execute(
+      'SELECT `Cargo`, `Operación`, `Regional` FROM Maestro_Vinculación WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [aspirante.identificacion]
+    );
+    if (vincRows.length > 0) {
+      cargo = vincRows[0]['Cargo'] || cargo;
+      operacion = vincRows[0]['Operación'] || operacion;
+      regional = vincRows[0]['Regional'] || regional;
+    }
+  }
+
+  if (!aspirante.IdRequisicion && !operacion) {
+    throw new Error("El aspirante no tiene una requisición vinculada ni registro laboral.");
   }
 
   // Validación: el documento debe aplicar a la operación de la requisición
@@ -240,8 +252,13 @@ function variablesFormulario(preguntas, respuestas) {
 function motivoBloqueoFirma(aspirante, docActual, motivoManual = null) {
   const estado = (aspirante && aspirante.estado_proceso || '').toString().trim().toLowerCase();
   if (estado === 'bloqueado') return 'El proceso del aspirante está bloqueado.';
-  if (estado === 'contratado') return 'El aspirante ya fue contratado: los documentos de firma no se pueden modificar.';
-  if (estado !== 'en proceso') return 'La fase de firmas aún no está habilitada para este aspirante.';
+  const permiteFirmarContratado = Boolean(aspirante && aspirante.docs_pendientes_vinculacion);
+  if (estado === 'contratado' && !permiteFirmarContratado) {
+    return 'El aspirante ya fue contratado: los documentos de firma no se pueden modificar.';
+  }
+  if (estado !== 'en proceso' && !(estado === 'contratado' && permiteFirmarContratado)) {
+    return 'La fase de firmas aún no está habilitada para este aspirante.';
+  }
   if (docActual && (docActual.estado || '').toString().trim().toLowerCase() === 'aprobado') {
     return 'Este documento ya fue aprobado por Selección y no se puede volver a firmar.';
   }
@@ -381,7 +398,7 @@ function generarHtmlVistaFirma({ aspirante, docItem, contenidoHtmlConVariables, 
           <p class="text-[11px] text-emerald-700">Puedes consultar el PDF oficial generado o volver a firmarlo a continuación si requieres actualizarlo.</p>
         </div>
       </div>
-      ${urlPdfFirmado ? `
+      ${((prefijo === 'MF') || ((nombreDoc || '').toLowerCase().includes('manual de funciones'))) && urlPdfFirmado ? `
       <a href="${urlPdfFirmado}" target="_blank" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap">
         Ver PDF Firmado ↗
       </a>
@@ -799,6 +816,20 @@ async function procesarFirmaPorPartes({ datos, partes, idAspirante, idConfigDoc,
     console.warn('[Firma Selección] No se pudieron registrar las partes del documento:', errPartes.message);
   }
 
+  try {
+    const { sincronizarFirmaConDocTrabajador } = require('./clouddocsFirmas');
+    await sincronizarFirmaConDocTrabajador({
+      identificacion: aspirante.identificacion,
+      idConfigDoc,
+      prefijo,
+      gcsPath,
+      partes: generadas.map(g => ({ observaciones: g.parte.observaciones, gcsPath: g.gcsPath })),
+      usuario: 'Firma Digital'
+    });
+  } catch (errSync) {
+    console.warn('[Firma Selección] Error al sincronizar partes con Maestro_docTrabajador:', errSync.message);
+  }
+
   return {
     ok: true,
     gcsPath,
@@ -951,6 +982,20 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
     );
   } catch (errHuella) {
     console.warn('[Firma Selección] No se pudo guardar la huella de la firma:', errHuella.message);
+  }
+
+  try {
+    const { sincronizarFirmaConDocTrabajador } = require('./clouddocsFirmas');
+    await sincronizarFirmaConDocTrabajador({
+      identificacion: aspirante.identificacion,
+      idConfigDoc,
+      prefijo,
+      gcsPath,
+      partes: [],
+      usuario: 'Firma Digital'
+    });
+  } catch (errSync) {
+    console.warn('[Firma Selección] Error al sincronizar con Maestro_docTrabajador:', errSync.message);
   }
 
   return {

@@ -37,7 +37,7 @@ function estadoDoc(fila) {
 async function obtenerPasos(idAspirante, { soloDoc = null, todos = false } = {}) {
   const [aspRows] = await pool.execute(
     `SELECT id_aspirante, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, identificacion,
-            estado_proceso, IdRequisicion, firma_url
+            estado_proceso, docs_pendientes_vinculacion, IdRequisicion, firma_url
        FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`,
     [idAspirante]
   );
@@ -55,10 +55,20 @@ async function obtenerPasos(idAspirante, { soloDoc = null, todos = false } = {})
       operacion = (req[0]['Operación'] || '').toString().trim();
       cargo = (req[0]['Cargo Requerido'] || '').toString().trim();
     }
+  } else {
+    // Si no tiene requisición vinculada (o viene desde CloudDocs), consultar Maestro_Vinculación
+    const [vinc] = await pool.execute(
+      'SELECT `Operación`, `Cargo` FROM Maestro_Vinculación WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [a.identificacion]
+    );
+    if (vinc.length) {
+      operacion = (vinc[0]['Operación'] || '').toString().trim();
+      cargo = (vinc[0]['Cargo'] || '').toString().trim();
+    }
   }
 
-  const motivoBloqueo = !a.IdRequisicion
-    ? 'Aún no tienes una requisición vinculada. Selección te avisará cuando puedas firmar.'
+  const motivoBloqueo = (!a.IdRequisicion && !operacion)
+    ? 'Aún no tienes una requisición vinculada ni registro laboral. Selección te avisará cuando puedas firmar.'
     : motivoBloqueoFirma(a, null);
 
   const [cargados] = await pool.execute(
@@ -67,6 +77,21 @@ async function obtenerPasos(idAspirante, { soloDoc = null, todos = false } = {})
   );
   const mapa = {};
   cargados.forEach(c => { mapa[Number(c.id_config_doc)] = c; });
+
+  try {
+    const [docsTrab] = await pool.execute(
+      'SELECT TipoDocumento, Doc FROM Maestro_docTrabajador WHERE `Identificación` = ?',
+      [a.identificacion]
+    );
+    docsTrab.forEach(dt => {
+      const idDoc = Number(dt.TipoDocumento);
+      if (!mapa[idDoc]) {
+        mapa[idDoc] = { id_config_doc: idDoc, estado: 'Firmado', gcs_path: dt.Doc };
+      }
+    });
+  } catch (errMdt) {
+    console.warn('[Firma Única] No se pudo consultar Maestro_docTrabajador:', errMdt.message);
+  }
 
   const docs = await obtenerDocsFirmaParaOperacion(operacion);
   const pasos = [];

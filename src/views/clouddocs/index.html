@@ -1453,6 +1453,10 @@
               <span aria-hidden="true">📊</span>
               <span>Sociodemografica</span>
             </button>
+            <button type="button" class="btn-cloud-upload" id="btn-worker-firmas" style="background: rgba(147, 51, 234, 0.12); color: #7e22ce; border: 1px solid rgba(147, 51, 234, 0.3);" onclick="abrirModalFirmasDesdeWorkerModal()" title="Generar o gestionar portal de firma digital de documentos">
+              <span aria-hidden="true">✍️</span>
+              <span>Documentos de Firma</span>
+            </button>
             <button type="button" class="btn-cloud-upload" onclick="openWorkerUploadForm()">
               <span aria-hidden="true">☁</span>
               <span>Cargar Doc. Trabajador</span>
@@ -1472,6 +1476,109 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-request" onclick="closeModal('modal-worker')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Worker Digital Signatures -->
+  <div class="modal-overlay" id="modal-firmas-trabajador" style="z-index: 1050;">
+    <div class="modal-content" style="max-width: 680px; width: 95%;">
+      <div class="modal-header" style="background: #faf5ff; border-bottom: 1px solid #e9d5ff;">
+        <div>
+          <h3 class="modal-title" style="color: #6b21a8; display: flex; align-items: center; gap: 8px;">
+            <span>✍️</span> Documentos de Firma Digital
+          </h3>
+          <p style="margin: 2px 0 0; font-size: 0.8rem; color: #7e22ce;" id="firmas-modal-subtitulo">
+            Gestión de enlace y firma electrónica de documentos laborales
+          </p>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-firmas-trabajador')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px; font-size: 0.88rem;">
+        <!-- Banner de estado y progreso -->
+        <div id="firmas-banner-info" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fdf4ff; border: 1px solid #f0abfc; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div>
+            <div style="font-weight: 700; color: #86198f;" id="firmas-trabajador-nombre">—</div>
+            <div style="font-size: 0.8rem; color: #a21caf;" id="firmas-trabajador-detalle">—</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="firmas-badge-estado" class="badge-status badge-active">Activo</span>
+            <span id="firmas-badge-conteo" style="font-weight: 800; font-size: 0.8rem; padding: 4px 10px; background: #fae8ff; color: #86198f; border-radius: 999px; border: 1px solid #e879f9;">0 / 0 firmados</span>
+          </div>
+        </div>
+
+        <!-- Sección Enlace del Portal -->
+        <div style="margin-bottom: 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
+          <label style="display: block; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: #475569; letter-spacing: 0.05em; margin-bottom: 6px;">
+            🔗 Enlace del Portal del Trabajador
+          </label>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="firmas-input-enlace" readonly style="flex: 1; min-width: 200px; font-family: monospace; font-size: 0.82rem; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px;" onclick="this.select()">
+            <button type="button" class="btn" id="btn-copiar-enlace-firmas" onclick="copiarEnlaceFirmasModal()" style="background: #2563eb; color: #ffffff; font-weight: 700; font-size: 0.8rem; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+              <span>📋</span> <span id="txt-copiar-firmas">Copiar Enlace</span>
+            </button>
+            <button type="button" class="btn" onclick="abrirPortalFirmasDirecto()" style="background: #64748b; color: #ffffff; font-weight: 700; font-size: 0.8rem; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer;" title="Abrir portal en pestaña nueva">
+              <span>↗</span> Abrir
+            </button>
+          </div>
+          <p style="font-size: 0.74rem; color: #64748b; margin: 6px 0 0;">
+            No se envían correos automáticos al generar el enlace. Utiliza los botones a continuación para enviar por WhatsApp o por correo de forma manual.
+          </p>
+        </div>
+
+        <!-- Sección Contacto y Envíos -->
+        <div style="margin-bottom: 18px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px;">
+          <label style="display: block; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: #475569; letter-spacing: 0.05em; margin-bottom: 10px;">
+            📱 Contacto y Envío Manual
+          </label>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label for="firmas-input-telefono" style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; margin-bottom: 4px;">Teléfono / WhatsApp</label>
+              <div style="position: relative;">
+                <input type="text" id="firmas-input-telefono" placeholder="Ej. 3001234567" style="width: 100%; padding: 8px 10px 8px 30px; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                <span style="position: absolute; left: 8px; top: 8px; font-size: 0.85rem; color: #94a3b8;">📱</span>
+              </div>
+            </div>
+            <div>
+              <label for="firmas-input-correo" style="display: block; font-size: 0.75rem; font-weight: 600; color: #64748b; margin-bottom: 4px;">Correo Electrónico</label>
+              <div style="position: relative;">
+                <input type="email" id="firmas-input-correo" placeholder="correo@ejemplo.com" style="width: 100%; padding: 8px 10px 8px 30px; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                <span style="position: absolute; left: 8px; top: 8px; font-size: 0.85rem; color: #94a3b8;">✉️</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+            <button type="button" class="btn" id="btn-guardar-contacto-firmas" onclick="guardarContactoFirmasModal()" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.8rem; padding: 8px 14px; border-radius: 8px; cursor: pointer;">
+              <span>💾</span> Guardar Contacto
+            </button>
+            <button type="button" class="btn" id="btn-whatsapp-firmas" onclick="enviarWhatsAppFirmasModal()" style="background: #16a34a; color: #ffffff; font-weight: 700; font-size: 0.8rem; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+              <span>💬</span> Enviar por WhatsApp
+            </button>
+            <button type="button" class="btn" id="btn-correo-firmas" onclick="enviarCorreoFirmasModal()" style="background: #4f46e5; color: #ffffff; font-weight: 700; font-size: 0.8rem; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+              <span>✉️</span> <span id="txt-correo-firmas">Enviar por Correo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista de documentos de firma -->
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: #475569; letter-spacing: 0.05em; margin-bottom: 8px;">
+            📄 Documentos para Firma de la Operación
+          </label>
+          <div id="firmas-lista-docs" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; padding: 4px; background: #fafafa;">
+            <!-- Renderizado dinámico -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.72rem; color: #64748b;">
+          Una vez firmados, los documentos se integran de inmediato en CloudDocs.
+        </span>
+        <button class="btn btn-request" onclick="closeModal('modal-firmas-trabajador')">Cerrar</button>
       </div>
     </div>
   </div>
@@ -1679,11 +1786,12 @@
     // Resizing & sorting configurations
     const COLUMNS = {
       trabajador: [
-        { key: 'trabajador', label: 'Trabajador', width: 350 },
-        { key: 'operacion', label: 'Operación', width: 220 },
-        { key: 'estado', label: 'Estado', width: 120 },
-        { key: 'fechaIngreso', label: 'Fecha de Ingreso', width: 150 },
-        { key: 'documentosCount', label: 'Documentos', width: 120, align: 'center' }
+        { key: 'trabajador', label: 'Trabajador', width: 320 },
+        { key: 'operacion', label: 'Operación', width: 200 },
+        { key: 'estado', label: 'Estado', width: 110 },
+        { key: 'fechaIngreso', label: 'Fecha de Ingreso', width: 140 },
+        { key: 'documentosCount', label: 'Documentos', width: 100, align: 'center' },
+        { key: 'firmas', label: 'Firmas', width: 150, align: 'center' }
       ],
       documento: [
         { key: 'Documento', label: 'Documento', width: 350 },
@@ -1790,6 +1898,215 @@
     let filteredWorkerDocs = [];
     let activeWorkerModal = { identificacion: null, nombre: null };
     let _pendingOpenWorkerModal = null;
+
+    let activeFirmasData = null;
+
+    function normalizarCadena(str) {
+      return (str || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '');
+    }
+
+    function puedeGestionarFirmas(estadoTrabajador) {
+      const rolNorm = normalizarCadena(CONFIG.rol);
+      const estNorm = normalizarCadena(estadoTrabajador || 'Activo');
+      const lista = estNorm === 'retirado'
+        ? (CONFIG.rolesFirmasRetirados || ['Selección', 'Archivo', 'Selección Centro', 'AuxiliarR', 'Sistema'])
+        : (CONFIG.rolesFirmasActivos || ['Selección', 'Archivo', 'Selección Centro', 'AuxiliarR', 'Sistema']);
+      return lista.some(r => normalizarCadena(r) === rolNorm);
+    }
+
+    async function abrirModalFirmasDesdeWorkerModal() {
+      if (!activeWorkerModal.identificacion) return;
+      await abrirModalFirmasDirecto(activeWorkerModal.identificacion, activeWorkerModal.nombre, activeWorkerModal.estado);
+    }
+
+    async function abrirModalFirmasDirecto(identificacion, nombre, estado) {
+      const est = estado || activeWorkerModal.estado || 'Activo';
+      if (!puedeGestionarFirmas(est)) {
+        alert(`Tu rol (${CONFIG.rol}) no tiene autorización para gestionar firmas de trabajadores ${normalizarCadena(est) === 'retirado' ? 'retirados' : 'activos'}.`);
+        return;
+      }
+
+      // Resetear modal y mostrar cargando
+      document.getElementById('firmas-trabajador-nombre').textContent = nombre || `C.C. ${identificacion}`;
+      document.getElementById('firmas-trabajador-detalle').textContent = `Identificación: ${identificacion} · Cargando información...`;
+      document.getElementById('firmas-input-enlace').value = 'Generando enlace...';
+      document.getElementById('firmas-input-telefono').value = '';
+      document.getElementById('firmas-input-correo').value = '';
+      document.getElementById('firmas-lista-docs').innerHTML = '<div style="padding: 12px; text-align: center; color: #64748b;">Consultando documentos aplicables...</div>';
+      document.getElementById('firmas-badge-estado').textContent = est;
+      document.getElementById('firmas-badge-estado').className = `badge-status ${est === 'Activo' ? 'badge-active' : 'badge-retired'}`;
+      document.getElementById('firmas-badge-conteo').textContent = 'Consultando...';
+
+      openModal('modal-firmas-trabajador');
+
+      try {
+        const res = await fetch(`/cloud-docs/api/trabajador/${encodeURIComponent(identificacion)}/generar-portal-firmas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alert('Error: ' + (data.error || 'No se pudo generar el portal de firmas'));
+          closeModal('modal-firmas-trabajador');
+          return;
+        }
+
+        activeFirmasData = data;
+
+        document.getElementById('firmas-trabajador-nombre').textContent = data.nombreCompleto;
+        document.getElementById('firmas-trabajador-detalle').textContent = `C.C. ${data.identificacion} · Operación: ${data.operacion || 'Sin asignar'} · Cargo: ${data.cargo || 'Colaborador'}`;
+        document.getElementById('firmas-input-enlace').value = data.portalUrl;
+        document.getElementById('firmas-input-telefono').value = data.telefono || '';
+        document.getElementById('firmas-input-correo').value = data.correo || '';
+        document.getElementById('firmas-badge-estado').textContent = data.estado;
+        document.getElementById('firmas-badge-estado').className = `badge-status ${data.estado === 'Activo' ? 'badge-active' : 'badge-retired'}`;
+        document.getElementById('firmas-badge-conteo').textContent = `${data.totalFirmados} / ${data.totalDocs} firmados`;
+
+        // Renderizar lista de documentos
+        const container = document.getElementById('firmas-lista-docs');
+        if (!data.docs || !data.docs.length) {
+          container.innerHTML = '<div style="padding: 12px; text-align: center; color: #94a3b8; font-size: 0.82rem;">No hay documentos de firma configurados para esta operación.</div>';
+        } else {
+          container.innerHTML = data.docs.map(d => `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.8rem;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.9rem;">${d.firmado ? '✅' : '⏳'}</span>
+                <div>
+                  <span style="font-weight: 600; color: #334155;">${esc(d.nombre)}</span>
+                  ${d.prefijo ? `<span style="font-size: 0.72rem; color: #94a3b8; font-family: monospace; margin-left: 4px;">(${esc(d.prefijo)})</span>` : ''}
+                </div>
+              </div>
+              <div>
+                <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; ${d.firmado ? 'background: #dcfce7; color: #15803d;' : 'background: #fef3c7; color: #b45309;'}">
+                  ${d.firmado ? 'Firmado' : 'Pendiente'}
+                </span>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('[Firmas] Error al abrir portal:', err);
+        alert('Error de conexión al generar el portal de firmas: ' + err.message);
+        closeModal('modal-firmas-trabajador');
+      }
+    }
+
+    function copiarEnlaceFirmasModal() {
+      const enlace = document.getElementById('firmas-input-enlace').value;
+      if (!enlace) return;
+      navigator.clipboard.writeText(enlace).then(() => {
+        const txt = document.getElementById('txt-copiar-firmas');
+        const orig = txt.textContent;
+        txt.textContent = '¡Copiado! ✓';
+        setTimeout(() => { txt.textContent = orig; }, 2500);
+      }).catch(() => {
+        prompt('Copia este enlace para el trabajador:', enlace);
+      });
+    }
+
+    function abrirPortalFirmasDirecto() {
+      const enlace = document.getElementById('firmas-input-enlace').value;
+      if (enlace && enlace.startsWith('http')) {
+        window.open(enlace, '_blank');
+      }
+    }
+
+    function enviarWhatsAppFirmasModal() {
+      if (!activeFirmasData) return;
+      let tel = (document.getElementById('firmas-input-telefono').value || '').trim();
+      if (!tel) {
+        alert('Por favor digita primero el número de teléfono del trabajador.');
+        document.getElementById('firmas-input-telefono').focus();
+        return;
+      }
+      tel = tel.replace(/\D/g, '');
+      if (tel.length === 10 && tel.startsWith('3')) {
+        tel = '57' + tel;
+      }
+      const nombre = activeFirmasData.nombreCompleto || 'Trabajador';
+      const mensaje = `Hola ${nombre}, te saludamos de LOG&SER S.A.S. Para gestionar la firma de tus documentos laborales, por favor ingresa al siguiente enlace: ${activeFirmasData.portalUrl}`;
+      window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(mensaje), '_blank');
+    }
+
+    async function guardarContactoFirmasModal() {
+      if (!activeFirmasData) return;
+      const tel = (document.getElementById('firmas-input-telefono').value || '').trim();
+      const cor = (document.getElementById('firmas-input-correo').value || '').trim();
+      const btn = document.getElementById('btn-guardar-contacto-firmas');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span> Guardando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/cloud-docs/api/trabajador/${encodeURIComponent(activeFirmasData.identificacion)}/actualizar-contacto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, telefono: tel, correo: cor })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          activeFirmasData.telefono = tel;
+          activeFirmasData.correo = cor;
+          btn.innerHTML = '<span>✓</span> ¡Guardado!';
+          setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+        } else {
+          alert('Error al guardar: ' + (data.error || 'Error desconocido'));
+          btn.innerHTML = orig;
+          btn.disabled = false;
+        }
+      } catch (e) {
+        alert('Error de conexión al guardar contacto: ' + e.message);
+        btn.innerHTML = orig;
+        btn.disabled = false;
+      }
+    }
+
+    async function enviarCorreoFirmasModal() {
+      if (!activeFirmasData) return;
+      const cor = (document.getElementById('firmas-input-correo').value || '').trim();
+      if (!cor) {
+        alert('Por favor digita primero el correo electrónico del trabajador.');
+        document.getElementById('firmas-input-correo').focus();
+        return;
+      }
+
+      if (!confirm(`¿Deseas enviar el correo con el enlace del portal a: ${cor}?`)) {
+        return;
+      }
+
+      const btn = document.getElementById('btn-correo-firmas');
+      const txt = document.getElementById('txt-correo-firmas');
+      const origText = txt.textContent;
+      txt.textContent = 'Enviando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/cloud-docs/api/trabajador/${encodeURIComponent(activeFirmasData.identificacion)}/enviar-correo-portal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, correo: cor })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          activeFirmasData.correo = cor;
+          alert('✓ ' + (data.mensaje || 'Correo enviado exitosamente'));
+        } else {
+          alert('Error al enviar correo: ' + (data.error || 'Error desconocido'));
+        }
+      } catch (e) {
+        alert('Error de conexión al enviar correo: ' + e.message);
+      } finally {
+        txt.textContent = origText;
+        btn.disabled = false;
+      }
+    }
 
     function irASociodemograficaDesdeWorkerModal() {
       const ident = String(activeWorkerModal?.identificacion || '').trim();
@@ -2778,7 +3095,23 @@
         tr.className = 'clickable-row';
         
         if (activeTab === 'trabajador') {
-          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador);
+          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador, null, row.estado);
+          const tienePermisoFirmas = puedeGestionarFirmas(row.estado);
+          let btnFirmasHtml = '<span style="color: #cbd5e1; font-size: 0.75rem;">—</span>';
+
+          if (tienePermisoFirmas) {
+            const opNorm = (row.operacion || '').trim().toLowerCase();
+            const docsReq = opNorm === 'italcol la estrella' ? 7 : 6;
+            const firmados = Number(row.firmasCount || 0);
+            const tienePendientes = firmados < docsReq;
+
+            if (tienePendientes) {
+              btnFirmasHtml = `<button type="button" class="btn" onclick="event.stopPropagation(); abrirModalFirmasDirecto('${row.identificacion}', '${esc(row.trabajador).replace(/'/g, "\\'")}', '${row.estado}')" title="Tiene documentos de firma pendientes (${firmados}/${docsReq} firmados)" style="background: rgba(234, 88, 12, 0.12); color: #c2410c; border: 1px solid rgba(234, 88, 12, 0.35); padding: 4px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 2px rgba(234,88,12,0.1);"><span>⚠️</span> Pendiente (${firmados}/${docsReq})</button>`;
+            } else {
+              btnFirmasHtml = `<button type="button" class="btn" onclick="event.stopPropagation(); abrirModalFirmasDirecto('${row.identificacion}', '${esc(row.trabajador).replace(/'/g, "\\'")}', '${row.estado}')" title="Todos los documentos de firma están al día (${firmados}/${docsReq} firmados)" style="background: rgba(22, 163, 74, 0.1); color: #15803d; border: 1px solid rgba(22, 163, 74, 0.3); padding: 4px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"><span>✅</span> Al día</button>`;
+            }
+          }
+
           tr.innerHTML = `
             <td style="font-weight: 600; color: var(--text);">${esc(row.trabajador)}</td>
             <td>${esc(row.operacion)}</td>
@@ -2789,6 +3122,7 @@
             </td>
             <td>${row.fechaIngreso || 'N/A'}</td>
             <td style="text-align: center; font-weight: bold; color: var(--text);">${row.documentosCount}</td>
+            <td style="text-align: center;" onclick="event.stopPropagation();">${btnFirmasHtml}</td>
           `;
         } else if (activeTab === 'documento') {
           tr.onclick = () => openDocModal(row.Id, row.Documento, row.tipo_doc);
@@ -2933,9 +3267,36 @@
     }
 
     // Modal: Open Worker Docs
-    async function openWorkerModal(identificacion, nombre, autoSearchDoc) {
+    async function openWorkerModal(identificacion, nombre, autoSearchDoc, estado) {
       activeWorkerModal.identificacion = identificacion;
       activeWorkerModal.nombre = nombre;
+      const rowMatch = Array.isArray(currentData) ? currentData.find(r => String(r.identificacion) === String(identificacion)) : null;
+      activeWorkerModal.estado = estado || rowMatch?.estado || 'Activo';
+
+      // Mostrar u ocultar botón de firmas en modal según permiso de rol y colorear si tiene pendientes
+      const btnFirmas = document.getElementById('btn-worker-firmas');
+      if (btnFirmas) {
+        const tienePermiso = puedeGestionarFirmas(activeWorkerModal.estado);
+        btnFirmas.style.display = tienePermiso ? 'inline-flex' : 'none';
+        if (tienePermiso && rowMatch) {
+          const opNorm = (rowMatch.operacion || '').trim().toLowerCase();
+          const docsReq = opNorm === 'italcol la estrella' ? 7 : 6;
+          const firmados = Number(rowMatch.firmasCount || 0);
+          const tienePendientes = firmados < docsReq;
+          if (tienePendientes) {
+            btnFirmas.style.background = 'rgba(234, 88, 12, 0.12)';
+            btnFirmas.style.color = '#c2410c';
+            btnFirmas.style.border = '1px solid rgba(234, 88, 12, 0.35)';
+            btnFirmas.innerHTML = `<span aria-hidden="true">⚠️</span><span>Firmas Pendientes (${firmados}/${docsReq})</span>`;
+          } else {
+            btnFirmas.style.background = 'rgba(22, 163, 74, 0.12)';
+            btnFirmas.style.color = '#15803d';
+            btnFirmas.style.border = '1px solid rgba(22, 163, 74, 0.3)';
+            btnFirmas.innerHTML = `<span aria-hidden="true">✅</span><span>Firmas al Día</span>`;
+          }
+        }
+      }
+
       document.getElementById('modal-worker-title').textContent = `Documentos de: ${nombre}`;
       document.getElementById('modal-worker-search').value = autoSearchDoc || '';
       
