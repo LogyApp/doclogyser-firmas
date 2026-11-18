@@ -27,6 +27,16 @@ const { clasificar, PREFIJOS_RELLENO } = require('./reglasAsistencia');
 
 const NORMALIZAR = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
 
+/** "Kevin Pacheco - 304" → "Kevin Pacheco" (el código del final es el centro de costo del usuario) */
+function nombreUsuario(u) {
+  const t = String(u || '').trim();
+  if (!t) return 'Sin usuario';
+  return t.replace(/\s*-\s*\d+\s*$/, '').trim() || t;
+}
+function quienRegistro(r) {
+  return `${nombreUsuario(r.usuario)}${r.fechaRegistro ? ` (${r.fechaRegistro})` : ''}`;
+}
+
 async function cargosExcluidos() {
   const porDefecto = ['APRENDIZ', 'AUXILIAR ADMINISTRATIVO DE OPERACIÓN', 'AUXILIAR ADMINISTRATIVO REGIONAL',
     'COORDINADOR LOGISTICO', 'COORDINADOR REGIONAL', 'AUXILIAR SST', 'ANALISTA DE SST'];
@@ -77,7 +87,8 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
   const [registros] = await pool.query(
     `SELECT IdAsistencia AS id, \`Cédula\` AS cedula, Nombre AS nombre, Trabajador AS trabajador,
             DATE_FORMAT(\`Día\`, '%Y-%m-%d') AS dia, \`Operación\` AS operacion, Origen AS origen,
-            \`Prefijo Novedad\` AS prefijo, Novedad AS novedad, \`Apoyo Otra Operación\` AS apoyo, Estado AS estado
+            \`Prefijo Novedad\` AS prefijo, Novedad AS novedad, \`Apoyo Otra Operación\` AS apoyo, Estado AS estado,
+            Usuario AS usuario, DATE_FORMAT(\`Fecha Registro\`, '%d/%m %H:%i') AS fechaRegistro
        FROM Dynamic_Asistencia
       WHERE \`Día\` BETWEEN ? AND ? AND (${condIds}\`Operación\` IN (${phOps}) OR Origen IN (${phOps}))`,
     [q.desde, q.hasta, ...ids, ...nombresOps, ...nombresOps]
@@ -115,6 +126,7 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
     const gente = plantilla.get(o.operacion) || [];
     const porDia = dias.map(d => ({ dia: d, esperados: 0, asistencia: 0, novedad: 0, relleno: 0, pendientes: 0, faltaAoo: 0, duplicados: 0, conflictos: 0, apoyosRecibidos: 0 }));
     const filas = [];
+    const repetidosPorUsuario = {};   // usuario -> Set("cedula|dia") con más de un registro
     const enPlantilla = new Set(gente.map(p => String(p.identificacion)));
 
     for (const p of gente) {
@@ -135,10 +147,11 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
         let estado;
         let codigo = aqui.length ? pref(aqui[0]) : '';
         let detalleTxt = aqui.length ? (aqui[0].novedad || codigo) : '';
+        const quien = aqui.length === 1 ? quienRegistro(aqui[0]) : '';
         if (opDia === o.operacion) {
           c.esperados += 1;
           const reales = aqui.filter(r => !PREFIJOS_RELLENO.includes(pref(r)));
-          if (aqui.length > 1) { estado = 'duplicado'; c.duplicados += 1; detalleTxt = aqui.map(r => r.novedad || pref(r)).join(' + '); }
+          if (aqui.length > 1) { estado = 'duplicado'; c.duplicados += 1; detalleTxt = aqui.map(r => `${r.novedad || pref(r)} por ${quienRegistro(r)}`).join(' + '); }
           else if (reales.length === 1) {
             estado = 'ok';
             if (pref(reales[0]) === 'SI') c.asistencia += 1; else c.novedad += 1;
@@ -150,12 +163,13 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
           // Día en que no pertenecía a esta operación: debe tener Nuevo / Retirado / Traslado
           c.esperados += 1;
           const rellenos = aqui.filter(r => PREFIJOS_RELLENO.includes(pref(r)));
-          if (aqui.length > 1) { estado = 'duplicado'; c.duplicados += 1; detalleTxt = aqui.map(r => r.novedad || pref(r)).join(' + '); }
+          if (aqui.length > 1) { estado = 'duplicado'; c.duplicados += 1; detalleTxt = aqui.map(r => `${r.novedad || pref(r)} por ${quienRegistro(r)}`).join(' + '); }
           else if (rellenos.length === 1) { estado = 'relleno'; c.relleno += 1; }
           else if (aqui.length === 1) { estado = 'conflicto'; c.conflictos += 1; detalleTxt = `${detalleTxt} en un día en que ${opDia ? `pertenecía a ${opDia}` : 'no estaba vinculado'}`; }
           else { estado = 'falta_relleno'; c.pendientes += 1; codigo = ''; detalleTxt = opDia ? `En ${opDia}: falta "Traslado"` : 'Falta "Nuevo" o "Retirado"'; }
         }
-        celdas.push({ estado, codigo, detalle: detalleTxt });
+        if (aqui.length > 1) aqui.forEach(r => { const u = nombreUsuario(r.usuario); (repetidosPorUsuario[u] = repetidosPorUsuario[u] || new Set()).add(`${p.identificacion}|${d}`); });
+        celdas.push({ estado, codigo, detalle: quien && detalleTxt ? `${detalleTxt} · registró ${quien}` : detalleTxt });
       });
       if (detalle) {
         filas.push({
@@ -206,6 +220,7 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
       resumen: { ...tot, avance: tot.esperados ? Math.round(((tot.esperados - tot.pendientes) / tot.esperados) * 1000) / 10 : null },
       trabajadores: detalle ? filas.sort((a, b) => (b.pendientes + b.alertas) - (a.pendientes + a.alertas) || a.nombre.localeCompare(b.nombre, 'es')) : undefined,
       apoyosRecibidos: detalle ? [...apoyos.values()] : undefined,
+      quienRegistra: detalle ? resumenUsuarios(registros, o.operacion, repetidosPorUsuario) : undefined,
       fueraDePlantilla: detalle ? fuera.concat(registros
         .filter(r => (r.operacion === o.operacion || r.origen === o.operacion) && !personas.has(String(r.cedula)))
         .map(r => ({ identificacion: r.cedula, nombre: r.nombre || P.nombreDeTrabajador(r.trabajador), dia: r.dia, codigo: String(r.prefijo || ''), opDia: null }))) : undefined
@@ -224,6 +239,26 @@ async function obtenerControlQuincena(acceso, { fecha, regional = '', operacion 
       operacionesAl100: resultado.filter(r => r.resumen.pendientes === 0 && r.resumen.esperados > 0).length
     }
   };
+}
+
+/**
+ * Quién registra en la operación durante la quincena: registros hechos por cada usuario (sin contar
+ * Nuevo/Retirado/Traslado del sistema), personas distintas y días con registro repetido en que participó.
+ */
+function resumenUsuarios(registros, operacion, repetidosPorUsuario) {
+  const mapa = new Map();
+  registros.forEach(r => {
+    if (!(r.origen === operacion || (!r.origen && r.operacion === operacion))) return;
+    if (PREFIJOS_RELLENO.includes(String(r.prefijo || '').toUpperCase()) && nombreUsuario(r.usuario) === 'Sistema') return;
+    const u = nombreUsuario(r.usuario);
+    if (!mapa.has(u)) mapa.set(u, { usuario: u, registros: 0, personas: new Set() });
+    const m = mapa.get(u);
+    m.registros += 1;
+    m.personas.add(String(r.cedula));
+  });
+  return [...mapa.values()]
+    .map(m => ({ usuario: m.usuario, registros: m.registros, personas: m.personas.size, repetidos: (repetidosPorUsuario[m.usuario] || new Set()).size }))
+    .sort((a, b) => b.registros - a.registros);
 }
 
 module.exports = { obtenerControlQuincena };
