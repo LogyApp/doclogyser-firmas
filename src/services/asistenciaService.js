@@ -92,7 +92,7 @@ function obtenerHoyColombia() {
 async function obtenerCatalogoNovedades(rol = '') {
   const paramsCfg = await obtenerParametrosAsistencia();
   const rolNorm = (rol || '').toLowerCase().trim();
-  const rolesVerSistema = (paramsCfg.rolesVerNovedadesSistema || ['Sistema', 'Nomina']).map(r => r.toLowerCase().trim());
+  const rolesVerSistema = (paramsCfg.rolesVerNovedadesSistema || ['Sistema']).map(r => r.toLowerCase().trim());
   const puedeVerSistema = rolesVerSistema.includes(rolNorm);
 
   const [rows] = await pool.query(`
@@ -139,6 +139,21 @@ async function obtenerCatalogoNovedades(rol = '') {
 }
 
 /**
+ * Las novedades con Evento = 'Sistema' en Config_Asistencia (Nuevo, Retirado, Traslado) las pone el
+ * sistema (rellenoAsistencia.js); solo los roles de Roles_Ver_Novedades_Sistema pueden registrarlas.
+ */
+async function validarNovedadDeSistema(novedad, rol) {
+  if (!novedad) return;
+  const [rows] = await pool.query('SELECT Evento FROM Config_Asistencia WHERE Novedad = ? LIMIT 1', [novedad]);
+  if (!rows.length || String(rows[0].Evento || '').trim() !== 'Sistema') return;
+  const paramsCfg = await obtenerParametrosAsistencia();
+  const roles = (paramsCfg.rolesVerNovedadesSistema || ['Sistema']).map(r => r.toLowerCase().trim());
+  if (!roles.includes(String(rol || '').toLowerCase().trim())) {
+    throw Object.assign(new Error(`"${novedad}" la pone el sistema automáticamente según las fechas de ingreso, retiro o traslado; no se registra a mano.`), { validacion: true });
+  }
+}
+
+/**
  * Obtiene los parámetros del módulo de Asistencia
  */
 async function obtenerParametrosAsistencia() {
@@ -152,7 +167,7 @@ async function obtenerParametrosAsistencia() {
     rolesEditarEliminarTodosEstados: ['Sistema', 'Nomina'],
     rolesRegistrarRetirados: ['Sistema', 'Nomina'],
     rolesRegistrarDiasFuturos: ['Sistema', 'Nomina'],
-    rolesVerNovedadesSistema: ['Sistema', 'Nomina'],
+    rolesVerNovedadesSistema: ['Sistema'],
     cargosExcluidosAsistencia: [
       'APRENDIZ',
       'AUXILIAR ADMINISTRATIVO DE OPERACIÓN',
@@ -390,6 +405,7 @@ async function registrarAsistenciaDiaria({
   if (!operacion || !dia || !trabajadoresIds || !trabajadoresIds.length) {
     throw new Error('Faltan datos obligatorios para registrar la asistencia (operación, día o trabajadores).');
   }
+  await validarNovedadDeSistema(novedad, rol);
 
   // Validación de permisos de fechas futuras
   const paramsCfg = await obtenerParametrosAsistencia();
@@ -615,6 +631,7 @@ async function registrarNovedadPorRango({
   if (!trabajadorIdentificacion || !diaInicio || !diaFin || !novedad) {
     throw new Error('Faltan datos obligatorios para registrar la novedad (trabajador, fechas o novedad).');
   }
+  await validarNovedadDeSistema(novedad, rol);
 
   // Validación de permisos de fechas futuras
   const paramsCfg = await obtenerParametrosAsistencia();
@@ -1602,6 +1619,7 @@ async function editarRegistroAsistencia({
     [idAsistencia]
   );
   if (!rows.length) throw new Error('El registro no existe.');
+  if (novedad && novedad !== rows[0].novedad) await validarNovedadDeSistema(novedad, rol);
   const rec = rows[0];
 
   if (!sinFiltro && !operacionesPermitidas.includes(rec.operacion)) {
