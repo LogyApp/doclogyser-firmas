@@ -202,6 +202,20 @@ function cqPintarDetalle(d, op) {
 
   const apoyos = (op.apoyosRecibidos || []).map(a =>
     `<li><b>${cqEsc(a.nombre)}</b> (${cqEsc(a.identificacion)}) de ${cqEsc(a.desde || 'otra operación')}: ${a.dias.sort().map(x => Number(x.slice(8, 10))).join(', ')}</li>`).join('');
+  const quienes = (op.quienRegistra || []);
+  const quienHtml = quienes.length ? `
+    <div class="cq-bloque">
+      <div class="cq-bloque-tit">Quién registra en esta operación (${quienes.length} usuario${quienes.length === 1 ? '' : 's'})</div>
+      <div class="cq-nota">Cada persona debería tener un solo responsable. Si dos usuarios registran al mismo colaborador el mismo día, queda repetido. Toque una casilla de la planilla para ver quién la registró.</div>
+      <div class="cq-tabla-wrap"><table class="cq-tabla cq-quien">
+        <thead><tr><th class="cq-op">Usuario</th><th>Registros</th><th>Personas</th><th>Días repetidos</th></tr></thead>
+        <tbody>${quienes.map(q => `<tr>
+          <th class="cq-op"><div class="cq-op-nom">${cqEsc(q.usuario)}</div></th>
+          <td>${formatMiles(q.registros)}</td><td>${formatMiles(q.personas)}</td>
+          <td class="${q.repetidos ? 'cq-alerta' : ''}">${q.repetidos ? formatMiles(q.repetidos) : '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>` : '';
   const fuera = (op.fueraDePlantilla || []).map(f =>
     `<li><b>${cqEsc(f.nombre)}</b> (${cqEsc(f.identificacion)}) día ${Number(f.dia.slice(8, 10))}: ${cqEsc(f.codigo)}${f.opDia ? ` — ese día pertenecía a ${cqEsc(f.opDia)}` : ' — no está en la plantilla de esta operación'}</li>`).join('');
 
@@ -227,6 +241,7 @@ function cqPintarDetalle(d, op) {
     </table></div>` : `<div class="cq-vacio">${op.trabajadores && op.trabajadores.length ? '¡Todo al día! Nadie tiene pendientes ni alertas en esta quincena.' : 'No hay personas en la plantilla de esta quincena.'}</div>`}
     ${ocultos > 0 ? `<div class="cq-nota">${ocultos} persona(s) al día no se muestran. Quite el filtro para verlas.</div>` : ''}
     ${apoyos ? `<div class="cq-bloque"><div class="cq-bloque-tit">Apoyos recibidos de otras operaciones</div><div class="cq-nota">Solo registran asistencia aquí; su descanso y novedades los pone su operación. No cuentan para el porcentaje.</div><ul>${apoyos}</ul></div>` : ''}
+    ${quienHtml}
     ${fuera ? `<div class="cq-bloque cq-bloque-alerta"><div class="cq-bloque-tit">Registros en esta operación de personas que no le pertenecían ese día</div><ul>${fuera}</ul></div>` : ''}`;
 }
 
