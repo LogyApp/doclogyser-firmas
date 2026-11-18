@@ -1569,6 +1569,21 @@ router.post('/finalizar-contratacion', async (req, res) => {
     // Copia el archivo al bucket de empleados; si falla, NO se crea el registro en Maestro_docTrabajador
     // (quedaría un documento listado sin archivo) y se avisa al final.
     const docsSinCopiar = [];
+    // Documentos que el trabajador ya tiene para este ingreso (mismo tipo, misma fecha de ingreso y misma
+    // observación): p. ej. firmados por otro medio. No se vuelven a insertar para no duplicarlos.
+    const [yaExisten] = await connection.query(
+      'SELECT TipoDocumento, COALESCE(Observaciones, \'\') AS obs FROM Maestro_docTrabajador WHERE `Identificación` = ? AND Fecha_Ingreso = ?',
+      [a.identificacion, fecha_ingreso]
+    );
+    const existentes = new Set(yaExisten.map(r => `${Number(r.TipoDocumento)}|${String(r.obs).trim()}`));
+    const docsYaExistian = [];
+    const yaExiste = (tipo, obs, nombre) => {
+      const clave = `${Number(tipo)}|${String(obs || '').trim()}`;
+      if (!existentes.has(clave)) { existentes.add(clave); return false; }
+      docsYaExistian.push(nombre);
+      return true;
+    };
+
     const copiarArchivo = async (ruta, nombre) => {
       if (!ruta) { docsSinCopiar.push(nombre); return false; }
       try {
@@ -1585,6 +1600,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
       const partesDoc = partesPorDoc[Number(doc.id_config_doc)];
       if (partesDoc && partesDoc.length) {
         for (const pt of partesDoc) {
+          if (yaExiste(doc.id_config_doc, pt.observaciones, pt.observaciones || doc.Prefijo)) continue;
           if (!(await copiarArchivo(pt.gcs_path, pt.observaciones || doc.Prefijo))) continue;
           await connection.query(sqlDocTrabajador, [
             regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, pt.gcs_path, nombreUsuario, pt.observaciones || null
@@ -1595,14 +1611,16 @@ router.post('/finalizar-contratacion', async (req, res) => {
       // Hoja de Vida: si el aspirante subió su propia versión, también se traslada (marcada en Observaciones)
       const rutaPropiaHv = Number(doc.id_config_doc) === ID_HOJA_VIDA ? rutaHvAspirante(doc.observaciones) : null;
 
-      if (await copiarArchivo(doc.gcs_path, doc.Prefijo)) {
+      const obsPrincipal = rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null;
+      if (!yaExiste(doc.id_config_doc, obsPrincipal, doc.Prefijo) && await copiarArchivo(doc.gcs_path, doc.Prefijo)) {
         await connection.query(sqlDocTrabajador, [
           regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario,
           rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null
         ]);
       }
 
-      if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path && await copiarArchivo(rutaPropiaHv, `${doc.Prefijo} (versión del aspirante)`)) {
+      if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path && !yaExiste(doc.id_config_doc, MARCA_HV_ASPIRANTE, `${doc.Prefijo} (versión del aspirante)`)
+          && await copiarArchivo(rutaPropiaHv, `${doc.Prefijo} (versión del aspirante)`)) {
         await connection.query(sqlDocTrabajador, [
           regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaPropiaHv, nombreUsuario, MARCA_HV_ASPIRANTE
         ]);
@@ -1632,7 +1650,10 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const avisoCopia = docsSinCopiar.length
       ? ` ATENCIÓN: no se pudieron copiar ${docsSinCopiar.length} documento(s) (${docsSinCopiar.join(', ')}); no quedaron en los documentos del trabajador. Súbanlos desde Doc Trabajadores.`
       : '';
-    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal + avisoCopia)}`);
+    const avisoExistentes = docsYaExistian.length
+      ? ` ${docsYaExistian.length} documento(s) ya existían en los documentos del trabajador para este ingreso y no se duplicaron (${docsYaExistian.join(', ')}).`
+      : '';
+    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal + avisoCopia + avisoExistentes)}`);
 
   } catch (error) {
     if (connection) await connection.rollback();
