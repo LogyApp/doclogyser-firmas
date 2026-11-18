@@ -1264,7 +1264,8 @@ async function listarAsistencias({
       DATE_FORMAT(da.\`Fecha Registro\`, '%Y-%m-%d %H:%i') AS fechaRegistro,
       da.Usuario AS usuario,
       da.Estado AS estado,
-      da.Quincena AS quincena
+      da.Quincena AS quincena,
+      (SELECT v.Cargo FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.Cédula ORDER BY (v.Estado = 'Activo') DESC, v.\`Fecha de Ingreso\` DESC LIMIT 1) AS cargo
     FROM Dynamic_Asistencia da
     LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN
     LEFT JOIN Config_Asistencia ca ON da.Novedad = ca.Novedad
@@ -1476,10 +1477,16 @@ async function obtenerMetricasAsistencia({
  * Elimina un registro de asistencia validando permisos y bloqueo
  */
 async function eliminarRegistroAsistencia({ idAsistencia, usuario, rol, operacionesPermitidas = [], sinFiltro = false }) {
-  const [rows] = await pool.query(
-    'SELECT IdAsistencia, Origen as operacion, Novedad as novedad, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
-    [idAsistencia]
-  );
+  const [rows] = await pool.query(`
+    SELECT da.IdAsistencia, da.Origen as operacion, da.Novedad as novedad, 
+           DATE_FORMAT(da.\`Día\`, "%Y-%m-%d") as dia, da.Estado as estado,
+           (SELECT v.Cargo FROM \`Maestro_Vinculación\` v 
+            WHERE v.Identificación = da.Cédula 
+            ORDER BY (v.Estado = 'Activo') DESC, v.\`Fecha de Ingreso\` DESC 
+            LIMIT 1) as cargo
+    FROM Dynamic_Asistencia da 
+    WHERE da.IdAsistencia = ?
+  `, [idAsistencia]);
   if (!rows.length) throw new Error('El registro no existe.');
   const rec = rows[0];
 
@@ -1499,8 +1506,12 @@ async function eliminarRegistroAsistencia({ idAsistencia, usuario, rol, operacio
     if (!esYellow || !puedeYellow) {
       throw new Error('Solo los roles de Nómina y Sistema pueden eliminar registros en este estado.');
     }
-    if (esAsistencia) {
-      throw new Error('Solo los roles de Nómina y Sistema pueden eliminar registros de Asistencia.');
+    const cargosAdmin = (paramsCfg.cargosExcluidosAsistencia || []).map(c => c.trim().toUpperCase());
+    const cargoNorm = (rec.cargo || '').trim().toUpperCase();
+    const esCargoAdmin = cargoNorm && cargosAdmin.includes(cargoNorm);
+
+    if (esAsistencia && esCargoAdmin) {
+      throw new Error('No está permitido eliminar la asistencia de personal con cargo administrativo.');
     }
     const b = await verificarBloqueoNomina(rec.operacion, rec.dia, rol);
     if (b.bloqueado) throw new Error(b.mensaje);
@@ -1528,12 +1539,16 @@ async function eliminarRegistrosAsistenciaLote({ idsAsistencia = [], usuario, ro
   }
 
   const placeholders = idsAsistencia.map(() => '?').join(',');
-  const [rows] = await pool.query(
-    `SELECT IdAsistencia, Origen as operacion, Novedad as novedad, DATE_FORMAT(\`Día\`, "%Y-%m-%d") as dia, Estado as estado 
-     FROM Dynamic_Asistencia 
-     WHERE IdAsistencia IN (${placeholders})`,
-    idsAsistencia
-  );
+  const [rows] = await pool.query(`
+    SELECT da.IdAsistencia, da.Origen as operacion, da.Novedad as novedad, 
+           DATE_FORMAT(da.\`Día\`, "%Y-%m-%d") as dia, da.Estado as estado,
+           (SELECT v.Cargo FROM \`Maestro_Vinculación\` v 
+            WHERE v.Identificación = da.Cédula 
+            ORDER BY (v.Estado = 'Activo') DESC, v.\`Fecha de Ingreso\` DESC 
+            LIMIT 1) as cargo
+    FROM Dynamic_Asistencia da 
+    WHERE da.IdAsistencia IN (${placeholders})
+  `, idsAsistencia);
 
   if (!rows.length) {
     throw new Error('No se encontraron los registros seleccionados.');
@@ -1541,6 +1556,7 @@ async function eliminarRegistrosAsistenciaLote({ idsAsistencia = [], usuario, ro
 
   const eliminables = [];
   const noEliminables = [];
+  const cargosAdmin = (paramsCfg.cargosExcluidosAsistencia || []).map(c => c.trim().toUpperCase());
 
   for (const rec of rows) {
     if (!sinFiltro && !operacionesPermitidas.includes(rec.operacion)) {
@@ -1549,13 +1565,15 @@ async function eliminarRegistrosAsistenciaLote({ idsAsistencia = [], usuario, ro
     }
     const esAsistencia = (rec.novedad || '').trim().toLowerCase() === 'asistencia';
     const esYellow = (rec.estado || '').toLowerCase() === 'yellow';
+    const cargoNorm = (rec.cargo || '').trim().toUpperCase();
+    const esCargoAdmin = cargoNorm && cargosAdmin.includes(cargoNorm);
 
     if (rec.estado === 'Green' && !puedeTodos) {
       noEliminables.push(`${rec.IdAsistencia}: Bloqueado en Green`);
       continue;
     }
-    if (esYellow && !puedeTodos && esAsistencia) {
-      noEliminables.push(`${rec.IdAsistencia}: Asistencia no eliminable para este rol`);
+    if (esYellow && !puedeTodos && esAsistencia && esCargoAdmin) {
+      noEliminables.push(`${rec.IdAsistencia}: Asistencia administrativa no eliminable`);
       continue;
     }
     if (!esYellow && !puedeTodos) {

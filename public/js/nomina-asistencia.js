@@ -1519,8 +1519,13 @@ function renderTablaAsistencias(registros) {
     // Edición: Sistema y Nómina pueden todo. Demás roles solo si está en Yellow.
     const puedeEditarFila = puedeTodos || (puedeYellow && esYellow);
 
-    // Eliminación: Sistema y Nómina pueden todo. Demás roles solo si está en Yellow Y la novedad es diferente a Asistencia.
-    const puedeEliminarFila = puedeTodos || (puedeYellow && esYellow && !esAsistencia);
+    // Cargos administrativos que no pueden ser eliminados en Asistencia por roles operativos
+    const cargosExcluidos = (cfg.cargosExcluidosAsistencia || []).map(c => String(c).trim().toUpperCase());
+    const cargoFila = String(r.cargo || '').trim().toUpperCase();
+    const esCargoAdmin = cargoFila && cargosExcluidos.includes(cargoFila);
+
+    // Eliminación: Sistema y Nómina pueden todo. Demás roles: en Yellow y si es Asistencia solo para personal operativo.
+    const puedeEliminarFila = puedeTodos || (puedeYellow && esYellow && (!esAsistencia || !esCargoAdmin));
 
     // Columna ACCIONES al principio (con checkbox para lote y botón individual)
     let tdAcciones = '';
@@ -1601,10 +1606,180 @@ function renderTablaAsistencias(registros) {
 // MODAL DE REGISTRO INTERACTIVO (INGRESAR EVENTO)
 // ══════════════════════════════════════════════════════════════════════════
 
+function limpiarFormularioRegistroAsistencia() {
+  // 1. Limpiar estados en memoria
+  if (_asisState.trabajadoresSeleccionados) {
+    _asisState.trabajadoresSeleccionados.clear();
+  }
+  if (_asisState.trabajadoresSeleccionadosNov) {
+    _asisState.trabajadoresSeleccionadosNov.clear();
+  }
+  _asisState.trabajadoresOperacion = [];
+  _asisState.trabajadoresNovedad = [];
+  _asisState.operacionSeleccionadaDiaria = null;
+  _asisState.operacionSeleccionadaNovedad = null;
+  _asisState.areaSeleccionadaDiaria = null;
+  _asisState.areaSeleccionadaNovedad = null;
+  _asisState.areasDiaria = [];
+  _asisState.areasNovedad = [];
+
+  // 2. Limpiar errores
+  const errDiaria = document.getElementById('asisModalErrorDiaria');
+  if (errDiaria) {
+    errDiaria.style.display = 'none';
+    errDiaria.textContent = '';
+  }
+  const errNovedad = document.getElementById('asisModalErrorNovedad');
+  if (errNovedad) {
+    errNovedad.style.display = 'none';
+    errNovedad.textContent = '';
+  }
+
+  // 3. Reset Subpestaña Asistencia Diaria
+  const hidOpDiaria = document.getElementById('asisModalOpDiaria');
+  if (hidOpDiaria) hidOpDiaria.value = '';
+
+  const hidAreaDiaria = document.getElementById('asisModalAreaDiaria');
+  if (hidAreaDiaria) hidAreaDiaria.value = '';
+  const cAreaDiaria = document.getElementById('asisModalAreaDiariaContainer');
+  if (cAreaDiaria) {
+    cAreaDiaria.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación para ver las áreas disponibles.</span>';
+  }
+
+  const diaDiaria = document.getElementById('asisModalDiaDiaria');
+  if (diaDiaria) diaDiaria.value = '';
+
+  const hEntrada = document.getElementById('asisModalHoraEntrada');
+  if (hEntrada) hEntrada.value = '06:00';
+  const hSalida = document.getElementById('asisModalHoraSalida');
+  if (hSalida) hSalida.value = '14:00';
+  const badgeTiempo = document.getElementById('asisBadgeTiempoLaborado');
+  if (badgeTiempo) badgeTiempo.textContent = '8h laboradas';
+
+  const chkApoyo = document.getElementById('asisModalChkApoyo');
+  if (chkApoyo) chkApoyo.checked = false;
+  const wrapApoyo = document.getElementById('asisWrapOpApoya');
+  if (wrapApoyo) wrapApoyo.style.display = 'none';
+  const hidOpApoya = document.getElementById('asisModalOpApoya');
+  if (hidOpApoya) hidOpApoya.value = '';
+  const cOpApoya = document.getElementById('asisModalOpApoyaContainer');
+  if (cOpApoya) {
+    cOpApoya.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero la operación destino.</span>';
+  }
+
+  const buscarColabDiaria = document.getElementById('asisBuscarColaboradorDiaria');
+  if (buscarColabDiaria) buscarColabDiaria.value = '';
+
+  const listaColabDiaria = document.getElementById('asisListaTrabajadoresCheckboxes');
+  if (listaColabDiaria) {
+    listaColabDiaria.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;" id="asisMsgSinArea">Seleccione una operación y un área para cargar los colaboradores.</div>';
+  }
+
+  actualizarChipsSeleccionados();
+
+  const obsDiaria = document.getElementById('asisModalObsDiaria');
+  if (obsDiaria) obsDiaria.value = '';
+
+  // 4. Reset Subpestaña Novedad
+  const hidOpNov = document.getElementById('asisModalOpNovedad');
+  if (hidOpNov) hidOpNov.value = '';
+
+  const hidAreaNov = document.getElementById('asisModalAreaNovedad');
+  if (hidAreaNov) hidAreaNov.value = '';
+  const cAreaNov = document.getElementById('asisModalAreaNovedadContainer');
+  if (cAreaNov) {
+    cAreaNov.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación.</span>';
+  }
+
+  const selNovedad = document.getElementById('asisModalNovedad');
+  if (selNovedad) selNovedad.value = '';
+
+  const wrapOpApoyaNov = document.getElementById('asisWrapOpApoyaNovedad');
+  if (wrapOpApoyaNov) wrapOpApoyaNov.style.display = 'none';
+  const hidOpApoyaNov = document.getElementById('asisModalOpApoyaNovedad');
+  if (hidOpApoyaNov) hidOpApoyaNov.value = '';
+  const cOpApoyaNov = document.getElementById('asisModalOpApoyaNovedadContainer');
+  if (cOpApoyaNov) {
+    cOpApoyaNov.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero la operación origen.</span>';
+  }
+
+  const secUnico = document.getElementById('asisSecColabUnicoNovedad');
+  const secMultiple = document.getElementById('asisSecColabMultipleNovedad');
+  const wrapDiaFin = document.getElementById('asisWrapDiaFin');
+  const wrapBadgeDias = document.getElementById('asisWrapBadgeDias');
+  const labelDiaInicio = document.getElementById('asisLabelDiaInicio');
+  if (secUnico) secUnico.style.display = 'block';
+  if (secMultiple) secMultiple.style.display = 'none';
+  if (wrapDiaFin) wrapDiaFin.style.display = 'block';
+  if (wrapBadgeDias) wrapBadgeDias.style.display = 'flex';
+  if (labelDiaInicio) labelDiaInicio.textContent = 'Fecha Inicio *';
+
+  const hidColabNov = document.getElementById('asisModalIdTrabajadorNovedad');
+  if (hidColabNov) hidColabNov.value = '';
+  const cColabNov = document.getElementById('asisModalColabNovedadContainer');
+  if (cColabNov) {
+    cColabNov.innerHTML = '<span style="font-size:.8rem; color:var(--text-muted); font-style:italic;">Seleccione primero una operación y un área para cargar los colaboradores.</span>';
+  }
+
+  const buscarColabNov = document.getElementById('asisBuscarColaboradorNovedad');
+  if (buscarColabNov) buscarColabNov.value = '';
+  const listaColabNov = document.getElementById('asisListaTrabajadoresCheckboxesNov');
+  if (listaColabNov) {
+    listaColabNov.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.84rem;" id="asisMsgSinAreaNov">Seleccione una operación y un área para cargar los colaboradores.</div>';
+  }
+
+  actualizarChipsSeleccionadosNov();
+
+  const diaInicio = document.getElementById('asisModalDiaInicio');
+  if (diaInicio) diaInicio.value = '';
+  const diaFin = document.getElementById('asisModalDiaFin');
+  if (diaFin) diaFin.value = '';
+  const badgeDias = document.getElementById('asisBadgeDiasNovedad');
+  if (badgeDias) badgeDias.textContent = '1 día(s)';
+
+  const secInc = document.getElementById('asisSecIncapacidad');
+  if (secInc) secInc.style.display = 'none';
+  const selTipoInc = document.getElementById('asisModalTipoInc');
+  if (selTipoInc) {
+    if (selTipoInc.options && selTipoInc.options.length > 0) selTipoInc.selectedIndex = 0;
+    else selTipoInc.value = '';
+  }
+  const buscarDiag = document.getElementById('asisModalBuscarDiag');
+  if (buscarDiag) buscarDiag.value = '';
+  const codDiag = document.getElementById('asisModalCodDiag');
+  if (codDiag) codDiag.value = '';
+  const descDiag = document.getElementById('asisModalDiag');
+  if (descDiag) descDiag.value = '';
+  const resDiag = document.getElementById('asisResultadosDiag');
+  if (resDiag) {
+    resDiag.style.display = 'none';
+    resDiag.innerHTML = '';
+  }
+
+  const secSoporte = document.getElementById('asisSecSoporte');
+  if (secSoporte) secSoporte.style.display = 'none';
+  const descSoporte = document.getElementById('asisDescSoporte');
+  if (descSoporte) descSoporte.textContent = '';
+
+  ['asisFileIncapacidad', 'asisFileHistoria', 'asisFileSoporte', 'asis-foto-camara'].forEach(id => {
+    const inp = document.getElementById(id);
+    if (inp) {
+      inp.value = '';
+    }
+    if (typeof actualizarZonaArchivoAsistencia === 'function') {
+      actualizarZonaArchivoAsistencia(id);
+    }
+  });
+
+  const obsNov = document.getElementById('asisModalObsNovedad');
+  if (obsNov) obsNov.value = '';
+}
+
 function abrirModalRegistroAsistencia(modo = 'diaria') {
   const modal = document.getElementById('modalRegistroAsistenciaOverlay');
   if (!modal) return;
 
+  limpiarFormularioRegistroAsistencia();
   renderizarSelectorOperacionModal('diaria');
   renderizarSelectorOperacionModal('novedad');
   setModoRegistroAsistencia(modo);
@@ -1618,6 +1793,7 @@ function cerrarModalRegistroAsistencia() {
 
   modal.classList.remove('open');
   document.body.style.overflow = '';
+  limpiarFormularioRegistroAsistencia();
 }
 
 function setModoRegistroAsistencia(modo) {
