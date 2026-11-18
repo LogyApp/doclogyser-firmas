@@ -1811,6 +1811,7 @@
             <span id="det-estado-badge" role="img" style="display:inline-block; width:16px; height:16px; border-radius:50%; flex:none;"></span>
             <button type="button" id="btn-servicio-a-verde" onclick="pasarServicioAVerde()" title="Cambiar el Estado del servicio a Verde (validado)" style="display:none; align-items:center; gap:6px; padding: 7px 12px; font-weight:700; cursor:pointer; border-radius:8px; border:1.5px solid var(--success); background:transparent; color:var(--success-dark); font-family:inherit;">🟢 Pasar a verde</button>
             <button type="button" id="btn-editar-servicio-detalle" onclick="editarServicioDesdeDetalle()" title="Editar este servicio" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 12px; font-weight:600; cursor:pointer; border-radius:8px; border:1px solid var(--border); background:var(--card-bg); color:var(--text);">✏️ Editar</button>
+            <button type="button" id="btn-duplicar-servicio-detalle" onclick="duplicarServicioDesdeDetalle()" title="Crear otro servicio en el mismo recibo con estos datos (sin Unidad ni Cantidad)" style="display:inline-flex; align-items:center; gap:6px; padding: 7px 12px; font-weight:600; cursor:pointer; border-radius:8px; border:1px solid var(--border); background:var(--card-bg); color:var(--text); font-family:inherit;">📄 Duplicar</button>
             <button type="button" id="det-consecutivo-badge" onclick="abrirReciboDesdeServicio()" title="Abrir el detalle del recibo" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 3px;">-</button>
           </div>
         </div>
@@ -9455,26 +9456,45 @@
     // Lápiz del detalle del servicio: abre el formulario de edición. El formulario trabaja con el
     // recibo del servicio (reciboDetalleActual), así que se carga si no es el que está en memoria.
     let msEditandoDesdeDetalle = false;
+    async function cargarReciboDelServicioDetalle(idServicio, idRecibo) {
+      const enMemoria = reciboDetalleActual?.recibo?.IdRecibo === idRecibo
+        && (reciboDetalleActual.servicios || []).some(x => x.IdServicio === idServicio);
+      if (enMemoria) return true;
+      try {
+        const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(idRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (!resp.ok) throw new Error();
+        const data = await resp.json();
+        const srvs = data.servicios || [];
+        const estadoColor = srvs.some(x => x.Validacion === 2) ? 'Yellow' : srvs.some(x => x.Validacion === 1) ? 'Green' : 'Red';
+        reciboDetalleActual = { recibo: data.recibo, servicios: srvs, totales: data.totales || {}, estadoColor };
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
     async function editarServicioDesdeDetalle() {
       const idServicio = servicioDetalleActual?.idServicio;
       const idRecibo = servicioDetalleActual?.idRecibo;
       if (!idServicio || !idRecibo) return;
-      const enMemoria = reciboDetalleActual?.recibo?.IdRecibo === idRecibo
-        && (reciboDetalleActual.servicios || []).some(x => x.IdServicio === idServicio);
-      if (!enMemoria) {
-        try {
-          const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(idRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`);
-          if (!resp.ok) throw new Error();
-          const data = await resp.json();
-          const srvs = data.servicios || [];
-          const estadoColor = srvs.some(x => x.Validacion === 2) ? 'Yellow' : srvs.some(x => x.Validacion === 1) ? 'Green' : 'Red';
-          reciboDetalleActual = { recibo: data.recibo, servicios: srvs, totales: data.totales || {}, estadoColor };
-        } catch (e) {
-          return alert('No se pudo cargar el recibo del servicio para editarlo.');
-        }
-      }
+      if (!await cargarReciboDelServicioDetalle(idServicio, idRecibo)) return alert('No se pudo cargar el recibo del servicio para editarlo.');
       msEditandoDesdeDetalle = true;
       abrirModalServicio('editar', idServicio);
+    }
+
+    // Duplicar (antes, acción de AppSheet): abre el formulario de un servicio nuevo en el mismo
+    // recibo con los datos de este, salvo Unidad, Cantidad, fotos y Estado (queda en amarillo).
+    async function duplicarServicioDesdeDetalle() {
+      const idServicio = servicioDetalleActual?.idServicio;
+      const idRecibo = servicioDetalleActual?.idRecibo;
+      if (!idServicio || !idRecibo) return;
+      if (!await cargarReciboDelServicioDetalle(idServicio, idRecibo)) return alert('No se pudo cargar el recibo del servicio para duplicarlo.');
+      const r = reciboDetalleActual.recibo;
+      if (String(r.Modalidad || '').toUpperCase() !== 'CREDITO' && reciboDetalleActual.estadoColor === 'Green') {
+        return alert('Este recibo de Recaudo ya fue validado (verde): no admite más servicios.');
+      }
+      if (!confirm('¿Seguro que quiere duplicar este servicio?\n\nSe abre un servicio nuevo en el mismo recibo con estos datos, sin Unidad ni Cantidad.')) return;
+      msEditandoDesdeDetalle = true;
+      abrirModalServicio('duplicar', idServicio);
     }
 
     // Detalle del servicio: pasa el Estado a Verde si cumple las condiciones (las mismas del
@@ -10012,7 +10032,7 @@
         // si falta algún servicio por validar, verde+mensaje "completo" si todos están en Green.
         const btnWhatsapp = document.getElementById('btn-whatsapp-recibo');
         if (r.Modalidad === 'RECAUDO' && r.Telefono) {
-          const mensaje = construirMensajeWhatsAppRecibo(r, tots, estadoColor);
+          const mensaje = construirMensajeWhatsAppRecibo(r, tots, estadoColor, srvs);
           btnWhatsapp.href = `https://wa.me/57${r.Telefono}/?text=${encodeURIComponent(mensaje)}`;
           btnWhatsapp.style.background = (estadoColor === 'Green') ? 'var(--success)' : 'var(--warning)';
           btnWhatsapp.style.display = 'inline-flex';
@@ -11721,7 +11741,7 @@
       // Área del usuario (Maestro_Usuarios.Area) en las operaciones configuradas, como hacía AppSheet
       // en Cedi Vegas; gana sobre el valor por defecto de Ajustes Servicios.
       const areaUsuario = (CONFIG.areasUsuarioServicio?.areas || {})[msContexto.operacion];
-      if (crear && areaUsuario && document.querySelector(`.ms-area-btn[data-id="${areaUsuario}"]`)) {
+      if (crear && !msDuplicando && areaUsuario && document.querySelector(`.ms-area-btn[data-id="${areaUsuario}"]`)) {
         seleccionarAreaServicio(Number(areaUsuario));
       }
 
@@ -11730,7 +11750,7 @@
         const sel = document.getElementById(id);
         const c = a[col];
         if (!c) return;
-        filtrarSelectAjuste(sel, c, crear ? '' : sel.value);
+        filtrarSelectAjuste(sel, c, (crear && !msDuplicando) ? '' : sel.value);
         if (crear && c.defecto && !sel.value) {
           sel.value = c.defecto;
           if (col === 'Duración') onDuracionServicioChange();
@@ -11741,7 +11761,7 @@
         [['GRUPAL', 'btn-ms-grupo-grupal'], ['INDIVIDUAL', 'btn-ms-grupo-individual']].forEach(([valor, id]) => {
           document.getElementById(id).style.display = (!c.habilitados.length || c.habilitados.includes(valor) || msGrupoDtjoActual === valor) ? '' : 'none';
         });
-        if (crear && c.defecto) setGrupoDtjoServicio(c.defecto);
+        if (crear && !msDuplicando && c.defecto) setGrupoDtjoServicio(c.defecto);
       }
 
       pintarUnidadServicio(); // botones o lista según cuántas unidades quedaron
@@ -11934,6 +11954,16 @@
     let modalServicio = { modo: 'crear', idRecibo: null, idServicio: null };
     let msContexto = {};
     let msServicioExistente = null;
+    let msDuplicando = false; // formulario abierto con "Duplicar" (crea un servicio nuevo)
+
+    // Datos con que se abre un servicio duplicado: los del original, sin Unidad ni Cantidad (lo que
+    // normalmente cambia), sin fotos y en amarillo, como un servicio recién creado.
+    function copiaServicioParaDuplicar(s) {
+      const copia = { ...s, Estado: 'Yellow' };
+      ['IdServicio', 'Unidad', 'Cantidad', 'Foto Documento', 'Foto Evidencia', 'Foto Transferencia',
+        'Validado Transferencia', 'Validacion'].forEach(k => delete copia[k]);
+      return copia;
+    }
     let msEstadoActual = 'Yellow';
     let msGrupoDtjoActual = 'GRUPAL';
     let msFormaPagoActual = null;
@@ -11980,6 +12010,16 @@
     // modo 'pendiente': servicio de un recibo que aún no se ha guardado (formulario Agregar Recibo)
     // indicePendiente: servicio de la lista del recibo nuevo (sin guardar) que se va a corregir
     async function abrirModalServicio(modo, idServicio, indicePendiente) {
+      // Duplicar: se crea un servicio nuevo partiendo de los datos de idServicio
+      const duplicando = modo === 'duplicar';
+      msDuplicando = duplicando;
+      let origenDuplicado = null;
+      if (duplicando) {
+        origenDuplicado = (reciboDetalleActual?.servicios || []).find(s => s.IdServicio === idServicio);
+        if (!origenDuplicado) return;
+        modo = 'crear';
+        idServicio = null;
+      }
       const pendiente = modo === 'pendiente';
       if (!pendiente && !reciboDetalleActual) return;
       const editandoPendiente = pendiente && Number.isInteger(indicePendiente) && !!mrServiciosPendientes[indicePendiente];
@@ -12002,12 +12042,14 @@
       // Servicio pendiente: sus datos se guardaron con la misma forma de un servicio guardado
       // (fechas ya en formato del formulario y archivos como File)
       const existente = (modo === 'editar') ? (reciboDetalleActual.servicios || []).find(s => s.IdServicio === idServicio)
-        : editandoPendiente ? mrServiciosPendientes[indicePendiente].datos : null;
-      msServicioExistente = existente || null;
+        : editandoPendiente ? mrServiciosPendientes[indicePendiente].datos
+        : duplicando ? copiaServicioParaDuplicar(origenDuplicado) : null;
+      msServicioExistente = duplicando ? null : (existente || null); // la copia no trae fotos guardadas
       const fechaForm = (valor) => editandoPendiente ? valor : toDatetimeLocalBogota(valor);
 
       document.getElementById('ms-titulo').textContent = (modo === 'editar') ? `✏️ Editar Servicio — ${idServicio}`
-        : editandoPendiente ? '✏️ Editar Servicio (sin guardar)' : '➕ Agregar Servicio';
+        : editandoPendiente ? '✏️ Editar Servicio (sin guardar)'
+        : duplicando ? `📄 Duplicar Servicio — ${origenDuplicado.IdServicio}` : '➕ Agregar Servicio';
       document.getElementById('btn-guardar-servicio').textContent = editandoPendiente ? 'Guardar Cambios'
         : ({ crear: 'Crear Servicio', pendiente: 'Agregar al Recibo' }[modo] || 'Guardar Cambios');
 
@@ -12017,8 +12059,8 @@
       msAuxiliaresSeleccionados = existente && existente.Auxiliares ? existente.Auxiliares.split(',').map(s => s.trim()).filter(Boolean) : [];
       msAreaSeleccionada = existente ? existente.Area : null;
       msActividadSeleccionada = existente ? existente.Actividad : null;
-      msUnidadManual = !!existente; // en un servicio ya registrado no se cambia la Unidad que ya tiene
-      msValorManual = !!existente; // ni el Valor Unitario: la tarifa solo se busca al crear
+      msUnidadManual = !!existente && !duplicando; // en un servicio ya registrado no se cambia la Unidad que ya tiene
+      msValorManual = !!existente && !duplicando; // ni el Valor Unitario: la tarifa solo se busca al crear (y al duplicar)
       document.getElementById('ms-tarifa-info').textContent = '';
       // Etapa y Muelle vuelven a texto; los ajustes de la operación los pasan a número o lista si aplica
       ['ms-etapa', 'ms-muelle'].forEach(id => {
@@ -12107,7 +12149,7 @@
       if (existente?.['Total Hora']) document.getElementById('ms-total-hora').value = existente['Total Hora'];
 
       // Ajustes de la operación (Config_Servicios): etiquetas, campos, datos habilitados y valores por defecto
-      await aplicarAjustesServicio(!existente);
+      await aplicarAjustesServicio(!existente || duplicando);
       bloquearCamposServicioValidado(modo === 'editar' && !PERMISOS_RECIBOS.editarValidados
         && (existente?.Estado === 'Green' || reciboDetalleActual?.estadoColor === 'Green'));
       bloquearTransferenciaValidada(modo === 'editar' && String(existente?.['Validado Transferencia'] || '').toUpperCase() === 'SI', existente);
@@ -12911,6 +12953,9 @@
           if (desdeDetalle && modalServicio.modo === 'editar') {
             document.getElementById('det-recib-id').textContent = ''; // el detalle del recibo se recarga al volver
             await sinHistorial(() => verDetalleServicio(modalServicio.idServicio));
+          } else if (desdeDetalle && msDuplicando && data.idServicio) {
+            document.getElementById('det-recib-id').textContent = '';
+            await verDetalleServicio(data.idServicio); // queda abierto el servicio nuevo
           } else {
             await verDetalleRecibo(modalServicio.idRecibo);
           }
@@ -12974,10 +13019,12 @@
 
     // Mensajes de WhatsApp para el recibo (punto 9): "pendiente" (amarillo, falta validar
     // servicios) o "completo" (verde, todos los servicios en Green).
-    function construirMensajeWhatsAppRecibo(r, tots, estadoColor) {
+    // Placa: la del recibo o, si está vacía (recibos creados desde el formulario web), la del
+    // servicio más reciente (srvs viene ordenado por Hora Inicio ascendente).
+    function construirMensajeWhatsAppRecibo(r, tots, estadoColor, srvs = []) {
       const recibo = r['Consecutivo Recibo'] || r.IdRecibo;
       const cliente = r.buscarCliente || r.razonSocial || '';
-      const placa = r.Placa || '';
+      const placa = r.Placa || [...srvs].reverse().find(s => s.placaNombre)?.placaNombre || '';
       const operacion = r['Operación'] || '';
       const totalTexto = formatMiles(tots.total);
       const fechaTexto = formatFechaCorta(r.Fecha);

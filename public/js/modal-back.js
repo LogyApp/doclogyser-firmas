@@ -36,10 +36,32 @@
  *
  * Soporta modales anidados (pila LIFO): si se abre un modal sobre otro, el
  * primer "Atrás" cierra el de más arriba.
+ *
+ * En el celular, además, evita perder un formulario a medio llenar:
+ *  - Quita el "deslizar hacia abajo para recargar" del navegador
+ *    (overscroll-behavior en html/body), que recargaba la página al bajar con
+ *    el dedo estando arriba del todo.
+ *  - Si aun así la página se va a recargar o cerrar con un modal abierto en el
+ *    que ya se escribió algo, el navegador pregunta antes de salir.
  */
 (function () {
   const stack = [];
   let suppressNextPopstate = false;
+  let modalConCambios = false; // se escribió algo con un modal abierto
+
+  const estilo = document.createElement('style');
+  estilo.textContent = 'html, body { overscroll-behavior-y: none; }';
+  (document.head || document.documentElement).appendChild(estilo);
+
+  ['input', 'change'].forEach((tipo) => document.addEventListener(tipo, (e) => {
+    if (stack.length > 0 && e.isTrusted) modalConCambios = true;
+  }, true));
+
+  window.addEventListener('beforeunload', (e) => {
+    if (stack.length === 0 || !modalConCambios) return;
+    e.preventDefault();
+    e.returnValue = ''; // el navegador muestra su propio aviso de "¿Salir? Los cambios no se guardarán"
+  });
 
   window.addEventListener('popstate', () => {
     if (suppressNextPopstate) {
@@ -49,6 +71,7 @@
     if (stack.length > 0) {
       const entry = stack.pop();
       if (typeof entry.onClose === 'function') entry.onClose();
+      if (stack.length === 0) modalConCambios = false;
     }
   });
 
@@ -64,6 +87,7 @@
     const idx = stack.indexOf(entry);
     if (idx === -1) return; // ya se retiró (se cerró vía botón "Atrás"), no duplicar
     stack.splice(idx, 1);
+    if (stack.length === 0) modalConCambios = false;
     suppressNextPopstate = true;
     history.back();
   };
