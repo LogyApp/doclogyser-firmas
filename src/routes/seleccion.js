@@ -1552,11 +1552,26 @@ router.post('/finalizar-contratacion', async (req, res) => {
       partesPorDoc = {};
     }
 
+    // Copia el archivo al bucket de empleados; si falla, NO se crea el registro en Maestro_docTrabajador
+    // (quedaría un documento listado sin archivo) y se avisa al final.
+    const docsSinCopiar = [];
+    const copiarArchivo = async (ruta, nombre) => {
+      if (!ruta) { docsSinCopiar.push(nombre); return false; }
+      try {
+        await srcBucket.file(ruta).copy(destBucket.file(ruta));
+        return true;
+      } catch (e) {
+        console.error('Error GCS Copy:', ruta, e.message);
+        docsSinCopiar.push(nombre);
+        return false;
+      }
+    };
+
     for (const doc of docs) {
       const partesDoc = partesPorDoc[Number(doc.id_config_doc)];
       if (partesDoc && partesDoc.length) {
         for (const pt of partesDoc) {
-          await srcBucket.file(pt.gcs_path).copy(destBucket.file(pt.gcs_path)).catch(e => console.error("Error GCS Copy (parte):", e));
+          if (!(await copiarArchivo(pt.gcs_path, pt.observaciones || doc.Prefijo))) continue;
           await connection.query(sqlDocTrabajador, [
             regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, pt.gcs_path, nombreUsuario, pt.observaciones || null
           ]);
@@ -1566,14 +1581,14 @@ router.post('/finalizar-contratacion', async (req, res) => {
       // Hoja de Vida: si el aspirante subió su propia versión, también se traslada (marcada en Observaciones)
       const rutaPropiaHv = Number(doc.id_config_doc) === ID_HOJA_VIDA ? rutaHvAspirante(doc.observaciones) : null;
 
-      await srcBucket.file(doc.gcs_path).copy(destBucket.file(doc.gcs_path)).catch(e => console.error("Error GCS Copy:", e));
-      await connection.query(sqlDocTrabajador, [
-        regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario,
-        rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null
-      ]);
+      if (await copiarArchivo(doc.gcs_path, doc.Prefijo)) {
+        await connection.query(sqlDocTrabajador, [
+          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario,
+          rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null
+        ]);
+      }
 
-      if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path) {
-        await srcBucket.file(rutaPropiaHv).copy(destBucket.file(rutaPropiaHv)).catch(e => console.error("Error GCS Copy (HV aspirante):", e));
+      if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path && await copiarArchivo(rutaPropiaHv, `${doc.Prefijo} (versión del aspirante)`)) {
         await connection.query(sqlDocTrabajador, [
           regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaPropiaHv, nombreUsuario, MARCA_HV_ASPIRANTE
         ]);
@@ -1600,7 +1615,10 @@ router.post('/finalizar-contratacion', async (req, res) => {
       nombreRegistro:  nombreUsuario,
     }));
 
-    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal)}`);
+    const avisoCopia = docsSinCopiar.length
+      ? ` ATENCIÓN: no se pudieron copiar ${docsSinCopiar.length} documento(s) (${docsSinCopiar.join(', ')}); no quedaron en los documentos del trabajador. Súbanlos desde Doc Trabajadores.`
+      : '';
+    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal + avisoCopia)}`);
 
   } catch (error) {
     if (connection) await connection.rollback();
