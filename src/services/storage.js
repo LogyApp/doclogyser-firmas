@@ -111,6 +111,23 @@ async function subirPDFExamenEgreso(identificacion, idVinculacion, bufferPdf) {
 // manualmente desde formretiro. El prefijo se resuelve dinámicamente desde
 // Config_Doc_Trabajador (ver services/configRetiro.js) y el nombre lleva
 // fecha/hora de carga (Bogotá) en vez del idVinculacion.
+function resolverUrlDocumento(doc, url, identificacion) {
+  if (url && typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return url;
+  }
+  if (doc && typeof doc === 'string') {
+    if (doc.startsWith('http://') || doc.startsWith('https://')) {
+      return doc;
+    }
+    const cleanDoc = doc.replace(/^\/+/, '');
+    if (identificacion && cleanDoc.startsWith(`${identificacion}/`)) {
+      return `https://storage.googleapis.com/${BUCKET_PDFS}/${cleanDoc}`;
+    }
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${identificacion ? identificacion + '/' : ''}${cleanDoc}`;
+  }
+  return null;
+}
+
 async function subirDocumentoRetiro(identificacion, prefijo, bufferPdf) {
   const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
   const yy  = String(ahora.getFullYear()).slice(-2);
@@ -436,6 +453,7 @@ module.exports = {
   subirPDFAceptacionRenuncia,
   subirPDFExamenEgreso,
   subirDocumentoRetiro,
+  resolverUrlDocumento,
   subirPDFCesantias,
   subirSoporteCesantias,
   subirCedulaTrabajador,

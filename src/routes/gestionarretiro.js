@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
 const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ, generarTokenAutCesantias } = require('../services/token');
 const { obtenerCondicionRetiro, obtenerEstadoLogysign, obtenerPrefijoDoc, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, obtenerPermisosRetiro, obtenerPendientesLegalizacion } = require('../services/configRetiro');
-const { subirDocumentoRetiro } = require('../services/storage');
+const { subirDocumentoRetiro, resolverUrlDocumento } = require('../services/storage');
 const { programarRellenoVinculacion } = require('../services/rellenoAsistencia');
 const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
 const { regenerarAceptacionRenuncia } = require('./firmarenuncia');
@@ -83,7 +83,17 @@ function paginaError(mensaje) {
 // ── GET /:idVinculacion ────────────────────────────────────────────────────
 router.get('/:idVinculacion', async (req, res) => {
   try {
-    const idVinculacion = decodeURIComponent(req.params.idVinculacion);
+    const rawParam = decodeURIComponent(req.params.idVinculacion || '');
+    if (/\.(pdf|jpg|jpeg|png)$/i.test(rawParam)) {
+      const bucket = process.env.BUCKET_PDFS || 'talenthub_central';
+      const clean = rawParam.replace(/^\/+/, '');
+      const match = clean.match(/^(\d+)/);
+      const cc = match ? match[1] : '';
+      const target = (cc && !clean.startsWith(`${cc}/`)) ? `${cc}/${clean}` : clean;
+      return res.redirect(`https://storage.googleapis.com/${bucket}/${target}`);
+    }
+
+    const idVinculacion = rawParam;
     const { usuario }   = req.query;
 
     if (!usuario) return res.status(400).send(paginaError('Parámetro ?usuario requerido'));
@@ -141,7 +151,7 @@ router.get('/:idVinculacion', async (req, res) => {
       .map(r => ({
         prefijo:    r.Prefijo,
         label:      NOMBRES_DOC[r.Prefijo] || r.Prefijo,
-        url:        r.Doc,
+        url:        resolverUrlDocumento(r.Doc, r.Url, identificacion),
         validacion: r['Validación'],
       }));
 
@@ -157,7 +167,7 @@ router.get('/:idVinculacion', async (req, res) => {
       const docManual = docsMap[tipo];
       if (docManual) {
         terminacionContrato = {
-          tipo, observacion: condicion.ObservacionTCR, estado: 'FIRMADO', url: docManual.Doc,
+          tipo, observacion: condicion.ObservacionTCR, estado: 'FIRMADO', url: resolverUrlDocumento(docManual.Doc, docManual.Url, identificacion),
           desactualizado: docManual['Validación'] === 'DESACTUALIZADO',
         };
       } else {
@@ -362,8 +372,8 @@ router.get('/:idVinculacion', async (req, res) => {
       // Dashboard (estado B)
       docs,
       docsOpcionales: {
-        cr: docsMap['CR'] ? { url: docsMap['CR'].Doc, validacion: docsMap['CR']['Validación'] } : null,
-        ed: docsMap['ED'] ? { url: docsMap['ED'].Doc, validacion: docsMap['ED']['Validación'] } : null,
+        cr: docsMap['CR'] ? { url: resolverUrlDocumento(docsMap['CR'].Doc, docsMap['CR'].Url, identificacion), validacion: docsMap['CR']['Validación'] } : null,
+        ed: docsMap['ED'] ? { url: resolverUrlDocumento(docsMap['ED'].Doc, docsMap['ED'].Url, identificacion), validacion: docsMap['ED']['Validación'] } : null,
       },
       terminacionContrato,
       legalizacionPendientes: estadoPagina === 'dashboard' ? legalizacionPendientes : [],
@@ -488,8 +498,8 @@ router.post('/api/generar-pz-anticipado', async (req, res) => {
     );
     if (docExist.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
-        [urlPdf, fechaHoraBogota(), docExist[0].id]
+        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
+        [urlPdf, urlPdf, fechaHoraBogota(), docExist[0].id]
       );
     } else {
       const { v4: uuidv4 } = require('uuid');
@@ -561,8 +571,8 @@ router.post('/api/subir-terminacion-contrato', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, \`Validación\` = 'PEND', FechaRegistro = ? WHERE id = ?`,
-        [url, fechaHoraBogota(), docRows[0].id]
+        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, \`Validación\` = 'PEND', FechaRegistro = ? WHERE id = ?`,
+        [url, url, fechaHoraBogota(), docRows[0].id]
       );
     } else {
       await registrarDocTrabajador({

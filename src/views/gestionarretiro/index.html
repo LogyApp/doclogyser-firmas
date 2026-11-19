@@ -916,6 +916,17 @@
   }
 
   // ── Bloque 1: Documentos para firma (CT, AR, EMOE, CRS) ──────────────────
+  function resolverUrlDocClient(url) {
+    if (!url || typeof url !== 'string') return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const clean = url.replace(/^\/+/, '');
+    const idStr = String(identificacion || '');
+    if (idStr && !clean.startsWith(idStr + '/')) {
+      return 'https://storage.googleapis.com/talenthub_central/' + idStr + '/' + clean;
+    }
+    return 'https://storage.googleapis.com/talenthub_central/' + clean;
+  }
+
   function renderDocs() {
     const lista = document.getElementById('listaDocs');
     lista.innerHTML = '';
@@ -974,7 +985,7 @@
             <div class="doc-nombre">${label}</div>
             <div class="doc-estado ${esOk ? 'ok' : 'done'}">${esOk ? '✓ En expediente digital' : '✓ Firmado'}</div>
           </div>
-          ${firmado.url ? `<a href="${firmado.url}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>` : ''}`;
+          ${firmado.url ? `<a href="${resolverUrlDocClient(firmado.url)}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>` : ''}`;
       } else {
         const extraBtn = (prefijo === 'PZ')
           ? `<a href="#cardEstadoPZ" class="btn-ver-doc" style="margin-right:6px" onclick="document.getElementById('cardEstadoPZ')?.scrollIntoView({behavior:'smooth'}); return false;">&#128065; Ver estado</a>`
@@ -1038,7 +1049,7 @@
     return `<div class="doc-opc-card">
       <div class="doc-opc-label">&#128196; ${label}${esOk ? ' <span style="color:#27ae60;font-weight:400">&#10003; Validado</span>' : ''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <a href="${doc.url}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>
+        <a href="${resolverUrlDocClient(doc.url)}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>
         ${btnReempl}
       </div>
     </div>`;
@@ -1080,7 +1091,7 @@
       cont.innerHTML = `
         <div class="doc-opc-card">
           <div class="doc-opc-label">&#9989; ${nombreDoc} <span style="color:#27ae60;font-weight:400">&#10003; Firmada por el trabajador</span></div>
-          ${terminacionContrato.url ? `<a href="${terminacionContrato.url}" target="_blank" class="btn-ver-doc">&#128196; Ver documento firmado</a>` : ''}
+          ${terminacionContrato.url ? `<a href="${resolverUrlDocClient(terminacionContrato.url)}" target="_blank" class="btn-ver-doc">&#128196; Ver documento firmado</a>` : ''}
           ${avisoDesact}
         </div>`;
       return;

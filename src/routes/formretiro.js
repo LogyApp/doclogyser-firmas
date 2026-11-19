@@ -8,6 +8,7 @@ const {
   obtenerUrlFirmaReciente,
   subirFirma,
   subirDocumentoRetiro,
+  resolverUrlDocumento,
 } = require('../services/storage');
 const { notificarRetiro, notificarInicioLegalizacionSinRetirar, notificarDocumentoRetiroTrabajador } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
@@ -75,17 +76,18 @@ async function resolverFirmaUsuario(colaborador) {
 }
 
 async function registrarDocTrabajador({ regional, operacion, identificacion, fechaIngreso,
-  tipoDocumento, prefijo, doc, observaciones, usuario }) {
+  tipoDocumento, prefijo, doc, url, observaciones, usuario }) {
   const id    = uuidv4();
   const ahora = fechaHoraBogota();
+  const urlFinal = url || doc;
   await pool.execute(
     `INSERT INTO Maestro_docTrabajador
      (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
-      TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
+      TipoDocumento, Prefijo, Doc, Url, Observaciones, Visualizar, Solicitud,
       Justificacion_Solicitud, FechaRegistro, Usuario)
-     VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+     VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
     [id, regional || null, operacion || null, identificacion,
-     toDateStr(fechaIngreso), tipoDocumento, prefijo, doc, observaciones || null, ahora, usuario]
+     toDateStr(fechaIngreso), tipoDocumento, prefijo, doc, urlFinal, observaciones || null, ahora, usuario]
   );
   return id;
 }
@@ -145,7 +147,7 @@ router.post('/api/subir-carta-renuncia', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
         [url, fechaHoraBogota(), docRows[0].id]
       );
     } else {
@@ -371,7 +373,7 @@ router.post('/api/reemplazar-ed', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
         [url, ahora, docRows[0].id]
       );
     } else {
@@ -427,7 +429,7 @@ router.post('/api/reemplazar-carta-renuncia', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
         [url, ahora, docRows[0].id]
       );
     } else {
@@ -665,6 +667,16 @@ router.post('/api/confirmar-responsable', async (req, res) => {
 // Formulario de registro de retiro (Paso 1)
 router.get('/:idVinculacion', async (req, res) => {
   try {
+    const rawParam = decodeURIComponent(req.params.idVinculacion || '');
+    if (/\.(pdf|jpg|jpeg|png)$/i.test(rawParam)) {
+      const bucket = process.env.BUCKET_PDFS || 'talenthub_central';
+      const clean = rawParam.replace(/^\/+/, '');
+      const match = clean.match(/^(\d+)/);
+      const cc = match ? match[1] : '';
+      const target = (cc && !clean.startsWith(`${cc}/`)) ? `${cc}/${clean}` : clean;
+      return res.redirect(`https://storage.googleapis.com/${bucket}/${target}`);
+    }
+
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send(htmlError('Parámetro ?usuario requerido'));
 
@@ -714,8 +726,8 @@ router.get('/:idVinculacion', async (req, res) => {
       );
       const docsMap = {};
       docRows.forEach(r => { if (!docsMap[r.TipoDocumento]) docsMap[r.TipoDocumento] = r; });
-      if (docsMap[ID_DOC_CARTA_RENUNCIA])       docCR = { url: docsMap[ID_DOC_CARTA_RENUNCIA].Doc, validacion: docsMap[ID_DOC_CARTA_RENUNCIA]['Validación'] };
-      if (docsMap[ID_DOC_EVALUACION_DESEMPENO]) docED = { url: docsMap[ID_DOC_EVALUACION_DESEMPENO].Doc, validacion: docsMap[ID_DOC_EVALUACION_DESEMPENO]['Validación'] };
+      if (docsMap[ID_DOC_CARTA_RENUNCIA])       docCR = { url: resolverUrlDocumento(docsMap[ID_DOC_CARTA_RENUNCIA].Doc, docsMap[ID_DOC_CARTA_RENUNCIA].Url, identificacion), validacion: docsMap[ID_DOC_CARTA_RENUNCIA]['Validación'] };
+      if (docsMap[ID_DOC_EVALUACION_DESEMPENO]) docED = { url: resolverUrlDocumento(docsMap[ID_DOC_EVALUACION_DESEMPENO].Doc, docsMap[ID_DOC_EVALUACION_DESEMPENO].Url, identificacion), validacion: docsMap[ID_DOC_EVALUACION_DESEMPENO]['Validación'] };
     }
 
     const idVin      = vin['Id Vinculación'];
@@ -941,7 +953,7 @@ router.post('/:idVinculacion', async (req, res) => {
         );
         if (existeED.length) {
           await pool.execute(
-            `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+            `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
             [urlED, ahora, existeED[0].id]
           );
         } else {

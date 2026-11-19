@@ -1,6 +1,7 @@
 /* Facturación › Resumen
  * Valor de los servicios por Operación y Día, separado en Efectivo, Transferencia y Crédito, con el
- * interruptor Subtotal / Total de Servicios y Recibos. Filtros: año, quincena (con flechas) y regional;
+ * interruptor Subtotal / Total de Servicios y Recibos. Filtros: año, quincena (con flechas) y regional
+ * (consultan de nuevo), y operación y día (sobre lo cargado; día solo con quincena escogida);
  * la búsqueda filtra por operación. Alcance por rol: Maestro_Menu facturacion / Resumen (columna Acceso).
  * Interruptores "Por Área" y "Por Bodega" (apagados por defecto): solo aparecen si el usuario ve alguna
  * operación configurada (CONFIG.resumenDesglose, de Config_Parametros) y agregan esa columna.
@@ -10,14 +11,14 @@
 (function () {
   'use strict';
 
-  const COL_AREA = { k: 'area', l: 'Área', ancho: 140 };
-  const COL_BODEGA = { k: 'bodega', l: 'Bodega', ancho: 140 };
+  const COL_AREA = { k: 'area', l: 'Área', ancho: 120 };
+  const COL_BODEGA = { k: 'bodega', l: 'Bodega', ancho: 120 };
   const COLUMNAS_FIJAS = [
-    { k: 'dia', l: 'Día', ancho: 150 },
-    { k: 'efectivo', l: 'Efectivo', ancho: 150, num: true },
-    { k: 'transferencia', l: 'Transferencia', ancho: 150, num: true },
-    { k: 'credito', l: 'Crédito', ancho: 150, num: true },
-    { k: 'total', l: 'Total', ancho: 160, num: true },
+    { k: 'dia', l: 'Día', ancho: 140 },
+    { k: 'efectivo', l: 'Efectivo', ancho: 140, num: true },
+    { k: 'transferencia', l: 'Transferencia', ancho: 140, num: true },
+    { k: 'credito', l: 'Crédito', ancho: 140, num: true },
+    { k: 'total', l: 'Total', ancho: 150, num: true },
   ];
   const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -119,6 +120,14 @@
                 ${regionales.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}
               </select>
             </div>
+            <div class="filtro-field">
+              <label>Operación</label>
+              <select id="res-filtro-operacion" onchange="resFiltrar()"><option value="">Todas las operaciones</option></select>
+            </div>
+            <div class="filtro-field" id="res-campo-dia" style="display:none;">
+              <label>Día</label>
+              <select id="res-filtro-dia" onchange="resFiltrar()"><option value="">Todos los días</option></select>
+            </div>
           </div>
           <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
             <button type="button" class="btn-reset" onclick="resLimpiar()">↺ Limpiar filtros</button>
@@ -184,11 +193,33 @@
     $('res-quincena-sig').disabled = !!nombre && nombre === hoy.nombre && anio === hoy.anio;
   }
 
+  function pintarBadge() {
+    const badge = ['res-filtro-regional', 'res-filtro-quincena', 'res-filtro-operacion', 'res-filtro-dia'].filter(id => $(id).value).length
+      + ($('res-filtro-anio').value !== facQuincenaDeHoy().anio ? 1 : 0);
+    $('res-filtros-badge').textContent = badge;
+  }
+
+  // Opciones de Operación y Día según lo cargado (se conserva lo escogido). Día solo con quincena escogida.
+  function pintarOpcionesFiltro() {
+    const llenar = (id, valoresLista, todos, texto = (v) => v) => {
+      const sel = $(id);
+      const actual = sel.value;
+      const lista = [...new Set(valoresLista.concat(actual ? [actual] : []))];
+      sel.innerHTML = `<option value="">${todos}</option>` + lista
+        .map(v => `<option value="${esc(v)}" ${v === actual ? 'selected' : ''}>${esc(texto(v))}</option>`).join('');
+    };
+    llenar('res-filtro-operacion', st.filas.map(f => f.operacion).filter(Boolean).sort((a, b) => a.localeCompare(b, 'es')), 'Todas las operaciones');
+    const conQuincena = !!$('res-filtro-quincena').value;
+    $('res-campo-dia').style.display = conQuincena ? '' : 'none';
+    if (!conQuincena) $('res-filtro-dia').value = '';
+    llenar('res-filtro-dia', conQuincena ? st.filas.map(f => f.dia).filter(Boolean).sort() : [], 'Todos los días', nombreDia);
+  }
+
   async function cargar() {
     pintarNavQuincena();
-    const badge = ['res-filtro-regional'].filter(id => $(id).value).length
-      + ($('res-filtro-quincena').value ? 1 : 0) + ($('res-filtro-anio').value !== facQuincenaDeHoy().anio ? 1 : 0);
-    $('res-filtros-badge').textContent = badge;
+    // Otra quincena: el día escogido ya no aplica
+    if (st.quincenaCargada !== `${$('res-filtro-anio').value}|${$('res-filtro-quincena').value}`) $('res-filtro-dia').value = '';
+    st.quincenaCargada = `${$('res-filtro-anio').value}|${$('res-filtro-quincena').value}`;
     const params = new URLSearchParams({
       usuario: CONFIG.usuario,
       anio: $('res-filtro-anio').value,
@@ -208,15 +239,23 @@
     } catch (err) {
       if (carga !== st.carga) return;
       st.filas = [];
+      pintarOpcionesFiltro();
+      pintarBadge();
       mensaje(esc(err.message), 'var(--danger)');
       return;
     }
+    pintarOpcionesFiltro();
     pintar();
   }
 
   function pintar() {
+    pintarBadge();
     const q = norm($('res-filtro-q').value);
-    const lista = st.filas.filter(f => !q || norm(`${f.operacion} ${f.area || ''} ${f.bodega || ''}`).includes(q))
+    const operacion = $('res-filtro-operacion').value;
+    const dia = $('res-filtro-dia').value;
+    const lista = st.filas
+      .filter(f => (!operacion || f.operacion === operacion) && (!dia || f.dia === dia))
+      .filter(f => !q || norm(`${f.operacion} ${f.area || ''} ${f.bodega || ''}`).includes(q))
       .map(f => ({ ...f, ...valores(f) }));
     const cols = columnas();
     if (!cols.some(c => c.k === st.orden.col)) st.orden = { col: 'dia', dir: 'desc' };
@@ -281,9 +320,12 @@
     pintarEncabezado();
     cargar();
   };
+  window.resFiltrar = pintar;
   window.resLimpiar = () => {
     $('res-filtro-q').value = '';
     $('res-filtro-regional').value = '';
+    $('res-filtro-operacion').value = '';
+    $('res-filtro-dia').value = '';
     $('res-filtro-anio').value = facQuincenaDeHoy().anio;
     pintarQuincenas(facQuincenaDeHoy().nombre);
     cargar();

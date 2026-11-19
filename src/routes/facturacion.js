@@ -6632,6 +6632,54 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
   }
 });
 
+// ── POST /api/servicios/:idServicio/anular ──────────────────────────────────────
+// Botón Anular del detalle del servicio (antes, UPDATE manual): Estado Rojo, Valor Unitario 0,
+// Forma de Pago 0 (ANULADO), Edición Pendiente, Usuario = quien anula y Observaciones = la nota
+// que escriba (vacía: 'anular'). Roles: Config_Parametros facturacion / Recibos /
+// 'Roles que pueden anular servicios'.
+router.post('/api/servicios/:idServicio/anular', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const { idServicio } = req.params;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!(await obtenerPermisosRecibos(acceso.rol)).anularServicios) return res.status(403).json({ error: 'Su rol no tiene permiso para anular servicios.' });
+
+    const [existRows] = await pool.execute(
+      'SELECT IdRecibo, `Forma De Pago`, `Validado Transferencia` FROM Dynamic_Servicios WHERE IdServicio = ? LIMIT 1',
+      [idServicio]
+    );
+    if (!existRows.length) return res.status(404).json({ error: 'Servicio no encontrado' });
+    const existente = existRows[0];
+    if (existente['Forma De Pago'] !== null && Number(existente['Forma De Pago']) === 0) {
+      return res.status(400).json({ error: 'Este servicio ya está anulado.' });
+    }
+    if (String(existente['Validado Transferencia'] || '').toUpperCase() === 'SI') {
+      return res.status(400).json({ error: 'La transferencia de este servicio ya fue validada por Contabilidad: no se puede anular.' });
+    }
+
+    const contexto = await obtenerContextoRecibo(existente.IdRecibo);
+    if (contexto && !acceso.sinFiltro && acceso.operacionesFiltro && !acceso.operacionesFiltro.includes(contexto.operacion)) {
+      return res.status(403).json({ error: 'No autorizado para anular este servicio' });
+    }
+
+    const observaciones = String((req.body && req.body.observaciones) || '').trim().slice(0, 512) || 'anular';
+    await pool.execute(
+      `UPDATE Dynamic_Servicios SET
+        Estado = 'Red', \`Valor Unitario\` = 0, \`Forma De Pago\` = 0, Usuario = ?, Observaciones = ?, \`Edición\` = 'Pendiente'
+      WHERE IdServicio = ?`,
+      [String(usuario).slice(0, 50), observaciones, idServicio]
+    );
+    await recalcularRetencionesRecibo(existente.IdRecibo);
+    res.json({ ok: true, idServicio });
+  } catch (err) {
+    console.error('[facturacion] POST /api/servicios/:idServicio/anular:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── DELETE /api/servicios/:idServicio (solo Rol Sistema) ────────────────────────
 router.delete('/api/servicios/:idServicio', async (req, res) => {
   try {

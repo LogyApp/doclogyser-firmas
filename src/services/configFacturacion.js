@@ -103,7 +103,8 @@ const PR = {
   APLICAR_RETENCIONES: 'Roles que pueden aplicar retenciones en el formulario del recibo',
   ELIMINAR:       'Roles que pueden eliminar recibos',
   ELIMINAR_SERV:  'Roles que pueden eliminar servicios',
-  REASIGNAR:      'Roles que pueden reasignar servicios a otro recibo',
+  ANULAR_SERV:    'Roles que pueden anular servicios',
+  REASIGNAR:     'Roles que pueden reasignar servicios a otro recibo',
   CAMBIAR_CLIENTE_FACTURAR: 'Roles que pueden cambiar el Cliente a Facturar de un recibo con servicios',
   PERIODO_BLOQUEADO: 'Roles que pueden registrar servicios en periodos bloqueados',
   NITS_RETENCION: 'NITs con retención obligatoria de Fuente e IVA',
@@ -124,7 +125,8 @@ const DEFAULTS_RECIBOS = {
   [PR.APLICAR_RETENCIONES]: 'Facturación, Sistema',
   [PR.ELIMINAR]:       'Sistema',
   [PR.ELIMINAR_SERV]:  'Sistema',
-  [PR.REASIGNAR]:      'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
+  [PR.ANULAR_SERV]:    '',
+  [PR.REASIGNAR]:     'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [PR.CAMBIAR_CLIENTE_FACTURAR]: 'Facturación, Sistema',
   [PR.PERIODO_BLOQUEADO]: '',
   [PR.NITS_RETENCION]: '860350940, 890204199',
@@ -169,6 +171,7 @@ async function obtenerPermisosRecibos(rol) {
     aplicarRetenciones:   tiene(PR.APLICAR_RETENCIONES), // sección Retenciones del formulario del recibo
     eliminarRecibos:      tiene(PR.ELIMINAR),
     eliminarServicios:    tiene(PR.ELIMINAR_SERV),
+    anularServicios:      tiene(PR.ANULAR_SERV), // botón Anular del detalle del servicio
     reasignarServicios:   tiene(PR.REASIGNAR),
     cambiarClienteAFacturar:     tiene(PR.CAMBIAR_CLIENTE_FACTURAR), // recibo CREDITO que ya tiene servicios
     registrarEnPeriodoBloqueado: tiene(PR.PERIODO_BLOQUEADO),        // ignora Bloqueo_Nomina (Facturación)
