@@ -12,6 +12,11 @@ const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
 const { obtenerPermisosActivos } = require('../services/configActivos');
 const { programarRellenoVinculacion } = require('../services/rellenoAsistencia');
 const {
+  obtenerNotificacionesUsuario,
+  marcarNotificacionesLeidas,
+  marcarTodasLeidas
+} = require('../services/notificacionesService');
+const {
   obtenerTipoDocumentoConfig,
   obtenerVinculacionReciente,
   registrarDocTrabajador,
@@ -2760,6 +2765,56 @@ router.get('/api/aspirantes/:id', async (req, res) => {
   } catch (err) {
     console.error('[talenthub] GET /api/aspirantes/:id:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 5.3 NOTIFICACIONES INTERNAS DE ASPIRANTES (Campanita estilo SST)
+// ══════════════════════════════════════════════════════════════════════════════
+
+router.get('/api/notificaciones-aspirantes', async (req, res) => {
+  try {
+    const usuarioId = req.query.usuario || (req.user && req.user.id);
+    const limit = req.query.limit || 50;
+    const data = await obtenerNotificacionesUsuario(pool, {
+      usuarioId,
+      modulo: 'aspirantes',
+      limit
+    });
+    res.json(data);
+  } catch (err) {
+    console.error('[talenthub] GET /api/notificaciones-aspirantes:', err);
+    res.status(500).json({ error: err.message, notificaciones: [], totalNoLeidos: 0 });
+  }
+});
+
+router.post('/api/notificaciones-aspirantes/marcar-leidas', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    const usuarioId = usuario || (req.user && req.user.id);
+    const result = await marcarNotificacionesLeidas(pool, {
+      usuarioId,
+      ids
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('[talenthub] POST /api/notificaciones-aspirantes/marcar-leidas:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/notificaciones-aspirantes/marcar-todas-leidas', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    const usuarioId = usuario || (req.user && req.user.id);
+    const result = await marcarTodasLeidas(pool, {
+      usuarioId,
+      modulo: 'aspirantes'
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('[talenthub] POST /api/notificaciones-aspirantes/marcar-todas-leidas:', err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

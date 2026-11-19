@@ -17,6 +17,7 @@ const {
 const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante } = require('../services/docsSeleccion');
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
+const { crearNotificacionCargaDocumentosAspirante } = require('../services/notificacionesService');
 const firmaUnica = require('../services/firmaUnica');
 const { programarRelleno } = require('../services/rellenoAsistencia');
 const { generarHtmlFirmaUnica } = require('../services/vistaFirmaUnica');
@@ -1274,6 +1275,21 @@ router.post('/api/confirm-doc', async (req, res) => {
       [id_aspirante, idDoc, destPath]
     );
 
+    // Notificación interna en campanita de Aspirantes
+    setImmediate(async () => {
+      try {
+        const [cdRows] = await pool.execute('SELECT Documento FROM Config_Doc_Trabajador WHERE Id = ?', [idDoc]);
+        const docName = cdRows.length ? cdRows[0].Documento : '';
+        await crearNotificacionCargaDocumentosAspirante(pool, {
+          id_aspirante,
+          cantidadDocs: 1,
+          nombresDocs: docName
+        });
+      } catch (e) {
+        console.error('[seleccion] Error creando notificación confirm-doc:', e);
+      }
+    });
+
     res.json({ ok: true });
 
   } catch (err) {
@@ -1353,6 +1369,25 @@ router.post('/upload-multiple', upload.any(), async (req, res) => {
       return guardarArchivo(id_aspirante, id_config_doc, file);
     }));
     
+    // Notificación interna en campanita de Aspirantes
+    setImmediate(async () => {
+      try {
+        const docIds = archivos.map(f => Number(f.fieldname.replace('file_', ''))).filter(n => !isNaN(n));
+        let nombresDocs = '';
+        if (docIds.length) {
+          const [cdRows] = await pool.query(`SELECT Documento FROM Config_Doc_Trabajador WHERE Id IN (${docIds.map(() => '?').join(',')})`, docIds);
+          nombresDocs = cdRows.map(r => r.Documento).slice(0, 3).join(', ') + (cdRows.length > 3 ? '...' : '');
+        }
+        await crearNotificacionCargaDocumentosAspirante(pool, {
+          id_aspirante,
+          cantidadDocs: archivos.length,
+          nombresDocs
+        });
+      } catch (e) {
+        console.error('[seleccion] Error creando notificación upload-multiple:', e);
+      }
+    });
+
     res.redirect(`${redirectPath}&msg=upload_success`);
   } catch (error) {
     console.error("Error en Carga Múltiple:", error);

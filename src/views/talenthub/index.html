@@ -907,6 +907,231 @@
     .status-badge.contratado { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success); }
     .status-badge.bloqueado { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger); }
 
+
+    /* ── Campanita y Dropdown de Notificaciones Aspirantes (Estilo SST) ── */
+    .btn-notif-bell {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm, 8px);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    .btn-notif-bell:hover {
+      background: var(--bg);
+      border-color: var(--border-strong, #cbd5e1);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .btn-notif-bell.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .btn-notif-bell svg {
+      width: 19px;
+      height: 19px;
+      transition: transform 0.2s ease;
+    }
+    .btn-notif-bell:hover svg {
+      transform: scale(1.08) rotate(5deg);
+    }
+    .notif-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 9px;
+      background: var(--danger, #ef4444);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+      border: 2px solid var(--card-bg);
+      pointer-events: none;
+      animation: notifBadgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes notifBadgePop {
+      0% { transform: scale(0); opacity: 0; }
+      70% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .notif-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 370px;
+      max-width: calc(100vw - 32px);
+      background: var(--card-bg);
+      border-radius: var(--radius, 12px);
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.18), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
+      z-index: 1080;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: notifDropdownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes notifDropdownFade {
+      0% { opacity: 0; transform: translateY(-8px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .notif-dropdown-header {
+      padding: 10px 14px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .notif-header-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+    .notif-header-pill {
+      background: var(--accent-soft);
+      color: var(--accent-dark, var(--accent));
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+    .btn-mark-all-read {
+      background: transparent;
+      border: none;
+      color: var(--info, #3b82f6);
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 5px;
+      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .btn-mark-all-read:hover {
+      background: var(--info-soft, rgba(59, 130, 246, 0.1));
+    }
+    .notif-dropdown-body {
+      max-height: 400px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+    .notif-dropdown-body::-webkit-scrollbar { width: 5px; }
+    .notif-dropdown-body::-webkit-scrollbar-thumb {
+      background: var(--border-strong, #cbd5e1);
+      border-radius: 3px;
+    }
+    .notif-item {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.2s ease, border-left-color 0.2s ease;
+      border-left: 3px solid transparent;
+    }
+    .notif-item:hover {
+      background: var(--bg);
+    }
+    .notif-item.notif-unread {
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+    }
+    .notif-item.notif-read {
+      background: var(--card-bg);
+      border-left-color: transparent;
+    }
+    .notif-unread-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      margin-top: 5px;
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .notif-item-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .notif-item-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .notif-worker-name {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .notif-worker-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .notif-item-msg {
+      font-size: 0.76rem;
+      color: var(--text);
+      line-height: 1.35;
+      margin: 0;
+    }
+    .notif-item-time {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .notif-tag {
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      line-height: 1.3;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    .notif-tag-cargado {
+      background: var(--info-soft, rgba(59, 130, 246, 0.1));
+      color: var(--info, #3b82f6);
+      border: 1px solid var(--info-soft, rgba(59, 130, 246, 0.2));
+    }
+    .notif-tag-firmado {
+      background: var(--success-soft, rgba(34, 197, 94, 0.1));
+      color: var(--success, #16a34a);
+      border: 1px solid var(--success-soft, rgba(34, 197, 94, 0.2));
+    }
+
     /* Estilos Pestaña Aspirantes: Pills y Agrupamiento */
     .tab-pill {
       display: inline-flex;
@@ -2160,6 +2385,32 @@
             <span id="lblTotalRegistrosAsp" style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;"></span>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
+            <!-- Campanita Notificaciones Aspirantes (Estilo SST) -->
+            <div style="position: relative;">
+              <button type="button" class="btn-notif-bell" id="btn-notif-bell-asp" onclick="toggleNotificacionesDropdownAsp()" title="Notificaciones de Aspirantes" aria-label="Notificaciones de Aspirantes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <span class="notif-badge" id="notif-badge-asp" style="display: none;">0</span>
+              </button>
+
+              <!-- Menú Desplegable Popover -->
+              <div class="notif-dropdown" id="notif-dropdown-asp" style="display: none;">
+                <div class="notif-dropdown-header">
+                  <div class="notif-header-title">
+                    <span>🔔 Notificaciones</span>
+                    <span class="notif-header-pill" id="notif-unread-count-pill-asp">0 no leídas</span>
+                  </div>
+                  <button type="button" class="btn-mark-all-read" onclick="marcarTodasNotificacionesLeidasAsp()">
+                    ✓ Marcar leídas
+                  </button>
+                </div>
+                <div class="notif-dropdown-body" id="notif-list-asp">
+                  <!-- Items renderizados dinámicamente -->
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3939,6 +4190,10 @@
       // para no demorar las demás pestañas (Requisiciones los espera en inicializarRequisiciones)
       cargarCatalogosRequisiciones();
 
+      // Notificaciones internas de Aspirantes (Campanita)
+      cargarNotificacionesAsp();
+      setInterval(cargarNotificacionesAsp, 60000);
+
       // 2. Activar pestaña configurada
       switchTab(CONFIG.activeTab || 'Requisiciones');
 
@@ -4086,6 +4341,7 @@
         li.innerHTML = `
           <span class="nav-item-icon">${meta.icon}</span>
           <span>${meta.nav || sec}</span>
+          ${sec === 'Aspirantes' ? '<span class="notif-badge" id="nav-notif-badge-asp" style="display:none; position:static; margin-left:auto;">0</span>' : ''}
         `;
         li.onclick = () => {
           switchTab(sec);
@@ -4099,6 +4355,9 @@
 
     function switchTab(tabName) {
       CONFIG.activeTab = tabName;
+      if (tabName === 'Aspirantes') {
+        cargarNotificacionesAsp();
+      }
 
       // Actualizar título en header móvil
       actualizarTituloMovilTalenthub(tabName);
@@ -6965,6 +7224,210 @@
     let _aspGruposColapsados = {};
     let _aspActualDetalle = null;
     let _aspSubTabActiva = 'Datos';
+    // ═════ SISTEMA DE NOTIFICACIONES DE ASPIRANTES (CAMPANITA ESTILO SST) ═════
+    let _notifAspState = {
+      items: [],
+      unreadCount: 0,
+      isOpen: false
+    };
+
+    function formatearFechaNotifAsp(fechaStr) {
+      if (!fechaStr) return '';
+      const parts = String(fechaStr).trim().split(/[- :]/);
+      if (parts.length >= 6) {
+        const d = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Hace un momento';
+        if (diffMins < 60) return `Hace ${diffMins} min`;
+        const diffHoras = Math.floor(diffMins / 60);
+        if (diffHoras < 24) return `Hace ${diffHoras} h`;
+        const diffDias = Math.floor(diffHoras / 24);
+        if (diffDias === 1) return 'Ayer';
+        if (diffDias < 7) return `Hace ${diffDias} días`;
+        return `${parts[2]}/${parts[1]}/${parts[0]} ${parts[3]}:${parts[4]}`;
+      }
+      return fechaStr;
+    }
+
+    async function cargarNotificacionesAsp() {
+      if (!CONFIG || !CONFIG.usuarioId) return;
+      try {
+        const res = await fetch(`/talenthub/api/notificaciones-aspirantes?usuario=${encodeURIComponent(CONFIG.usuarioId)}&limit=50`);
+        if (!res.ok) return;
+        const data = await res.json();
+        _notifAspState.items = data.notificaciones || [];
+        _notifAspState.unreadCount = parseInt(data.totalNoLeidos, 10) || 0;
+        actualizarBadgeNotificacionesAsp();
+        if (_notifAspState.isOpen) {
+          renderizarNotificacionesDropdownAsp();
+        }
+      } catch (err) {
+        console.error('[TalentHub] Error cargando notificaciones de aspirantes:', err);
+      }
+    }
+
+    function actualizarBadgeNotificacionesAsp() {
+      const badge = document.getElementById('notif-badge-asp');
+      const navBadge = document.getElementById('nav-notif-badge-asp');
+      const pill = document.getElementById('notif-unread-count-pill-asp');
+      const count = _notifAspState.unreadCount || 0;
+      const countText = count > 99 ? '99+' : String(count);
+
+      if (badge) {
+        if (count > 0) {
+          badge.textContent = countText;
+          badge.style.display = 'inline-flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+      if (navBadge) {
+        if (count > 0) {
+          navBadge.textContent = countText;
+          navBadge.style.display = 'inline-flex';
+        } else {
+          navBadge.style.display = 'none';
+        }
+      }
+      if (pill) {
+        pill.textContent = `${count} no leída${count === 1 ? '' : 's'}`;
+      }
+    }
+
+    function toggleNotificacionesDropdownAsp() {
+      const dropdown = document.getElementById('notif-dropdown-asp');
+      const btn = document.getElementById('btn-notif-bell-asp');
+      if (!dropdown) return;
+      if (_notifAspState.isOpen) {
+        cerrarNotificacionesDropdownAsp();
+      } else {
+        _notifAspState.isOpen = true;
+        if (btn) btn.classList.add('active');
+        dropdown.style.display = 'flex';
+        renderizarNotificacionesDropdownAsp();
+        cargarNotificacionesAsp();
+      }
+    }
+
+    function cerrarNotificacionesDropdownAsp() {
+      const dropdown = document.getElementById('notif-dropdown-asp');
+      const btn = document.getElementById('btn-notif-bell-asp');
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.classList.remove('active');
+      _notifAspState.isOpen = false;
+    }
+
+    function renderizarNotificacionesDropdownAsp() {
+      const container = document.getElementById('notif-list-asp');
+      if (!container) return;
+
+      if (!_notifAspState.items.length) {
+        container.innerHTML = `
+          <div style="padding: 32px 16px; text-align: center; color: var(--text-muted); font-size: 0.84rem;">
+            <div style="font-size: 1.8rem; margin-bottom: 6px;">🔔</div>
+            <p style="font-weight: 600;">No tienes notificaciones de aspirantes</p>
+            <p style="font-size: 0.76rem; margin-top: 4px;">Te avisaremos cuando tus aspirantes asignados suban documentos o completen firmas.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = _notifAspState.items.map(item => {
+        const isUnread = !item.leido;
+        const icon = item.subtipo === 'firma_digital' ? '✍️' : '📄';
+        const tagClass = item.subtipo === 'firma_digital' ? 'notif-tag-firmado' : 'notif-tag-cargado';
+        const tagText = item.subtipo === 'firma_digital' ? 'Firma Digital' : 'Documentos';
+        const tiempo = formatearFechaNotifAsp(item.fecha_creacion);
+
+        return `
+          <div class="notif-item ${isUnread ? 'notif-unread' : 'notif-read'}"
+               onclick="onClickNotificacionAspItem(${item.id}, '${esc(item.referencia_id || '')}', '${esc(item.identificacion_trabajador || '')}')">
+            <div class="notif-unread-dot" style="${isUnread ? '' : 'display:none;'}"></div>
+            <div class="notif-item-content">
+              <div class="notif-item-top">
+                <span class="notif-worker-name" title="${esc(item.nombre_trabajador || '')}">
+                  ${icon} ${esc(item.nombre_trabajador || 'Aspirante')}
+                </span>
+                <span class="notif-tag ${tagClass}">${tagText}</span>
+              </div>
+              <div class="notif-worker-sub">${esc(item.identificacion_trabajador || '')}${item.operacion ? ` · ${esc(item.operacion)}` : ''}</div>
+              <p class="notif-item-msg">${esc(item.mensaje || '')}</p>
+              <div class="notif-item-time">${tiempo}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function onClickNotificacionAspItem(notifId, idAspirante, cedula) {
+      try {
+        // 1. Marcar como leída en backend
+        fetch('/talenthub/api/notificaciones-aspirantes/marcar-leidas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, ids: [notifId] })
+        }).catch(e => console.error(e));
+
+        // 2. Actualizar estado local
+        const found = _notifAspState.items.find(x => x.id === notifId);
+        if (found && !found.leido) {
+          found.leido = 1;
+          _notifAspState.unreadCount = Math.max(0, _notifAspState.unreadCount - 1);
+          actualizarBadgeNotificacionesAsp();
+        }
+
+        cerrarNotificacionesDropdownAsp();
+
+        // 3. Abrir ficha del aspirante directamente en la pestaña Documentos
+        if (idAspirante && typeof abrirFichaAspirante === 'function') {
+          abrirFichaAspirante(idAspirante, 'Documentos');
+        } else if (cedula) {
+          const qInput = document.getElementById('filtroAspQ');
+          if (qInput) {
+            qInput.value = cedula;
+            aplicarFiltrosAspirantes();
+          }
+        }
+      } catch (err) {
+        console.error('[TalentHub] Error al abrir notificación de aspirante:', err);
+      }
+    }
+
+    async function marcarTodasNotificacionesLeidasAsp() {
+      if (!_notifAspState.unreadCount) {
+        if (typeof showToast === 'function') showToast('No tienes notificaciones pendientes', 'info');
+        return;
+      }
+
+      try {
+        const res = await fetch('/talenthub/api/notificaciones-aspirantes/marcar-todas-leidas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        if (res.ok) {
+          _notifAspState.items.forEach(x => { x.leido = 1; });
+          _notifAspState.unreadCount = 0;
+          actualizarBadgeNotificacionesAsp();
+          renderizarNotificacionesDropdownAsp();
+          if (typeof showToast === 'function') showToast('Todas las notificaciones marcadas como leídas', 'success');
+        }
+      } catch (err) {
+        console.error('[TalentHub] Error marcando todas como leídas:', err);
+      }
+    }
+
+    // Cerrar dropdown al hacer click fuera
+    document.addEventListener('click', (ev) => {
+      const dropdown = document.getElementById('notif-dropdown-asp');
+      const btn = document.getElementById('btn-notif-bell-asp');
+      if (!dropdown || !_notifAspState.isOpen) return;
+      if (!dropdown.contains(ev.target) && !btn.contains(ev.target)) {
+        cerrarNotificacionesDropdownAsp();
+      }
+    });
+
 
     async function inicializarAspirantes() {
       await cargarAspirantes();

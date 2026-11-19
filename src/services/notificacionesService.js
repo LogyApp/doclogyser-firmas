@@ -371,11 +371,206 @@ async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, us
   }
 }
 
+/**
+ * Obtiene los destinatarios para notificaciones de Aspirantes.
+ * Prioriza al Responsable de Selección asignado a la requisición (Maestro_Usuarios).
+ * Si no hay responsable asignado o no se encuentra, notifica a los roles de Selección / Sistema.
+ */
+async function obtenerDestinatariosAspirante(pool, responsableNombre, operacion, regional) {
+  try {
+    const destinatarios = new Set();
+
+    if (responsableNombre && String(responsableNombre).trim()) {
+      const [uRows] = await pool.execute(
+        'SELECT ID FROM Maestro_Usuarios WHERE TRIM(Nombre) = TRIM(?) LIMIT 1',
+        [responsableNombre.trim()]
+      );
+      if (uRows.length && uRows[0].ID) {
+        destinatarios.add(uRows[0].ID);
+      }
+    }
+
+    // Si no tiene responsable individual asignado o no se encontró, notificar a roles de Selección
+    if (destinatarios.size === 0) {
+      const [users] = await pool.execute(
+        "SELECT ID, Rol, `Operación`, Regional FROM Maestro_Usuarios WHERE Rol IN ('Selección', 'Seleccion', 'Selección Centro', 'Seleccion Centro', 'Sistema')"
+      );
+      for (const u of users) {
+        if (u.Rol === 'Sistema') {
+          destinatarios.add(u.ID);
+          continue;
+        }
+        if (u['Operación'] && operacion && u['Operación'].toLowerCase().trim() === operacion.toLowerCase().trim()) {
+          destinatarios.add(u.ID);
+          continue;
+        }
+        if (u.Regional && regional && u.Regional.toLowerCase().trim() === regional.toLowerCase().trim()) {
+          destinatarios.add(u.ID);
+          continue;
+        }
+        destinatarios.add(u.ID);
+      }
+    }
+
+    return [...destinatarios];
+  } catch (err) {
+    console.error('[notificacionesService] Error obteniendo destinatarios Aspirante:', err);
+    return ['Sistema'];
+  }
+}
+
+/**
+ * Crea las notificaciones internas cuando un aspirante sube documentos de soporte en su portal.
+ */
+async function crearNotificacionCargaDocumentosAspirante(pool, { id_aspirante, cantidadDocs = 1, nombresDocs = '' }) {
+  try {
+    if (!id_aspirante) return;
+
+    const [rows] = await pool.execute(
+      `SELECT a.identificacion, a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido,
+              r.\`Responsable de Selección\` AS responsable, r.\`Operación\` AS operacion, r.Regional AS regional,
+              r.Requisición AS req_codigo, r.\`Cargo Requerido\` AS cargo
+       FROM Dynamic_hv_aspirante a
+       LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+       WHERE a.id_aspirante = ? LIMIT 1`,
+      [id_aspirante]
+    );
+
+    if (!rows.length) return;
+    const a = rows[0];
+    const nombreCompleto = [a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido]
+      .filter(n => n && String(n).trim()).join(' ').trim() || a.identificacion || 'Aspirante';
+
+    const cleanNombre = nombreCompleto.includes(' ** ') ? nombreCompleto.split(' ** ')[1].trim() : nombreCompleto.trim();
+    const operacion = a.operacion || null;
+    const regional = a.regional || null;
+    const cant = parseInt(cantidadDocs, 10) || 1;
+    const titulo = cant > 1 ? `📄 ${cant} Documentos Cargados` : `📄 Documento Cargado`;
+    const docInfo = nombresDocs ? ` (${nombresDocs})` : '';
+    const reqInfo = a.req_codigo ? ` (Req. ${a.req_codigo})` : '';
+    const mensaje = `${cleanNombre} cargó ${cant > 1 ? `${cant} documentos de soporte` : 'un documento de soporte'}${docInfo}${reqInfo}.`;
+
+    const recipients = await obtenerDestinatariosAspirante(pool, a.responsable, operacion, regional);
+
+    for (const userId of recipients) {
+      // Si ya hay una notificación sin leer para este aspirante y usuario creada en los últimos 2 minutos, actualizarla para no saturar
+      const [recent] = await pool.execute(
+        `SELECT id FROM Maestro_notificaciones 
+         WHERE usuario_id = ? AND modulo = 'aspirantes' AND subtipo = 'carga_documentos' 
+           AND referencia_id = ? AND leido = 0 AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+         ORDER BY id DESC LIMIT 1`,
+        [userId, String(id_aspirante)]
+      );
+
+      if (recent.length > 0) {
+        await pool.execute(
+          `UPDATE Maestro_notificaciones 
+           SET titulo = ?, mensaje = ?, fecha_creacion = NOW()
+           WHERE id = ?`,
+          [titulo, mensaje, recent[0].id]
+        );
+      } else {
+        await pool.execute(
+          `INSERT INTO Maestro_notificaciones
+           (usuario_id, modulo, subtipo, referencia_id, identificacion_trabajador, nombre_trabajador,
+            operacion, regional, titulo, mensaje, resultado, puntaje, url_doc, leido, fecha_creacion)
+           VALUES (?, 'aspirantes', 'carga_documentos', ?, ?, ?, ?, ?, ?, ?, 'CARGADO', NULL, ?, 0, NOW())`,
+          [
+            userId,
+            String(id_aspirante),
+            a.identificacion,
+            cleanNombre,
+            operacion,
+            regional,
+            titulo,
+            mensaje,
+            `/seleccion/admin/${id_aspirante}`
+          ]
+        );
+      }
+    }
+
+    console.log(`[notificacionesService] Creada(s) ${recipients.length} notificación(es) de carga de documentos para aspirante ${id_aspirante}`);
+  } catch (err) {
+    console.error('[notificacionesService] Error creando notificación de carga de documentos aspirante:', err);
+  }
+}
+
+/**
+ * Crea la notificación interna cuando un aspirante completa la firma digital de sus documentos.
+ */
+async function crearNotificacionFirmasCompletasAspirante(pool, { id_aspirante }) {
+  try {
+    if (!id_aspirante) return;
+
+    const [rows] = await pool.execute(
+      `SELECT a.identificacion, a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido,
+              r.\`Responsable de Selección\` AS responsable, r.\`Operación\` AS operacion, r.Regional AS regional,
+              r.Requisición AS req_codigo, r.\`Cargo Requerido\` AS cargo
+       FROM Dynamic_hv_aspirante a
+       LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+       WHERE a.id_aspirante = ? LIMIT 1`,
+      [id_aspirante]
+    );
+
+    if (!rows.length) return;
+    const a = rows[0];
+    const nombreCompleto = [a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido]
+      .filter(n => n && String(n).trim()).join(' ').trim() || a.identificacion || 'Aspirante';
+
+    const cleanNombre = nombreCompleto.includes(' ** ') ? nombreCompleto.split(' ** ')[1].trim() : nombreCompleto.trim();
+    const operacion = a.operacion || null;
+    const regional = a.regional || null;
+    const reqInfo = a.req_codigo ? ` (Req. ${a.req_codigo})` : '';
+    const titulo = `✍️ Firmas Digitales Completadas`;
+    const mensaje = `${cleanNombre} completó la firma digital de todos sus documentos de vinculación${reqInfo}.`;
+
+    const recipients = await obtenerDestinatariosAspirante(pool, a.responsable, operacion, regional);
+
+    for (const userId of recipients) {
+      // Evitar duplicado si ya existe una no leída creada en la última hora
+      const [exists] = await pool.execute(
+        `SELECT id FROM Maestro_notificaciones 
+         WHERE usuario_id = ? AND modulo = 'aspirantes' AND subtipo = 'firma_digital' 
+           AND referencia_id = ? AND leido = 0 AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+         LIMIT 1`,
+        [userId, String(id_aspirante)]
+      );
+
+      if (exists.length > 0) continue;
+
+      await pool.execute(
+        `INSERT INTO Maestro_notificaciones
+         (usuario_id, modulo, subtipo, referencia_id, identificacion_trabajador, nombre_trabajador,
+          operacion, regional, titulo, mensaje, resultado, puntaje, url_doc, leido, fecha_creacion)
+         VALUES (?, 'aspirantes', 'firma_digital', ?, ?, ?, ?, ?, ?, ?, 'FIRMADO', NULL, ?, 0, NOW())`,
+        [
+          userId,
+          String(id_aspirante),
+          a.identificacion,
+          cleanNombre,
+          operacion,
+          regional,
+          titulo,
+          mensaje,
+          `/seleccion/admin/${id_aspirante}`
+        ]
+      );
+    }
+
+    console.log(`[notificacionesService] Creada(s) ${recipients.length} notificación(es) de firmas completas para aspirante ${id_aspirante}`);
+  } catch (err) {
+    console.error('[notificacionesService] Error creando notificación de firmas completas aspirante:', err);
+  }
+}
+
 module.exports = {
   crearNotificacionEvaluacionSST,
   crearNotificacionCapacitacionSST,
   crearNotificacionPruebaConsumoSST,
   crearNotificacionCompromisoSST,
+  crearNotificacionCargaDocumentosAspirante,
+  crearNotificacionFirmasCompletasAspirante,
   obtenerNotificacionesUsuario,
   marcarNotificacionesLeidas,
   marcarTodasLeidas

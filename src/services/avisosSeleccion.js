@@ -108,6 +108,21 @@ async function avisarFaseFirmas({ idAspirante, usuario, baseUrl }) {
 
 // Cuando el aspirante completa todas las firmas: correo a Selección.
 async function avisarFirmasCompletas({ idAspirante }) {
+  // Notificación interna en campanita de Aspirantes (Maestro_notificaciones)
+  setImmediate(async () => {
+    try {
+      const a = await datosAspirante(idAspirante);
+      if (a) {
+        const estado = await estadoFirmasAspirante(idAspirante, a.operacion);
+        if (estado.total && !estado.faltantes.length) {
+          const { crearNotificacionFirmasCompletasAspirante } = require('./notificacionesService');
+          await crearNotificacionFirmasCompletasAspirante(pool, { id_aspirante: idAspirante });
+        }
+      }
+    } catch (eNotif) {
+      console.error('[avisosSeleccion] Error en notificación interna de firmas completas:', eNotif.message);
+    }
+  });
   try {
     const params = await avisoActivo(P.AVISO_FIRMAS);
     if (!params) return false;
