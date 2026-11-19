@@ -89,6 +89,19 @@ function esOperacionAdministracion(operacion) {
   return String(operacion || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'administracion';
 }
 
+// Subpesta\u00f1a Biom\u00e9trico \u203a Direcciones y Coordenadas: roles de la Secci\u00f3n 'Biometrico_Coordenadas'
+// en Maestro_Menu (migraciones/2026-11-18_nomina_menu_biometrico_coordenadas.sql). Si esa secci\u00f3n
+// a\u00fan no existe en la tabla, regla anterior: acceso a Biom\u00e9trico y Operaci\u00f3n Administraci\u00f3n.
+const SECCION_COORDENADAS = 'Biometrico_Coordenadas';
+async function puedeGestionarCoordenadas(usuarioId) {
+  const acceso = await computarAccesoNomina(usuarioId, SECCION_COORDENADAS);
+  if (acceso) return acceso;
+  const [filas] = await pool.execute('SELECT 1 FROM Maestro_Menu WHERE Modulo = ? AND Seccion = ? LIMIT 1', ['nomina', SECCION_COORDENADAS]);
+  if (filas.length) return null;
+  const accesoBio = await computarAccesoNomina(usuarioId, 'Biometrico');
+  return accesoBio && esOperacionAdministracion(accesoBio.operacion) ? accesoBio : null;
+}
+
 function normalizarNombreColumna(nombre) {
   return String(nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -288,8 +301,8 @@ router.get('/', async (req, res) => {
     const permisosActivos = accesoActivo ? await obtenerPermisosActivos(accesoActivo.rol) : null;
     const accesoBloqueo = await computarAccesoNomina(usuario, 'Bloqueo_datos');
     let accesoBiometrico = await computarAccesoNomina(usuario, 'Biometrico');
-    // Solo con Sección 'Biometrico' en Maestro_Menu (no el respaldo por rol) y Operación Administración
-    const puedeEditarCoordenadas = !!accesoBiometrico && esOperacionAdministracion(accesoBiometrico.operacion);
+    // Sección 'Biometrico_Coordenadas' en Maestro_Menu (ver puedeGestionarCoordenadas)
+    const puedeEditarCoordenadas = !!accesoBiometrico && !!(await puedeGestionarCoordenadas(usuario));
 
     // Respaldo de roles autorizados para biométrico si no está configurado en DB
     if (!accesoBiometrico) {
@@ -1656,8 +1669,8 @@ async function verificarAccesoCoordenadas(req, res, next) {
   try {
     const usuarioId = req.query.usuario || req.body?.usuario;
     if (!usuarioId) return res.status(400).json({ error: 'Parámetro usuario requerido' });
-    const acceso = await computarAccesoNomina(usuarioId, 'Biometrico');
-    if (!acceso || !esOperacionAdministracion(acceso.operacion)) {
+    const acceso = await puedeGestionarCoordenadas(usuarioId);
+    if (!acceso) {
       return res.status(403).json({ error: 'No autorizado para gestionar coordenadas de operaciones' });
     }
     req.usuarioInfo = { usuarioId: acceso.usuarioId, usuarioNombre: acceso.usuarioNombre };
