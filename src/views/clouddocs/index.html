@@ -467,32 +467,115 @@
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
     }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; min-width: 800px; table-layout: fixed; }
-    #main-table { border-collapse: separate; border-spacing: 0; }
-    #main-table th {
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .88rem; table-layout: fixed; }
+    #main-table, #logysign-table, #modal-worker-table, #modal-doc-table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      width: 100%;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-elevated);
       color: var(--text);
       font-weight: 700;
+      padding: 10px 14px;
       border-bottom: 2px solid var(--border);
       border-right: 1px solid var(--border);
       text-transform: uppercase;
       font-size: .72rem;
       letter-spacing: .4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,.05);
+      box-shadow: 0 2px 4px rgba(0,0,0,.04);
+      z-index: 10;
+      box-sizing: border-box;
+      user-select: none;
     }
-    #main-table .th-label { font-weight: inherit; }
-    #main-table .th-sortable:hover { background: var(--info-soft); }
-    #main-table .th-resize:hover::after, #main-table .th-resize.resizing::after { background: var(--accent); }
-    th {
+    th:last-child {
+      border-right: none;
+    }
+    .th-sortable {
       position: sticky;
       top: 0;
-      background: var(--bg-elevated);
-      color: var(--text-muted);
-      font-weight: 600;
-      padding: 12px 16px;
-      border-bottom: 1.5px solid var(--border);
-      z-index: 5;
+      cursor: pointer;
+      transition: background 0.15s ease;
     }
-    td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .th-sortable:hover {
+      background: var(--accent-soft) !important;
+    }
+    .th-content {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      width: 100%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .th-label {
+      font-weight: 700;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sort-indicator {
+      font-size: .75rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      opacity: 0.45;
+      transition: all 0.15s ease;
+    }
+    .sort-indicator.active {
+      opacity: 1;
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .th-sortable:hover .sort-indicator {
+      opacity: 1;
+      color: var(--accent);
+    }
+    .th-resize {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: col-resize;
+      touch-action: none;
+      z-index: 20;
+    }
+    .th-resize::after {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 15%;
+      bottom: 15%;
+      right: 1px;
+      width: 2px;
+      background: var(--border-strong, #cbd5e1);
+      border-radius: 2px;
+      transition: background 0.2s, width 0.2s;
+    }
+    .th-resize:hover::after,
+    .th-resize.resizing::after {
+      background: var(--accent);
+      width: 3px;
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      box-sizing: border-box;
+      font-size: .86rem;
+    }
+    td:last-child {
+      border-right: none;
+    }
 
     /* Modal Sticky Header */
     .modal-body th {
@@ -506,21 +589,6 @@
     /* Clickable rows and hover effects */
     .clickable-row { cursor: pointer; }
     .clickable-row:hover td { background: var(--bg-elevated); }
-
-    /* Columns resizing and sorting */
-    .th-sortable { position: relative; user-select: none; }
-    .th-label { cursor: pointer; display: block; padding-right: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .th-label:hover { color: var(--accent); }
-    .sort-arrow { font-size: .7rem; color: var(--accent); margin-left: 4px; }
-    .th-resize {
-      position: absolute; top: 0; right: -4px; width: 10px; height: 100%;
-      cursor: col-resize; touch-action: none; z-index: 2;
-    }
-    .th-resize::after {
-      content: ''; position: absolute; top: 20%; bottom: 20%; left: 4px; width: 2px;
-      background: var(--border); border-radius: 2px;
-    }
-    .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
 
     /* Action colors for columns click indicators */
     .text-allowed { color: var(--success); font-weight: 600; }
@@ -1081,6 +1149,10 @@
         <p class="tab-subtitle" id="cd-tab-subtitle">Gestión documental y archivo digital por trabajador</p>
       </div>
       <div class="tab-actions">
+        <button type="button" class="btn btn-submit" id="btn-exportar-excel-cd" style="background: #16a34a; color: #ffffff; border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25); padding: 10px 18px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;" onclick="exportarExcelCloudDocs()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Exportar Excel</span>
+        </button>
         <a class="btn btn-submit" id="btn-cargar-doc" href="#" style="background: var(--accent); color: var(--accent-contrast); box-shadow: 0 4px 10px var(--accent-soft); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
           ＋ Cargar Documento
         </a>
@@ -1200,6 +1272,28 @@
             <!-- Dynamic rows -->
           </tbody>
         </table>
+      </div>
+      <!-- Paginador para Consolidado Todo (Punto 3) -->
+      <div class="pagination-bar" id="cdPaginacionTodo" style="display:none; padding:12px 16px; border-top:1px solid var(--border); justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:var(--bg-surface);">
+        <div id="cdInfoPaginaTodo" style="font-size:.84rem; color:var(--text-muted);">
+          Mostrando 0 registros
+        </div>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:.82rem; color:var(--text-muted);">
+            <span>Mostrar:</span>
+            <select id="cdLimitTodo" onchange="cambiarLimitTodo(this.value)" style="padding:3px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg-surface); color:var(--text-primary); font-size:.82rem; cursor:pointer;">
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" class="btn-filter" id="cdBtnAnteriorTodo" onclick="cambiarPaginaTodo(-1)" style="padding:4px 10px; font-size:.82rem; cursor:pointer;">« Anterior</button>
+            <span id="cdPaginaActualTodo" style="font-weight:700; font-size:.84rem; min-width:60px; text-align:center;">1 / 1</span>
+            <button type="button" class="btn-filter" id="cdBtnSiguienteTodo" onclick="cambiarPaginaTodo(1)" style="padding:4px 10px; font-size:.82rem; cursor:pointer;">Siguiente »</button>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -1705,6 +1799,12 @@
 
     let activeTab = 'trabajador';
     let currentData = [];
+    const todoPagination = {
+      page: 1,
+      limit: 100,
+      total: 0,
+      totalPages: 1
+    };
     let debounceTimeout = null;
     let debounceModalTimeout = null;
 
@@ -2132,13 +2232,8 @@
     let activeDocModalTipoDoc = null;
     let rawDocInstances = [];
 
-    // Generic Resize Engine Variables
+    // Generic Resize Engine Variables (Estilo Nómina / Facturación)
     const MIN_COL_WIDTH = 50;
-    let resizingKey = null;
-    let resizeStartX = 0;
-    let resizeStartWidth = 0;
-    let activeResizeCols = null;
-    let activeResizeTableEl = null;
 
     // Normalize string to ignore accents and uppercase/lowercase differences
     function norm(str) {
@@ -2146,82 +2241,189 @@
       return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     }
 
-    // Pointer Event resize hook
-    function setupResize(handleEl, key, colsArray, tableEl) {
+    // Obtener clave de almacenamiento para persistir anchos de columna por pestaña
+    function getStorageKeyCD(theadId) {
+      if (theadId === 'table-head') return 'main_' + (activeTab || 'default');
+      if (theadId === 'logysign-thead') return 'logysign';
+      if (theadId === 'modal-worker-thead') return 'modal_worker';
+      if (theadId === 'modal-doc-thead') return 'modal_doc';
+      return theadId;
+    }
+
+    function getStoredWidthsCD(storageKey) {
+      try {
+        return JSON.parse(localStorage.getItem('cd_widths_' + storageKey) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveStoredWidthsCD(storageKey, widthsObj) {
+      try {
+        localStorage.setItem('cd_widths_' + storageKey, JSON.stringify(widthsObj));
+      } catch (e) {}
+    }
+
+    // Pointer Event resize hook (Estilo Nómina y Facturación con soporte localStorage)
+    function setupResize(handleEl, key, colsArray, tableEl, storageKey) {
+      let startX = 0;
+      let startWidth = 0;
+      const th = tableEl ? tableEl.querySelector(`th[data-key="${key}"]`) : null;
+      const colObj = colsArray.find(c => c.key === key);
+
+      const onPointerMove = (e) => {
+        const diff = e.clientX - startX;
+        const newWidth = Math.max(MIN_COL_WIDTH, startWidth + diff);
+        if (th) {
+          th.style.width = newWidth + 'px';
+          th.style.minWidth = newWidth + 'px';
+          th.style.maxWidth = newWidth + 'px';
+        }
+        if (colObj) colObj.width = newWidth;
+
+        // Recalcular minWidth total de la tabla para scroll horizontal suave
+        if (tableEl) {
+          let curTotal = 0;
+          tableEl.querySelectorAll('thead th').forEach(h => {
+            curTotal += parseInt(h.style.width) || 110;
+          });
+          tableEl.style.minWidth = curTotal + 'px';
+        }
+      };
+
+      const onPointerUp = () => {
+        handleEl.classList.remove('resizing');
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
+
+        // Persistir anchos en localStorage
+        if (storageKey) {
+          const stored = getStoredWidthsCD(storageKey);
+          if (colObj) stored[key] = colObj.width;
+          saveStoredWidthsCD(storageKey, stored);
+        }
+      };
+
       handleEl.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        resizingKey = key;
-        activeResizeCols = colsArray;
-        activeResizeTableEl = tableEl;
-        resizeStartX = e.clientX;
-        const colObj = colsArray.find(c => c.key === key);
-        resizeStartWidth = colObj.width || 120;
+        startX = e.clientX;
+        startWidth = th ? th.offsetWidth : (colObj ? colObj.width : 120);
         handleEl.classList.add('resizing');
-        try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
       });
-
-      handleEl.addEventListener('pointermove', (e) => {
-        if (resizingKey !== key || activeResizeCols !== colsArray) return;
-        const requested = Math.max(MIN_COL_WIDTH, resizeStartWidth + (e.clientX - resizeStartX));
-        const th = tableEl.querySelector(`th[data-key="${key}"]`);
-        if (!th) return;
-        th.style.width = requested + 'px';
-        const colObj = colsArray.find(c => c.key === key);
-        colObj.width = Math.round(th.getBoundingClientRect().width);
-      });
-
-      const finishResize = () => {
-        if (resizingKey !== key) return;
-        resizingKey = null;
-        handleEl.classList.remove('resizing');
-      };
-      handleEl.addEventListener('pointerup', finishResize);
-      handleEl.addEventListener('pointercancel', finishResize);
     }
 
-    // Generic Header Render Helper
+    // Generic Header Render Helper con ordenamiento en todo el th y redimensionamiento
     function renderTableHeader(theadId, colsArray, sortState, onSortChange, tableEl) {
       const thead = document.getElementById(theadId);
+      if (!thead) return;
+
+      const storageKey = getStorageKeyCD(theadId);
+      const storedWidths = getStoredWidthsCD(storageKey);
+
+      // Aplicar anchos guardados a colsArray
+      let totalMinWidth = 0;
+      colsArray.forEach(c => {
+        if (storedWidths[c.key]) {
+          c.width = storedWidths[c.key];
+        }
+        totalMinWidth += (c.width || 120);
+      });
+
+      if (tableEl) {
+        tableEl.style.minWidth = totalMinWidth + 'px';
+        tableEl.style.tableLayout = 'fixed';
+      }
+
       thead.innerHTML = `<tr>${colsArray.map(c => {
-        let arrow = '';
+        let arrow = '<span class="sort-indicator">↕</span>';
+        let isSorted = false;
         if (sortState.key === c.key) {
-          arrow = `<span class="sort-arrow">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
+          isSorted = true;
+          arrow = `<span class="sort-indicator active">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
         }
         const alignStyle = c.align === 'center' ? 'text-align: center;' : '';
-        return `<th data-key="${c.key}" class="th-sortable" style="width:${c.width}px; ${alignStyle}"><span class="th-label">${esc(c.label)}${arrow}</span><span class="th-resize" title="Arrastra para cambiar el ancho"></span></th>`;
+        const noSort = c.key === 'select' || c.key === 'acciones';
+        const sortClass = noSort ? '' : 'th-sortable';
+        const sortedClass = isSorted ? 'sorted' : '';
+
+        return `<th data-key="${c.key}" class="${sortClass} ${sortedClass}" style="width:${c.width}px; min-width:${c.width}px; max-width:${c.width}px; ${alignStyle}">
+          <div class="th-content" style="${c.align === 'center' ? 'justify-content:center;' : ''}">
+            <span class="th-label">${esc(c.label)}</span>
+            ${noSort ? '' : arrow}
+          </div>
+          <span class="th-resize" title="Arrastra para cambiar el ancho"></span>
+        </th>`;
       }).join('')}</tr>`;
 
+      // Eventos de ordenamiento en todo el th y resize
       colsArray.forEach(c => {
         const th = thead.querySelector(`th[data-key="${c.key}"]`);
-        th.querySelector('.th-label').addEventListener('click', () => {
-          if (sortState.key === c.key) {
-            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
-          } else {
-            sortState.key = c.key;
-            sortState.dir = 'asc';
-          }
-          onSortChange();
-        });
-        setupResize(th.querySelector('.th-resize'), c.key, colsArray, tableEl);
+        if (!th) return;
+
+        // Click en cualquier parte del th (excepto en la barrita de resize) ordena
+        if (c.key !== 'select' && c.key !== 'acciones') {
+          th.addEventListener('click', (e) => {
+            if (e.target.classList.contains('th-resize')) return;
+            if (sortState.key === c.key) {
+              sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+              sortState.key = c.key;
+              sortState.dir = 'asc';
+            }
+            onSortChange();
+          });
+        }
+
+        const handle = th.querySelector('.th-resize');
+        if (handle) {
+          setupResize(handle, c.key, colsArray, tableEl, storageKey);
+        }
       });
     }
 
-    // Generic Sorter Helper
+    // Helper para obtener el valor a comparar según alias o mapeo
+    function getRowSortValueCD(row, key) {
+      if (!row) return null;
+      if (key === 'firmas') return Number(row.firmasCount || 0);
+      if (key === 'colaborador') return row.nombre_trabajador || row.colaborador || '';
+      return row[key];
+    }
+
+    // Generic Smart Sorter Helper (ordenamiento inteligente por texto, número o fecha)
     function sortDataArray(data, key, dir) {
       if (!key) return data;
+      const mult = dir === 'desc' ? -1 : 1;
       return data.sort((a, b) => {
-        let valA = a[key];
-        let valB = b[key];
+        let valA = getRowSortValueCD(a, key);
+        let valB = getRowSortValueCD(b, key);
 
-        if (typeof valA === 'string') valA = norm(valA);
-        if (typeof valB === 'string') valB = norm(valB);
+        if (valA === null || valA === undefined || valA === '') return 1;
+        if (valB === null || valB === undefined || valB === '') return -1;
 
-        if (valA === null || valA === undefined) return 1;
-        if (valB === null || valB === undefined) return -1;
+        // Números directos o representados como string
+        const numA = typeof valA === 'number' ? valA : (typeof valA === 'string' && /^-?\d+(\.\d+)?$/.test(valA.trim()) ? parseFloat(valA.trim()) : NaN);
+        const numB = typeof valB === 'number' ? valB : (typeof valB === 'string' && /^-?\d+(\.\d+)?$/.test(valB.trim()) ? parseFloat(valB.trim()) : NaN);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return (numA - numB) * mult;
+        }
 
-        if (valA < valB) return dir === 'asc' ? -1 : 1;
-        if (valA > valB) return dir === 'asc' ? 1 : -1;
+        // Fechas en formato YYYY-MM-DD o ISO
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          const isDateA = /^\d{4}-\d{2}-\d{2}/.test(valA);
+          const isDateB = /^\d{4}-\d{2}-\d{2}/.test(valB);
+          if (isDateA && isDateB) {
+            return valA.localeCompare(valB) * mult;
+          }
+          return norm(valA).localeCompare(norm(valB)) * mult;
+        }
+
+        if (valA < valB) return -1 * mult;
+        if (valA > valB) return 1 * mult;
         return 0;
       });
     }
@@ -2570,6 +2772,17 @@
       const btnNuevoTipoDoc = document.getElementById('btn-nuevo-tipo-doc-cd');
 
       if (descuentoContainer) descuentoContainer.style.display = tab === 'descuentonomina' ? 'block' : 'none';
+      const btnExportarExcel = document.getElementById('btn-exportar-excel-cd');
+      if (btnExportarExcel) {
+        btnExportarExcel.style.display = (tab === 'descuentonomina' || tab === 'permisos') ? 'none' : 'inline-flex';
+      }
+      const pBar = document.getElementById('cdPaginacionTodo');
+      if (pBar) {
+        pBar.style.display = tab === 'todo' ? 'flex' : 'none';
+      }
+      if (tab !== 'todo') {
+        todoPagination.page = 1;
+      }
 
       if (tab === 'descuentonomina') {
         if (filtersCard) filtersCard.style.display = 'none';
@@ -2769,7 +2982,10 @@
     }
 
     // Load data from APIs
-    async function filtrar() {
+    async function filtrar(opts = {}) {
+      if (activeTab === 'todo' && !opts.keepPage) {
+        todoPagination.page = 1;
+      }
       actualizarBadgeFiltrosCloudDocs();
       showLoader();
       try {
@@ -2822,6 +3038,8 @@
           if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
           if (tipoRegistro) queryParams.set('tipoRegistro', tipoRegistro);
           if (validacion) queryParams.set('validacion', validacion);
+          queryParams.set('page', todoPagination.page);
+          queryParams.set('limit', todoPagination.limit);
           url = `/cloud-docs/api/todo?${queryParams}`;
         }
 
@@ -2854,9 +3072,18 @@
 
         const data = await res.json();
         if (res.ok) {
-          currentData = activeTab === 'documento'
-            ? poblarFiltroClasificacion(data, clasificacion)
-            : data;
+          if (activeTab === 'todo' && data && Array.isArray(data.data)) {
+            todoPagination.total = data.total || 0;
+            todoPagination.page = data.page || 1;
+            todoPagination.limit = data.limit || 100;
+            todoPagination.totalPages = data.totalPages || 1;
+            currentData = data.data;
+            actualizarPaginacionTodoUI();
+          } else {
+            currentData = activeTab === 'documento'
+              ? poblarFiltroClasificacion(data, clasificacion)
+              : (Array.isArray(data) ? data : (data.data || []));
+          }
           renderMainTable();
           const masterChk = document.getElementById('select-all-retiros');
           if (masterChk) masterChk.checked = false;
@@ -3063,7 +3290,7 @@
     function renderMainTableRows() {
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
-      actualizarBadgeRegistrosCD(currentData.length);
+      actualizarBadgeRegistrosCD(activeTab === 'todo' ? todoPagination.total : currentData.length);
 
       let cols = COLUMNS[activeTab];
       const isRetirosAuth = activeTab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol);
@@ -4921,6 +5148,122 @@
         btn.disabled = false;
         btn.innerHTML = origText;
       }
+    }
+  
+
+function cambiarPaginaTodo(delta) {
+      const newPage = todoPagination.page + delta;
+      if (newPage < 1 || newPage > todoPagination.totalPages) return;
+      todoPagination.page = newPage;
+      filtrar({ keepPage: true });
+      const mainContainer = document.querySelector('.table-container');
+      if (mainContainer) mainContainer.scrollTop = 0;
+    }
+
+    function cambiarLimitTodo(val) {
+      todoPagination.limit = parseInt(val, 10) || 100;
+      todoPagination.page = 1;
+      filtrar({ keepPage: false });
+    }
+
+    function actualizarPaginacionTodoUI() {
+      const bar = document.getElementById('cdPaginacionTodo');
+      if (!bar) return;
+      if (activeTab !== 'todo') {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'flex';
+      const info = document.getElementById('cdInfoPaginaTodo');
+      const spanPag = document.getElementById('cdPaginaActualTodo');
+      const btnAnt = document.getElementById('cdBtnAnteriorTodo');
+      const btnSig = document.getElementById('cdBtnSiguienteTodo');
+      const selLimit = document.getElementById('cdLimitTodo');
+
+      const total = todoPagination.total;
+      const start = total === 0 ? 0 : (todoPagination.page - 1) * todoPagination.limit + 1;
+      const end = Math.min(total, todoPagination.page * todoPagination.limit);
+
+      if (info) {
+        info.textContent = `Mostrando ${start.toLocaleString()} a ${end.toLocaleString()} de ${total.toLocaleString()} registros`;
+      }
+      if (spanPag) {
+        spanPag.textContent = `${todoPagination.page} / ${todoPagination.totalPages}`;
+      }
+      if (btnAnt) {
+        btnAnt.disabled = todoPagination.page <= 1;
+        btnAnt.style.opacity = todoPagination.page <= 1 ? '0.5' : '1';
+        btnAnt.style.cursor = todoPagination.page <= 1 ? 'not-allowed' : 'pointer';
+      }
+      if (btnSig) {
+        btnSig.disabled = todoPagination.page >= todoPagination.totalPages;
+        btnSig.style.opacity = todoPagination.page >= todoPagination.totalPages ? '0.5' : '1';
+        btnSig.style.cursor = todoPagination.page >= todoPagination.totalPages ? 'not-allowed' : 'pointer';
+      }
+      if (selLimit) {
+        selLimit.value = String(todoPagination.limit);
+      }
+    }
+
+    function exportarExcelCloudDocs() {
+      if (activeTab === 'logysign') {
+        if (typeof logysignFiltered === 'undefined' || !logysignFiltered || !logysignFiltered.length) {
+          showToast('No hay registros de firmas para exportar', 'warning');
+          return;
+        }
+        const headers = ['Trabajador', 'Identificación', 'Operación', 'Estado', 'Total Firmas', 'Pendientes', 'Firmados', '% Avance', 'Estado General'];
+        const csvRows = [headers.join(';')];
+        logysignFiltered.forEach(r => {
+          const row = [
+            `"${(r.trabajador || '').replace(/"/g, '""')}"`,
+            `"${r.identificacion || ''}"`,
+            `"${(r.operacion || '').replace(/"/g, '""')}"`,
+            `"${r.estado || ''}"`,
+            r.total || 0,
+            r.pendientes || 0,
+            r.firmados || 0,
+            `"${r.pct || 0}%"`,
+            `"${r.estado_general || ''}"`
+          ];
+          csvRows.push(row.join(';'));
+        });
+        const blob = new Blob(['\uFEFF' + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `CloudDocs_LogySign_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Exportación descargada con éxito', 'success');
+        return;
+      }
+
+      const queryParams = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        tab: activeTab
+      });
+      const buscar = document.getElementById('filter-buscar')?.value?.trim();
+      const regional = document.getElementById('filter-regional')?.value;
+      const operacion = document.getElementById('filter-operacion')?.value;
+      const estado = document.getElementById('filter-estado')?.value;
+      const clasificacion = document.getElementById('filter-clasificacion')?.value;
+      const tipoDocumento = document.getElementById('filter-documento')?.value;
+      const tipoRegistro = document.getElementById('filter-registro')?.value;
+      const validacion = document.getElementById('filter-todo-validacion')?.value;
+
+      if (buscar) queryParams.set('buscar', buscar);
+      if (regional) queryParams.set('regional', regional);
+      if (operacion) queryParams.set('operacion', operacion);
+      if (estado) queryParams.set('estado', estado);
+      if (clasificacion) queryParams.set('clasificacion', clasificacion);
+      if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
+      if (tipoRegistro) queryParams.set('tipoRegistro', tipoRegistro);
+      if (validacion) queryParams.set('validacion', validacion);
+
+      showToast('Generando reporte en Excel...', 'info');
+      window.location.href = `/cloud-docs/api/exportar-excel?${queryParams.toString()}`;
     }
   </script>
   <script src="/js/theme.js" defer></script>

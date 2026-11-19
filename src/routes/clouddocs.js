@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const ExcelJS = require('exceljs');
 const pool = require('../services/db');
 const {
   computarAccesoCloudDocs,
@@ -284,7 +285,7 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
         t.Visualizar,
         t.\`Validación\` AS Validacion
       FROM Maestro_docTrabajador t
-      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
       WHERE t.Identificación = ?
       ORDER BY t.FechaRegistro DESC
     `;
@@ -382,7 +383,7 @@ router.get('/api/documentos', async (req, res) => {
           LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
           WHERE s.Trabajador COLLATE utf8mb4_general_ci LIKE ?
           GROUP BY TipoDocumento
-        ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        ) t ON c.Id = t.TipoDocumento
         ${whereTipo}
         ORDER BY c.Clasificacion ASC, c.Documento ASC
       `;
@@ -575,7 +576,7 @@ router.get('/api/documento/:id/registros', async (req, res) => {
 // API: Consolidado General (Vista Todo)
 router.get('/api/todo', async (req, res) => {
   try {
-    const { usuario, buscar, regional, operacion, tipoDocumento, estado, tipoRegistro, validacion } = req.query;
+    const { usuario, buscar, regional, operacion, tipoDocumento, estado, tipoRegistro, validacion, page, limit } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
@@ -588,10 +589,10 @@ router.get('/api/todo', async (req, res) => {
     const paramsGen = [];
 
     if (!acceso.sinFiltro) {
-      if (!acceso.operacionesFiltro.length) return res.json([]);
+      if (!acceso.operacionesFiltro.length) return res.json({ data: [], total: 0, page: 1, limit: 100, totalPages: 1 });
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      condsTrab.push(`t.Operación IN (${ph})`);
-      condsGen.push(`e.Operación IN (${ph})`);
+      condsTrab.push('t.Operación IN (' + ph + ')');
+      condsGen.push('e.Operación IN (' + ph + ')');
       paramsTrab.push(...acceso.operacionesFiltro);
       paramsGen.push(...acceso.operacionesFiltro);
     }
@@ -642,7 +643,7 @@ router.get('/api/todo', async (req, res) => {
     // Filtro de búsqueda textual (sólo por trabajador)
     if (buscar) {
       condsTrab.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
-      paramsTrab.push(`%${buscar}%`);
+      paramsTrab.push('%' + buscar + '%');
 
       condsGen.push('0 = 1');
     }
@@ -654,85 +655,112 @@ router.get('/api/todo', async (req, res) => {
     condsTrab.push(roleFilterTrab);
     condsGen.push(roleFilterGen);
 
-    const whereTrab = condsTrab.length ? `WHERE ${condsTrab.join(' AND ')}` : '';
-    const whereGen = condsGen.length ? `WHERE ${condsGen.join(' AND ')}` : '';
+    const whereTrab = condsTrab.length ? ('WHERE ' + condsTrab.join(' AND ')) : '';
+    const whereGen = condsGen.length ? ('WHERE ' + condsGen.join(' AND ')) : '';
 
-    const selectTrab = `
-      SELECT 
-        'Trabajador' AS tipo_registro,
-        t.id,
-        t.TipoDocumento,
-        t.Prefijo,
-        c.Documento,
-        t.Identificación AS Identificacion,
-        v.Trabajador AS TrabajadorNombre,
-        t.Operación,
-        t.Estado,
-        t.\`Validación\` AS Validacion,
-        DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
-        t.Usuario,
-        t.Observaciones,
-        t.Url,
-        t.Solicitud,
-        t.Justificacion_Solicitud,
-        t.Visualizar,
-        NULL AS Mes,
-        NULL AS Anio
-      FROM Maestro_docTrabajador t
-      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
-      LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
-      ${whereTrab}
-    `;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(500, Math.max(10, parseInt(limit, 10) || 100));
+    const offset = (pageNum - 1) * limitNum;
 
-    const selectGen = `
-      SELECT 
-        'General' AS tipo_registro,
-        e.id,
-        e.TipoDocumento,
-        e.Prefijo,
-        c.Documento,
-        NULL AS Identificacion,
-        NULL AS TrabajadorNombre,
-        e.Operación,
-        NULL AS Estado,
-        e.\`Validación\` AS Validacion,
-        DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
-        e.Usuario,
-        e.Observaciones,
-        e.Url,
-        e.Solicitud,
-        e.Justificacion_Solicitud,
-        e.Visualizar,
-        e.Mes,
-        e.\`Año\` AS Anio
-      FROM Maestro_docEmpresa e
-      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
-      ${whereGen}
-    `;
+    // Conteo total para paginación
+    let total = 0;
+    const joinSegTrab = buscar ? 'LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación' : '';
+    if (tipoRegistro === 'Trabajador') {
+      const [cntRows] = await pool.query(
+        'SELECT COUNT(*) AS total FROM Maestro_docTrabajador t ' + joinSegTrab + ' ' + whereTrab,
+        paramsTrab
+      );
+      total = cntRows[0]?.total || 0;
+    } else if (tipoRegistro === 'General') {
+      const [cntRows] = await pool.query(
+        'SELECT COUNT(*) AS total FROM Maestro_docEmpresa e ' + whereGen,
+        paramsGen
+      );
+      total = cntRows[0]?.total || 0;
+    } else {
+      const [[cntTRows], [cntGRows]] = await Promise.all([
+        pool.query('SELECT COUNT(*) AS total FROM Maestro_docTrabajador t ' + joinSegTrab + ' ' + whereTrab, paramsTrab),
+        pool.query('SELECT COUNT(*) AS total FROM Maestro_docEmpresa e ' + whereGen, paramsGen)
+      ]);
+      total = (cntTRows[0]?.total || 0) + (cntGRows[0]?.total || 0);
+    }
+
+    const selectTrab = [
+      'SELECT',
+      "  'Trabajador' AS tipo_registro,",
+      '  t.id,',
+      '  t.TipoDocumento,',
+      '  t.Prefijo,',
+      '  c.Documento,',
+      '  t.Identificación AS Identificacion,',
+      '  v.Trabajador AS TrabajadorNombre,',
+      '  t.Operación,',
+      '  t.Estado,',
+      '  t.Validación AS Validacion,',
+      "  DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,",
+      '  t.Usuario,',
+      '  t.Observaciones,',
+      '  t.Url,',
+      '  t.Solicitud,',
+      '  t.Justificacion_Solicitud,',
+      '  t.Visualizar,',
+      '  NULL AS Mes,',
+      '  NULL AS Anio',
+      'FROM Maestro_docTrabajador t',
+      'LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento',
+      'LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación',
+      whereTrab
+    ].join('\n');
+
+    const selectGen = [
+      'SELECT',
+      "  'General' AS tipo_registro,",
+      '  e.id,',
+      '  e.TipoDocumento,',
+      '  e.Prefijo,',
+      '  c.Documento,',
+      '  NULL AS Identificacion,',
+      '  NULL AS TrabajadorNombre,',
+      '  e.Operación,',
+      '  NULL AS Estado,',
+      '  e.Validación AS Validacion,',
+      "  DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,",
+      '  e.Usuario,',
+      '  e.Observaciones,',
+      '  e.Url,',
+      '  e.Solicitud,',
+      '  e.Justificacion_Solicitud,',
+      '  e.Visualizar,',
+      '  e.Mes,',
+      '  e.Año AS Anio',
+      'FROM Maestro_docEmpresa e',
+      'LEFT JOIN Config_Doc_Trabajador c ON c.Id = e.TipoDocumento',
+      whereGen
+    ].join('\n');
 
     let sql = '';
     let allParams = [];
 
     if (tipoRegistro === 'Trabajador') {
-      sql = `SELECT * FROM (${selectTrab}) combined ORDER BY combined.FechaRegistro DESC LIMIT 1000`;
-      allParams = paramsTrab;
+      sql = 'SELECT * FROM (' + selectTrab + ') combined ORDER BY combined.FechaRegistro DESC LIMIT ? OFFSET ?';
+      allParams = [...paramsTrab, limitNum, offset];
     } else if (tipoRegistro === 'General') {
-      sql = `SELECT * FROM (${selectGen}) combined ORDER BY combined.FechaRegistro DESC LIMIT 1000`;
-      allParams = paramsGen;
+      sql = 'SELECT * FROM (' + selectGen + ') combined ORDER BY combined.FechaRegistro DESC LIMIT ? OFFSET ?';
+      allParams = [...paramsGen, limitNum, offset];
     } else {
-      sql = `
-        SELECT * FROM (
-          ${selectTrab}
-          UNION ALL
-          ${selectGen}
-        ) combined
-        ORDER BY combined.FechaRegistro DESC
-        LIMIT 1000
-      `;
-      allParams = [...paramsTrab, ...paramsGen];
+      sql = [
+        'SELECT * FROM (',
+        selectTrab,
+        'UNION ALL',
+        selectGen,
+        ') combined',
+        'ORDER BY combined.FechaRegistro DESC',
+        'LIMIT ? OFFSET ?'
+      ].join('\n');
+      allParams = [...paramsTrab, ...paramsGen, limitNum, offset];
     }
 
-    const [rows] = await pool.execute(sql, allParams);
+    const [rows] = await pool.query(sql, allParams);
 
     // Calcular indicador "permitido"
     const p = acceso.permisos;
@@ -766,7 +794,13 @@ router.get('/api/todo', async (req, res) => {
       };
     });
 
-    res.json(result);
+    res.json({
+      data: result,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum) || 1
+    });
   } catch (err) {
     console.error('[cloud-docs] GET /api/todo:', err);
     res.status(500).json({ error: err.message });
@@ -847,7 +881,7 @@ router.get('/api/docretiros', async (req, res) => {
         t.Justificacion_Solicitud,
         t.Visualizar
       FROM Maestro_docTrabajador t
-      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
       LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
       ${where}
       ORDER BY t.FechaRegistro DESC
@@ -1093,7 +1127,7 @@ router.get('/api/conteos', async (req, res) => {
             LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
             WHERE s.Trabajador COLLATE utf8mb4_general_ci LIKE ?
             GROUP BY TipoDocumento
-          ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+          ) t ON c.Id = t.TipoDocumento
         `;
         docParams.push(`%${buscar}%`);
       }
@@ -1327,7 +1361,7 @@ router.get('/api/conteos', async (req, res) => {
       const [rowsReg] = await pool.execute(`
         SELECT t.Regional, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         ${joinSegRet} 
         WHERE ${rF.cT.join(' AND ')} 
         GROUP BY t.Regional
@@ -1339,7 +1373,7 @@ router.get('/api/conteos', async (req, res) => {
       const [rowsOp] = await pool.execute(`
         SELECT t.Operación, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         ${joinSegRet} 
         WHERE ${oF.cT.join(' AND ')} 
         GROUP BY t.Operación
@@ -1351,7 +1385,7 @@ router.get('/api/conteos', async (req, res) => {
       const [rowsEst] = await pool.execute(`
         SELECT t.Estado, COUNT(DISTINCT t.Identificación) AS total 
         FROM Maestro_docTrabajador t 
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         ${joinSegRet} 
         WHERE ${eF.cT.join(' AND ')} 
         GROUP BY t.Estado
@@ -1363,7 +1397,7 @@ router.get('/api/conteos', async (req, res) => {
       const [rowsTd] = await pool.execute(`
         SELECT t.TipoDocumento, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         ${joinSegRet} 
         WHERE ${tdF.cT.join(' AND ')} 
         GROUP BY t.TipoDocumento
@@ -1375,7 +1409,7 @@ router.get('/api/conteos', async (req, res) => {
       const [rowsVal] = await pool.execute(`
         SELECT COALESCE(t.Validación, 'PEND') AS val, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         ${joinSegRet} 
         WHERE ${valF.cT.join(' AND ')} 
         GROUP BY COALESCE(t.Validación, 'PEND')
@@ -1615,7 +1649,7 @@ router.get('/api/duplicados', async (req, res) => {
         GROUP BY Identificación, TipoDocumento
         HAVING COUNT(*) > 1
       ) t
-      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
       LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
       JOIN (
         SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado, v1.\`Fecha de Ingreso\` AS max_fecha_ingreso
@@ -1716,7 +1750,7 @@ router.get('/api/solicitudes', async (req, res) => {
           t.Usuario_Solicitud,
           COALESCE(t.Estado_Solicitud, 'Pendiente') AS Estado_Solicitud
         FROM Maestro_docTrabajador t
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
         ${whereTrab}
 
@@ -1742,7 +1776,7 @@ router.get('/api/solicitudes', async (req, res) => {
           e.Usuario_Solicitud,
           COALESCE(e.Estado_Solicitud, 'Pendiente') AS Estado_Solicitud
         FROM Maestro_docEmpresa e
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = e.TipoDocumento
         ${whereGen}
       ) combined
       ORDER BY combined.FechaRegistro DESC
@@ -2069,7 +2103,7 @@ router.post('/api/docretiros/validacion-masiva', async (req, res) => {
       const sqlSelect = `
         SELECT t.id, t.Identificación AS Identificacion, t.Operación AS Operacion, c.Documento
         FROM Maestro_docTrabajador t
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
         WHERE t.id IN (${placeholders})
       `;
       const [docs] = await pool.execute(sqlSelect, ids);
@@ -2116,6 +2150,393 @@ router.post('/api/documento/duplicados', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[cloud-docs] POST /api/documento/duplicados error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Helper: Estilos corporativos para hojas de Excel en CloudDocs
+function aplicarEstiloExcelCD(sheet) {
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF1B2A5E' } // Azul corporativo Logyser
+  };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+  headerRow.height = 26;
+
+  sheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: sheet.columns.length }
+  };
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber > 1) {
+      row.alignment = { vertical: 'middle' };
+      row.eachCell({ includeEmpty: true }, cell => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
+    }
+  });
+}
+
+// API: Exportar listados a Excel (Punto 4)
+router.get('/api/exportar-excel', async (req, res) => {
+  try {
+    const {
+      usuario,
+      tab = 'trabajador',
+      buscar,
+      regional,
+      operacion,
+      estado,
+      tipoDocumento,
+      tipoRegistro,
+      validacion,
+      clasificacion
+    } = req.query;
+
+    if (!usuario) return res.status(400).send('usuario requerido');
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).send('No autorizado');
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Logyser CloudDocs';
+    workbook.created = new Date();
+
+    const ahora = new Date();
+    const fechaHoraStr = ahora.toISOString().replace(/T/, '_').replace(/:/g, '-').slice(0, 19);
+
+    if (tab === 'trabajador') {
+      const conds = [];
+      const params = [];
+      if (!acceso.sinFiltro) {
+        if (!acceso.operacionesFiltro.length) return res.status(400).send('Sin operaciones asignadas');
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        conds.push('mv.Operación IN (' + ph + ')');
+        params.push(...acceso.operacionesFiltro);
+      }
+      if (buscar) {
+        conds.push('(s.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR CAST(s.`Identificación` AS CHAR) LIKE ?)');
+        params.push('%' + buscar + '%', '%' + buscar + '%');
+      }
+      if (regional) { conds.push('mv.Regional = ?'); params.push(regional); }
+      if (operacion) { conds.push('mv.Operación = ?'); params.push(operacion); }
+      if (estado) { conds.push('mv.Estado = ?'); params.push(estado); }
+
+      const whereClause = conds.length ? ('WHERE ' + conds.join(' AND ')) : '';
+      const sql = [
+        'SELECT',
+        '  s.Identificación AS identificacion,',
+        '  s.Trabajador AS trabajador,',
+        '  mv.Regional AS regional,',
+        '  mv.Operación AS operacion,',
+        '  mv.Estado AS estado,',
+        "  DATE_FORMAT(mv.max_fecha_ingreso, '%Y-%m-%d') AS fechaIngreso,",
+        '  COALESCE(doc_counts.activos, 0) AS docActivos,',
+        '  COALESCE(doc_counts.retirados, 0) AS docRetirados,',
+        '  COALESCE(doc_counts.total, 0) AS totalDocumentos',
+        'FROM Maestro_Segmentación s',
+        'JOIN (',
+        '  SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado, v1.`Fecha de Ingreso` AS max_fecha_ingreso',
+        '  FROM Maestro_Vinculación v1',
+        '  INNER JOIN (',
+        '    SELECT Identificación, MAX(`Fecha de Ingreso`) AS max_fecha',
+        '    FROM Maestro_Vinculación',
+        '    GROUP BY Identificación',
+        '  ) v2 ON v1.Identificación = v2.Identificación AND v1.`Fecha de Ingreso` = v2.max_fecha',
+        ') mv ON s.Identificación = mv.Identificación',
+        'LEFT JOIN (',
+        '  SELECT',
+        '    Identificación,',
+        "    SUM(CASE WHEN Estado = 'Activo' THEN 1 ELSE 0 END) AS activos,",
+        "    SUM(CASE WHEN Estado = 'Retirado' THEN 1 ELSE 0 END) AS retirados,",
+        '    COUNT(*) AS total',
+        '  FROM Maestro_docTrabajador',
+        '  GROUP BY Identificación',
+        ') doc_counts ON s.Identificación = doc_counts.Identificación',
+        whereClause,
+        'ORDER BY s.Trabajador ASC',
+        'LIMIT 10000'
+      ].join('\n');
+      const [rows] = await pool.query(sql, params);
+
+      const sheet = workbook.addWorksheet('Trabajadores');
+      sheet.columns = [
+        { header: 'Trabajador', key: 'trabajador', width: 34 },
+        { header: 'Identificación', key: 'identificacion', width: 16 },
+        { header: 'Regional', key: 'regional', width: 18 },
+        { header: 'Operación', key: 'operacion', width: 24 },
+        { header: 'Estado', key: 'estado', width: 14 },
+        { header: 'Fecha de Ingreso', key: 'fechaIngreso', width: 16 },
+        { header: 'Docs Activos', key: 'docActivos', width: 14 },
+        { header: 'Docs Retirados', key: 'docRetirados', width: 14 },
+        { header: 'Total Docs', key: 'totalDocumentos', width: 14 }
+      ];
+
+      rows.forEach(r => sheet.addRow(r));
+      aplicarEstiloExcelCD(sheet);
+
+    } else if (tab === 'documento') {
+      const conds = [];
+      const params = [];
+      if (clasificacion) {
+        conds.push('c.Clasificacion = ?');
+        params.push(clasificacion);
+      }
+      if (tipoDocumento) {
+        conds.push('c.tipo_doc = ?');
+        params.push(tipoDocumento);
+      }
+      if (buscar) {
+        conds.push('(c.Documento LIKE ? OR c.Prefijo LIKE ?)');
+        params.push('%' + buscar + '%', '%' + buscar + '%');
+      }
+      const whereSql = conds.length ? ('WHERE ' + conds.join(' AND ')) : '';
+      const sql = [
+        'SELECT',
+        '  c.Id,',
+        '  c.Documento,',
+        '  c.Prefijo,',
+        '  c.Clasificacion,',
+        '  c.tipo_doc,',
+        "  COALESCE(c.duplicados, 'NO') AS duplicados,",
+        '  COALESCE(t.trabajador_count, 0) AS Trabajadores',
+        'FROM Config_Doc_Trabajador c',
+        'LEFT JOIN (',
+        '  SELECT TipoDocumento, COUNT(DISTINCT Identificación) AS trabajador_count',
+        '  FROM Maestro_docTrabajador',
+        '  GROUP BY TipoDocumento',
+        ') t ON c.Id = t.TipoDocumento',
+        whereSql,
+        'ORDER BY c.Clasificacion ASC, c.Documento ASC'
+      ].join('\n');
+      const [rows] = await pool.query(sql, params);
+
+      const sheet = workbook.addWorksheet('Tipos de Documento');
+      sheet.columns = [
+        { header: 'ID', key: 'Id', width: 8 },
+        { header: 'Documento', key: 'Documento', width: 36 },
+        { header: 'Prefijo', key: 'Prefijo', width: 12 },
+        { header: 'Clasificación', key: 'Clasificacion', width: 26 },
+        { header: 'Tipo Doc', key: 'tipo_doc', width: 16 },
+        { header: 'Duplicados', key: 'duplicados', width: 14 },
+        { header: 'Trabajadores con Doc', key: 'Trabajadores', width: 22 }
+      ];
+
+      rows.forEach(r => sheet.addRow(r));
+      aplicarEstiloExcelCD(sheet);
+
+    } else if (tab === 'todo' || tab === 'docretiros') {
+      const condsTrab = [];
+      const condsGen = [];
+      const paramsTrab = [];
+      const paramsGen = [];
+
+      if (tab === 'docretiros') {
+        condsTrab.push("c.Clasificacion LIKE '%Retiro%'");
+      }
+
+      if (!acceso.sinFiltro) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        condsTrab.push('t.Operación IN (' + ph + ')');
+        condsGen.push('e.Operación IN (' + ph + ')');
+        paramsTrab.push(...acceso.operacionesFiltro);
+        paramsGen.push(...acceso.operacionesFiltro);
+      }
+      if (regional) {
+        condsTrab.push('t.Regional = ?'); condsGen.push('e.Regional = ?');
+        paramsTrab.push(regional); paramsGen.push(regional);
+      }
+      if (operacion) {
+        condsTrab.push('t.Operación = ?'); condsGen.push('e.Operación = ?');
+        paramsTrab.push(operacion); paramsGen.push(operacion);
+      }
+      if (tipoDocumento) {
+        condsTrab.push('t.TipoDocumento = ?'); condsGen.push('e.TipoDocumento = ?');
+        paramsTrab.push(tipoDocumento); paramsGen.push(tipoDocumento);
+      }
+      if (estado) {
+        condsTrab.push('t.Estado = ?'); condsGen.push('0 = 1');
+        paramsTrab.push(estado);
+      }
+      if (validacion) {
+        if (validacion === 'PEND') {
+          condsTrab.push('(t.Validación = ? OR t.Validación IS NULL OR t.Validación = "")');
+          condsGen.push('(e.Validación = ? OR e.Validación IS NULL OR e.Validación = "")');
+        } else {
+          condsTrab.push('t.Validación = ?'); condsGen.push('e.Validación = ?');
+        }
+        paramsTrab.push(validacion); paramsGen.push(validacion);
+      }
+      if (buscar) {
+        condsTrab.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        paramsTrab.push('%' + buscar + '%');
+        condsGen.push('0 = 1');
+      }
+
+      condsTrab.push(construirFiltroRolTrabajador(acceso.permisos, 't'));
+      condsGen.push(construirFiltroRolGeneral(acceso.permisos, 'e'));
+
+      const whereTrab = condsTrab.length ? ('WHERE ' + condsTrab.join(' AND ')) : '';
+      const whereGen = condsGen.length ? ('WHERE ' + condsGen.join(' AND ')) : '';
+
+      const selectTrab = [
+        'SELECT',
+        "  'Trabajador' AS tipo_registro,",
+        '  c.Documento,',
+        '  t.Prefijo,',
+        '  t.Identificación AS Identificacion,',
+        '  v.Trabajador AS TrabajadorNombre,',
+        '  t.Regional,',
+        '  t.Operación,',
+        '  t.Estado,',
+        '  t.Validación AS Validacion,',
+        "  DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,",
+        '  t.Usuario,',
+        '  t.Observaciones',
+        'FROM Maestro_docTrabajador t',
+        'LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento',
+        'LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación',
+        whereTrab
+      ].join('\n');
+
+      const selectGen = [
+        'SELECT',
+        "  'General' AS tipo_registro,",
+        '  c.Documento,',
+        '  e.Prefijo,',
+        '  NULL AS Identificacion,',
+        '  NULL AS TrabajadorNombre,',
+        '  e.Regional,',
+        '  e.Operación,',
+        '  NULL AS Estado,',
+        '  e.Validación AS Validacion,',
+        "  DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,",
+        '  e.Usuario,',
+        '  e.Observaciones',
+        'FROM Maestro_docEmpresa e',
+        'LEFT JOIN Config_Doc_Trabajador c ON c.Id = e.TipoDocumento',
+        whereGen
+      ].join('\n');
+
+      let sql = '';
+      let allParams = [];
+      if (tab === 'docretiros' || tipoRegistro === 'Trabajador') {
+        sql = 'SELECT * FROM (' + selectTrab + ') combined ORDER BY combined.FechaRegistro DESC LIMIT 10000';
+        allParams = paramsTrab;
+      } else if (tipoRegistro === 'General') {
+        sql = 'SELECT * FROM (' + selectGen + ') combined ORDER BY combined.FechaRegistro DESC LIMIT 10000';
+        allParams = paramsGen;
+      } else {
+        sql = 'SELECT * FROM (' + selectTrab + ' UNION ALL ' + selectGen + ') combined ORDER BY combined.FechaRegistro DESC LIMIT 10000';
+        allParams = [...paramsTrab, ...paramsGen];
+      }
+
+      const [rows] = await pool.query(sql, allParams);
+      const sheetTitle = tab === 'docretiros' ? 'Doc Retiros' : 'Consolidado Documentos';
+      const sheet = workbook.addWorksheet(sheetTitle);
+      sheet.columns = [
+        { header: 'Tipo Registro', key: 'tipo_registro', width: 14 },
+        { header: 'Documento', key: 'Documento', width: 32 },
+        { header: 'Prefijo', key: 'Prefijo', width: 12 },
+        { header: 'Identificación', key: 'Identificacion', width: 16 },
+        { header: 'Trabajador', key: 'TrabajadorNombre', width: 32 },
+        { header: 'Regional', key: 'Regional', width: 18 },
+        { header: 'Operación', key: 'Operación', width: 22 },
+        { header: 'Estado', key: 'Estado', width: 12 },
+        { header: 'Validación', key: 'Validacion', width: 14 },
+        { header: 'Fecha de Registro', key: 'FechaRegistro', width: 20 },
+        { header: 'Usuario Registro', key: 'Usuario', width: 20 },
+        { header: 'Observaciones', key: 'Observaciones', width: 35 }
+      ];
+
+      rows.forEach(r => sheet.addRow(r));
+      aplicarEstiloExcelCD(sheet);
+
+    } else if (tab === 'duplicados') {
+      const conds = [];
+      const params = [];
+      if (!acceso.sinFiltro) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        conds.push('mv.Operación IN (' + ph + ')');
+        params.push(...acceso.operacionesFiltro);
+      }
+      if (regional) { conds.push('mv.Regional = ?'); params.push(regional); }
+      if (operacion) { conds.push('mv.Operación = ?'); params.push(operacion); }
+      if (estado) { conds.push('mv.Estado = ?'); params.push(estado); }
+      if (tipoDocumento) { conds.push('t.TipoDocumento = ?'); params.push(tipoDocumento); }
+      if (buscar) {
+        conds.push('(s.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR s.Identificación LIKE ?)');
+        params.push('%' + buscar + '%', '%' + buscar + '%');
+      }
+      const whereClause = conds.length ? ('AND ' + conds.join(' AND ')) : '';
+      const sql = [
+        'SELECT',
+        '  s.Identificación AS identificacion,',
+        '  s.Trabajador AS trabajador,',
+        '  c.Documento,',
+        '  c.Prefijo,',
+        '  t.cantidad AS documentosCount,',
+        '  mv.Regional AS regional,',
+        '  mv.Operación AS operacion,',
+        '  mv.Estado AS estado,',
+        "  DATE_FORMAT(mv.max_fecha_ingreso, '%Y-%m-%d') AS fechaIngreso",
+        'FROM (',
+        '  SELECT Identificación, TipoDocumento, COUNT(*) AS cantidad',
+        '  FROM Maestro_docTrabajador',
+        '  GROUP BY Identificación, TipoDocumento',
+        '  HAVING COUNT(*) > 1',
+        ') t',
+        'LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento',
+        'LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación',
+        'JOIN (',
+        '  SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado, v1.`Fecha de Ingreso` AS max_fecha_ingreso',
+        '  FROM Maestro_Vinculación v1',
+        '  INNER JOIN (',
+        '    SELECT Identificación, MAX(`Fecha de Ingreso`) AS max_fecha',
+        '    FROM Maestro_Vinculación',
+        '    GROUP BY Identificación',
+        '  ) v2 ON v1.Identificación = v2.Identificación AND v1.`Fecha de Ingreso` = v2.max_fecha',
+        ') mv ON s.Identificación = mv.Identificación',
+        "WHERE (c.duplicados IS NULL OR c.duplicados <> 'SI') " + whereClause,
+        'ORDER BY s.Trabajador ASC, c.Documento ASC',
+        'LIMIT 5000'
+      ].join('\n');
+      const [rows] = await pool.query(sql, params);
+      const sheet = workbook.addWorksheet('Duplicados');
+      sheet.columns = [
+        { header: 'Trabajador', key: 'trabajador', width: 34 },
+        { header: 'Identificación', key: 'identificacion', width: 16 },
+        { header: 'Documento', key: 'Documento', width: 32 },
+        { header: 'Prefijo', key: 'Prefijo', width: 12 },
+        { header: 'Cantidad Duplicados', key: 'documentosCount', width: 18 },
+        { header: 'Regional', key: 'regional', width: 18 },
+        { header: 'Operación', key: 'operacion', width: 22 },
+        { header: 'Estado', key: 'estado', width: 12 },
+        { header: 'Fecha de Ingreso', key: 'fechaIngreso', width: 16 }
+      ];
+      rows.forEach(r => sheet.addRow(r));
+      aplicarEstiloExcelCD(sheet);
+    } else {
+      return res.status(400).send('Pestaña no soportada para exportación');
+    }
+
+    const filename = 'CloudDocs_' + tab + '_' + fechaHoraStr + '.xlsx';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/exportar-excel error:', err);
     res.status(500).json({ error: err.message });
   }
 });
