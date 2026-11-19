@@ -103,7 +103,7 @@ async function subirPDFAceptacionRenuncia(identificacion, idVinculacion, bufferP
 async function subirPDFExamenEgreso(identificacion, idVinculacion, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.EMOE.${idVinculacion}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
@@ -129,7 +129,7 @@ async function subirDocumentoRetiro(identificacion, prefijo, bufferPdf) {
 async function subirPDFCesantias(identificacion, idVinculacion, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.CRS.${idVinculacion}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 

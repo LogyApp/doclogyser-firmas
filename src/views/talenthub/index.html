@@ -3233,6 +3233,9 @@
     <!-- ── CARGOS Y FUNCIONES (manual de funciones por cargo; lógica en /js/talenthub-cargos.js) ── -->
     <div id="tabContentCargosFunciones" style="display: none;"></div>
 
+    <!-- ── ENTREVISTAS DE RETIRO (análisis de las entrevistas; lógica en /js/talenthub-entrevistas.js) ── -->
+    <div id="tabContentEntrevistasRetiro" style="display: none;"></div>
+
   </main>
 
   <!-- ── MODAL: CREAR / EDITAR REGISTRO DE ASISTENCIA (formulario en iframe) ──── -->
@@ -4173,6 +4176,7 @@
       RegistroAsistencia: { icon: '📝', title: 'Registro de Participación', nav: 'Registro Participación', subtitle: 'Registro y firma de asistentes a formaciones, con evaluación de eficacia' },
       Integridad:      { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
       CargosFunciones:  { icon: '🗂️', title: 'Cargos y Funciones', nav: 'Cargos y Funciones', subtitle: 'Manual de funciones, responsabilidades y competencias por cargo (SST-MA-002)' },
+      EntrevistasRetiro: { icon: '🗣️', title: 'Entrevistas de Retiro', nav: 'Entrevistas de Retiro', subtitle: 'Percepción de los trabajadores al retirarse: puntos a mejorar por aspecto, operación y coordinador' },
       Parametros:       { icon: '⚙️', title: 'Parámetros del Módulo', subtitle: 'Reglas de negocio y configuración de TalentHub (tabla Config_Parametros)' }
     };
 
@@ -4193,6 +4197,11 @@
       // Notificaciones internas de Aspirantes (Campanita)
       cargarNotificacionesAsp();
       setInterval(cargarNotificacionesAsp, 60000);
+
+      // Campana de nuevas Entrevistas de Retiro (contador en el menú lateral)
+      if ((CONFIG.secciones || []).includes('EntrevistasRetiro') && typeof window.iniciarNotificacionesEntrevistas === 'function') {
+        window.iniciarNotificacionesEntrevistas();
+      }
 
       // 2. Activar pestaña configurada
       switchTab(CONFIG.activeTab || 'Requisiciones');
@@ -4342,6 +4351,7 @@
           <span class="nav-item-icon">${meta.icon}</span>
           <span>${meta.nav || sec}</span>
           ${sec === 'Aspirantes' ? '<span class="notif-badge" id="nav-notif-badge-asp" style="display:none; position:static; margin-left:auto;">0</span>' : ''}
+          ${sec === 'EntrevistasRetiro' ? '<span class="notif-badge" id="nav-notif-badge-evr" style="display:none; position:static; margin-left:auto;">0</span>' : ''}
         `;
         li.onclick = () => {
           switchTab(sec);
@@ -4382,6 +4392,8 @@
       if (elTabParam) elTabParam.style.display = 'none';
       const elTabCargos = document.getElementById('tabContentCargosFunciones');
       if (elTabCargos) elTabCargos.style.display = 'none';
+      const elTabEvr = document.getElementById('tabContentEntrevistasRetiro');
+      if (elTabEvr) elTabEvr.style.display = 'none';
 
       // Actualizar encabezado
       const meta = TAB_META[tabName] || { icon: '❖', title: tabName, subtitle: '' };
@@ -4412,6 +4424,8 @@
         cargarParametrosTalenthubTabla();
       } else if (tabName === 'CargosFunciones') {
         if (typeof window.inicializarCargosFunciones === 'function') window.inicializarCargosFunciones();
+      } else if (tabName === 'EntrevistasRetiro') {
+        if (typeof window.inicializarEntrevistasRetiro === 'function') window.inicializarEntrevistasRetiro();
       }
 
       // Actualizar URL sin recargar
@@ -11454,5 +11468,6 @@
   <script src="/js/boton-sync.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
   <script src="/js/talenthub-cargos.js?v=20261113a" defer></script>
+  <script src="/js/talenthub-entrevistas.js?v=20261119a" defer></script>
 </body>
 </html>

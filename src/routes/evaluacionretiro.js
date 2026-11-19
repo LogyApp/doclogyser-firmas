@@ -7,6 +7,7 @@ const { generarPDF } = require('../services/renderer');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { subirPDFEvaluacionRetiro } = require('../services/storage');
 const { validarTokenEVR }          = require('../services/token');
+const { notificarNuevaEntrevista } = require('../services/entrevistasRetiro');
 
 const router   = express.Router();
 const FORM_HTML = path.join(__dirname, '../views/evaluacionretiro/form.html');
@@ -245,6 +246,9 @@ router.post('/:idEvaluacion', async (req, res) => {
     );
 
     res.json({ ok: true, urlPdf });
+
+    // Campana de Talent Hub › Entrevistas de Retiro
+    notificarNuevaEntrevista({ idEvaluacion, vin, urlPdf, motivoPrincipal: motivo_principal });
   } catch (err) {
     console.error('[evaluacionretiro POST]', err);
     res.status(500).json({ ok: false, error: err.message });

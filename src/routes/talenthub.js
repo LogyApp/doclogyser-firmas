@@ -4616,6 +4616,9 @@ router.get('/api/sociodemografica/reporte', async (req, res) => {
 // Cargos y Funciones (manual de funciones por cargo): /api/cargos-funciones/...
 router.use(require('./cargosFunciones'));
 
+// Entrevistas de Retiro (análisis de las entrevistas de retiro): /api/entrevistas-retiro/...
+router.use(require('./entrevistasRetiro'));
+
 module.exports = router;
 
 

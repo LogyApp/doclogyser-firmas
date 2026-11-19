@@ -11,6 +11,8 @@ const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
 const { regenerarAceptacionRenuncia } = require('./firmarenuncia');
 const { regenerarPazYSalvoFinal } = require('./pazysalvoarea');
 const { regenerarEvaluacionRetiro } = require('./evaluacionretiro');
+const { regenerarExamenEgreso } = require('./firmarexamenegreso');
+const { regenerarCesantiasRetiro } = require('./firmarcesantias');
 
 const router   = express.Router();
 const DASHBOARD_HTML = path.join(__dirname, '../views/gestionarretiro/index.html');
@@ -654,17 +656,19 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
 });
 
 // Regenera con los datos actuales de la vinculación (Fecha de Retiro incluida) los documentos
-// que generamos nosotros: Certificado de Retiro, Aceptación de Renuncia, Paz y Salvo final y
-// Evaluación de Retiro. Solo los que ya existen; reutiliza las firmas y respuestas capturadas.
+// que generamos nosotros: Certificado de Retiro, Examen de Egreso, Cesantías, Aceptación de
+// Renuncia, Paz y Salvo final y Evaluación de Retiro. Solo los que ya existen; reutiliza las firmas y respuestas capturadas.
 async function regenerarDocumentosRetiro(idVinculacion, identificacion, fechaIngreso) {
   const [docRows] = await pool.execute(
     `SELECT id, Prefijo, FechaRegistro FROM Maestro_docTrabajador
-     WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?) AND Prefijo IN ('CT','AR')
+     WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?) AND Prefijo IN ('CT','AR','EMOE','CRS')
      ORDER BY FechaRegistro DESC`,
     [String(identificacion), fechaIngreso]
   );
   const docCT = docRows.find(d => d.Prefijo === 'CT');
   const docAR = docRows.find(d => d.Prefijo === 'AR');
+  const docEMOE = docRows.find(d => d.Prefijo === 'EMOE');
+  const docCRS = docRows.find(d => d.Prefijo === 'CRS');
 
   const regenerados = [];
   const errores = [];
@@ -674,6 +678,8 @@ async function regenerarDocumentosRetiro(idVinculacion, identificacion, fechaIng
   };
 
   if (docCT) await intentar('Certificado Laboral de Retiro', () => regenerarCertificadoRetiro(idVinculacion, docCT));
+  if (docEMOE) await intentar('Examen de Egreso', () => regenerarExamenEgreso(idVinculacion, docEMOE));
+  if (docCRS) await intentar('Cesantías', () => regenerarCesantiasRetiro(idVinculacion, docCRS));
   if (docAR) await intentar('Aceptación de Renuncia', () => regenerarAceptacionRenuncia(idVinculacion, docAR));
   await intentar('Paz y Salvo', () => regenerarPazYSalvoFinal(idVinculacion));
   await intentar('Evaluación de Retiro', () => regenerarEvaluacionRetiro(idVinculacion));
