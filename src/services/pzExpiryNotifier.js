@@ -1,5 +1,5 @@
 // Notificador de expiración del Paz y Salvo
-// Escenario 1: el trabajador no firmó dentro de las 120 h → genera PDF con FIRMA_NO_FIRMO para todos
+// Escenario 1: el trabajador no firmó dentro de las 120 h → genera PDF con "No firmó dentro del plazo"
 // Escenario 2: el trabajador firmó pero no todas las áreas lo hicieron en 120 h → genera con lo disponible
 
 const { v4: uuidv4 } = require('uuid');
@@ -7,31 +7,9 @@ const pool = require('./db');
 const { obtenerPlantilla, reemplazarVariables } = require('./plantilla');
 const { generarPDF } = require('./renderer');
 const { subirPDFPazYSalvo } = require('./storage');
-const { generarFilasArticulosHTML, generarFirmasAreasHtml, NOMBRES_AREA, normalizarAreasRequeridas } = require('./pazYSalvoService');
-
-// ── Constantes ─────────────────────────────────────────────────────────────
-const FIRMA_NO_FIRMO = `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">Documento soportado por correo electrónico – No firmó dentro del plazo</div>`;
+const { construirDatosPazYSalvo, esPlantillaPazYSalvoNueva, normalizarAreasRequeridas } = require('./pazYSalvoService');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function limpiarNombre(trabajador) {
-  if (!trabajador) return '';
-  const partes = String(trabajador).split(' ** ');
-  return (partes.length > 1 ? partes[1] : trabajador).trim();
-}
-
-function formatFechaCO(fecha) {
-  if (!fecha) return '';
-  const str = fecha instanceof Date 
-    ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
-    : String(fecha).slice(0, 10);
-  const d = new Date(str + 'T12:00:00');
-  if (isNaN(d)) return '';
-  return d.toLocaleDateString('es-CO', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
-}
-
 function fechaHoraBogota() {
   const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
   const p = n => String(n).padStart(2, '0');
@@ -42,17 +20,6 @@ function toDateStr(val) {
   if (!val) return null;
   if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
   return String(val).slice(0, 10);
-}
-
-/** Devuelve el HTML de firma: imagen si existe, o el texto "no firmó" */
-function buildFirmaHtmlExpiry(url, esArea = false) {
-  if (url) {
-    return `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">`;
-  }
-  if (esArea) {
-    return `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9">Se informó al área por correo electrónico</div>`;
-  }
-  return FIRMA_NO_FIRMO;
 }
 
 async function registrarDocTrabajador({ regional, operacion, identificacion, fechaIngreso,
@@ -74,43 +41,10 @@ async function registrarDocTrabajador({ regional, operacion, identificacion, fec
 async function generarPZPDF(pz, areasRequeridas) {
   const nombrePlantilla = pz.nivel_compromiso === 'alto' ? 'paz_y_salvo_alto' : 'paz_y_salvo_bajo';
   const plantilla = await obtenerPlantilla(nombrePlantilla);
-  const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
-  const nombreTrabajador = limpiarNombre(pz.Trabajador);
-  const hoy = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-
-  const datosPlantilla = {
-    fecha_expedicion:       hoy,
-    nombre_trabajador:      nombreTrabajador.toUpperCase(),
-    identificacion:         String(pz.identificacion),
-    cargo:                  pz.Cargo || '',
-    operacion:              pz['Operación'] || '',
-    fecha_retiro:           formatFechaCO(pz['Fecha de Retiro']),
-    filas_articulos:        generarFilasArticulosHTML(articulos),
-    firma_trabajador_html:  buildFirmaHtmlExpiry(pz.firma_trabajador_url),
-    firma_responsable_html: buildFirmaHtmlExpiry(pz.firma_responsable_url),
-    nombre_firmante:        pz.firma_responsable_nombre || '',
-    cargo_firmante:         pz.firma_responsable_cargo || '',
-    observaciones:          (() => {
-      let obs = (pz.observaciones || '').trim();
-      const areasReqArr = normalizarAreasRequeridas(areasRequeridas);
-      const obsAreas = areasReqArr
-        .filter(a => pz[`observacion_${a}`])
-        .map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
-      if (obsAreas.length) {
-        const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
-        obs = obs ? `${obs}\n\n${bloque}` : bloque;
-      }
-      return obs;
-    })(),
-    firma_nomina_html:      buildFirmaHtmlExpiry(pz.firma_nomina_url, true),
-    firma_nomina_nombre:    pz.firma_nomina_nombre || '—',
-    firma_nomina_cargo:     pz.firma_nomina_cargo || '—',
-  };
-
-  if (pz.nivel_compromiso === 'alto') {
-    datosPlantilla.firmas_areas_html = `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pz, areasRequeridas)}</table>`;
-  }
-
+  const datosPlantilla = construirDatosPazYSalvo(pz, areasRequeridas, {
+    nuevoDiseno: esPlantillaPazYSalvoNueva(plantilla.contenido_html),
+    cierrePorPlazo: true,
+  });
   const htmlFinal = reemplazarVariables(plantilla.contenido_html, datosPlantilla);
   return generarPDF(htmlFinal);
 }

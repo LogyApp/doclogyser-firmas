@@ -197,6 +197,126 @@ function generarFirmasAreasHtml(pz, areasRequeridas) {
   }).join('');
 }
 
+// ── Datos del PDF final del Paz y Salvo ─────────────────────────────────────
+// Una sola función para los tres caminos que lo generan: la firma que lo completa
+// (pazysalvoarea.js), el cierre anticipado (gestionarretiro.js) y el vencimiento del plazo
+// (pzExpiryNotifier.js). Las piezas que arma el código (artículos, firmas, áreas) salen con
+// clases para la plantilla nueva (migraciones/plantillas/paz_y_salvo_*.html, marcada con
+// class="pzd") y con estilos en línea para la anterior.
+function esPlantillaPazYSalvoNueva(html) {
+  return /class="pzd"/.test(String(html || ''));
+}
+
+function fechaLargaCO(fecha) {
+  if (!fecha) return '';
+  const str = fecha instanceof Date
+    ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
+    : String(fecha).slice(0, 10);
+  const d = new Date(str + 'T12:00:00');
+  return isNaN(d) ? '' : d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function filasArticulosNuevo(articulos) {
+  if (!articulos || !articulos.length) {
+    return '<tr><td colspan="4" class="art-empty">Sin artículos registrados</td></tr>';
+  }
+  return articulos.map((art) => {
+    const si = art.devuelve === true || art.devuelve === 'true';
+    const no = art.devuelve === false || art.devuelve === 'false';
+    const marcas = (si || no)
+      ? `<td class="c">${si ? '<span class="mk mk-si">✓</span>' : ''}</td><td class="c">${no ? '<span class="mk mk-no">✗</span>' : ''}</td>`
+      : '<td class="c" colspan="2"><span class="mk-na">N/A</span></td>';
+    return `<tr><td class="art-name">${escapeHtml(art.nombre)}</td><td class="c">${escapeHtml(art.cantidad || '')}</td>${marcas}</tr>`;
+  }).join('');
+}
+
+// Firma (imagen + "Firmado: fecha") o, si no firmó, el aviso que corresponda
+function bloqueFirma(nuevo, url, fecha, sinFirma) {
+  if (url) {
+    return nuevo
+      ? `<img src="${url}" class="sig-img"><div class="sig-date">${fechaFirmaTexto(fecha)}</div>`
+      : `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">
+       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(fecha)}</div>`;
+  }
+  if (nuevo) return `<div class="sig-pill${sinFirma.aviso ? ' sig-pill-warn' : ''}">${sinFirma.texto}</div>`;
+  return sinFirma.aviso
+    ? `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:7.5px;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">${sinFirma.texto}</div>`
+    : `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9;min-height:48px;display:flex;align-items:center;justify-content:center">${sinFirma.texto}</div>`;
+}
+
+function comentarioArea(nuevo, obs) {
+  if (!obs) return '';
+  return nuevo
+    ? `<div class="sig-comment"><strong>Comentario:</strong> ${escapeHtml(obs)}</div>`
+    : `<div style="margin-top:3px;padding:2px 4px;background:#f4faf8;border-left:2px solid #16a085;font-size:7.5px;color:#222"><strong>Comentario:</strong> ${escapeHtml(obs)}</div>`;
+}
+
+function tarjetasAreasNuevo(pz, areasRequeridas) {
+  const SIN_FIRMA_AREA = { texto: 'Se informó al área por correo electrónico' };
+  const celdas = areasRequeridas.map(area => `<td><div class="area-card">
+      <div class="sig-role">${escapeHtml(NOMBRES_AREA[area] || area)}</div>
+      <div class="area-sig">${bloqueFirma(true, pz[`firma_${area}_url`], pz[`fecha_firma_${area}`], SIN_FIRMA_AREA)}</div>
+      <div class="sig-line"></div>
+      <div class="sig-name">${escapeHtml(pz[`firma_${area}_nombre`] || '—')}</div>
+      <div class="sig-details">${escapeHtml(pz[`firma_${area}_cargo`] || '—')}</div>
+      ${comentarioArea(true, pz[`observacion_${area}`])}
+    </div></td>`);
+  const filas = [];
+  for (let i = 0; i < celdas.length; i += 3) {
+    const fila = celdas.slice(i, i + 3);
+    while (fila.length < 3) fila.push('<td></td>');
+    filas.push(`<tr>${fila.join('')}</tr>`);
+  }
+  return `<table class="areas-table">${filas.join('')}</table>`;
+}
+
+/**
+ * Datos de la plantilla del PDF final.
+ * @param {object} pz - Maestro_pazysalvo + Trabajador, Cargo, Operación y Fecha de Retiro de la vinculación
+ * @param {string[]} areasRequeridas
+ * @param {{ nuevoDiseno: boolean, cierrePorPlazo?: boolean }} opciones - cierrePorPlazo: el texto de
+ *   "No firmó" agrega "dentro del plazo" (cierre anticipado o vencido)
+ */
+function construirDatosPazYSalvo(pz, areasRequeridas, { nuevoDiseno, cierrePorPlazo = false } = {}) {
+  const nuevo = !!nuevoDiseno;
+  const areas = normalizarAreasRequeridas(areasRequeridas);
+  const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
+  const NO_FIRMO = { aviso: true, texto: `Documento soportado por correo electrónico – No firmó${cierrePorPlazo ? ' dentro del plazo' : ''}` };
+  const SIN_FIRMA_AREA = { texto: 'Se informó al área por correo electrónico' };
+
+  // En el diseño nuevo el comentario de cada área va en su firma; en el anterior, también en Observaciones
+  let observaciones = (pz.observaciones || '').trim();
+  const obsAreas = nuevo ? [] : areas.filter(a => pz[`observacion_${a}`]).map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
+  if (obsAreas.length) {
+    const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
+    observaciones = observaciones ? `${observaciones}\n\n${bloque}` : bloque;
+  }
+
+  const datos = {
+    fecha_expedicion:       new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' }),
+    nombre_trabajador:      limpiarNombre(pz.Trabajador).toUpperCase(),
+    identificacion:         String(pz.identificacion),
+    cargo:                  pz.Cargo || '',
+    operacion:              pz['Operación'] || '',
+    fecha_retiro:           fechaLargaCO(pz['Fecha de Retiro']),
+    filas_articulos:        nuevo ? filasArticulosNuevo(articulos) : generarFilasArticulosHTML(articulos),
+    firma_trabajador_html:  bloqueFirma(nuevo, pz.firma_trabajador_url, pz.fecha_firma_trabajador, NO_FIRMO),
+    firma_responsable_html: bloqueFirma(nuevo, pz.firma_responsable_url, pz.fecha_firma_responsable, SIN_FIRMA_AREA),
+    nombre_firmante:        pz.firma_responsable_nombre || '—',
+    cargo_firmante:         pz.firma_responsable_cargo || '—',
+    observaciones:          observaciones || 'Sin observaciones registradas.',
+    firma_nomina_html:      bloqueFirma(nuevo, pz.firma_nomina_url, pz.fecha_firma_nomina, SIN_FIRMA_AREA),
+    firma_nomina_nombre:    pz.firma_nomina_nombre || '—',
+    firma_nomina_cargo:     (pz.firma_nomina_cargo || '—') + comentarioArea(nuevo, pz.observacion_nomina),
+  };
+  if (pz.nivel_compromiso === 'alto') {
+    datos.firmas_areas_html = nuevo
+      ? tarjetasAreasNuevo(pz, areas)
+      : `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pz, areas)}</table>`;
+  }
+  return datos;
+}
+
 /**
  * Verifica si todas las áreas han firmado.
  * @param {object} pz - Registro de Maestro_pazysalvo
@@ -306,6 +426,8 @@ module.exports = {
   determinarNivelYAreas,
   generarFilasArticulosHTML,
   generarFirmasAreasHtml,
+  esPlantillaPazYSalvoNueva,
+  construirDatosPazYSalvo,
   estaCompleto,
   fechaFirmaTexto,
   escapeHtml,

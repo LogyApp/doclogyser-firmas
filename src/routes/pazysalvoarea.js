@@ -9,7 +9,7 @@ const { subirFirma, subirPDFPazYSalvo, obtenerUrlFirmaReciente } = require('../s
 const { validarTokenPZ } = require('../services/token');
 const { notificarPazYSalvoCompletado } = require('../services/email');
 const { resolverRutaFirmaArea } = require('../services/firmaPathResolver');
-const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA, fechaFirmaTexto, escapeHtml, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
+const { construirDatosPazYSalvo, esPlantillaPazYSalvoNueva, estaCompleto, NOMBRES_AREA, EMAILS_AREA, fechaFirmaTexto, escapeHtml, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
 
 const router = express.Router();
 const FIRMA_HTML = path.join(__dirname, '../views/pazysalvoarea/firma.html');
@@ -34,16 +34,6 @@ function fechaHoraBogota() {
   const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
   const p = n => String(n).padStart(2, '0');
   return `${b.getFullYear()}-${p(b.getMonth() + 1)}-${p(b.getDate())} ${p(b.getHours())}:${p(b.getMinutes())}:${p(b.getSeconds())}`;
-}
-
-function formatFechaCO(fecha) {
-  if (!fecha) return '';
-  const str = fecha instanceof Date 
-    ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
-    : String(fecha).slice(0, 10);
-  const d = new Date(str + 'T12:00:00');
-  if (isNaN(d)) return '';
-  return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function buildFirmaHtml(url, fecha, tipo) {
@@ -81,46 +71,9 @@ async function registrarDocTrabajador({ regional, operacion, identificacion, fec
 async function generarPazYSalvoFinalPDF(pz, areasRequeridas) {
   const nombrePlantilla = pz.nivel_compromiso === 'alto' ? 'paz_y_salvo_alto' : 'paz_y_salvo_bajo';
   const plantilla = await obtenerPlantilla(nombrePlantilla);
-  const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
-
-  const nombreTrabajador = limpiarNombre(pz.Trabajador);
-  const hoy = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-
-  const datosPlantilla = {
-    fecha_expedicion:        hoy,
-    nombre_trabajador:       nombreTrabajador.toUpperCase(),
-    identificacion:          String(pz.identificacion),
-    cargo:                   pz.Cargo || '',
-    operacion:               pz['Operación'] || '',
-    fecha_retiro:            formatFechaCO(pz['Fecha de Retiro']),
-    filas_articulos:         generarFilasArticulosHTML(articulos),
-    firma_trabajador_html:   buildFirmaHtml(pz.firma_trabajador_url, pz.fecha_firma_trabajador, 'trabajador'),
-    firma_responsable_html:  buildFirmaHtml(pz.firma_responsable_url, pz.fecha_firma_responsable, 'responsable'),
-    nombre_firmante:         pz.firma_responsable_nombre || '',
-    cargo_firmante:          pz.firma_responsable_cargo || '',
-    observaciones:           (() => {
-      let obs = (pz.observaciones || '').trim();
-      const areasReqArr = normalizarAreasRequeridas(areasRequeridas);
-      const obsAreas = areasReqArr
-        .filter(a => pz[`observacion_${a}`])
-        .map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
-      if (obsAreas.length) {
-        const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
-        obs = obs ? `${obs}\n\n${bloque}` : bloque;
-      }
-      return obs;
-    })(),
-    // Nómina siempre presente
-    firma_nomina_html:       buildFirmaHtml(pz.firma_nomina_url, pz.fecha_firma_nomina, 'Nómina'),
-    firma_nomina_nombre:     pz.firma_nomina_nombre || '—',
-    firma_nomina_cargo:      pz.firma_nomina_cargo ? pz.firma_nomina_cargo + (pz.observacion_nomina ? `<div style="margin-top:3px;padding:2px 4px;background:#f4faf8;border-left:2px solid #16a085;font-size:7.5px;color:#222"><strong>Comentario:</strong> ${escapeHtml(pz.observacion_nomina)}</div>` : '') : '—',
-  };
-
-  // Firmas de áreas adicionales (nivel alto)
-  if (pz.nivel_compromiso === 'alto') {
-    datosPlantilla.firmas_areas_html = `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pz, areasRequeridas)}</table>`;
-  }
-
+  const datosPlantilla = construirDatosPazYSalvo(pz, areasRequeridas, {
+    nuevoDiseno: esPlantillaPazYSalvoNueva(plantilla.contenido_html),
+  });
   const htmlFinal = reemplazarVariables(plantilla.contenido_html, datosPlantilla);
   const pdfBuffer = await generarPDF(htmlFinal);
   return subirPDFPazYSalvo(pz.identificacion, pz.id_vinculacion, pdfBuffer);

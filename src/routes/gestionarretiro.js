@@ -456,58 +456,17 @@ router.post('/api/generar-pz-anticipado', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'El Paz y Salvo ya se encuentra completado' });
     }
 
-    const { regenerarPazYSalvoFinal } = require('./pazysalvoarea');
-    // Para generar el PDF final usamos la función generarPazYSalvoFinalPDF
-    // Si aún no está en estado completado, lo completamos
     const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
     const { generarPDF } = require('../services/renderer');
     const { subirPDFPazYSalvo } = require('../services/storage');
-    const { generarFilasArticulosHTML, generarFirmasAreasHtml, fechaFirmaTexto, escapeHtml, NOMBRES_AREA, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
-
-    const areasRequeridas = normalizarAreasRequeridas(pz.areas_requeridas);
+    const { construirDatosPazYSalvo, esPlantillaPazYSalvoNueva } = require('../services/pazYSalvoService');
 
     const nombrePlantilla = pz.nivel_compromiso === 'alto' ? 'paz_y_salvo_alto' : 'paz_y_salvo_bajo';
     const plantilla = await obtenerPlantilla(nombrePlantilla);
-    const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
-    const hoy = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-
-    let obsFinal = (pz.observaciones || '').trim();
-    const obsAreas = areasRequeridas
-      .filter(a => pz[`observacion_${a}`])
-      .map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
-    if (obsAreas.length) {
-      const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
-      obsFinal = obsFinal ? `${obsFinal}\n\n${bloque}` : bloque;
-    }
-
-    const datosPlantilla = {
-      fecha_expedicion:        hoy,
-      nombre_trabajador:       limpiarNombre(pz.Trabajador).toUpperCase(),
-      identificacion:          String(pz.identificacion),
-      cargo:                   pz.Cargo || '',
-      operacion:               pz['Operación'] || '',
-      fecha_retiro:            formatFechaCO(pz['Fecha de Retiro']),
-      filas_articulos:         generarFilasArticulosHTML(articulos),
-      firma_trabajador_html:   pz.firma_trabajador_url
-        ? `<img src="${pz.firma_trabajador_url}" style="height:80px;display:block;margin-bottom:4px"><div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(pz.fecha_firma_trabajador)}</div>`
-        : `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">Documento soportado por correo electrónico – No firmó dentro del plazo</div>`,
-      firma_responsable_html:  pz.firma_responsable_url
-        ? `<img src="${pz.firma_responsable_url}" style="height:80px;display:block;margin-bottom:4px"><div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(pz.fecha_firma_responsable)}</div>`
-        : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`,
-      nombre_firmante:         pz.firma_responsable_nombre || '',
-      cargo_firmante:          pz.firma_responsable_cargo || '',
-      observaciones:           obsFinal || 'Sin observaciones registradas.',
-      firma_nomina_html:       pz.firma_nomina_url
-        ? `<img src="${pz.firma_nomina_url}" style="height:80px;display:block;margin-bottom:4px"><div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(pz.fecha_firma_nomina)}</div>`
-        : `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9">Se informó al área por correo electrónico</div>`,
-      firma_nomina_nombre:     pz.firma_nomina_nombre || '—',
-      firma_nomina_cargo:      pz.firma_nomina_cargo ? pz.firma_nomina_cargo + (pz.observacion_nomina ? `<div style="margin-top:3px;padding:2px 4px;background:#f4faf8;border-left:2px solid #16a085;font-size:7.5px;color:#222"><strong>Comentario:</strong> ${escapeHtml(pz.observacion_nomina)}</div>` : '') : '—',
-    };
-
-    if (pz.nivel_compromiso === 'alto') {
-      datosPlantilla.firmas_areas_html = `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pz, areasRequeridas)}</table>`;
-    }
-
+    const datosPlantilla = construirDatosPazYSalvo(pz, pz.areas_requeridas, {
+      nuevoDiseno: esPlantillaPazYSalvoNueva(plantilla.contenido_html),
+      cierrePorPlazo: true,
+    });
     const htmlFinal = reemplazarVariables(plantilla.contenido_html, datosPlantilla);
     const pdfBuffer = await generarPDF(htmlFinal);
     const urlPdf    = await subirPDFPazYSalvo(pz.identificacion, pz.id_vinculacion, pdfBuffer);

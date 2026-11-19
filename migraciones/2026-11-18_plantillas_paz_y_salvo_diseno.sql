@@ -1,0 +1,378 @@
+-- Paz y Salvo (Gestión de Retiro) con el diseño de los documentos recientes: encabezado con logo y
+-- datos del formato, recuadro del colaborador, tabla de artículos con marcas Sí/No/N/A, observaciones,
+-- firmas en tarjetas y, en alto compromiso, firmas de áreas con su comentario. El párrafo de constancia
+-- no cambia; la nota de los artículos pasa al formato digital.
+-- La marca class="pzd" de la plantilla hace que el código use las piezas nuevas
+-- (construirDatosPazYSalvo en src/services/pazYSalvoService.js): ejecutar DESPUÉS de desplegarlo.
+-- Conserva TH-R-021 / TH-R-022 versión 1 y pone la fecha del formato en 18/11/2026.
+-- HTML también en migraciones/plantillas/. Respaldo en
+-- migraciones/respaldos/2026-11-18_respaldo_plantillas_paz_y_salvo.sql.
+-- Los Paz y Salvo ya completados se actualizan con "Regenerar documentos". Se puede ejecutar más de una vez.
+
+-- Paz y Salvo bajo compromiso (TH-R-021): versión 1 → 2
+UPDATE Maestro_Plantillas
+SET version = 2, fecha_version = '2026-11-18',
+    ultima_actualizacion = NOW(), contenido_html = '<style>
+  /* Estilos encerrados en .pzd (la marca class="pzd" indica al código que use las piezas del diseño nuevo, pazYSalvoService.js). */
+  .pzd { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9.6pt; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .pzd * { box-sizing: border-box; }
+  .pzd p { margin: 0 0 8px 0; text-align: justify; }
+
+  .pzd .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; border: 1px solid #cbd5e1; }
+  .pzd .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .pzd .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .pzd .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .pzd .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px; }
+  .pzd .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .pzd .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .pzd .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .pzd .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .pzd .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .pzd .meta-ver { color: #334155; }
+  .pzd .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .pzd .addressee { text-align: center; font-size: 10pt; font-weight: 800; color: #000b59; letter-spacing: 1px; text-transform: uppercase; margin: 6px 0 14px 0; }
+  .pzd .addressee::after { content: ''''; display: block; width: 46px; height: 3px; background: #f55400; border-radius: 2px; margin: 6px auto 0 auto; }
+
+  .pzd .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 4px 0 14px 0; }
+  .pzd .metric-item { display: table-cell; padding: 10px 14px; border-right: 1px solid #e2e8f0; vertical-align: top; }
+  .pzd .metric-item:last-child { border-right: none; }
+  .pzd .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .pzd .metric-value { font-size: 10pt; font-weight: 700; color: #000b59; }
+  .pzd .metric-value-primary { font-size: 10pt; font-weight: 800; color: #f55400; }
+
+  .pzd .section-block { margin-bottom: 14px; }
+  .pzd .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .pzd .section-title::before { content: ''''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .pzd .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 9pt; }
+  .pzd .data-grid td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .pzd .data-grid tr:last-child td { border-bottom: none; }
+  .pzd .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .pzd .data-label { width: 28%; font-weight: 700; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .pzd .data-val { font-weight: 600; color: #0f172a; }
+
+  .pzd .note-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 9px 12px; margin: 4px 0 14px 0; }
+  .pzd .note-box p { margin: 0 0 4px 0; font-size: 9pt; color: #334155; }
+  .pzd .note-box p:last-child { margin-bottom: 0; }
+  .pzd .note-box strong { color: #000b59; }
+
+  .pzd .sig-table { width: 100%; border-collapse: collapse; margin-top: 4px; page-break-inside: avoid; }
+  .pzd .sig-table td { width: 50%; vertical-align: top; text-align: center; padding: 0 14px; }
+  .pzd .sig-table td:first-child { padding-left: 0; }
+  .pzd .sig-table td:last-child { padding-right: 0; }
+  .pzd .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px; }
+  .pzd .sig-img-wrap { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
+  .pzd .sig-img-wrap img { max-height: 84px; max-width: 230px; margin: 0 auto !important; }
+  .pzd .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .pzd .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .pzd .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  .pzd .doc-footer { margin-top: 22px; text-align: center; }
+  .pzd .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px; }
+  .pzd .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px; }
+  .pzd .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px; }
+  .pzd .art-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 8.8pt; }
+  .pzd .art-table th { background: #000b59; color: #ffffff; font-weight: 700; text-align: center; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.4px; }
+  .pzd .art-table th:first-child { text-align: left; }
+  .pzd .art-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .pzd .art-table tr:last-child td { border-bottom: none; }
+  .pzd .art-table tbody tr:nth-child(even) td { background: #fafafa; }
+  .pzd .art-table td.art-name { font-weight: 600; color: #0f172a; }
+  .pzd .art-table td.c { text-align: center; }
+  .pzd .art-table td.art-empty { text-align: center; color: #94a3b8; padding: 10px; }
+  .pzd .mk { display: inline-block; width: 18px; height: 18px; line-height: 18px; border-radius: 9px; font-weight: 800; font-size: 9pt; text-align: center; }
+  .pzd .mk-si { background: #dcfce7; color: #15803d; }
+  .pzd .mk-no { background: #fee2e2; color: #b91c1c; }
+  .pzd .mk-na { display: inline-block; padding: 1px 8px; border-radius: 9px; background: #f1f5f9; color: #64748b; font-size: 7.5pt; font-weight: 700; letter-spacing: 0.3px; }
+  .pzd .nota { font-size: 7.8pt; color: #64748b; font-style: italic; margin: 5px 0 12px 0; }
+  .pzd .obs-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 8px 12px; font-size: 8.6pt; color: #334155; white-space: pre-line; line-height: 1.45; margin-bottom: 14px; }
+  .pzd .sig-table td { width: 33.33%; }
+  .pzd .sig-img-wrap { height: 92px; }
+  .pzd .sig-img { max-height: 70px; max-width: 200px; display: block; margin: 0 auto; }
+  .pzd .sig-date { font-size: 6.5pt; color: #64748b; margin-top: 2px; }
+  .pzd .sig-pill { border: 1px dashed #94a3b8; background: #f8fafc; color: #475569; border-radius: 6px; padding: 7px 8px; font-size: 7.5pt; line-height: 1.3; text-align: center; margin: 0 auto 6px auto; max-width: 200px; }
+  .pzd .sig-pill-warn { border-color: #fdba74; background: #fff7ed; color: #9a3412; }
+  .pzd .sig-comment { margin-top: 5px; padding: 4px 7px; background: #f0fdfa; border-left: 2.5px solid #0f766e; border-radius: 3px; font-size: 7.3pt; color: #134e4a; text-align: left; line-height: 1.3; word-break: break-word; }
+  .pzd .areas-table { width: 100%; border-collapse: separate; border-spacing: 8px; margin: -8px; width: calc(100% + 16px); }
+  .pzd .areas-table td { width: 33.33%; vertical-align: top; }
+  .pzd .areas-table tr { page-break-inside: avoid; }
+  .pzd .area-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; background: #ffffff; text-align: center; page-break-inside: avoid; }
+  .pzd .area-card .sig-role { text-align: left; color: #000b59; }
+  .pzd .area-sig { height: 78px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
+  .pzd .area-sig .sig-img { max-height: 56px; max-width: 150px; }
+  .pzd .areas-block { page-break-inside: avoid; break-inside: avoid; }
+</style>
+
+<div class="pzd">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Paz y salvo desvinculación laboral</div>
+        <div class="doc-subtitle">Gestión de Talento Humano</div>
+        <div class="doc-subdetail">Relación de entrega por áreas de trabajo</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Colaborador(a)</div>
+      <div class="metric-value">{{nombre_trabajador}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Cargo · Operación</div>
+      <div class="metric-value" style="font-size:9pt">{{cargo}}<br><span style="color:#64748b;font-weight:600">{{operacion}}</span></div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Último día laborado</div>
+      <div class="metric-value-primary">{{fecha_retiro}}</div>
+    </div>
+  </div>
+
+  <p>El <strong>{{fecha_expedicion}}</strong>, se hace constar que el(la) colaborador(a) <strong>{{nombre_trabajador}}</strong>, portador(a) de la Cédula de Ciudadanía número <strong>{{identificacion}}</strong>, quien ejerció las funciones de <strong>{{cargo}}</strong> en la operación <strong>{{operacion}}</strong>, se encuentra a la fecha a PAZ Y SALVO por todo concepto con la organización, de acuerdo con la relación por áreas de trabajo descrita a continuación. La presente certificación se expide en virtud de la terminación de su vínculo laboral, fijada a partir del día <strong>{{fecha_retiro}}</strong>, siendo este su último día efectivamente laborado.</p>
+
+  <section class="section-block" style="margin-bottom:0">
+    <div class="section-title">Relación de artículos</div>
+    <table class="art-table">
+      <thead><tr><th style="width:46%">Artículo</th><th style="width:18%">Cantidad</th><th style="width:18%">Sí</th><th style="width:18%">No</th></tr></thead>
+      <tbody>{{filas_articulos}}</tbody>
+    </table>
+  </section>
+  <p class="nota">Nota: Los artículos no asignados al colaborador se marcan N/A.</p>
+
+  <section class="section-block" style="margin-bottom:0">
+    <div class="section-title">Observaciones</div>
+    <div class="obs-box">{{observaciones}}</div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Firmas</div>
+    <table class="sig-table">
+      <tr>
+        <td>
+          <div class="sig-role">Trabajador(a)</div>
+          <div class="sig-img-wrap">{{firma_trabajador_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_trabajador}}</div>
+          <div class="sig-details">C.C. {{identificacion}}<br>{{cargo}}</div>
+        </td>
+        <td>
+          <div class="sig-role">Quien recibe</div>
+          <div class="sig-img-wrap">{{firma_responsable_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_firmante}}</div>
+          <div class="sig-details">{{cargo_firmante}}</div>
+        </td>
+        <td>
+          <div class="sig-role">Nómina</div>
+          <div class="sig-img-wrap">{{firma_nomina_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{firma_nomina_nombre}}</div>
+          <div class="sig-details">{{firma_nomina_cargo}}</div>
+        </td>
+      </tr>
+    </table>
+  </section>
+
+  <div class="doc-footer">
+    <div class="line"></div>
+    <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+    <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+  </div>
+
+</div>
+'
+WHERE id_plantilla = 6 AND nombre_proceso = 'paz_y_salvo_bajo';
+
+-- Paz y Salvo alto compromiso (TH-R-022): versión 1 → 2
+UPDATE Maestro_Plantillas
+SET version = 2, fecha_version = '2026-11-18',
+    ultima_actualizacion = NOW(), contenido_html = '<style>
+  /* Estilos encerrados en .pzd (la marca class="pzd" indica al código que use las piezas del diseño nuevo, pazYSalvoService.js). */
+  .pzd { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9.6pt; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .pzd * { box-sizing: border-box; }
+  .pzd p { margin: 0 0 8px 0; text-align: justify; }
+
+  .pzd .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; border: 1px solid #cbd5e1; }
+  .pzd .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .pzd .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .pzd .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .pzd .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px; }
+  .pzd .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .pzd .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .pzd .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .pzd .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .pzd .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .pzd .meta-ver { color: #334155; }
+  .pzd .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .pzd .addressee { text-align: center; font-size: 10pt; font-weight: 800; color: #000b59; letter-spacing: 1px; text-transform: uppercase; margin: 6px 0 14px 0; }
+  .pzd .addressee::after { content: ''''; display: block; width: 46px; height: 3px; background: #f55400; border-radius: 2px; margin: 6px auto 0 auto; }
+
+  .pzd .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 4px 0 14px 0; }
+  .pzd .metric-item { display: table-cell; padding: 10px 14px; border-right: 1px solid #e2e8f0; vertical-align: top; }
+  .pzd .metric-item:last-child { border-right: none; }
+  .pzd .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .pzd .metric-value { font-size: 10pt; font-weight: 700; color: #000b59; }
+  .pzd .metric-value-primary { font-size: 10pt; font-weight: 800; color: #f55400; }
+
+  .pzd .section-block { margin-bottom: 14px; }
+  .pzd .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .pzd .section-title::before { content: ''''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .pzd .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 9pt; }
+  .pzd .data-grid td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .pzd .data-grid tr:last-child td { border-bottom: none; }
+  .pzd .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .pzd .data-label { width: 28%; font-weight: 700; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .pzd .data-val { font-weight: 600; color: #0f172a; }
+
+  .pzd .note-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 9px 12px; margin: 4px 0 14px 0; }
+  .pzd .note-box p { margin: 0 0 4px 0; font-size: 9pt; color: #334155; }
+  .pzd .note-box p:last-child { margin-bottom: 0; }
+  .pzd .note-box strong { color: #000b59; }
+
+  .pzd .sig-table { width: 100%; border-collapse: collapse; margin-top: 4px; page-break-inside: avoid; }
+  .pzd .sig-table td { width: 50%; vertical-align: top; text-align: center; padding: 0 14px; }
+  .pzd .sig-table td:first-child { padding-left: 0; }
+  .pzd .sig-table td:last-child { padding-right: 0; }
+  .pzd .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px; }
+  .pzd .sig-img-wrap { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
+  .pzd .sig-img-wrap img { max-height: 84px; max-width: 230px; margin: 0 auto !important; }
+  .pzd .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .pzd .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .pzd .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  .pzd .doc-footer { margin-top: 22px; text-align: center; }
+  .pzd .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px; }
+  .pzd .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px; }
+  .pzd .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px; }
+  .pzd .art-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 8.8pt; }
+  .pzd .art-table th { background: #000b59; color: #ffffff; font-weight: 700; text-align: center; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.4px; }
+  .pzd .art-table th:first-child { text-align: left; }
+  .pzd .art-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .pzd .art-table tr:last-child td { border-bottom: none; }
+  .pzd .art-table tbody tr:nth-child(even) td { background: #fafafa; }
+  .pzd .art-table td.art-name { font-weight: 600; color: #0f172a; }
+  .pzd .art-table td.c { text-align: center; }
+  .pzd .art-table td.art-empty { text-align: center; color: #94a3b8; padding: 10px; }
+  .pzd .mk { display: inline-block; width: 18px; height: 18px; line-height: 18px; border-radius: 9px; font-weight: 800; font-size: 9pt; text-align: center; }
+  .pzd .mk-si { background: #dcfce7; color: #15803d; }
+  .pzd .mk-no { background: #fee2e2; color: #b91c1c; }
+  .pzd .mk-na { display: inline-block; padding: 1px 8px; border-radius: 9px; background: #f1f5f9; color: #64748b; font-size: 7.5pt; font-weight: 700; letter-spacing: 0.3px; }
+  .pzd .nota { font-size: 7.8pt; color: #64748b; font-style: italic; margin: 5px 0 12px 0; }
+  .pzd .obs-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 8px 12px; font-size: 8.6pt; color: #334155; white-space: pre-line; line-height: 1.45; margin-bottom: 14px; }
+  .pzd .sig-table td { width: 33.33%; }
+  .pzd .sig-img-wrap { height: 92px; }
+  .pzd .sig-img { max-height: 70px; max-width: 200px; display: block; margin: 0 auto; }
+  .pzd .sig-date { font-size: 6.5pt; color: #64748b; margin-top: 2px; }
+  .pzd .sig-pill { border: 1px dashed #94a3b8; background: #f8fafc; color: #475569; border-radius: 6px; padding: 7px 8px; font-size: 7.5pt; line-height: 1.3; text-align: center; margin: 0 auto 6px auto; max-width: 200px; }
+  .pzd .sig-pill-warn { border-color: #fdba74; background: #fff7ed; color: #9a3412; }
+  .pzd .sig-comment { margin-top: 5px; padding: 4px 7px; background: #f0fdfa; border-left: 2.5px solid #0f766e; border-radius: 3px; font-size: 7.3pt; color: #134e4a; text-align: left; line-height: 1.3; word-break: break-word; }
+  .pzd .areas-table { width: 100%; border-collapse: separate; border-spacing: 8px; margin: -8px; width: calc(100% + 16px); }
+  .pzd .areas-table td { width: 33.33%; vertical-align: top; }
+  .pzd .areas-table tr { page-break-inside: avoid; }
+  .pzd .area-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; background: #ffffff; text-align: center; page-break-inside: avoid; }
+  .pzd .area-card .sig-role { text-align: left; color: #000b59; }
+  .pzd .area-sig { height: 78px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
+  .pzd .area-sig .sig-img { max-height: 56px; max-width: 150px; }
+  .pzd .areas-block { page-break-inside: avoid; break-inside: avoid; }
+</style>
+
+<div class="pzd">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Paz y salvo desvinculación laboral ADM</div>
+        <div class="doc-subtitle">Gestión de Talento Humano</div>
+        <div class="doc-subdetail">Relación de entrega por áreas de trabajo</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Colaborador(a)</div>
+      <div class="metric-value">{{nombre_trabajador}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Cargo · Operación</div>
+      <div class="metric-value" style="font-size:9pt">{{cargo}}<br><span style="color:#64748b;font-weight:600">{{operacion}}</span></div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Último día laborado</div>
+      <div class="metric-value-primary">{{fecha_retiro}}</div>
+    </div>
+  </div>
+
+  <p>El <strong>{{fecha_expedicion}}</strong>, se hace constar que el(la) colaborador(a) <strong>{{nombre_trabajador}}</strong>, portador(a) de la Cédula de Ciudadanía número <strong>{{identificacion}}</strong>, quien ejerció las funciones de <strong>{{cargo}}</strong> en la operación <strong>{{operacion}}</strong>, se encuentra a la fecha a PAZ Y SALVO por todo concepto con la organización, de acuerdo con la relación por áreas de trabajo descrita a continuación. La presente certificación se expide en virtud de la terminación de su vínculo laboral, fijada a partir del día <strong>{{fecha_retiro}}</strong>, siendo este su último día efectivamente laborado.</p>
+
+  <section class="section-block" style="margin-bottom:0">
+    <div class="section-title">Relación de artículos</div>
+    <table class="art-table">
+      <thead><tr><th style="width:46%">Artículo</th><th style="width:18%">Cantidad</th><th style="width:18%">Sí</th><th style="width:18%">No</th></tr></thead>
+      <tbody>{{filas_articulos}}</tbody>
+    </table>
+  </section>
+  <p class="nota">Nota: Los artículos no asignados al colaborador se marcan N/A.</p>
+
+  <section class="section-block" style="margin-bottom:0">
+    <div class="section-title">Observaciones</div>
+    <div class="obs-box">{{observaciones}}</div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Firma trabajador y responsable de recepción</div>
+    <table class="sig-table">
+      <tr>
+        <td>
+          <div class="sig-role">Trabajador(a)</div>
+          <div class="sig-img-wrap">{{firma_trabajador_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_trabajador}}</div>
+          <div class="sig-details">C.C. {{identificacion}}<br>{{cargo}}</div>
+        </td>
+        <td>
+          <div class="sig-role">Quien recibe</div>
+          <div class="sig-img-wrap">{{firma_responsable_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_firmante}}</div>
+          <div class="sig-details">{{cargo_firmante}}</div>
+        </td>
+        <td></td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="section-block areas-block">
+    <div class="section-title">Firmas de áreas</div>
+    {{firmas_areas_html}}
+  </section>
+
+  <div class="doc-footer">
+    <div class="line"></div>
+    <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+    <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+  </div>
+
+</div>
+'
+WHERE id_plantilla = 7 AND nombre_proceso = 'paz_y_salvo_alto';
+
+SELECT id_plantilla, nombre_proceso, version, codigo_formato, version_formato, fecha_version, LENGTH(contenido_html) AS largo
+  FROM Maestro_Plantillas WHERE id_plantilla IN (6, 7);
