@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, normalizarTexto } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig } = require('../services/documentRegistry');
 
@@ -108,6 +108,13 @@ function resumenAcceso(acceso) {
   };
 }
 
+// Operaciones de la lista que están dentro del alcance del usuario en la pestaña Resumen
+function opsVisiblesResumen(operaciones, acceso) {
+  if (!acceso) return [];
+  if (acceso.sinFiltro) return operaciones;
+  return operaciones.filter(op => (acceso.operacionesFiltro || []).some(o => normalizarTexto(o) === normalizarTexto(op)));
+}
+
 // ── GET / (Cargar Interfaz de Facturación) ───────────────────────────────
 router.get('/', async (req, res) => {
   try {
@@ -118,19 +125,19 @@ router.get('/', async (req, res) => {
     // Subpestañas de la pestaña Clientes: Clientes, Clientes_credito, Proveedor, Transportadora, Placas.
     const [
       accesoServicios, accesoRecibos, accesoBloqueo, accesoClientes, accesoTickets,
-      accesoMaestroClientes, accesoProveedor, accesoTransportadora, accesoPlacas, accesoAjustes
+      accesoMaestroClientes, accesoProveedor, accesoTransportadora, accesoPlacas, accesoAjustes, accesoResumen
     ] = await Promise.all([
       'Servicios', 'Recibos', 'Bloqueo_datos', 'Clientes_credito', 'Tickets',
-      'Clientes', 'Proveedor', 'Transportadora', 'Placas', 'Ajustes_Servicios'
+      'Clientes', 'Proveedor', 'Transportadora', 'Placas', 'Ajustes_Servicios', 'Resumen'
     ].map(seccion => computarAccesoFacturacion(usuario, seccion)));
     const accesoPestanaClientes = accesoMaestroClientes || accesoClientes || accesoProveedor
       || accesoTransportadora || accesoPlacas;
 
-    if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes) {
+    if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes && !accesoResumen) {
       return res.status(403).send(paginaError('Usuario no autorizado para el módulo de Facturación'));
     }
 
-    const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoPestanaClientes;
+    const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoPestanaClientes || accesoResumen;
     const template = fs.readFileSync(FACTURACION_HTML, 'utf8');
 
     // Quincena actual de hoy
@@ -148,7 +155,7 @@ router.get('/', async (req, res) => {
     const [
       cfgServiciosMasivo, quincenaActual, permisosRecibos, topeValorBaseServicio,
       puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, ajustesServicios,
-      opsFiltroBodega
+      opsFiltroBodega, opsDesgloseResumen
     ] = await Promise.all([
       obtenerConfigServiciosMasivo(base.rol),
       leerQuincenaActual(),
@@ -159,7 +166,8 @@ router.get('/', async (req, res) => {
       puedeGestionarMaestros(base.rol),
       puedeEditarRetenciones(base.rol),
       accesoAjustes ? configServicios.permisosAjustesServicios(base.rol) : null,
-      obtenerOpsFiltroBodega()
+      obtenerOpsFiltroBodega(),
+      accesoResumen ? obtenerOpsDesgloseResumen() : null
     ]);
 
     const config = JSON.stringify({
@@ -198,7 +206,13 @@ router.get('/', async (req, res) => {
         transportadoras: resumenAcceso(accesoTransportadora),
         placas: resumenAcceso(accesoPlacas),
         ajustes: resumenAcceso(accesoAjustes),
+        resumen: resumenAcceso(accesoResumen),
       },
+      // Pestaña Resumen: operaciones (de las que ve el usuario) con los interruptores "Por Área" y "Por Bodega"
+      resumenDesglose: opsDesgloseResumen ? {
+        area: opsVisiblesResumen(opsDesgloseResumen.area, accesoResumen),
+        bodega: opsVisiblesResumen(opsDesgloseResumen.bodega, accesoResumen),
+      } : null,
       // Pestaña Ajustes Servicios (Config_Servicios): permisos de Config_Parametros
       ajustesServicios,
       camposServicios: configServicios.CAMPOS,
@@ -2260,6 +2274,27 @@ function sugerirRetenciones({ nit, operacion, subtotal }, clienteFlags, impuesto
   return { retefuente, reteiva, reteica };
 }
 
+// Las mismas cuentas de calcularTotalesServicio en SQL, sobre Dynamic_Servicios s + Dynamic_Recibos r:
+// vBaseSql = subtotal (Cantidad × Valor Unitario) y totalPagoSql = subtotal + IVA − retenciones.
+function sqlValoresServicio(impuestos) {
+  const ivaTax = impuestos.iva || 0.19;
+  const reteFuenteTax = impuestos.reteFuente || 0.04;
+  const reteIvaTax = impuestos.reteIva || 0.15;
+  let reteIcaCaseSql = 'CASE ';
+  for (const [op, p] of Object.entries(impuestos.reteIcaMap || {})) {
+    reteIcaCaseSql += `WHEN LOWER(TRIM(r.\`Operación\`)) = ${pool.escape(op)} THEN ${Number(p)} `;
+  }
+  reteIcaCaseSql += 'ELSE 0 END';
+
+  const vBaseSql = '(COALESCE(s.Cantidad, 0) * COALESCE(s.`Valor Unitario`, 0))';
+  const ivaSql = `(${vBaseSql} * ${ivaTax})`;
+  const reteFuenteSql = `(CASE WHEN r.Retefuente = 'V' THEN ${vBaseSql} * ${reteFuenteTax} ELSE 0 END)`;
+  const reteIvaSql = `(CASE WHEN r.ReteIVA = 'V' THEN ${ivaSql} * ${reteIvaTax} ELSE 0 END)`;
+  const reteIcaSql = `(CASE WHEN r.ReteICA = 'V' THEN ${vBaseSql} * (${reteIcaCaseSql}) ELSE 0 END)`;
+  const totalPagoSql = `(${vBaseSql} + ${ivaSql} - ${reteFuenteSql} - ${reteIvaSql} - ${reteIcaSql})`;
+  return { vBaseSql, totalPagoSql };
+}
+
 function calcularTotalesServicio(row, impuestos) {
   const cantidad = Number(row.cantidad) || 0;
   const valorUnitario = Number(row.valorUnitario) || 0;
@@ -2528,6 +2563,86 @@ router.get('/api/servicios', async (req, res) => {
   }
 });
 
+// ── GET /api/resumen (pestaña Resumen) ──────────────────────────────────────
+// Valor de los servicios por Operación y Día, separado en Efectivo (1), Transferencia (2) y Crédito (3),
+// en subtotal y total (las mismas cuentas de Servicios y Recibos). Alcance: Maestro_Menu facturacion /
+// Resumen (Acceso 1 todo, 2 su regional, 3 sus operaciones). Filtros: año, quincena y regional.
+// area=1 / bodega=1 separan además por Área (Config_Area) o Bodega (Etapa), solo en las operaciones
+// configuradas (obtenerOpsDesgloseResumen); las demás siguen por operación y día.
+router.get('/api/resumen', async (req, res) => {
+  try {
+    const { usuario, anio, quincena, regional } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Resumen');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const where = ['s.`Forma De Pago` IN (1, 2, 3)'];
+    const params = [];
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) return res.json({ filas: [] });
+      where.push(`r.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+    let anioNum = null;
+    if (anio !== 'todos') {
+      anioNum = parseInt(anio, 10) || anioActualBogota();
+      where.push('s.`Hora Inicio` >= ? AND s.`Hora Inicio` < ?');
+      params.push(`${anioNum}-01-01 00:00:00`, `${anioNum + 1}-01-01 00:00:00`);
+    }
+    if (quincena && quincena !== 'todas') {
+      where.push(sqlRangosFecha('s.`Hora Inicio`', await rangosQuincena(quincena, anioNum), params));
+    }
+    if (regional && regional !== 'todas') {
+      where.push('mo.REGIONAL = ?');
+      params.push(regional);
+    }
+
+    // Desglose por Área / Bodega: solo si lo piden y hay operaciones configuradas
+    const desglose = (req.query.area === '1' || req.query.bodega === '1') ? await obtenerOpsDesgloseResumen() : null;
+    const porArea = req.query.area === '1' && desglose.area.length > 0;
+    const porBodega = req.query.bodega === '1' && desglose.bodega.length > 0;
+    const enLista = (ops, op) => ops.some(o => normalizarTexto(o) === normalizarTexto(op));
+
+    const { vBaseSql, totalPagoSql } = sqlValoresServicio(await getImpuestos());
+    const [rows] = await pool.query(`
+      SELECT r.\`Operación\` AS operacion, COALESCE(mo.REGIONAL, 'SIN REGIONAL') AS regional,
+             DATE_FORMAT(s.\`Hora Inicio\`, '%Y-%m-%d') AS dia, s.\`Forma De Pago\` AS formaDePago,
+             ${porArea ? 'ar.AREA' : 'NULL'} AS area, ${porBodega ? 's.Etapa' : 'NULL'} AS bodega,
+             COUNT(*) AS servicios, ROUND(SUM(${vBaseSql})) AS subtotal, ROUND(SUM(${totalPagoSql})) AS total
+        FROM Dynamic_Servicios s
+        JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+        LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
+        ${porArea ? 'LEFT JOIN Config_Area ar ON s.Area = ar.ID' : ''}
+       WHERE ${where.join(' AND ')}
+       GROUP BY r.\`Operación\`, mo.REGIONAL, dia, s.\`Forma De Pago\`${porArea ? ', ar.AREA' : ''}${porBodega ? ', s.Etapa' : ''}
+    `, params);
+
+    // Una fila por Operación + Día (+ Área / Bodega en las operaciones configuradas) con las tres formas de pago
+    const filas = new Map();
+    const CLAVE_FP = { 1: 'efectivo', 2: 'transferencia', 3: 'credito' };
+    rows.forEach(r => {
+      const area = porArea && enLista(desglose.area, r.operacion) ? (r.area || 'SIN ÁREA') : '';
+      const bodega = porBodega && enLista(desglose.bodega, r.operacion) ? (String(r.bodega || '').trim() || 'SIN BODEGA') : '';
+      const clave = `${r.operacion}|${r.dia}|${area}|${bodega}`;
+      if (!filas.has(clave)) {
+        filas.set(clave, {
+          operacion: r.operacion || '', regional: r.regional, dia: r.dia, area, bodega, servicios: 0,
+          subtotal: { efectivo: 0, transferencia: 0, credito: 0 }, total: { efectivo: 0, transferencia: 0, credito: 0 },
+        });
+      }
+      const f = filas.get(clave);
+      const fp = CLAVE_FP[Number(r.formaDePago)];
+      f.servicios += Number(r.servicios) || 0;
+      f.subtotal[fp] += Number(r.subtotal) || 0;
+      f.total[fp] += Number(r.total) || 0;
+    });
+    res.json({ filas: [...filas.values()] });
+  } catch (err) {
+    console.error('[facturacion] GET /api/resumen:', err);
+    res.status(500).json({ error: 'No se pudo cargar el resumen' });
+  }
+});
+
 // ── GET /api/servicios/metricas ───────────────────────────────────────────────
 router.get('/api/servicios/metricas', async (req, res) => {
   try {
@@ -2614,22 +2729,7 @@ router.get('/api/servicios/metricas', async (req, res) => {
     const filtroEstado = sqlEstadoServicio(req.query.estado, commonParams);
     if (filtroEstado) commonWhere.push(filtroEstado);
 
-    const impuestos = await getImpuestos();
-    const ivaTax = impuestos.iva || 0.19;
-    const reteFuenteTax = impuestos.reteFuente || 0.04;
-    const reteIvaTax = impuestos.reteIva || 0.15;
-    let reteIcaCaseSql = 'CASE ';
-    for (const [op, p] of Object.entries(impuestos.reteIcaMap || {})) {
-      reteIcaCaseSql += `WHEN LOWER(TRIM(r.\`Operación\`)) = ${pool.escape(op)} THEN ${Number(p)} `;
-    }
-    reteIcaCaseSql += 'ELSE 0 END';
-
-    const vBaseSql = '(COALESCE(s.Cantidad, 0) * COALESCE(s.`Valor Unitario`, 0))';
-    const ivaSql = `(${vBaseSql} * ${ivaTax})`;
-    const reteFuenteSql = `(CASE WHEN r.Retefuente = 'V' THEN ${vBaseSql} * ${reteFuenteTax} ELSE 0 END)`;
-    const reteIvaSql = `(CASE WHEN r.ReteIVA = 'V' THEN ${ivaSql} * ${reteIvaTax} ELSE 0 END)`;
-    const reteIcaSql = `(CASE WHEN r.ReteICA = 'V' THEN ${vBaseSql} * (${reteIcaCaseSql}) ELSE 0 END)`;
-    const totalPagoSql = `(${vBaseSql} + ${ivaSql} - ${reteFuenteSql} - ${reteIvaSql} - ${reteIcaSql})`;
+    const { vBaseSql, totalPagoSql } = sqlValoresServicio(await getImpuestos());
 
     // 1. Agrupación Forma De Pago (no filtra por formaDePago pero sí por quincena si existe)
     const fpWhere = [...commonWhere];

@@ -165,6 +165,8 @@ async function obtenerParametrosAsistencia() {
     diasMaximosFuturosNovedades: 30,
     rolesEditarEliminarYellow: ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR'],
     rolesEditarEliminarTodosEstados: ['Sistema', 'Nomina'],
+    rolesEditarHorarioTodosEstados: ['Sistema', 'Nomina'],
+    rolesEditarHorarioYellow: ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR', 'subgerente'],
     rolesRegistrarRetirados: ['Sistema', 'Nomina'],
     rolesRegistrarDiasFuturos: ['Sistema', 'Nomina'],
     rolesVerNovedadesSistema: ['Sistema'],
@@ -192,6 +194,12 @@ async function obtenerParametrosAsistencia() {
     }
     if (r.Concepto === 'Roles_Editar_Eliminar_Todos_Estados') {
       config.rolesEditarEliminarTodosEstados = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Editar_Horario_Todos_Estados') {
+      config.rolesEditarHorarioTodosEstados = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Editar_Horario_Yellow') {
+      config.rolesEditarHorarioYellow = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
     }
     if (r.Concepto === 'Roles_Registrar_Retirados') {
       config.rolesRegistrarRetirados = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1632,10 +1640,17 @@ async function editarRegistroAsistencia({
   diagnostico,
   observaciones
 }) {
-  const [rows] = await pool.query(
-    'SELECT IdAsistencia, Origen as operacion, Area as area, Disponible1 as disponible1, Novedad as novedad, TIME_FORMAT(`Hora Llegada`, "%H:%i") as horaLlegada, TIME_FORMAT(`Hora Salida`, "%H:%i") as horaSalida, DATE_FORMAT(`Día`, "%Y-%m-%d") as dia, Estado as estado FROM Dynamic_Asistencia WHERE IdAsistencia = ?',
-    [idAsistencia]
-  );
+  const [rows] = await pool.query(`
+    SELECT da.IdAsistencia, da.Origen as operacion, da.Area as area, da.Disponible1 as disponible1, da.Novedad as novedad,
+           TIME_FORMAT(da.\`Hora Llegada\`, "%H:%i") as horaLlegada, TIME_FORMAT(da.\`Hora Salida\`, "%H:%i") as horaSalida,
+           DATE_FORMAT(da.\`Día\`, "%Y-%m-%d") as dia, da.Estado as estado,
+           (SELECT v.Cargo FROM \`Maestro_Vinculación\` v
+            WHERE v.Identificación = da.Cédula
+            ORDER BY (v.Estado = 'Activo') DESC, v.\`Fecha de Ingreso\` DESC
+            LIMIT 1) as cargo
+    FROM Dynamic_Asistencia da
+    WHERE da.IdAsistencia = ?
+  `, [idAsistencia]);
   if (!rows.length) throw new Error('El registro no existe.');
   if (novedad && novedad !== rows[0].novedad) await validarNovedadDeSistema(novedad, rol);
   const rec = rows[0];
@@ -1650,17 +1665,35 @@ async function editarRegistroAsistencia({
   const puedeYellow = paramsCfg.rolesEditarEliminarYellow.map(r => r.toLowerCase().trim()).includes(rolNorm);
   const esYellow = (rec.estado || '').toLowerCase() === 'yellow';
 
-  if (rec.estado === 'Green' && !puedeTodos) {
-    throw new Error('Este registro está bloqueado en estado Green por Nómina y no puede ser editado.');
-  }
-  if (!esYellow && !puedeTodos) {
-    throw new Error('No tiene permiso para editar registros en este estado.');
-  }
-  if (esYellow && !puedeYellow && !puedeTodos) {
-    throw new Error('Tu rol no tiene permiso para editar registros en estado Yellow.');
-  }
+  const rolesHorarioTodos = (paramsCfg.rolesEditarHorarioTodosEstados || paramsCfg.rolesEditarEliminarTodosEstados).map(r => r.toLowerCase().trim());
+  const rolesHorarioYellow = (paramsCfg.rolesEditarHorarioYellow || paramsCfg.rolesEditarEliminarYellow).map(r => r.toLowerCase().trim());
+  const puedeHorarioTodos = rolesHorarioTodos.includes(rolNorm);
+  const puedeHorarioYellow = rolesHorarioYellow.includes(rolNorm);
 
-  if (!puedeTodos) {
+  const cargosAdmin = (paramsCfg.cargosExcluidosAsistencia || []).map(c => c.trim().toUpperCase());
+  const cargoNorm = (rec.cargo || '').trim().toUpperCase();
+  const esCargoAdmin = cargoNorm && cargosAdmin.includes(cargoNorm);
+
+  const soloEditaHorario = (horaEntrada !== undefined || horaSalida !== undefined) &&
+                           !area && !apoyoOtraOperacion && !tipoIncapacidad && !codDiagnostico &&
+                           (observaciones === undefined || observaciones === null);
+
+  const esEdicionAutorizada = puedeTodos || (soloEditaHorario && puedeHorarioTodos);
+
+  if (!esEdicionAutorizada) {
+    if (rec.estado === 'Green') {
+      throw new Error('Este registro está bloqueado en estado Green por Nómina y no puede ser editado.');
+    }
+    if (!esYellow) {
+      throw new Error('No tiene permiso para editar registros en este estado.');
+    }
+    const tienePermisoYellow = puedeYellow || (soloEditaHorario && puedeHorarioYellow);
+    if (!tienePermisoYellow) {
+      throw new Error('Tu rol no tiene permiso para editar registros en estado Yellow.');
+    }
+    if (esCargoAdmin) {
+      throw new Error('Solo los roles de Nómina y Sistema pueden editar registros de personal con cargo administrativo.');
+    }
     const b = await verificarBloqueoNomina(rec.operacion, rec.dia, rol);
     if (b.bloqueado) throw new Error(b.mensaje);
   }
@@ -1738,7 +1771,7 @@ async function editarRegistroAsistencia({
     idAsistencia
   ]);
 
-  return { ok: true, idAsistencia };
+  return { ok: true, idAsistencia, horaEntrada: horaEntradaFinal, horaSalida: horaSalidaFinal, tiempoLaborado };
 }
 
 /**

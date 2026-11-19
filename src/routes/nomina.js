@@ -435,6 +435,8 @@ router.get('/', async (req, res) => {
           quincenaActual: await obtenerQuincenaFecha(new Date().toLocaleDateString('en-CA')),
           puedeEditarTodosEstados: paramsAsistencia?.rolesEditarEliminarTodosEstados?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeEditarYellow: paramsAsistencia?.rolesEditarEliminarYellow?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeEditarHorarioTodosEstados: (paramsAsistencia?.rolesEditarHorarioTodosEstados || paramsAsistencia?.rolesEditarEliminarTodosEstados || ['Sistema', 'Nomina']).map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeEditarHorarioYellow: (paramsAsistencia?.rolesEditarHorarioYellow || paramsAsistencia?.rolesEditarEliminarYellow || ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR', 'subgerente']).map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeRegistrarRetirados: paramsAsistencia?.rolesRegistrarRetirados?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeRegistrarDiasFuturos: paramsAsistencia?.rolesRegistrarDiasFuturos?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeVerNovedadesSistema: paramsAsistencia?.rolesVerNovedadesSistema?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,

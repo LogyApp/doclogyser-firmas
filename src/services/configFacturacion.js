@@ -304,9 +304,34 @@ async function obtenerOpsFiltroBodega() {
   return lista(valor(p, P.OPS_FILTRO_BODEGA));
 }
 
+// ── Pestaña Resumen (Seccion = 'Resumen') ───────────────────────────────────
+// Operaciones que pueden separar el resumen por Área (Config_Area) con el interruptor "Por Área".
+// Vacío = ninguna (el resumen queda solo por operación y día). "Por Bodega" (Etapa) usa la misma
+// lista de 'Operaciones con filtro Bodega en Servicios'.
+const SECCION_RESUMEN = 'Resumen';
+const PRES = {
+  OPS_DESGLOSE_AREA: 'Operaciones con desglose por Área en Resumen',
+};
+
+async function obtenerOpsDesgloseResumen() {
+  let area = '';
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      [MODULO, SECCION_RESUMEN, PRES.OPS_DESGLOSE_AREA]
+    );
+    if (rows.length) area = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[configFacturacion] No se pudo leer el desglose por Área del Resumen:', err.message);
+  }
+  return { area: lista(area), bodega: await obtenerOpsFiltroBodega() };
+}
+
 module.exports = {
   obtenerAreaUsuarioServicio,
   obtenerOpsFiltroBodega,
+  obtenerOpsDesgloseResumen,
+  PARAMETROS_FACTURACION_RESUMEN: PRES,
   obtenerAreasUsuarioServicio,
   obtenerConfigServiciosMasivo,
   obtenerTopeValorBaseServicio,

@@ -1459,6 +1459,87 @@ async function cambiarAreaApoyoInline(selectEl, idAsistencia, operacion, areaDef
   }
 }
 
+
+function calcularTiempoLaborado(entrada, salida) {
+  if (!entrada || !salida) return null;
+  const p1 = entrada.split(':').map(Number);
+  const p2 = salida.split(':').map(Number);
+  if (isNaN(p1[0]) || isNaN(p1[1]) || isNaN(p2[0]) || isNaN(p2[1])) return null;
+  let t1 = p1[0] * 60 + p1[1];
+  let t2 = p2[0] * 60 + p2[1];
+  if (t2 < t1) t2 += 24 * 60;
+  const diff = t2 - t1;
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':00';
+}
+
+async function cambiarHorarioInline(inputEl, idAsistencia, tipo) {
+  const container = inputEl.closest('td');
+  const inpEntrada = container ? container.querySelector('.asis-inline-entrada') : null;
+  const inpSalida = container ? container.querySelector('.asis-inline-salida') : null;
+  const tr = inputEl.closest('tr');
+  const tdTiempo = tr ? tr.querySelector('.asis-col-tiempo') : null;
+
+  const horaEntrada = inpEntrada ? inpEntrada.value : null;
+  const horaSalida = inpSalida ? inpSalida.value : null;
+  const prevVal = inputEl.getAttribute('data-prev') || '';
+
+  if (inputEl.value === prevVal) return;
+
+  if (inpEntrada) inpEntrada.disabled = true;
+  if (inpSalida) inpSalida.disabled = true;
+  inputEl.style.boxShadow = '0 0 0 2px var(--accent)';
+
+  try {
+    const usuario = getUsuarioAsistencia();
+    const r = await fetch(`/nomina/api/asistencia/${encodeURIComponent(idAsistencia)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario,
+        novedad: 'Asistencia',
+        horaEntrada: horaEntrada || null,
+        horaSalida: horaSalida || null
+      })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.ok) {
+      throw new Error(data.error || 'Error al actualizar horario');
+    }
+
+    // Actualizar datos locales en memoria
+    const reg = _asisState.registros.find(x => String(x.idAsistencia) === String(idAsistencia));
+    if (reg) {
+      reg.horaLlegada = data.horaEntrada || horaEntrada;
+      reg.horaSalida = data.horaSalida || horaSalida;
+      reg.tiempoLaborado = data.tiempoLaborado || (reg.horaLlegada && reg.horaSalida ? calcularTiempoLaborado(reg.horaLlegada, reg.horaSalida) : null);
+      if (tdTiempo) {
+        tdTiempo.innerHTML = reg.tiempoLaborado ? `<strong>${esc(reg.tiempoLaborado)}</strong>` : '-';
+      }
+    }
+    inputEl.setAttribute('data-prev', inputEl.value);
+
+    // Feedback visual breve en verde
+    inputEl.style.boxShadow = '0 0 0 2px #16a34a';
+    setTimeout(() => {
+      inputEl.style.boxShadow = '';
+      if (inpEntrada) inpEntrada.disabled = false;
+      if (inpSalida) inpSalida.disabled = false;
+    }, 500);
+  } catch (err) {
+    console.error('[asistencia] Error cambiarHorarioInline:', err);
+    alert(`No se pudo cambiar el horario: ${err.message}`);
+    inputEl.value = prevVal;
+    inputEl.style.boxShadow = '0 0 0 2px #ef4444';
+    setTimeout(() => {
+      inputEl.style.boxShadow = '';
+      if (inpEntrada) inpEntrada.disabled = false;
+      if (inpSalida) inpSalida.disabled = false;
+    }, 1000);
+  }
+}
+
 // Renderizar filas de la tabla (Columna Día con círculo indicador de Estado)
 function renderTablaAsistencias(registros) {
   const tbody = document.getElementById('asistenciaBody');
@@ -1467,6 +1548,8 @@ function renderTablaAsistencias(registros) {
   const cfg = obtenerConfigAsistencia();
   const puedeTodos = !!cfg.puedeEditarTodosEstados;
   const puedeYellow = !!cfg.puedeEditarYellow;
+  const puedeHorarioTodos = !!cfg.puedeEditarHorarioTodosEstados || puedeTodos;
+  const puedeHorarioYellow = !!cfg.puedeEditarHorarioYellow || puedeYellow;
   const puedeEliminar = puedeTodos || puedeYellow;
 
   const thAcciones = document.getElementById('asisThAcciones');
@@ -1516,16 +1599,20 @@ function renderTablaAsistencias(registros) {
     const esYellow = !esGreen;
     const esAsistencia = (r.novedad || '').trim().toLowerCase() === 'asistencia';
 
-    // Edición: Sistema y Nómina pueden todo. Demás roles solo si está en Yellow.
-    const puedeEditarFila = puedeTodos || (puedeYellow && esYellow);
-
-    // Cargos administrativos que no pueden ser eliminados en Asistencia por roles operativos
+    // Cargos administrativos que no pueden ser editados o eliminados en Asistencia por roles operativos
     const cargosExcluidos = (cfg.cargosExcluidosAsistencia || []).map(c => String(c).trim().toUpperCase());
     const cargoFila = String(r.cargo || '').trim().toUpperCase();
     const esCargoAdmin = cargoFila && cargosExcluidos.includes(cargoFila);
 
+    // Edición general: Sistema y Nómina pueden todo. Demás roles solo en Yellow y solo personal operativo.
+    const puedeEditarFila = puedeTodos || (puedeYellow && esYellow && !esCargoAdmin);
+
     // Eliminación: Sistema y Nómina pueden todo. Demás roles: en Yellow y si es Asistencia solo para personal operativo.
     const puedeEliminarFila = puedeTodos || (puedeYellow && esYellow && (!esAsistencia || !esCargoAdmin));
+
+    // Edición de Horario inline (Hora Entrada y Hora Salida):
+    // Sistema y Nómina pueden todo. Demás roles: solo en Yellow y solo para personal operativo.
+    const puedeEditarHorarioFila = esAsistencia && (puedeHorarioTodos || (puedeHorarioYellow && esYellow && !esCargoAdmin));
 
     // Columna ACCIONES al principio (con checkbox para lote y botón individual)
     let tdAcciones = '';
@@ -1591,8 +1678,28 @@ function renderTablaAsistencias(registros) {
           <div style="font-size:.74rem; color:var(--text-muted);">C.C. ${esc(r.cedula || '')}</div>
         </td>
         <td>${badgeNov}</td>
-        <td style="font-size:.8rem; white-space:nowrap;">${horarioTexto}</td>
-        <td style="font-size:.8rem; white-space:nowrap;">${tiempoTexto}</td>
+        ${puedeEditarHorarioFila ? `
+          <td onclick="event.stopPropagation()" style="font-size:.8rem; white-space:nowrap;">
+            <div style="display:inline-flex; align-items:center; gap:4px;">
+              <input type="time" class="asis-inline-hora asis-inline-entrada" 
+                     value="${esc(r.horaLlegada || '')}" 
+                     data-prev="${esc(r.horaLlegada || '')}"
+                     onchange="cambiarHorarioInline(this, '${esc(r.idAsistencia)}', 'entrada')" 
+                     onclick="event.stopPropagation()" 
+                     title="Hora Entrada (editable)" 
+                     style="padding:2px 4px; font-size:.78rem; border:1px solid var(--border); border-radius:4px; background:var(--bg-elevated); color:var(--text); width:74px; cursor:pointer;">
+              <span style="color:var(--text-muted); font-size:.75rem;">-</span>
+              <input type="time" class="asis-inline-hora asis-inline-salida" 
+                     value="${esc(r.horaSalida || '')}" 
+                     data-prev="${esc(r.horaSalida || '')}"
+                     onchange="cambiarHorarioInline(this, '${esc(r.idAsistencia)}', 'salida')" 
+                     onclick="event.stopPropagation()" 
+                     title="Hora Salida (editable)" 
+                     style="padding:2px 4px; font-size:.78rem; border:1px solid var(--border); border-radius:4px; background:var(--bg-elevated); color:var(--text); width:74px; cursor:pointer;">
+            </div>
+          </td>
+        ` : `<td style="font-size:.8rem; white-space:nowrap;">${horarioTexto}</td>`}
+        <td class="asis-col-tiempo" style="font-size:.8rem; white-space:nowrap;">${tiempoTexto}</td>
         <td>${obsTexto}</td>
         <td>${soportesHtml}</td>
         <td>

@@ -1580,6 +1580,10 @@
     </div>
 
     <ul class="nav-list">
+      <li class="nav-item" id="navResumen" onclick="switchMainTab('resumen')" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M3 3v18h18"></path><rect x="7" y="12" width="3" height="6"></rect><rect x="12" y="8" width="3" height="10"></rect><rect x="17" y="5" width="3" height="13"></rect></svg>
+        <span>Resumen</span>
+      </li>
       <li class="nav-item active" id="navRecibos" onclick="switchMainTab('recibos')">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><path d="M16 8h-8"></path><path d="M16 12h-8"></path><path d="M11 16h-3"></path></svg>
         <span>Recibos</span>
@@ -1623,6 +1627,9 @@
     <!-- ══════════════════════════════════════════════════════════
          PESTAÑA: SERVICIOS (Dynamic_Servicios)
     ══════════════════════════════════════════════════════════ -->
+    <!-- Pestaña Resumen (lógica en /js/facturacion-resumen.js) -->
+    <div id="tab-content-resumen" style="display: none;"></div>
+
     <div id="tab-content-servicios">
       
       <!-- SUBVISTA 1: LISTADO DE SERVICIOS -->
@@ -4896,6 +4903,7 @@
         if (navTicketsEl) navTicketsEl.style.display = 'none';
       }
       if (CONFIG.tabs?.ajustes) document.getElementById('navAjustes').style.display = '';
+      if (CONFIG.tabs?.resumen) document.getElementById('navResumen').style.display = '';
       if (!CONFIG.tabs?.bloqueo) {
         const navBloqueoEl = document.getElementById('navBloqueo');
         if (navBloqueoEl) navBloqueoEl.style.display = 'none';
@@ -4920,6 +4928,7 @@
           clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
           clientes_credito: 'clientescredito', credito: 'clientescredito',
           bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets', ajustes: 'ajustes',
+          resumen: 'resumen',
         };
         if (!p.get('idservicio') && !p.get('idrecibo')) {
           // Conservar la subpestaña pedida (?subtab=...), que esta vista inicial escribe en la dirección
@@ -5189,6 +5198,8 @@
         switchMainTab('tickets');
       } else if (tabParam === 'ajustes') {
         switchMainTab('ajustes');
+      } else if (tabParam === 'resumen') {
+        switchMainTab('resumen');
       } else {
         switchMainTab('recibos');
       }
@@ -5295,6 +5306,7 @@
       if (tab === 'tickets' && !CONFIG.tabs?.tickets) tab = 'servicios';
       if (tab === 'bloqueo' && !CONFIG.tabs?.bloqueo) tab = 'servicios';
       if (tab === 'ajustes' && !CONFIG.tabs?.ajustes) tab = 'servicios';
+      if (tab === 'resumen' && !CONFIG.tabs?.resumen) tab = 'servicios';
       if ((tab === 'clientescredito' || tab === 'clientes') && !subTabsClientesPermitidas().length) tab = 'servicios';
 
       if (tab === 'clientescredito') {
@@ -5308,6 +5320,7 @@
       document.getElementById('navBloqueo')?.classList.toggle('active', tab === 'bloqueo');
       document.getElementById('navTickets')?.classList.toggle('active', tab === 'tickets');
       document.getElementById('navAjustes')?.classList.toggle('active', tab === 'ajustes');
+      document.getElementById('navResumen')?.classList.toggle('active', tab === 'resumen');
 
       document.getElementById('tab-content-servicios').style.display = tab === 'servicios' ? 'block' : 'none';
       document.getElementById('tab-content-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
@@ -5315,6 +5328,7 @@
       document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
       document.getElementById('tab-content-tickets').style.display = tab === 'tickets' ? 'block' : 'none';
       document.getElementById('tab-content-ajustes').style.display = tab === 'ajustes' ? 'block' : 'none';
+      document.getElementById('tab-content-resumen').style.display = tab === 'resumen' ? 'block' : 'none';
 
       const tabTitles = {
         servicios: 'Servicios',
@@ -5322,7 +5336,8 @@
         clientes: 'Clientes',
         bloqueo: 'Bloqueo de Datos',
         tickets: 'Tickets',
-        ajustes: 'Ajustes Servicios'
+        ajustes: 'Ajustes Servicios',
+        resumen: 'Resumen'
       };
       const mobileHeaderTitle = document.getElementById('mobileHeaderTitle');
       if (mobileHeaderTitle) {
@@ -5372,6 +5387,8 @@
           cargarClientes();
           cargarPreseleccionadosInfo();
         }
+      } else if (tab === 'resumen') {
+        if (typeof window.inicializarResumenFacturacion === 'function') window.inicializarResumenFacturacion();
       } else if (tab === 'ajustes') {
         cargarAjustes();
       } else if (tab === 'tickets') {
@@ -9366,9 +9383,10 @@
       clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
       clientes_credito: 'clientescredito', credito: 'clientescredito',
       bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets', ajustes: 'ajustes',
+      resumen: 'resumen',
     };
     function pestanaVisible() {
-      return ['servicios', 'recibos', 'clientes', 'bloqueo', 'tickets', 'ajustes']
+      return ['servicios', 'recibos', 'clientes', 'bloqueo', 'tickets', 'ajustes', 'resumen']
         .find(t => document.getElementById('tab-content-' + t)?.style.display === 'block');
     }
 
@@ -15115,5 +15133,6 @@
   <script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
+  <script src="/js/facturacion-resumen.js?v=20261119b" defer></script>
 </body>
 </html>
