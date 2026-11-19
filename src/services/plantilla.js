@@ -104,6 +104,19 @@ function preprocesarDatos(datos) {
     }
   }
 
+  // Plantilla de Traslado con el diseño de los documentos recientes (migraciones/plantillas/Traslado.html)
+  d.logo_src = LOGO_BASE64;
+  if (d.IdTraslado) {
+    d.radicado_traslado = String(d.IdTraslado).replace(/-/g, '').slice(0, 8).toUpperCase();
+    const h = String(d.hora_traslado || '').match(/^(\d{1,2}):(\d{2})/);
+    d.hora_traslado_texto = h
+      ? `${(Number(h[1]) % 12) || 12}:${h[2]} ${Number(h[1]) < 12 ? 'a. m.' : 'p. m.'}`
+      : (d.hora_traslado || '—');
+    ['operacion_origen', 'operacion_destino', 'direccion_destino', 'celular_trabajador', 'email_trabajador'].forEach((k) => {
+      if (d[k] === null || d[k] === undefined || String(d[k]).trim() === '') d[k] = '—';
+    });
+  }
+
   return d;
 }
 

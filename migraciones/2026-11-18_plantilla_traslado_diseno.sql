@@ -1,0 +1,162 @@
+-- Plantilla de Traslado (Nómina › Traslados) con el diseño de los documentos recientes (Cesantías, SST):
+-- encabezado de 3 columnas con logo y radicado, resumen origen → destino → fecha de presentación,
+-- recuadros de referencia y de cargo/remuneración, y firmas lado a lado. El texto de la carta no cambia.
+-- Usa {{logo_src}}, {{radicado_traslado}} y {{hora_traslado_texto}} (src/services/plantilla.js):
+-- ejecutar DESPUÉS de desplegar ese código. HTML también en migraciones/plantillas/Traslado.html.
+-- Respaldo de la versión 11 en migraciones/respaldos/2026-11-18_respaldo_plantilla_traslado_v11.sql.
+-- Solo afecta los documentos que se generen desde ahora. Se puede ejecutar más de una vez.
+
+UPDATE Maestro_Plantillas
+SET version = 12, ultima_actualizacion = NOW(), contenido_html = '<style>
+  /* Estilos encerrados en .trd: la plantilla también se muestra dentro de la página de firma y de
+     la vista previa, y no debe cambiar el resto de esas páginas. */
+  .trd { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9.4pt; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .trd * { box-sizing: border-box; }
+  .trd p { margin: 0 0 7px 0; text-align: justify; }
+
+  .trd .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #cbd5e1; }
+  .trd .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .trd .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .trd .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .trd .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px; }
+  .trd .doc-title { font-size: 10.5pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .trd .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .trd .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .trd .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .trd .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .trd .meta-id { margin-top: 2px; font-size: 8pt; color: #000b59; font-weight: 800; letter-spacing: 0.4px; }
+  .trd .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .trd .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .trd .metric-item { display: table-cell; padding: 10px 14px; border-right: 1px solid #e2e8f0; vertical-align: top; }
+  .trd .metric-item:last-child { border-right: none; }
+  .trd .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .trd .metric-value { font-size: 10pt; font-weight: 700; color: #000b59; }
+  .trd .metric-value-primary { font-size: 11.5pt; font-weight: 800; color: #f55400; letter-spacing: -0.2px; }
+  .trd .metric-sub { font-size: 7.5pt; color: #94a3b8; margin-top: 1px; }
+
+  .trd .section-block { margin-bottom: 12px; }
+  .trd .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .trd .section-title::before { content: ''''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+
+  .trd .letter-meta { margin-bottom: 10px; font-size: 9pt; }
+  .trd .letter-meta p { margin: 0; text-align: left; }
+  .trd .ref-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #f55400; border-radius: 6px; padding: 7px 12px; margin: 10px 0 12px 0; font-size: 8.8pt; }
+  .trd .ref-box strong { color: #000b59; text-transform: uppercase; letter-spacing: 0.3px; font-size: 8pt; }
+  .trd .letter-body p { font-size: 9.2pt; }
+  .trd .letter-body strong { color: #000b59; }
+
+  .trd .statement-box { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 8px 12px; margin: 8px 0 10px 0; page-break-inside: avoid; }
+  .trd .statement-header { font-size: 8pt; font-weight: 700; color: #000b59; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.3px; }
+  .trd .statement-box p { font-size: 8.6pt; color: #334155; margin: 0; }
+
+  .trd .sig-table { width: 100%; border-collapse: collapse; margin-top: 2px; page-break-inside: avoid; }
+  .trd .sig-table td { width: 50%; vertical-align: bottom; text-align: center; padding: 0 14px; }
+  .trd .sig-table td:first-child { padding-left: 0; }
+  .trd .sig-table td:last-child { padding-right: 0; }
+  .trd .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px; }
+  .trd .sig-img-wrap { height: 78px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 4px; }
+  .trd .sig-img-wrap img { max-height: 74px; max-width: 230px; }
+  .trd .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .trd .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .trd .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  .trd .doc-footer { margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 7pt; color: #94a3b8; }
+  .trd .doc-footer td { padding: 0; }
+</style>
+
+<div class="trd">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Comunicación de cambio de sede de trabajo</div>
+        <div class="doc-subtitle">Gestión de Talento Humano</div>
+        <div class="doc-subdetail">Ius variandi locativo — reasignación del lugar de trabajo</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">RADICADO</div>
+        <div class="meta-id">N° {{radicado_traslado}}</div>
+        <div class="meta-date">{{fecha_aviso}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Operación actual</div>
+      <div class="metric-value">{{operacion_origen}}</div>
+      <div class="metric-sub">Sede de origen</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Nueva sede de trabajo</div>
+      <div class="metric-value-primary">{{operacion_destino}}</div>
+      <div class="metric-sub">{{direccion_destino}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Presentarse desde</div>
+      <div class="metric-value">{{fecha_traslado}}</div>
+      <div class="metric-sub">A las {{hora_traslado_texto}}</div>
+    </div>
+  </div>
+
+  <section class="section-block">
+    <div class="section-title">Comunicación</div>
+    <div class="letter-meta">
+      <p>La Ciudad, {{fecha_aviso}}</p>
+      <p style="margin-top:8px">Señor(a):</p>
+      <p><strong>{{nombre_trabajador}}</strong></p>
+      <p>C.C. {{Identificación}} &nbsp;·&nbsp; Cel. {{celular_trabajador}} &nbsp;·&nbsp; {{email_trabajador}}</p>
+      <p>La Ciudad.</p>
+    </div>
+
+    <div class="ref-box"><strong>Referencia:</strong> comunicación – cambio de sede de trabajo.</div>
+
+    <div class="letter-body">
+      <p>Reciba un cordial saludo.</p>
+      <p>Me permito informarle que <strong>APOYO LOGÍSTICO Y OPERATIVO S.A.S. LOG&amp;SER S.A.S.</strong>, por razones operativas, ha tomado la decisión de reasignar su lugar de trabajo en operación <strong>{{operacion_destino}}</strong>: DIRECCIÓN: {{direccion_destino}} sin que esto implique una modificación del lugar de trabajo pactado por las partes, por cuanto continúa siendo la ciudad y municipios aledaños.</p>
+      <p>Esta determinación se adopta en ejercicio del <strong><u>ius variandi locativo</u></strong>, que corresponde a la facultad que tiene el empleador de realizar variaciones sobre las condiciones de trabajo, sin que ello implique la modificación del contrato o la violación de los derechos del trabajador y como expresión del poder legítimo y subordinante que tiene respecto de aquel.</p>
+      <p>Esta reubicación de puesto de trabajo se hará bajo los mismos beneficios correspondientes al cargo que ocupa, respetando así derechos fundamentales como, <strong><u>dignidad y mínimo vital</u></strong>. Así las cosas, desde el día <strong>{{fecha_traslado}}</strong> a las <strong>{{hora_traslado_texto}}</strong> deberá presentarse en la sede de trabajo ya mencionada ante el coordinador de esa operación, quien le dará a conocer las labores y actividades que debe ejecutar.</p>
+    </div>
+
+    <div class="statement-box">
+      <div class="statement-header">Cargo y remuneración</div>
+      <p>Al respecto, se aclara que su cargo y remuneración continuarán siendo los mismos que ostenta en la actualidad, pero con una reasignación de actividades que se ajusten a la operación de esa sede de trabajo.</p>
+    </div>
+
+    <p style="margin-bottom:2px">Atentamente,</p>
+  </section>
+
+  <table class="sig-table">
+    <tr>
+      <td>
+        <div class="sig-role">El empleador</div>
+        <div class="sig-img-wrap">{{firma_representante}}</div>
+        <div class="sig-line"></div>
+        <div class="sig-name">Guicela Bohorquez Bermudez</div>
+        <div class="sig-details">Representante Legal<br>LOG&amp;SER S.A.S. · NIT. 900.318.733-1</div>
+      </td>
+      <td>
+        <div class="sig-role">Recibí</div>
+        <div class="sig-img-wrap">{{firma_trabajador}}</div>
+        <div class="sig-line"></div>
+        <div class="sig-name">{{nombre_trabajador}}</div>
+        <div class="sig-details">C.C. {{Identificación}}<br>Trabajador(a)</div>
+      </td>
+    </tr>
+  </table>
+
+  <table class="doc-footer" style="width:100%">
+    <tr>
+      <td style="text-align:left">Apoyo Logístico y Operativo S.A.S. &bull; Comunicación de traslado</td>
+      <td style="text-align:right">Documento electrónico — Ley 527 de 1999</td>
+    </tr>
+  </table>
+
+</div>
+'
+WHERE id_plantilla = 1 AND nombre_proceso = 'Traslado';
+
+SELECT id_plantilla, nombre_proceso, version, LENGTH(contenido_html) AS largo FROM Maestro_Plantillas WHERE id_plantilla = 1;
