@@ -391,6 +391,7 @@ router.get('/', async (req, res) => {
           puedeValidar:         permisosTraslados.puedeValidar,
           puedeEditarPlantilla: permisosTraslados.puedeEditarPlantilla,
           puedePrevisualizar:   permisosTraslados.puedePrevisualizar,
+          puedeRegenerar:       permisosTraslados.puedeRegenerar,
           sinFiltro:            accesoTraslados.sinFiltro,
           operacionesFiltro:    accesoTraslados.operacionesFiltro,
           opsPorRegional:       accesoTraslados.opsPorRegional,

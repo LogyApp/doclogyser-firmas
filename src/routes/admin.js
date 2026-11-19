@@ -10,7 +10,7 @@ const { computarAccesoNomina } = require('../services/accesoNomina');
 const { obtenerPermisosTraslados, horasVigenciaEnlace } = require('../services/configTraslados');
 const { v4: uuidv4 } = require('uuid');
 const { generarPDF } = require('../services/renderer');
-const { subirPDF } = require('../services/storage');
+const { subirPDF, fechaFirmaPDFTraslado } = require('../services/storage');
 
 const router = express.Router();
 
@@ -110,6 +110,7 @@ async function computarAcceso(usuarioId) {
     puedeValidar:         permisos.puedeValidar,
     puedeEditarPlantilla: permisos.puedeEditarPlantilla,
     puedePrevisualizar:   permisos.puedePrevisualizar,
+    puedeRegenerar:       permisos.puedeRegenerar,
     sinFiltro:            accesoNomina.sinFiltro,
     filtroSQL:            accesoNomina.sinFiltro ? [] : accesoNomina.operacionesFiltro,
     operacionesFiltro:    accesoNomina.operacionesFiltro,
@@ -235,6 +236,7 @@ router.get('/traslados/datos', async (req, res) => {
       puedeValidar: acceso.puedeValidar,
       puedeEditarPlantilla: acceso.puedeEditarPlantilla,
       puedePrevisualizar: acceso.puedePrevisualizar,
+      puedeRegenerar: acceso.puedeRegenerar,
       sinFiltro: acceso.sinFiltro,
       operacionesFiltro: acceso.operacionesFiltro,
       opsPorRegional: acceso.opsPorRegional,
@@ -513,6 +515,73 @@ router.post('/traslados/:id/editar', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── Regenerar el documento de un traslado ya generado ───────────────────────
+// Vuelve a armar el PDF con la plantilla vigente y reemplaza el archivo del bucket (misma URL).
+// Firmado: con la firma guardada y su fecha. Sin firma: con la anotación de soporte que quedó en
+// Maestro_docTrabajador. Roles en Config_Parametros nomina / Traslados ("Puede regenerar...").
+function fechaHoraBogota(fecha) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(fecha).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+router.post('/traslados/:id/regenerar', async (req, res) => {
+  try {
+    const acceso = await computarAcceso(req.query.Usuario);
+    if (!acceso || !acceso.puedeRegenerar) {
+      return res.status(403).json({ ok: false, error: 'Su rol no tiene permiso para regenerar documentos de traslado' });
+    }
+    const { id } = req.params;
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro de traslado no encontrado' : 'Sin autorización' });
+    const t = alcance.traslado;
+    if (t.estado_doc !== 'generado' || !t.url_doc) {
+      return res.status(400).json({ ok: false, error: 'Solo se regeneran documentos de traslado ya generados' });
+    }
+
+    const idTraslado = t.IdTraslado || id;
+    const fechaFirma = (await fechaFirmaPDFTraslado(t['Identificación'], idTraslado)) || new Date(t.Fecha_Registro);
+    const fechaTexto = fechaHoraBogota(fechaFirma);
+
+    let firmaTrabajadorHtml;
+    if (t.firma_trabajador) {
+      firmaTrabajadorHtml = `
+      <div style="display:inline-block;text-align:center;">
+        <img src="${t.firma_trabajador}" style="max-width:220px;max-height:90px;display:block;margin:0 auto;" alt="Firma trabajador"/>
+        <div style="font-size:7pt;color:#555;margin-top:2px;font-family:Arial,sans-serif;">Firmado: ${fechaTexto}</div>
+      </div>`;
+    } else {
+      const [docRows] = await pool.execute(
+        'SELECT Observaciones FROM Maestro_docTrabajador WHERE Doc = ? ORDER BY FechaRegistro DESC LIMIT 1', [t.url_doc]
+      );
+      const anotacion = (docRows[0] && docRows[0].Observaciones) || 'El trabajador no firma, se soporta por correo electrónico';
+      firmaTrabajadorHtml = `
+      <div style="border:1.5px dashed #c0392b;border-radius:4px;padding:8px 12px;color:#c0392b;font-size:8pt;font-weight:bold;line-height:1.4;display:inline-block;text-align:center;font-family:Arial,sans-serif;">
+        ${esc(anotacion)}<br>
+        <span style="font-size:7pt;color:#555;font-weight:normal;">Fecha soporte: ${fechaTexto}</span>
+      </div>`;
+    }
+
+    const plantilla = await obtenerPlantilla('traslado');
+    const htmlPdf = (plantilla.contenido_html || '')
+      .replace('{{firma_trabajador}}', firmaTrabajadorHtml)
+      .replace('{{firma_representante}}',
+        `<img src="${URL_FIRMA_REPRESENTANTE_PREV}" style="max-width:220px;max-height:90px;display:block;" alt="Firma representante"/>`);
+    const pdfBuffer = await generarPDF(reemplazarVariables(htmlPdf, preprocesarDatos(t)));
+    const urlDoc = await subirPDF(t['Identificación'], idTraslado, pdfBuffer, fechaFirma);
+    if (urlDoc !== t.url_doc) {
+      await pool.execute('UPDATE Dynamic_traslados_trabajador SET url_doc = ? WHERE IdTraslado = ?', [urlDoc, idTraslado]);
+      await pool.execute('UPDATE Maestro_docTrabajador SET Doc = ? WHERE Doc = ?', [urlDoc, t.url_doc]);
+    }
+    console.log(`[traslados] Documento ${idTraslado} regenerado por ${acceso.usuarioId}`);
+    res.json({ ok: true, urlDoc });
+  } catch (err) {
+    console.error('[traslados] POST /traslados/:id/regenerar:', err);
+    res.status(500).json({ ok: false, error: 'No se pudo regenerar el documento' });
   }
 });
 

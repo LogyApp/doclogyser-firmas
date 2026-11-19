@@ -55,11 +55,29 @@ async function subirFirmaServicio(idServicio, bufferPng) {
   return `https://storage.googleapis.com/${BUCKET_FIRMAS}/${nombre}`;
 }
 
-async function subirPDF(identificacion, idTraslado, bufferPdf) {
+// Documento de traslado: un archivo por traslado, así que regenerarlo lo reemplaza sin cambiar la
+// URL (sin caché, para que se vea de inmediato). El metadato fechaFirma guarda cuándo se firmó o se
+// generó por primera vez, y el PDF regenerado conserva esa fecha.
+async function subirPDF(identificacion, idTraslado, bufferPdf, fechaFirma = new Date()) {
   const nombre = `${identificacion}/${identificacion}.TRAS.${idTraslado}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  await file.save(bufferPdf, {
+    contentType: 'application/pdf',
+    metadata: { cacheControl: CACHE_DOC_REGENERABLE, metadata: { fechaFirma: fechaFirma.toISOString() } },
+  });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+// Fecha de firma del documento de traslado guardado (metadato fechaFirma o, en los documentos
+// anteriores a ese metadato, la fecha en que se creó el archivo). null si no existe.
+async function fechaFirmaPDFTraslado(identificacion, idTraslado) {
+  try {
+    const [m] = await storage.bucket(BUCKET_PDFS).file(`${identificacion}/${identificacion}.TRAS.${idTraslado}.pdf`).getMetadata();
+    const f = new Date(m.metadata?.fechaFirma || m.timeCreated);
+    return isNaN(f) ? null : f;
+  } catch {
+    return null;
+  }
 }
 
 async function subirPDFRetiro(identificacion, tipo, bufferPdf) {
@@ -413,6 +431,7 @@ module.exports = {
   subirFirma,
   subirFirmaServicio,
   subirPDF,
+  fechaFirmaPDFTraslado,
   subirPDFRetiro,
   subirPDFAceptacionRenuncia,
   subirPDFExamenEgreso,

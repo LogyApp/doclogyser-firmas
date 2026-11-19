@@ -13,6 +13,7 @@ const P = {
   PUEDE_VALIDAR:     'Puede validar traslados',
   EDITAR_PLANTILLA:  'Puede editar plantilla de traslados',
   PREVISUALIZAR:     'Puede previsualizar documento de traslado',
+  REGENERAR:         'Puede regenerar documento de traslado',
   HORAS_ENLACE:      'Horas de vigencia del enlace de firma',
   NUEVO_PARA:        'Notificación nuevo traslado - Para:',
   NUEVO_COPIA:       'Notificación nuevo traslado - Copia:',
@@ -28,6 +29,7 @@ const DEFAULTS_TRASLADOS = {
   [P.PUEDE_VALIDAR]:    'Juridica, Sistema',
   [P.EDITAR_PLANTILLA]: 'Juridica, Sistema',
   [P.PREVISUALIZAR]:    'Juridica, Sistema',
+  [P.REGENERAR]:        'Juridica, Sistema',
   [P.HORAS_ENLACE]:     '48',
   [P.NUEVO_PARA]:       'Juridica',
   [P.NUEVO_COPIA]:      'Sistema',
@@ -88,6 +90,7 @@ async function obtenerPermisosTraslados(rol, params) {
     puedeValidar:         estaEnParametro(p, P.PUEDE_VALIDAR, rol),
     puedeEditarPlantilla: estaEnParametro(p, P.EDITAR_PLANTILLA, rol),
     puedePrevisualizar:   estaEnParametro(p, P.PREVISUALIZAR, rol),
+    puedeRegenerar:       estaEnParametro(p, P.REGENERAR, rol),
   };
 }
 

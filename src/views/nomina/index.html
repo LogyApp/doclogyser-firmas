@@ -7609,7 +7609,12 @@
       }
       case 'revisar': return `${btnEditar}${btnValidar}${btnAnular}`;
       case 'firmado':
-      case 'generado': return row.url_doc ? `<a class="ba bver" href="${esc(row.url_doc)}" target="_blank">📄 Ver</a>` : '—';
+      case 'generado': {
+        if (!row.url_doc) return '—';
+        const btnRegenerar = (t.puedeRegenerar && row.estado_doc === 'generado')
+          ? `<button class="ba be" onclick="regenerarDocTraslado('${id}', this)" title="Volver a generar el PDF con la plantilla actual y reemplazar el documento">🔄 Regenerar</button>` : '';
+        return `<a class="ba bver" href="${esc(row.url_doc)}" target="_blank">📄 Ver</a>${btnRegenerar}`;
+      }
       default: return '—';
     }
   }
@@ -7826,6 +7831,26 @@
       if (d.ok) fetchTrasladosData();
       else alert('Error: ' + d.error);
     } catch { alert('Error de conexión'); }
+  }
+
+  // Regenerar: vuelve a armar el PDF con la plantilla actual (misma firma o anotación y misma fecha)
+  // y reemplaza el archivo del bucket; el enlace del documento no cambia.
+  async function regenerarDocTraslado(id, btn) {
+    const row = _trasState.allData.find(r => r.IdTraslado === id);
+    const nombre = row ? String(row.Trabajador || '').split(' ** ').pop() : '';
+    if (!confirm(`¿Regenerar el documento de traslado${nombre ? ' de ' + nombre : ''}?\n\nSe arma de nuevo con la plantilla actual, conservando la firma (o la anotación de soporte) y su fecha, y reemplaza el PDF actual.`)) return;
+    const texto = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Regenerando…';
+    try {
+      const r = await fetch(`/admin/traslados/${id}/regenerar?Usuario=${encodeURIComponent(usuario)}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        alert('✅ Documento regenerado.');
+        if (d.urlDoc) window.open(d.urlDoc + '?v=' + Date.now(), '_blank');
+      } else alert('Error: ' + (d.error || 'No se pudo regenerar el documento'));
+    } catch { alert('Error de conexión al regenerar el documento'); }
+    finally { btn.disabled = false; btn.textContent = texto; }
   }
 
   async function marcarNoFirmaTraslado(id) {

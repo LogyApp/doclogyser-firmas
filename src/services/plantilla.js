@@ -36,11 +36,12 @@ async function formatoDePlantilla(proceso) {
   }
 }
 
-// Llena en el HTML los datos del formato que tenga la plantilla (los vacíos quedan como estaban)
+// Llena en el HTML los datos del formato de la plantilla; los que no tenga quedan en blanco (no se
+// imprime {{codigo_formato}}), y se completan llenando las columnas en Maestro_Plantillas.
 function aplicarFormatoPlantilla(html, formato) {
   const valores = { codigo_formato: formato.codigo, version_formato: formato.version, fecha_formato: formato.fecha };
   return String(html || '').replace(/\{\{\s*(codigo_formato|version_formato|fecha_formato)\s*\}\}/g,
-    (match, clave) => valores[clave] || match);
+    (match, clave) => valores[clave] || '');
 }
 
 // ── Fecha de firma bajo cada firma, como el sello de LogySign ("Firmado: dd/mm/aaaa hh:mm") ──

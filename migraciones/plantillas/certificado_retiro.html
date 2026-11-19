@@ -1,0 +1,141 @@
+<style>
+  /* Estilos encerrados en .ctr: la plantilla también se muestra dentro de la página de firma. */
+  .ctr { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9.6pt; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .ctr * { box-sizing: border-box; }
+  .ctr p { margin: 0 0 8px 0; text-align: justify; }
+
+  .ctr .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; border: 1px solid #cbd5e1; }
+  .ctr .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .ctr .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .ctr .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .ctr .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px; }
+  .ctr .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .ctr .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .ctr .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .ctr .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .ctr .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .ctr .meta-ver { color: #334155; }
+  .ctr .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .ctr .addressee { text-align: center; font-size: 10pt; font-weight: 800; color: #000b59; letter-spacing: 1px; text-transform: uppercase; margin: 6px 0 14px 0; }
+  .ctr .addressee::after { content: ''; display: block; width: 46px; height: 3px; background: #f55400; border-radius: 2px; margin: 6px auto 0 auto; }
+
+  .ctr .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 4px 0 14px 0; }
+  .ctr .metric-item { display: table-cell; padding: 10px 14px; border-right: 1px solid #e2e8f0; vertical-align: top; }
+  .ctr .metric-item:last-child { border-right: none; }
+  .ctr .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .ctr .metric-value { font-size: 10pt; font-weight: 700; color: #000b59; }
+  .ctr .metric-value-primary { font-size: 10pt; font-weight: 800; color: #f55400; }
+
+  .ctr .section-block { margin-bottom: 14px; }
+  .ctr .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .ctr .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .ctr .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 9pt; }
+  .ctr .data-grid td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .ctr .data-grid tr:last-child td { border-bottom: none; }
+  .ctr .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .ctr .data-label { width: 28%; font-weight: 700; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .ctr .data-val { font-weight: 600; color: #0f172a; }
+
+  .ctr .note-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 9px 12px; margin: 4px 0 14px 0; }
+  .ctr .note-box p { margin: 0 0 4px 0; font-size: 9pt; color: #334155; }
+  .ctr .note-box p:last-child { margin-bottom: 0; }
+  .ctr .note-box strong { color: #000b59; }
+
+  .ctr .sig-table { width: 100%; border-collapse: collapse; margin-top: 4px; page-break-inside: avoid; }
+  .ctr .sig-table td { width: 50%; vertical-align: top; text-align: center; padding: 0 14px; }
+  .ctr .sig-table td:first-child { padding-left: 0; }
+  .ctr .sig-table td:last-child { padding-right: 0; }
+  .ctr .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px; }
+  .ctr .sig-img-wrap { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
+  .ctr .sig-img-wrap img { max-height: 84px; max-width: 230px; margin: 0 auto !important; }
+  .ctr .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .ctr .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .ctr .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  .ctr .doc-footer { margin-top: 22px; text-align: center; }
+  .ctr .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px; }
+  .ctr .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px; }
+  .ctr .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px; }
+</style>
+
+<div class="ctr">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Certificado laboral de retiro</div>
+        <div class="doc-subtitle">Gestión de Talento Humano</div>
+        <div class="doc-subdetail">Constancia de tiempo de servicio y afiliaciones</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="addressee">A quien pueda interesar:</div>
+
+  <p>Por medio de la presente certifico que <strong>{{nombre_trabajador}}</strong> identificado(a) con cédula de ciudadanía número <strong>{{identificacion}}</strong> laboró para esta empresa, durante el periodo comprendido entre el <strong>{{fecha_ingreso}}</strong> hasta el <strong>{{fecha_retiro}}</strong>, desempeñando el cargo de <strong>{{cargo}}</strong>.</p>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Fecha de ingreso</div>
+      <div class="metric-value">{{fecha_ingreso}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Fecha de retiro</div>
+      <div class="metric-value">{{fecha_retiro}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Cargo desempeñado</div>
+      <div class="metric-value-primary">{{cargo}}</div>
+    </div>
+  </div>
+
+  <section class="section-block">
+    <div class="section-title">Afiliaciones al sistema de seguridad social</div>
+    <table class="data-grid">
+      <tr><td class="data-label">ARL:</td><td class="data-val">{{arl}}</td></tr>
+      <tr><td class="data-label">EPS:</td><td class="data-val">{{eps}}</td></tr>
+      <tr><td class="data-label">AFP:</td><td class="data-val">{{pension}}</td></tr>
+    </table>
+  </section>
+
+  <div class="note-box">
+    <p>Para cualquier información adicional, puede comunicarse al teléfono celular <strong>+57 315 556 5490</strong>.</p>
+    <p>Este certificado, se expide el <strong>{{fecha_expedicion}}</strong> a solicitud del interesado.</p>
+  </div>
+
+  <p style="margin-bottom:2px">Atentamente,</p>
+
+  <table class="sig-table">
+    <tr>
+      <td>
+        <div class="sig-role">Expide</div>
+        <div class="sig-img-wrap">{{firma_html}}</div>
+        <div class="sig-line"></div>
+        <div class="sig-name">{{nombre_firmante}}</div>
+        <div class="sig-details">{{cargo_firmante}}<br>LOG&amp;SER S.A.S. · NIT. 900.318.733-1</div>
+      </td>
+      <td>
+        <div class="sig-role">Confirma recibido</div>
+        <div class="sig-img-wrap">{{firma_trabajador_html}}</div>
+        <div class="sig-line"></div>
+        <div class="sig-name">{{nombre_trabajador}}</div>
+        <div class="sig-details">C.C. {{identificacion}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="doc-footer">
+    <div class="line"></div>
+    <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+    <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+  </div>
+
+</div>
