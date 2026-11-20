@@ -15,7 +15,7 @@ const {
 const { renderPDF } = require('../services/evsstPdfGenerator');
 const { subirPDFEvaluacionSST } = require('../services/storage');
 const { computarAccesoSst } = require('../services/accesoSst');
-const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
+const { rolPuedeSst, permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
 
 const router = express.Router();
 
@@ -193,15 +193,19 @@ router.get('/responder', async (req, res) => {
 // ═════ API: GET /api/trabajadores-por-operacion ═════
 router.get('/api/trabajadores-por-operacion', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { regional, operacion, usuario } = req.query;
     if (!regional || !operacion) {
       return res.status(400).json({ error: 'regional y operacion requeridos' });
     }
 
+    const acceso = await computarAccesoEVSST(usuario);
+    const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
+    const condEstado = puedeRetirados ? "Estado IN ('Activo', 'Retirado')" : "Estado = 'Activo'";
+
     const [rows] = await pool.execute(
-      `SELECT DISTINCT Trabajador, Identificación AS identificacion, Cargo 
+      `SELECT DISTINCT Trabajador, Identificación AS identificacion, Cargo, Estado 
        FROM \`Maestro_Vinculación\` 
-       WHERE Regional = ? AND \`Operación\` = ? AND Estado = 'Activo'
+       WHERE Regional = ? AND \`Operación\` = ? AND ${condEstado}
        ORDER BY Trabajador`,
       [regional, operacion]
     );
@@ -459,6 +463,15 @@ router.post('/api/crear', async (req, res) => {
       return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
     }
 
+    const [vinTrab] = await pool.execute(
+      'SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [identificacion]
+    );
+    const esRetirado = vinTrab.length && String(vinTrab[0].Estado || '').toLowerCase() === 'retirado';
+    if (esRetirado && !(await puedeProcesarRetiradosSst(accesoCrear.rol))) {
+      return res.status(403).json({ error: 'Su rol no está autorizado para realizar procesos a personal retirado.' });
+    }
+
     const id_evaluacion = uuidv4();
     const tokenFirma = crypto.randomBytes(32).toString('hex');
     const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
@@ -493,7 +506,7 @@ router.post('/api/crear', async (req, res) => {
     const host = req.get('host');
     const urlFirma = `${protocol}://${host}/evaluacionsst/responder?item=${id_evaluacion}`;
 
-    if (enviar_correo && emailTrabajador) {
+    if (enviar_correo && !esRetirado && emailTrabajador) {
       notificarFirmaEvaluacionSST({
         email: emailTrabajador,
         nombreTrabajador: trabajadorNombre,
@@ -534,6 +547,7 @@ router.post('/api/crear-masivo', async (req, res) => {
     if (!accesoCrearMasivo || !(await rolPuedeSst(accesoCrearMasivo.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
     }
+    const puedeRetiradosMasivo = await puedeProcesarRetiradosSst(accesoCrearMasivo.rol);
 
     const protocol = req.secure ? 'https' : 'http';
     const host = req.get('host');
@@ -544,13 +558,15 @@ router.post('/api/crear-masivo', async (req, res) => {
     for (const identificacion of identificaciones) {
       // Get worker name
       const [vinRows] = await conn.execute(
-        `SELECT Trabajador 
+        `SELECT Trabajador, Estado 
          FROM \`Maestro_Vinculación\` 
          WHERE Identificación = ? 
          ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
         [identificacion]
       );
       if (!vinRows.length) continue;
+      const esRetiradoTrab = String(vinRows[0].Estado || '').toLowerCase() === 'retirado';
+      if (esRetiradoTrab && !puedeRetiradosMasivo) continue;
 
       const trabajadorNombre = vinRows[0].Trabajador;
 
@@ -600,7 +616,7 @@ router.post('/api/crear-masivo', async (req, res) => {
         urlFirma
       });
 
-      if (enviar_correo && emailTrabajador) {
+      if (enviar_correo && !esRetiradoTrab && emailTrabajador) {
         notificarFirmaEvaluacionSST({
           email: emailTrabajador,
           nombreTrabajador: cleanNombreTrabajador,
@@ -812,6 +828,10 @@ router.post('/api/reenviar-firma', async (req, res) => {
     const emailTrabajador = segRows.length ? segRows[0].Email : null;
     const trabajadorNombre = vinRows.length ? vinRows[0].Trabajador : ev.identificacion;
 
+    const [vinRowsEst] = await pool.execute('SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1', [ev.identificacion]);
+    if (vinRowsEst.length && String(vinRowsEst[0].Estado || '').toLowerCase() === 'retirado') {
+      return res.status(400).json({ error: 'No se pueden enviar correos a personal retirado; copie el enlace de firma directamente.' });
+    }
     if (canal === 'email' && emailTrabajador) {
       await notificarFirmaEvaluacionSST({
         email: emailTrabajador,

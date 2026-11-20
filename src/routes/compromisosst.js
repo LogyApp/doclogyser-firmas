@@ -25,7 +25,7 @@ const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../ser
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const { LOGO_BASE64 } = require('../services/assets');
 const { computarAccesoSst } = require('../services/accesoSst');
-const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
+const { rolPuedeSst, permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
 
 const router = express.Router();
 
@@ -388,15 +388,19 @@ router.get('/api/clientes', async (req, res) => {
 // ═════ API: GET /api/trabajadores-por-operacion ═════
 router.get('/api/trabajadores-por-operacion', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { regional, operacion, usuario } = req.query;
     if (!regional || !operacion) {
       return res.status(400).json({ error: 'regional y operacion requeridos' });
     }
 
+    const acceso = await computarAccesoCSST(usuario);
+    const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
+    const condEstado = puedeRetirados ? "Estado IN ('Activo', 'Retirado')" : "Estado = 'Activo'";
+
     const [rows] = await pool.execute(
-      `SELECT DISTINCT Trabajador, Identificación AS identificacion, Cargo 
+      `SELECT DISTINCT Trabajador, Identificación AS identificacion, Cargo, Estado 
        FROM \`Maestro_Vinculación\` 
-       WHERE Regional = ? AND \`Operación\` = ? AND Estado = 'Activo'
+       WHERE Regional = ? AND \`Operación\` = ? AND ${condEstado}
        ORDER BY Trabajador`,
       [regional, operacion]
     );
@@ -691,6 +695,15 @@ router.post('/api/crear', async (req, res) => {
       return res.status(403).json({ error: 'No autorizado para crear compromisos SST.' });
     }
 
+    const [vinTrab] = await pool.execute(
+      'SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [identificaciontrabajador]
+    );
+    const esRetirado = vinTrab.length && String(vinTrab[0].Estado || '').toLowerCase() === 'retirado';
+    if (esRetirado && !(await puedeProcesarRetiradosSst(accesoCrear.rol))) {
+      return res.status(403).json({ error: 'Su rol no está autorizado para realizar procesos a personal retirado.' });
+    }
+
     // Limpieza de nombre del trabajador
     let cleanNombreTrabajador = nombre_trabajador || '';
     if (cleanNombreTrabajador.includes(' ** ')) {
@@ -788,7 +801,7 @@ router.post('/api/crear', async (req, res) => {
     const host = req.get('host');
     const urlFirmaTrab = `${protocol}://${host}/compromisosst/firmar-trabajador?item=${idcsst}&token=${tokenTrab}`;
 
-    if (enviar_correo) {
+    if (enviar_correo && !esRetirado) {
       const [segRows] = await pool.execute('SELECT Email FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1', [identificaciontrabajador]);
       const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
       const emailTrabajador = segRows.length ? segRows[0].Email : null;
@@ -830,6 +843,7 @@ router.post('/api/crear-masivo', async (req, res) => {
     if (!accesoCrearMasivo || !(await rolPuedeSst(accesoCrearMasivo.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear compromisos SST.' });
     }
+    const puedeRetiradosMasivo = await puedeProcesarRetiradosSst(accesoCrearMasivo.rol);
 
     // Resolving Analyst metadata
     const [userRows] = await conn.execute('SELECT Colaborador, Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
@@ -889,13 +903,15 @@ router.post('/api/crear-masivo', async (req, res) => {
     for (const identificacion of identificaciones) {
       // Get worker name and cargo
       const [vinRows] = await conn.execute(
-        `SELECT Trabajador, Cargo 
+        `SELECT Trabajador, Cargo, Estado 
          FROM \`Maestro_Vinculación\` 
          WHERE Identificación = ? 
          ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
         [identificacion]
       );
       if (!vinRows.length) continue;
+      const esRetiradoTrab = String(vinRows[0].Estado || '').toLowerCase() === 'retirado';
+      if (esRetiradoTrab && !puedeRetiradosMasivo) continue;
 
       const trabajadorNombre = vinRows[0].Trabajador;
       const cargo = vinRows[0].Cargo;
@@ -953,7 +969,7 @@ router.post('/api/crear-masivo', async (req, res) => {
         urlFirma: urlFirmaTrab
       });
 
-      if (enviar_correo && emailTrabajador) {
+      if (enviar_correo && !esRetiradoTrab && emailTrabajador) {
         enviarCorreoFirmaTrabajadorSST({
           email: emailTrabajador,
           nombreTrabajador: cleanNombreTrabajador,
@@ -1463,6 +1479,10 @@ router.post('/api/compromiso/:id/enviar-enlace', async (req, res) => {
     const urlFirma = `${protocol}://${host}/compromisosst/firmar-trabajador?item=${id}&token=${token}`;
 
     if (canal === 'email') {
+      const [vinRows] = await pool.execute('SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1', [c.identificaciontrabajador]);
+      if (vinRows.length && String(vinRows[0].Estado || '').toLowerCase() === 'retirado') {
+        return res.status(400).json({ error: 'No se pueden enviar correos a personal retirado; copie el enlace de firma directamente.' });
+      }
       const [segRows] = await pool.execute('SELECT Email FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1', [c.identificaciontrabajador]);
       const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]);
 

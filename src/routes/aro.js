@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { computarAccesoSst } = require('../services/accesoSst');
-const { rolPuedeSst } = require('../services/configSst');
+const { rolPuedeSst, puedeProcesarRetiradosSst } = require('../services/configSst');
 const { subirFirma, obtenerUrlFirmaReciente, descargarFirmaBase64PorUrl } = require('../services/storage');
 const { notificarFirmaARO } = require('../services/email');
 const aro = require('../services/aro');
@@ -96,6 +96,7 @@ router.post('/api/firmar', async (req, res) => {
     }
 
     const cfg = await aro.configuracion();
+    const puedeRetirados = await puedeProcesarRetiradosSst(acceso.rol);
     const sst = await aro.firmanteSst(cfg.rolSst);
     const ahora = ahoraBogota();
     const [upd] = await pool.execute(
@@ -155,6 +156,7 @@ router.get('/api/aros', async (req, res) => {
         crear: await permiso('crear'), eliminar: await permiso('eliminar'),
         editarFirmado: await permiso('editarFirmado'), eliminarFirmado: await permiso('eliminarFirmado'),
         esSistema: acceso.rol === 'Sistema', correoHabilitado: cfg.correoHabilitado,
+        puedeProcesarRetirados: await puedeProcesarRetiradosSst(acceso.rol),
       },
       opsPorRegional: acceso.opsPorRegional || {},
       cargos: cfg.cargos,
@@ -173,19 +175,22 @@ router.get('/api/trabajadores', async (req, res) => {
     const { operacion } = req.query;
     if (!operacion || !enAlcance(acceso, operacion)) return res.status(400).json({ error: 'Escoja una operación de su alcance.' });
     const cfg = await aro.configuracion();
+    const puedeRetirados = await puedeProcesarRetiradosSst(acceso.rol);
+    const condEstado = puedeRetirados ? "v.Estado IN ('Activo', 'Retirado')" : "v.Estado = 'Activo'";
     const [rows] = await pool.execute(
-      `SELECT v.\`Identificación\` AS identificacion, v.Trabajador, v.Cargo,
+      `SELECT v.\`Identificación\` AS identificacion, v.Trabajador, v.Cargo, v.Estado,
               (SELECT MAX(d.fecha_firma) FROM Dynamic_aro d WHERE d.identificacion = v.\`Identificación\` AND d.url_doc IS NOT NULL) AS ultimaFirma,
               (SELECT COUNT(*) FROM Dynamic_aro d WHERE d.identificacion = v.\`Identificación\` AND d.url_doc IS NULL) AS pendientes,
               (SELECT MAX(m.FechaRegistro) FROM Maestro_docTrabajador m WHERE m.\`Identificación\` = v.\`Identificación\` AND m.TipoDocumento = ?) AS ultimoDocumento
          FROM \`Maestro_Vinculación\` v
-        WHERE v.Estado = 'Activo' AND v.\`Operación\` = ?
+        WHERE ${condEstado} AND v.\`Operación\` = ?
         ORDER BY v.Trabajador`,
       [aro.ID_DOC_TRABAJADOR, operacion]
     );
     res.json({
       trabajadores: rows.filter(r => aro.cargoPermitido(cfg.cargos, r.Cargo)).map(r => ({
         identificacion: String(r.identificacion), nombre: nombreSinCedula(r.Trabajador), cargo: r.Cargo || '',
+        estado: r.Estado || 'Activo',
         ultimaFirma: r.ultimaFirma, pendiente: Number(r.pendientes) > 0, ultimoDocumento: r.ultimoDocumento,
       })),
     });
@@ -210,12 +215,17 @@ router.post('/api/crear', async (req, res) => {
     const resultados = [];
     for (const identificacion of ids) {
       const [[v]] = await pool.execute(
-        `SELECT \`Id Vinculación\` AS idv, Trabajador, Cargo, \`Operación\` AS operacion, Regional
-           FROM \`Maestro_Vinculación\` WHERE \`Identificación\` = ? AND Estado = 'Activo' ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+        `SELECT \`Id Vinculación\` AS idv, Trabajador, Cargo, \`Operación\` AS operacion, Regional, Estado
+           FROM \`Maestro_Vinculación\` WHERE \`Identificación\` = ? ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
         [identificacion]
       );
       if (!v || !enAlcance(acceso, v.operacion) || !aro.cargoPermitido(cfg.cargos, v.Cargo)) {
-        resultados.push({ identificacion, error: 'No está activo, no es de su alcance o su cargo no aplica para el ARO.' });
+        resultados.push({ identificacion, error: 'No se encontró el trabajador, no es de su alcance o su cargo no aplica para el ARO.' });
+        continue;
+      }
+      const esRetirado = String(v.Estado || '').toLowerCase() === 'retirado';
+      if (esRetirado && !puedeRetirados) {
+        resultados.push({ identificacion, error: 'Su rol no está autorizado para realizar procesos a personal retirado.' });
         continue;
       }
       let [[pend]] = await pool.execute('SELECT id_aro, token_firma FROM Dynamic_aro WHERE identificacion = ? AND url_doc IS NULL AND token_firma IS NOT NULL LIMIT 1', [identificacion]);
@@ -232,7 +242,7 @@ router.post('/api/crear', async (req, res) => {
       const enlace = urlFirma(req, pend.token_firma);
       const [[seg]] = await pool.execute('SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1', [identificacion]);
       let correo = false;
-      if (enviarCorreo && seg && seg.Email) {
+      if (enviarCorreo && !esRetirado && seg && seg.Email) {
         correo = await notificarFirmaARO({ email: seg.Email, nombreTrabajador: nombreSinCedula(v.Trabajador), cargo: v.Cargo, operacion: v.operacion, urlFirma: enlace, emailUsuario: usu && usu.Email })
           .catch(e => { console.error('[aro] Correo de firma:', e.message); return false; });
       }
@@ -254,6 +264,10 @@ router.post('/api/aro/:id/enviar-correo', async (req, res) => {
     const a = await obtenerAro(req.params.id);
     if (!a || !enAlcance(acceso, a.operacion)) return res.status(404).json({ error: 'No se encontró el ARO.' });
     if (a.url_doc || !a.token_firma) return res.status(409).json({ error: 'Este ARO ya fue firmado.' });
+    const [[vEst]] = await pool.execute('SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1', [a.identificacion]);
+    if (vEst && String(vEst.Estado || '').toLowerCase() === 'retirado') {
+      return res.status(400).json({ error: 'No se pueden enviar correos a personal retirado; copie el enlace de firma directamente.' });
+    }
     if (!(await aro.configuracion()).correoHabilitado) return res.status(400).json({ error: 'Los correos del ARO están desactivados en Config_Parametros.' });
     const [[seg]] = await pool.execute('SELECT Email FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1', [a.identificacion]);
     if (!seg || !seg.Email) return res.status(400).json({ error: 'El trabajador no tiene correo registrado.' });

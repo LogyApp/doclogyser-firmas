@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const pool = require('../services/db');
 const { computarAccesoSst } = require('../services/accesoSst');
+const { puedeProcesarRetiradosSst } = require('../services/configSst');
 // resolverCoordinadorOperacionATS importado de atsService
 const {
   resolverCoordinadorOperacionATS,
@@ -135,10 +136,14 @@ router.get('/api/registro/:id', async (req, res) => {
 // Consultar trabajadores activos de una operación para checklist del formulario
 router.get('/api/trabajadores-por-operacion', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { regional, operacion, usuario } = req.query;
     if (!regional || !operacion) {
       return res.status(400).json({ error: 'Regional y Operación requeridos' });
     }
+
+    const acceso = await computarAccesoSst(usuario || req.query.usuario, 'ATS').catch(() => null);
+    const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
+    const condEstado = puedeRetirados ? "v.Estado IN ('Activo', 'Retirado')" : "v.Estado = 'Activo'";
 
     const [rows] = await pool.execute(`
       SELECT
@@ -148,11 +153,12 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
         v.Cargo AS cargo,
         v.Operación AS operacion,
         v.Regional AS regional,
+        v.Estado AS estado,
         s.Celular AS celular,
         s.Email AS email
       FROM \`Maestro_Vinculación\` v
       LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = v.Identificación
-      WHERE v.Estado = 'Activo' AND v.Regional = ? AND v.Operación = ?
+      WHERE ${condEstado} AND v.Regional = ? AND v.Operación = ?
       ORDER BY v.Trabajador ASC
     `, [regional, operacion]);
 
@@ -166,8 +172,12 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
 // Búsqueda de trabajadores activos por nombre o cédula
 router.get('/api/trabajadores-buscar', async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, usuario } = req.query;
     if (!q || q.trim().length < 2) return res.json([]);
+
+    const acceso = await computarAccesoSst(usuario || req.query.usuario, 'ATS').catch(() => null);
+    const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
+    const condEstado = puedeRetirados ? "v.Estado IN ('Activo', 'Retirado')" : "v.Estado = 'Activo'";
 
     const term = `%${q.trim().toUpperCase()}%`;
     const [rows] = await pool.execute(`
@@ -178,11 +188,12 @@ router.get('/api/trabajadores-buscar', async (req, res) => {
         v.Cargo AS cargo,
         v.Operación AS operacion,
         v.Regional AS regional,
+        v.Estado AS estado,
         s.Celular AS celular,
         s.Email AS email
       FROM \`Maestro_Vinculación\` v
       LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = v.Identificación
-      WHERE v.Estado = 'Activo' AND (v.Identificación LIKE ? OR v.Trabajador LIKE ?)
+      WHERE ${condEstado} AND (v.Identificación LIKE ? OR v.Trabajador LIKE ?)
       LIMIT 30
     `, [term, term]);
 
@@ -371,8 +382,14 @@ async function notificarAts(req, res, idAts, opciones, descripcion) {
 }
 
 router.post('/api/notificar-trabajador/:idItem', async (req, res) => {
-  const [rows] = await pool.execute('SELECT id_ats FROM Dynamic_ats_trabajadores WHERE id_item = ?', [req.params.idItem]);
+  const [rows] = await pool.execute('SELECT id_ats, identificacion FROM Dynamic_ats_trabajadores WHERE id_item = ?', [req.params.idItem]);
   if (!rows.length) return res.status(404).json({ error: 'Trabajador no encontrado' });
+  if (rows[0].identificacion) {
+    const [vEst] = await pool.execute('SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1', [rows[0].identificacion]);
+    if (vEst.length && String(vEst[0].Estado || '').toLowerCase() === 'retirado') {
+      return res.status(400).json({ error: 'No se puede enviar correo a personal retirado; copie el enlace de firma directamente.' });
+    }
+  }
   return notificarAts(req, res, rows[0].id_ats, { items: [req.params.idItem], coordinador: false, sst: false }, 'trabajador');
 });
 

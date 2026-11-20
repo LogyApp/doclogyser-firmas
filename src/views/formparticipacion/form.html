@@ -316,11 +316,28 @@
   function actualizarConteoAsistentes() {
     document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
     const porOp = document.getElementById('form-asistentes-por-op');
-    if (!ES_TH || !porOp) return;
-    const conteo = {};
-    formAsistentes.forEach(x => { const op = x.Operación || 'Sin operación'; conteo[op] = (conteo[op] || 0) + 1; });
-    const partes = Object.keys(conteo).sort().map(op => `${op} (${conteo[op]})`);
-    porOp.innerText = partes.length ? `Por operación: ${partes.join(' · ')}` : '';
+    if (ES_TH && porOp) {
+      const conteo = {};
+      formAsistentes.forEach(x => { const op = x.Operación || 'Sin operación'; conteo[op] = (conteo[op] || 0) + 1; });
+      const partes = Object.keys(conteo).sort().map(op => `${op} (${conteo[op]})`);
+      porOp.innerText = partes.length ? `Por operación: ${partes.join(' · ')}` : '';
+    }
+
+    const retirados = formAsistentes.filter(x => String(x.Estado || x.estado || '').toLowerCase() === 'retirado');
+    let aviso = document.getElementById('aviso-retirados-part');
+    const countEl = document.getElementById('form-asistentes-count');
+    const wrapConteo = countEl ? countEl.parentNode : null;
+    if (retirados.length > 0) {
+      if (!aviso && wrapConteo) {
+        aviso = document.createElement('div');
+        aviso.id = 'aviso-retirados-part';
+        aviso.style.cssText = 'font-size:0.82rem;color:#b45309;background:#fef3c7;border:1px solid #fde68a;padding:6px 10px;border-radius:6px;margin-top:6px;';
+        aviso.innerText = '⚠️ Personal retirado seleccionado: no se enviará correo, solo se generará el enlace de firma.';
+        wrapConteo.parentNode.insertBefore(aviso, wrapConteo.nextSibling);
+      }
+    } else {
+      if (aviso) aviso.remove();
+    }
   }
 
   // Initialization
@@ -522,7 +539,7 @@
       chkTodos.checked = false;
       const url = ES_TH
         ? apiUrl(`/participacion/api/trabajadores?usuario=${encodeURIComponent(CONFIG.usuarioId)}&regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`)
-        : `/participacion/api/trabajadores-por-operacion?regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`;
+        : apiUrl(`/participacion/api/trabajadores-por-operacion?regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}&usuario=${encodeURIComponent(CONFIG.usuarioId || CONFIG.usuario || '')}`);
       const res = await fetch(url);
       const trabajadores = await res.json();
       if (solicitud !== solicitudTrabajadores) return;
@@ -555,9 +572,11 @@
         div.setAttribute('data-search', normalizarFiltro(`${t.identificacion} ${nombreLimpio}`));
         div.setAttribute('data-cargo', normalizarFiltro(t.Cargo));
 
+        const esRetirado = String(t.Estado || t.estado || '').toLowerCase() === 'retirado';
+        const badgeRet = esRetirado ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:0.75rem;font-weight:600;margin-left:6px;border:1px solid #fde68a;">RETIRADO</span>' : '';
         div.innerHTML = `
-          <input type="checkbox" id="${idCheckbox}" ${isChecked ? 'checked' : ''}>
-          <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'}${ES_TH ? ` · ${t.Operación || 'Sin operación'}` : ''})</span></label>
+          <input type="checkbox" id="${idCheckbox}" ${isChecked ? 'checked' : ''} data-estado="${t.Estado || 'Activo'}">
+          <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'}${ES_TH ? ` · ${t.Operación || 'Sin operación'}` : ''})</span>${badgeRet}</label>
         `;
 
         const checkbox = div.querySelector('input[type="checkbox"]');
@@ -570,7 +589,8 @@
                 Identificación: t.identificacion,
                 Cargo: t.Cargo,
                 Operación: t.Operación,
-                Regional: t.Regional
+                Regional: t.Regional,
+                Estado: t.Estado || 'Activo'
               });
             }
           } else {

@@ -9,7 +9,7 @@ const {
 const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
 const { generarPDFDesdeHTML } = require('../services/renderer');
 const { subirPDFActa } = require('../services/storage');
-const { rolPuedeSst } = require('../services/configSst');
+const { rolPuedeSst, puedeProcesarRetiradosSst } = require('../services/configSst');
 
 // Permisos de la pestaña en Config_Parametros (sst / Casos Medicos), ver configSst.js.
 // Quien creó el caso siempre puede editarlo, eliminarlo y gestionar sus actas.
@@ -1226,6 +1226,14 @@ router.post('/api/caso/:id/enviar-acta-correo', async (req, res) => {
     const caso = rows[0];
     if (!(await puedeEnCaso(acceso, usuario, caso, 'actas'))) {
       return res.status(403).json({ error: 'Tu rol no tiene permiso para enviar enlaces de firma de actas' });
+    }
+
+    const [vinTrabActa] = await pool.execute(
+      'SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [caso.identificacion]
+    );
+    if (vinTrabActa.length && String(vinTrabActa[0].Estado || '').toLowerCase() === 'retirado') {
+      return res.status(400).json({ error: 'No se pueden enviar correos a personal retirado; copie y comparta el enlace de firma directamente.' });
     }
 
     // El enlace que llega de la pantalla solo se usa si es el enlace de firma vigente de este

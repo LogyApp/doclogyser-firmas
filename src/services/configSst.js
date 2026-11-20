@@ -138,7 +138,31 @@ async function permisosSstDelRol(rol) {
       if (def[accion]) permisos[def.clave][accion] = rolEn(rolesDe(filas, seccion, accion), rol);
     });
   });
+  permisos.puedeProcesarRetirados = await puedeProcesarRetiradosSst(rol);
   return permisos;
 }
 
-module.exports = { rolPuedeSst, autorizarAccionSst, permisosSstDelRol, PERMISOS_SST };
+const CONCEPTO_ROLES_RETIRADOS = 'Roles que pueden realizar procesos a personal retirado';
+const DEFECTO_ROLES_RETIRADOS = 'Archivo, Sistema';
+
+async function rolesProcesarRetiradosSst() {
+  const filas = await leerParametros();
+  const fila = filas.find((f) => normalizar(f.Concepto) === normalizar(CONCEPTO_ROLES_RETIRADOS));
+  const texto = fila ? String(fila.Parametro == null ? '' : fila.Parametro) : DEFECTO_ROLES_RETIRADOS;
+  return texto.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+async function puedeProcesarRetiradosSst(rol) {
+  const roles = await rolesProcesarRetiradosSst();
+  return rolEn(roles, rol);
+}
+
+module.exports = {
+  rolPuedeSst,
+  autorizarAccionSst,
+  permisosSstDelRol,
+  PERMISOS_SST,
+  rolesProcesarRetiradosSst,
+  puedeProcesarRetiradosSst,
+  CONCEPTO_ROLES_RETIRADOS,
+};

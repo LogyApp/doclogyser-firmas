@@ -711,7 +711,7 @@
 
     showLoading('Consultando trabajadores en Maestro_Vinculación...');
     try {
-      const res = await fetch(`/ats/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+      const res = await fetch(`/ats/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}&usuario=${encodeURIComponent(CONFIG?.usuarioId || CONFIG?.usuario || "")}`);
       listaTrabajadoresActiva = await res.json();
       wrap.style.display = 'block';
       renderizarChecklistTrabajadores(listaTrabajadoresActiva);
@@ -731,11 +731,13 @@
 
     body.innerHTML = items.map(t => {
       const isSel = trabajadoresSeleccionados.some(x => String(x.identificacion).trim() === String(t.identificacion).trim());
+      const esRetirado = String(t.estado || '').toLowerCase() === 'retirado';
+      const badgeRet = esRetirado ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:0.72rem;font-weight:600;margin-left:6px;border:1px solid #fde68a;">RETIRADO</span>' : '';
       return `
         <div class="checklist-item" onclick="toggleTrabajador('${t.identificacion}')">
           <input type="checkbox" id="chk_trab_${t.identificacion}" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); toggleTrabajador('${t.identificacion}')">
           <div class="checklist-item-info">
-            <div class="checklist-item-name">${t.nombre_trabajador}</div>
+            <div class="checklist-item-name">${t.nombre_trabajador}${badgeRet}</div>
             <div class="checklist-item-sub">C.C. ${t.identificacion} · Cargo: ${t.cargo || '—'} · Op: ${t.operacion}</div>
           </div>
         </div>
@@ -768,7 +770,8 @@
         cargo: t.cargo,
         operacion: t.operacion,
         celular: t.celular || '',
-        email: t.email || ''
+        email: t.email || '',
+        estado: t.estado || 'Activo'
       });
     }
 
@@ -809,6 +812,20 @@
         <span class="worker-chip-remove" onclick="toggleTrabajador('${t.identificacion}')">&times;</span>
       </span>
     `).join('');
+
+    const retirados = trabajadoresSeleccionados.filter(t => String(t.estado || '').toLowerCase() === 'retirado');
+    let aviso = document.getElementById('aviso-retirados-ats');
+    if (retirados.length > 0) {
+      if (!aviso && c) {
+        aviso = document.createElement('div');
+        aviso.id = 'aviso-retirados-ats';
+        aviso.style.cssText = 'font-size:0.82rem;color:#b45309;background:#fef3c7;border:1px solid #fde68a;padding:6px 10px;border-radius:6px;margin-top:6px;';
+        aviso.innerText = '⚠️ Personal retirado seleccionado: no se enviará correo, solo se generará el enlace de firma.';
+        c.parentNode.insertBefore(aviso, c.nextSibling);
+      }
+    } else {
+      if (aviso) aviso.remove();
+    }
   }
 
   // ── CARGA Y COMPRESIÓN DE FOTOS DE EVIDENCIA ──

@@ -2564,14 +2564,15 @@ async function guardarNovedadRango() {
   formData.append('prefijoNovedad', prefijoNovedad);
   formData.append('diaInicio', diaInicio);
   formData.append('diaFin', diaFin);
-  if (codDiag) formData.append('codDiagnostico', codDiag);
-  if (diag) formData.append('diagnostico', diag);
-  if (tipoInc) formData.append('tipoIncapacidad', tipoInc);
+  if (esIncapacidad) {
+    if (codDiag) formData.append('codDiagnostico', codDiag);
+    if (diag) formData.append('diagnostico', diag);
+    if (tipoInc) formData.append('tipoIncapacidad', tipoInc);
+    if (fileInc) formData.append('incapacidad', fileInc);
+    if (fileHC) formData.append('historiaClinica', fileHC);
+  }
   if (obs) formData.append('observaciones', obs);
-
   if (fileSoporte) formData.append('soporte', fileSoporte);
-  if (fileInc) formData.append('incapacidad', fileInc);
-  if (fileHC) formData.append('historiaClinica', fileHC);
 
   btn.disabled = true;
   btn.textContent = 'Guardando novedad...';

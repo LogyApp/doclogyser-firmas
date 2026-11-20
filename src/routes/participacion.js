@@ -16,6 +16,7 @@ const { generarPDFDesdeHTML } = require('../services/renderer');
 const { LOGO_BASE64 } = require('../services/assets');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { computarAccesoSst } = require('../services/accesoSst');
+const { puedeProcesarRetiradosSst } = require('../services/configSst');
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { normalizar } = require('../services/maestroMenu');
 const {
@@ -758,7 +759,8 @@ router.get('/api/trabajadores', async (req, res) => {
     if (acceso.accesoCodigo >= 2 && !regional) return res.status(400).json({ error: 'Seleccione la regional.' });
     if (acceso.accesoCodigo >= 3 && !operacion) return res.status(400).json({ error: 'Seleccione la operación.' });
 
-    const conds = ["Estado = 'Activo'"];
+    const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
+    const conds = [puedeRetirados ? "Estado IN ('Activo', 'Retirado')" : "Estado = 'Activo'"];
     const params = [];
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) return res.json([]);
@@ -1447,6 +1449,15 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
     if (!f.permisos.enlaces) return res.status(403).json({ error: 'Su rol no tiene permiso para enviar enlaces de firma de este formato' });
     if (f.asistencia.url_doc && !enviarATodos && !id_item_asistencia) return res.status(400).json({ error: 'Nada que enviar' });
 
+    if (!enviarATodos && id_item_asistencia) {
+      const [itRows] = await pool.execute('SELECT identificacion FROM Dynamic_formato_itemsAsistencia WHERE id_item_asistencia = ? LIMIT 1', [id_item_asistencia]);
+      if (itRows.length) {
+        const [vRows] = await pool.execute('SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1', [itRows[0].identificacion]);
+        if (vRows.length && String(vRows[0].Estado || '').toLowerCase() === 'retirado') {
+          return res.status(400).json({ error: 'No se puede enviar correo a personal retirado; copie el enlace de firma directamente.' });
+        }
+      }
+    }
     const r = await enviarSolicitudesFirma(id, baseUrl(req), enviarATodos ? null : [id_item_asistencia]);
     if (r.deshabilitado) return res.status(400).json({ error: `Las notificaciones de correo de ${acceso.perfil.nombre} están deshabilitadas (Config_Parametros).` });
     if (!enviarATodos && !r.enviados) {

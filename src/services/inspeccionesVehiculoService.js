@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('./db');
+const { puedeProcesarRetiradosSst } = require('./configSst');
 const { generarPDFDesdeHTML } = require('./renderer');
 const { LOGO_BASE64 } = require('./assets');
 const {
@@ -1520,7 +1521,9 @@ async function buscarColaboradoresSST(q, acceso) {
   const term = String(q || '').trim();
   if (term.length < 2) return [];
 
-  const conds = ["Estado = 'Activo'", '(Trabajador LIKE ? OR `Identificación` LIKE ?)'];
+  const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
+  const condEstado = puedeRetirados ? "Estado IN ('Activo', 'Retirado')" : "Estado = 'Activo'";
+  const conds = [condEstado, '(Trabajador LIKE ? OR `Identificación` LIKE ?)'];
   const like = `%${term}%`;
   const params = [like, like];
 

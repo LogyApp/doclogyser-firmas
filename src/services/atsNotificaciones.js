@@ -53,7 +53,8 @@ async function enviarSolicitudesFirmaAts(idAts, base, { items = 'pendientes', co
 
   if (items !== 'ninguno') {
     const [trabs] = await pool.execute(
-      `SELECT t.id_item, t.nombre_trabajador, t.token_firma, t.estado_firma, COALESCE(NULLIF(t.email, ''), s.Email) AS email_final
+      `SELECT t.id_item, t.nombre_trabajador, t.token_firma, t.estado_firma, COALESCE(NULLIF(t.email, ''), s.Email) AS email_final,
+              (SELECT v.Estado FROM \`Maestro_Vinculación\` v WHERE v.\`Identificación\` = t.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS estado_trabajador
        FROM Dynamic_ats_trabajadores t
        LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = t.identificacion
        WHERE t.id_ats = ?`,
@@ -64,6 +65,10 @@ async function enviarSolicitudesFirmaAts(idAts, base, { items = 'pendientes', co
       : trabs.filter((t) => t.estado_firma !== 'ACEPTADA');
     for (const t of lista) {
       if (t.estado_firma === 'ACEPTADA') continue;
+      if (String(t.estado_trabajador || '').toLowerCase() === 'retirado') {
+        // No enviar correo a personal retirado; solo se genera y mantiene el enlace
+        continue;
+      }
       if (!esCorreo(t.email_final)) { resultado.trabajadores.sinCorreo++; continue; }
       try {
         await enviarEmailFirmaAtsTrabajador({

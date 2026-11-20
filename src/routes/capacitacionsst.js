@@ -15,7 +15,7 @@ const {
 const { renderPDF } = require('../services/capacitacionPdfGenerator');
 const { subirPDFCapacitacionSST } = require('../services/storage');
 const { computarAccesoSst } = require('../services/accesoSst');
-const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
+const { rolPuedeSst, permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
 
 const router = express.Router();
 
@@ -672,7 +672,7 @@ router.post('/api/crear', async (req, res) => {
     const host = req.get('host');
     const urlFirma = `${protocol}://${host}/capacitacionsst/responder?item=${id_capacitacion}`;
 
-    if (enviar_correo && emailTrabajador) {
+    if (enviar_correo && !esRetirado && emailTrabajador) {
       notificarFirmaCapacitacionSST({
         email: emailTrabajador,
         nombreTrabajador: trabajadorNombre,
@@ -996,6 +996,10 @@ router.post('/api/reenviar-firma', async (req, res) => {
     const emailTrabajador = segRows.length ? segRows[0].Email : null;
     const trabajadorNombre = vinRows.length ? vinRows[0].Trabajador : ev.identificacion;
 
+    const [vinRowsEst] = await pool.execute('SELECT Estado FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1', [ev.identificacion]);
+    if (vinRowsEst.length && String(vinRowsEst[0].Estado || '').toLowerCase() === 'retirado') {
+      return res.status(400).json({ error: 'No se pueden enviar correos a personal retirado; copie el enlace de firma directamente.' });
+    }
     if (canal === 'email' && emailTrabajador) {
       await notificarFirmaCapacitacionSST({
         email: emailTrabajador,

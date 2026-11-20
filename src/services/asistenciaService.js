@@ -702,10 +702,20 @@ async function registrarNovedadPorRango({
     if (errores.length) throw errorValidacion(errores);
   }
 
+  // Si no es incapacidad, asegurar que los campos médicos/incapacidad no se propaguen
+  const esIncapacidad = (novedad === 'Incapacidad' || String(novedad || '').toLowerCase().includes('incapacidad'));
+  if (!esIncapacidad) {
+    tipoIncapacidad = null;
+    codDiagnostico = null;
+    diagnostico = null;
+    urlIncapacidad = null;
+    urlHistoriaClinica = null;
+  }
+
   // Si es Incapacidad con sub-tipo, obtener prefijo de Config_Asistencia
   let prefijoEfectivo = prefijoNovedad || 'NOV';
   let tipoDocIncapacidad = '31';
-  if ((novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) && tipoIncapacidad) {
+  if (esIncapacidad && tipoIncapacidad) {
     const [incRows] = await pool.query(
       "SELECT `Prefijo Novedad` AS prefijo, TipoDocumento FROM Config_Asistencia WHERE Novedad = ? AND Evento = 'Incapacidad' LIMIT 1",
       [tipoIncapacidad]
@@ -962,9 +972,20 @@ async function registrarNovedadDia({
   }
 
   const opFinal = operacion || trabRows[0].operacion;
+
+  // Si no es incapacidad, asegurar que los campos médicos/incapacidad no se propaguen
+  const esIncapacidad = (novedad === 'Incapacidad' || String(novedad || '').toLowerCase().includes('incapacidad'));
+  if (!esIncapacidad) {
+    tipoIncapacidad = null;
+    codDiagnostico = null;
+    diagnostico = null;
+    urlIncapacidad = null;
+    urlHistoriaClinica = null;
+  }
+
   let prefijoEfectivo = prefijoNovedad || 'NOV';
   let tipoDocIncapacidad = '31';
-  if ((novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad')) && tipoIncapacidad) {
+  if (esIncapacidad && tipoIncapacidad) {
     const [incRows] = await pool.query(
       "SELECT \`Prefijo Novedad\` AS prefijo, TipoDocumento FROM Config_Asistencia WHERE Novedad = ? AND Evento = 'Incapacidad' LIMIT 1",
       [tipoIncapacidad]
@@ -1732,6 +1753,13 @@ async function editarRegistroAsistencia({
     if (horaEntradaFinal && horaSalidaFinal) {
       tiempoLaborado = calcularTiempoLaborado(horaEntradaFinal, horaSalidaFinal);
     }
+  }
+
+  const esIncapacidadNov = novFinal.toLowerCase() === 'incapacidad' || novFinal.toLowerCase().includes('incapacidad');
+  if (!esIncapacidadNov) {
+    tipoIncapacidad = null;
+    codDiagFinal = null;
+    diagFinal = null;
   }
 
   const actualizarDisponible1 = esAsistencia && disponible1 !== undefined;

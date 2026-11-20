@@ -219,10 +219,12 @@
         <button class="aro-ico" onclick="aroGenMarcar('ninguno')">Ninguno</button>
       </div>
       <div id="aro-g-items">${st.trabajadores.map((t, i) => {
+        const esRet = String(t.estado || '').toLowerCase() === 'retirado';
+        const tagRet = esRet ? '<span class="aro-tag" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a">Retirado</span>' : '';
         const tag = t.pendiente ? '<span class="aro-tag pend">Pendiente de firma</span>'
           : (t.ultimaFirma ? `<span class="aro-tag ok">Firmó ${fecha(t.ultimaFirma)}</span>`
             : (t.ultimoDocumento ? `<span class="aro-tag ok">ARO cargado ${fecha(t.ultimoDocumento)}</span>` : '<span class="aro-tag no">Sin ARO</span>'));
-        return `<label class="aro-trab" data-i="${i}" data-txt="${esc(norm(t.nombre + ' ' + t.identificacion))}"><input type="checkbox" data-id="${esc(t.identificacion)}" onchange="aroGenContar()"><span class="nom">${esc(t.nombre)}<small>C.C. ${esc(t.identificacion)} · ${esc(t.cargo)}</small></span>${tag}</label>`;
+        return `<label class="aro-trab" data-i="${i}" data-txt="${esc(norm(t.nombre + ' ' + t.identificacion))}"><input type="checkbox" data-id="${esc(t.identificacion)}" onchange="aroGenContar()"><span class="nom">${esc(t.nombre)}<small>C.C. ${esc(t.identificacion)} · ${esc(t.cargo)}</small></span>${tagRet}${tag}</label>`;
       }).join('')}</div>`;
     actualizarBoton();
   }
@@ -231,9 +233,34 @@
   function actualizarBoton() {
     const btn = $('aro-g-btn');
     if (!btn) return;
-    const n = marcados().length;
+    const selIds = marcados();
+    const n = selIds.length;
     btn.disabled = !n;
     btn.textContent = n ? `Generar ARO (${n})` : 'Generar ARO';
+
+    const chkCorreo = $('aro-g-correo');
+    const avisoRet = $('aro-g-aviso-retirados');
+    if (chkCorreo) {
+      const retiradosSel = (st.trabajadores || []).filter(t => selIds.includes(String(t.identificacion)) && String(t.estado || '').toLowerCase() === 'retirado');
+      if (retiradosSel.length > 0) {
+        if (!avisoRet) {
+          const div = document.createElement('div');
+          div.id = 'aro-g-aviso-retirados';
+          div.style.cssText = 'font-size:.78rem;color:#b45309;margin-top:4px;display:block;width:100%';
+          div.textContent = '⚠️ Trabajador retirado seleccionado: no se enviará correo, solo se generará el enlace de firma.';
+          chkCorreo.parentNode.parentNode.insertBefore(div, chkCorreo.parentNode.nextSibling);
+        }
+        if (retiradosSel.length === selIds.length) {
+          chkCorreo.checked = false;
+          chkCorreo.disabled = true;
+        } else {
+          chkCorreo.disabled = false;
+        }
+      } else {
+        if (avisoRet) avisoRet.remove();
+        chkCorreo.disabled = false;
+      }
+    }
   }
 
   async function generar() {
