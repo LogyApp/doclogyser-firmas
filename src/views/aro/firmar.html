@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis de Riesgo por Oficio — LOG&amp;SER</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f1f5f9; color: #1e293b; line-height: 1.5; padding: 16px; }
+    .wrapper { max-width: 860px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+    .header { background: #1B2A5E; color: #ffffff; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .header h2 { font-size: 1.08rem; font-weight: 700; }
+    .header small { display: block; font-size: .78rem; opacity: .8; font-weight: 400; }
+    .header img { height: 34px; background: #fff; border-radius: 6px; padding: 3px 6px; }
+    .content { padding: 22px 24px; }
+    .intro { font-size: .92rem; color: #475569; margin-bottom: 16px; }
+    .documento { border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 22px; overflow-x: auto; }
+    .firma-box { border: 2px dashed #cbd5e1; border-radius: 10px; padding: 18px; background: #fafbfc; }
+    .firma-box h3 { font-size: .95rem; color: #1B2A5E; margin-bottom: 4px; }
+    .firma-box p { font-size: .85rem; color: #64748b; margin-bottom: 14px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; margin-bottom: 14px; cursor: pointer; }
+    .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+    .prefirma { background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 14px; text-align: center; margin-bottom: 12px; }
+    .prefirma img { max-height: 80px; max-width: 100%; display: block; margin: 8px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px; }
+    canvas { border: 1.5px solid #94a3b8; border-radius: 6px; background: #ffffff; cursor: crosshair; display: block; touch-action: none; width: 100%; height: 170px; }
+    .btn { width: 100%; padding: 12px 18px; font-size: .95rem; font-weight: 700; border-radius: 7px; border: none; cursor: pointer; margin-top: 10px; }
+    .btn-primary { background: #1B2A5E; color: #fff; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .exito { display: none; padding: 44px 24px; text-align: center; }
+    .exito .icono { font-size: 3.4rem; color: #10b981; }
+    .exito h3 { font-size: 1.35rem; color: #0f172a; margin: 8px 0; }
+    .exito p { color: #64748b; }
+    .cargando { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 1000; font-weight: 700; color: #475569; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: #1B2A5E; border-radius: 50%; animation: giro 1s linear infinite; }
+    @keyframes giro { to { transform: rotate(360deg); } }
+    /* El documento en celular: columnas una debajo de otra */
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .wrapper { border-radius: 0; }
+      .content { padding: 16px; }
+      .documento { padding: 10px; }
+      .documento .aro .tres-col, .documento .aro .tres-col tbody, .documento .aro .tres-col tr, .documento .aro .tres-col td { display: block; width: auto; margin: 0 0 8px 0; }
+      .documento .aro .metrics-card, .documento .aro .metric-item { display: block; border-right: none; }
+      .documento .aro .doc-header-table td { display: block; width: auto; }
+      .documento .aro .sig-table td { display: block; width: auto; padding: 0 0 14px 0; }
+    }
+  </style>
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
+  <meta name="theme-color" content="#1B2A5E">
+</head>
+<body>
+  <div class="cargando" id="cargando"><div class="spinner"></div>Guardando su firma…</div>
+  <div class="wrapper">
+    <div class="header">
+      <h2>Análisis de Riesgo por Oficio<small>SST-FM-054 · Seguridad y Salud en el Trabajo</small></h2>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+    </div>
+
+    <div class="content" id="panelFirma">
+      <p class="intro">Hola, <strong id="nombre"></strong>. Lea completo el Análisis de Riesgo por Oficio de su cargo. Al final encontrará el espacio para firmarlo.</p>
+      <div class="documento">__DOCUMENTO__</div>
+
+      <div class="firma-box">
+        <h3>Firma del trabajador</h3>
+        <p>Con su firma confirma que recibió y entendió la información de este documento.</p>
+        <label class="check"><input type="checkbox" id="leido"> He leído el Análisis de Riesgo por Oficio y me comprometo a cumplir las normas de seguridad descritas.</label>
+        <div class="prefirma" id="panelRegistrada" style="display:none">
+          <strong style="color:#15803d">Tiene una firma registrada:</strong>
+          <img id="imgRegistrada" alt="Firma registrada">
+          <button type="button" class="btn btn-success" onclick="firmar(true)">Usar mi firma registrada y firmar</button>
+          <button type="button" class="btn btn-secondary" onclick="verLienzo(true)">Dibujar otra firma</button>
+        </div>
+        <div id="panelLienzo" style="display:none">
+          <canvas id="lienzo"></canvas>
+          <button type="button" class="btn btn-secondary" onclick="limpiar()">Borrar y volver a dibujar</button>
+          <button type="button" class="btn btn-secondary" id="btnVolver" style="display:none" onclick="verLienzo(false)">Volver a mi firma registrada</button>
+          <button type="button" class="btn btn-primary" onclick="firmar(false)">Firmar el ARO</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="exito" id="panelExito">
+      <div class="icono">✓</div>
+      <h3>ARO firmado</h3>
+      <p>Su firma quedó registrada y el documento se guardó en su hoja de vida. Ya puede cerrar esta ventana.</p>
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG_FIRMA__;
+    const $ = (id) => document.getElementById(id);
+    $('nombre').textContent = CONFIG.nombre;
+    const lienzo = $('lienzo');
+    const ctx = lienzo.getContext('2d');
+    let dibujando = false, usado = false;
+
+    function ajustarLienzo() {
+      const r = lienzo.getBoundingClientRect();
+      lienzo.width = r.width; lienzo.height = r.height;
+      ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      usado = false;
+    }
+    function verLienzo(si) {
+      $('panelLienzo').style.display = si ? 'block' : 'none';
+      $('panelRegistrada').style.display = si ? 'none' : 'block';
+      if (si) ajustarLienzo();
+    }
+    function limpiar() { ctx.clearRect(0, 0, lienzo.width, lienzo.height); usado = false; }
+    const pos = (e) => { const r = lienzo.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: (p.clientX - r.left) * (lienzo.width / r.width), y: (p.clientY - r.top) * (lienzo.height / r.height) }; };
+    const iniciar = (e) => { e.preventDefault(); dibujando = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+    const mover = (e) => { if (!dibujando) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); usado = true; };
+    const terminar = () => { dibujando = false; };
+    lienzo.addEventListener('mousedown', iniciar); lienzo.addEventListener('mousemove', mover);
+    lienzo.addEventListener('mouseup', terminar); lienzo.addEventListener('mouseleave', terminar);
+    lienzo.addEventListener('touchstart', iniciar, { passive: false }); lienzo.addEventListener('touchmove', mover, { passive: false });
+    lienzo.addEventListener('touchend', terminar);
+
+    if (CONFIG.firmaBase64) {
+      $('imgRegistrada').src = CONFIG.firmaBase64;
+      $('panelRegistrada').style.display = 'block';
+      $('btnVolver').style.display = 'block';
+    } else {
+      $('panelLienzo').style.display = 'block';
+      setTimeout(ajustarLienzo, 0);
+    }
+
+    async function firmar(registrada) {
+      if (!$('leido').checked) { alert('Marque la casilla para confirmar que leyó el documento.'); $('leido').focus(); return; }
+      if (!registrada && !usado) { alert('Dibuje su firma en el recuadro.'); return; }
+      $('cargando').style.display = 'flex';
+      try {
+        const r = await fetch('/aro/api/firmar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registrada ? { token: CONFIG.token, usarFirmaRegistrada: true } : { token: CONFIG.token, firmaBase64: lienzo.toDataURL('image/png') }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.ok) throw new Error(d.error || 'No se pudo guardar la firma.');
+        $('panelFirma').style.display = 'none';
+        $('panelExito').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (e) { alert(e.message); }
+      finally { $('cargando').style.display = 'none'; }
+    }
+  </script>
+</body>
+</html>

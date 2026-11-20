@@ -2664,6 +2664,16 @@
         <span>Prueba de Consumo</span>
       </li>
 
+      <!-- 3b. ARO (Análisis de Riesgo por Oficio, /js/sst-aro.js) -->
+      <li class="nav-item" data-tab="aro" onclick="switchTab('aro')">
+        <div class="nav-icon" title="ARO">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2 3 6v6c0 5.25 3.84 10.16 9 11 5.16-.84 9-5.75 9-11V6l-9-4zm0 4.3 6 2.67V12c0 3.7-2.58 7.22-6 8.07-3.42-.85-6-4.37-6-8.07V8.97l6-2.67zM11 8v5h2V8h-2zm0 6v2h2v-2h-2z"/>
+          </svg>
+        </div>
+        <span>ARO</span>
+      </li>
+
       <!-- 4. Participación -->
       <li class="nav-item" data-tab="participacion" onclick="switchTab('participacion')">
         <div class="nav-icon" title="Participación">
@@ -3206,6 +3216,9 @@
         </div>
       </div>
     </section>
+
+    <!-- PESTAÑA 3b: ARO (Análisis de Riesgo por Oficio). Contenido y lógica en /js/sst-aro.js -->
+    <section class="tab-pane" id="pane-aro" style="display: none;"></section>
 
     <!-- ──────────────────────────────────────────────────────────
          PESTAÑA 4: PARTICIPACIÓN (ASISTENCIA)
@@ -4848,6 +4861,7 @@
       evaluacion: 'Evaluación SST',
       capacitacion: 'Capacitación SST',
       pruebaconsumo: 'Prueba de Consumo',
+      aro: 'ARO',
       participacion: 'Participación',
       compromiso: 'Compromiso SST',
       gestionmedica: 'Casos Medicos',
@@ -4888,7 +4902,7 @@
     }
 
     function obtenerPrimeraPestanaPermitidaSst() {
-      const orden = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones', 'ats'];
+      const orden = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'aro', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones', 'ats'];
       return orden.find(t => tieneAccesoTabSst(t)) || null;
     }
 
@@ -5208,6 +5222,8 @@
         targetSubtab = ['temas', 'tema'].includes(rawSubtab) ? 'temas' : 'evals';
       } else if (['pruebaconsumo', 'prueba', 'consumo', 'pc'].includes(rawTab)) {
         targetTab = 'pruebaconsumo';
+      } else if (['aro', 'analisisriesgo'].includes(rawTab)) {
+        targetTab = 'aro';
       } else if (['participacion', 'asistencia', 'part'].includes(rawTab)) {
         targetTab = 'participacion';
       } else if (['compromiso', 'compromisosst', 'csst'].includes(rawTab)) {
@@ -6046,6 +6062,7 @@
       evaluacion: 'Evaluación SST',
       capacitacion: 'Capacitación',
       pruebaconsumo: 'Prueba de Consumo',
+      aro: 'ARO',
       participacion: 'Participación',
       compromiso: 'Compromisos SST',
       gestionmedica: 'Gestión Médica',
@@ -6081,6 +6098,14 @@
       }
 
       const syncOpts = options || { id: null, identificacion: null };
+
+      // ARO: pestaña con su propio archivo (/js/sst-aro.js)
+      if (tabId === 'aro') {
+        sincronizarUrlPestana('aro', null, syncOpts);
+        actualizarTituloMovilSst(TITULOS_SST.aro);
+        if (typeof window.inicializarAroSst === 'function') window.inicializarAroSst();
+        return;
+      }
 
       if (tabId === 'gestionmedica') {
         sincronizarUrlPestana('gestionmedica', subtabGestionMedica, syncOpts);
@@ -6212,6 +6237,7 @@
     // Recarga la pestaña visible (lo usa el botón Sincronizar de public/js/boton-sync.js)
     function actualizarVistaActual() {
       if (currentTab === 'ats') return cargarAts();
+      if (currentTab === 'aro') return typeof window.recargarAroSst === 'function' ? window.recargarAroSst() : null;
       const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'inspecciones' ? 'ins' : currentTab === 'gestionmedica' ? (subtabGestionMedica === 'casosmedicos' ? 'cm' : 'inc') : 'csst';
       return cargarDatos(key);
     }
@@ -11309,5 +11335,6 @@
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/boton-sync.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
+  <script src="/js/sst-aro.js?v=20261120a"></script>
 </body>
 </html>

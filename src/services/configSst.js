@@ -32,6 +32,14 @@ const PERMISOS_SST = {
     editarFirmado: 'Roles que pueden editar y regenerar PDF de pruebas de consumo firmadas',
     eliminarFirmado: 'Roles que pueden eliminar pruebas de consumo firmadas',
   },
+  // ARO (Análisis de Riesgo por Oficio): src/routes/aro.js
+  ARO: {
+    clave: 'aro',
+    crear: 'Roles que pueden crear ARO',
+    eliminar: 'Roles que pueden eliminar ARO',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de ARO firmados',
+    eliminarFirmado: 'Roles que pueden eliminar ARO firmados',
+  },
   'Compromiso SST': {
     clave: 'csst',
     crear: 'Roles que pueden crear compromisos SST',

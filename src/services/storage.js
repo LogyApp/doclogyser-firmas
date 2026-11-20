@@ -180,6 +180,14 @@ async function subirPDFInformeDisciplinario(identificacion, idInforme, bufferPdf
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+// ARO (SST): un archivo por registro en la carpeta del trabajador; regenerarlo lo reemplaza sin cambiar la URL.
+async function subirPDFARO(identificacion, idAro, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.ARO.${idAro}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 // Fotos de evidencia del Informe Disciplinario
 async function subirEvidenciaInformeDisciplinario(idInforme, filename, buffer, contentType) {
   const nombre = `informes_disciplinarios/${idInforme}/evidencias/${filename}`;
@@ -459,6 +467,7 @@ async function subirComprobanteConsignacion(idConsignacion, buffer, originalName
 }
 
 module.exports = {
+  subirPDFARO,
   subirPDFInformeDisciplinario,
   subirEvidenciaInformeDisciplinario,
   subirComprobanteConsignacion,
