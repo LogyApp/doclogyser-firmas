@@ -14,7 +14,7 @@ const {
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
-const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante } = require('../services/docsSeleccion');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante, puedeIniciarReingreso, prefijosConservarReingreso } = require('../services/docsSeleccion');
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
 const { crearNotificacionCargaDocumentosAspirante } = require('../services/notificacionesService');
@@ -517,6 +517,8 @@ router.get('/admin/:uuid', async (req, res) => {
         estadoProceso: a.estado_proceso,
         puedeDesbloquear: String(a.estado_proceso || '').trim().toLowerCase() === 'bloqueado'
           ? await puedeDesbloquearAspirante(usuario) : false,
+        puedeReingreso: a.estado_proceso === 'contratado' ? await puedeIniciarReingreso(usuario) : false,
+        procesosAnteriores: await obtenerProcesosAnteriores(uuid),
         telefono: a.telefono || '',
         correoElectronico: a.correo_electronico || ''
       },
@@ -534,6 +536,173 @@ router.get('/admin/:uuid', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // Rutas de Vinculación y Comunicación del Aspirante
 // ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// Reingreso: un aspirante ya contratado inicia un nuevo proceso con otra requisición.
+// El proceso anterior queda en Dynamic_hv_procesos y sus documentos en Dynamic_hv_documentos_historial.
+// Se conservan solo los documentos configurados (talenthub/Aspirantes › Documentos que se conservan en
+// un reingreso, por defecto la Cédula); el resto (incluidas las firmas) se pide de nuevo.
+// Si la persona sigue activa en Activos, solo se permite si la requisición es de otro cargo.
+// ══════════════════════════════════════════════════════════════
+const normalizarTxt = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+
+router.post('/iniciar-reingreso', async (req, res) => {
+  const usuario = req.query.usuario || req.body.usuario || '';
+  const { id_aspirante, id_requisicion } = req.body;
+  const responder = (status, error) => res.status(status).json({ ok: false, error });
+  let connection;
+  try {
+    if (!id_aspirante || !id_requisicion) return responder(400, 'Falta el aspirante o la requisición.');
+    if (!(await puedeIniciarReingreso(usuario))) return responder(403, 'Tu rol no puede iniciar reingresos.');
+
+    const [[asp]] = await pool.execute(
+      'SELECT id_aspirante, identificacion, estado_proceso, IdRequisicion, proceso_numero FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
+      [id_aspirante]
+    );
+    if (!asp) return responder(404, 'Aspirante no encontrado.');
+    if (String(asp.estado_proceso || '').toLowerCase() !== 'contratado') {
+      return responder(400, 'Solo se puede iniciar un reingreso a un aspirante contratado. Si está en proceso, cambia la requisición desde este panel.');
+    }
+    if (String(asp.IdRequisicion || '') === String(id_requisicion)) return responder(400, 'Escoge una requisición distinta a la del proceso anterior.');
+
+    const [[reqNueva]] = await pool.execute(
+      'SELECT IdRequisicion, `Requisición` AS requisicion, `Operación` AS operacion, `Cargo Requerido` AS cargo, Estado FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
+      [id_requisicion]
+    );
+    if (!reqNueva) return responder(404, 'La requisición no existe.');
+    if (normalizarTxt(reqNueva.Estado) !== 'EN PROCESO') return responder(400, 'La requisición debe estar EN PROCESO.');
+
+    // ¿Sigue activo? Solo se permite si es para otro cargo (p. ej. un ascenso)
+    const [activos] = await pool.execute(
+      "SELECT Cargo, `Operación` AS operacion FROM `Maestro_Vinculación` WHERE `Identificación` = ? AND Estado = 'Activo'",
+      [asp.identificacion]
+    );
+    if (activos.length && activos.some(v => normalizarTxt(v.Cargo) === normalizarTxt(reqNueva.cargo))) {
+      return responder(400, `La persona sigue activa como ${activos[0].Cargo} en ${activos[0].operacion}. Para volver a vincularla en el mismo cargo primero debe retirarse en Activos.`);
+    }
+    const motivo = activos.length ? `Cambio de cargo (activo como ${activos[0].Cargo})` : 'Reingreso';
+
+    const [[reqAnterior]] = asp.IdRequisicion
+      ? await pool.execute('SELECT `Operación` AS operacion, `Cargo Requerido` AS cargo FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1', [asp.IdRequisicion])
+      : [[null]];
+    const procesoActual = Number(asp.proceso_numero || 1);
+    const prefijos = await prefijosConservarReingreso();
+    const [usuRows] = await pool.execute('SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const nombreUsuario = usuRows.length && usuRows[0].Colaborador ? usuRows[0].Colaborador : usuario;
+
+    // Las firmas y cargas del nuevo proceso usan la misma ruta en el bucket de aspirantes y
+    // reemplazarían los archivos de este proceso: se archiva una copia con .P{n} antes del nombre
+    // de la extensión y el historial apunta a esa copia.
+    const rutaArchivo = ruta => String(ruta).replace(/(\.[^./]+)?$/, m => `.P${procesoActual}${m}`);
+    const bucketAsp = getBucketAspirantes();
+    const archivados = {};
+    const [docsCerrar] = await pool.execute('SELECT gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ? AND gcs_path IS NOT NULL', [id_aspirante]);
+    let partesCerrar = [];
+    try {
+      [partesCerrar] = await pool.execute('SELECT gcs_path FROM Dynamic_hv_documentos_partes WHERE id_aspirante = ? AND gcs_path IS NOT NULL', [id_aspirante]);
+    } catch (e) { if (e.code !== 'ER_NO_SUCH_TABLE') throw e; }
+    for (const { gcs_path } of [...docsCerrar, ...partesCerrar]) {
+      if (!gcs_path || archivados[gcs_path]) continue;
+      try {
+        await bucketAsp.file(gcs_path).copy(bucketAsp.file(rutaArchivo(gcs_path)));
+        archivados[gcs_path] = rutaArchivo(gcs_path);
+      } catch (e) {
+        console.error('[seleccion] Reingreso: no se pudo archivar', gcs_path, e.message);
+      }
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    await connection.query(
+      `INSERT INTO Dynamic_hv_procesos
+         (id_aspirante, proceso_numero, IdRequisicion, operacion, cargo, estado_final, fecha_cierre, usuario_cierre, motivo_cierre, IdRequisicion_siguiente)
+       VALUES (?, ?, ?, ?, ?, ?, CONVERT_TZ(NOW(), '+00:00', '-05:00'), ?, ?, ?)`,
+      [id_aspirante, procesoActual, asp.IdRequisicion || null, reqAnterior ? reqAnterior.operacion : null,
+       reqAnterior ? reqAnterior.cargo : null, asp.estado_proceso, nombreUsuario, motivo, reqNueva.IdRequisicion]
+    );
+    // Documentos y partes del proceso que se cierra
+    await connection.query(
+      `INSERT INTO Dynamic_hv_documentos_historial
+         (id_aspirante, proceso_numero, id_config_doc, id_plantilla, nombre_proceso, observaciones, gcs_path, estado, fecha_firma, codigo_verificacion, fecha_registro_original)
+       SELECT d.id_aspirante, ?, d.id_config_doc, NULL, NULL, d.observaciones, d.gcs_path, d.estado, d.fecha_firma, d.codigo_verificacion, d.fecha_registro
+         FROM Dynamic_hv_documentos d WHERE d.id_aspirante = ?`,
+      [procesoActual, id_aspirante]
+    );
+    try {
+      await connection.query(
+        `INSERT INTO Dynamic_hv_documentos_historial
+           (id_aspirante, proceso_numero, id_config_doc, id_plantilla, nombre_proceso, observaciones, gcs_path, estado, fecha_firma, codigo_verificacion, fecha_registro_original)
+         SELECT p.id_aspirante, ?, p.id_config_doc, p.id_plantilla, p.nombre_proceso, p.observaciones, p.gcs_path, 'Firmado', p.fecha_firma, p.codigo_verificacion, p.fecha_firma
+           FROM Dynamic_hv_documentos_partes p WHERE p.id_aspirante = ?`,
+        [procesoActual, id_aspirante]
+      );
+      await connection.query('DELETE FROM Dynamic_hv_documentos_partes WHERE id_aspirante = ?', [id_aspirante]);
+    } catch (errPartes) {
+      if (errPartes.code !== 'ER_NO_SUCH_TABLE') throw errPartes;
+    }
+    for (const [original, copia] of Object.entries(archivados)) {
+      await connection.query(
+        'UPDATE Dynamic_hv_documentos_historial SET gcs_path = ? WHERE id_aspirante = ? AND proceso_numero = ? AND gcs_path = ?',
+        [copia, id_aspirante, procesoActual, original]
+      );
+    }
+    // Se quitan los documentos que se piden de nuevo (los archivos no se borran)
+    const phPref = prefijos.length ? prefijos.map(() => '?').join(',') : "''";
+    const [del] = await connection.query(
+      `DELETE d FROM Dynamic_hv_documentos d JOIN Config_Doc_Trabajador c ON c.Id = d.id_config_doc
+        WHERE d.id_aspirante = ? AND UPPER(c.Prefijo) NOT IN (${phPref})`,
+      [id_aspirante, ...prefijos]
+    );
+    await connection.query(
+      `UPDATE Dynamic_hv_aspirante
+          SET IdRequisicion = ?, estado_proceso = 'Registro', docs_pendientes_vinculacion = 0,
+              proceso_numero = ?, Usuario = ?
+        WHERE id_aspirante = ?`,
+      [reqNueva.IdRequisicion, procesoActual + 1, nombreUsuario, id_aspirante]
+    );
+    await connection.commit();
+
+    console.log(`[seleccion] Reingreso de ${asp.identificacion} (proceso ${procesoActual + 1}) por ${usuario}: requisición ${reqNueva.requisicion}, ${del.affectedRows} documentos para cargar de nuevo.`);
+    res.json({
+      ok: true,
+      proceso: procesoActual + 1,
+      mensaje: `${motivo} iniciado (proceso ${procesoActual + 1}) con la requisición ${reqNueva.requisicion} · ${reqNueva.cargo} · ${reqNueva.operacion}. `
+        + `Se conservó: ${prefijos.join(', ') || 'ningún documento'}. El aspirante debe cargar de nuevo ${del.affectedRows} documento(s) y firmar los documentos del nuevo ingreso.`
+    });
+  } catch (err) {
+    if (connection) await connection.rollback().catch(() => {});
+    console.error('[seleccion] Error al iniciar reingreso:', err);
+    const falta = ['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(err.code);
+    responder(500, falta ? 'Falta ejecutar la migración de reingresos (2026-11-20_aspirantes_reingreso.sql).' : err.message);
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// Historial de procesos anteriores del aspirante (reingresos)
+async function obtenerProcesosAnteriores(idAspirante) {
+  try {
+    const [procesos] = await pool.execute(
+      `SELECT p.proceso_numero, p.IdRequisicion, r.\`Requisición\` AS requisicion, p.operacion, p.cargo, p.estado_final,
+              DATE_FORMAT(p.fecha_cierre, '%Y-%m-%d') AS fecha_cierre, p.usuario_cierre, p.motivo_cierre
+         FROM Dynamic_hv_procesos p LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = p.IdRequisicion
+        WHERE p.id_aspirante = ? ORDER BY p.proceso_numero`,
+      [idAspirante]
+    );
+    if (!procesos.length) return [];
+    const [docs] = await pool.execute(
+      `SELECT h.proceso_numero, h.gcs_path, h.estado, COALESCE(h.observaciones, c.Prefijo) AS nombre, c.Prefijo
+         FROM Dynamic_hv_documentos_historial h JOIN Config_Doc_Trabajador c ON c.Id = h.id_config_doc
+        WHERE h.id_aspirante = ? ORDER BY h.proceso_numero, c.Prefijo`,
+      [idAspirante]
+    );
+    return procesos.map(p => ({ ...p, documentos: docs.filter(d => d.proceso_numero === p.proceso_numero) }));
+  } catch (err) {
+    if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(err.code)) console.error('[seleccion] Historial de procesos:', err.message);
+    return [];
+  }
+}
 
 // Vincular o desvincular Requisición al aspirante desde el Admin Panel
 router.post('/vincular-requisicion', async (req, res) => {
@@ -1643,10 +1812,14 @@ router.post('/finalizar-contratacion', async (req, res) => {
       return true;
     };
 
+    // En un reingreso (proceso 2 en adelante) el archivo del trabajador lleva el número de proceso
+    // (…​.P2.pdf) para no reemplazar los documentos de su ingreso anterior en el bucket de empleados.
+    const procesoNumero = Number(a.proceso_numero || 1);
+    const rutaDestino = ruta => (procesoNumero > 1 ? String(ruta).replace(/(\.[^./]+)?$/, m => `.P${procesoNumero}${m}`) : ruta);
     const copiarArchivo = async (ruta, nombre) => {
       if (!ruta) { docsSinCopiar.push(nombre); return false; }
       try {
-        await srcBucket.file(ruta).copy(destBucket.file(ruta));
+        await srcBucket.file(ruta).copy(destBucket.file(rutaDestino(ruta)));
         return true;
       } catch (e) {
         console.error('Error GCS Copy:', ruta, e.message);
@@ -1662,7 +1835,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
           if (yaExiste(doc.id_config_doc, pt.observaciones, pt.observaciones || doc.Prefijo)) continue;
           if (!(await copiarArchivo(pt.gcs_path, pt.observaciones || doc.Prefijo))) continue;
           await connection.query(sqlDocTrabajador, [
-            regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, pt.gcs_path, nombreUsuario, pt.observaciones || null
+            regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaDestino(pt.gcs_path), nombreUsuario, pt.observaciones || null
           ]);
         }
         continue;
@@ -1673,7 +1846,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
       const obsPrincipal = rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null;
       if (!yaExiste(doc.id_config_doc, obsPrincipal, doc.Prefijo) && await copiarArchivo(doc.gcs_path, doc.Prefijo)) {
         await connection.query(sqlDocTrabajador, [
-          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, doc.gcs_path, nombreUsuario,
+          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaDestino(doc.gcs_path), nombreUsuario,
           rutaPropiaHv && rutaPropiaHv === doc.gcs_path ? MARCA_HV_ASPIRANTE : null
         ]);
       }
@@ -1681,7 +1854,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
       if (rutaPropiaHv && rutaPropiaHv !== doc.gcs_path && !yaExiste(doc.id_config_doc, MARCA_HV_ASPIRANTE, `${doc.Prefijo} (versión del aspirante)`)
           && await copiarArchivo(rutaPropiaHv, `${doc.Prefijo} (versión del aspirante)`)) {
         await connection.query(sqlDocTrabajador, [
-          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaPropiaHv, nombreUsuario, MARCA_HV_ASPIRANTE
+          regional, operacion, a.identificacion, fecha_ingreso, doc.id_config_doc, doc.Prefijo, rutaDestino(rutaPropiaHv), nombreUsuario, MARCA_HV_ASPIRANTE
         ]);
       }
     }
@@ -2961,6 +3134,82 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
     </style>
   </head>
   <body class="bg-slate-100 p-4 md:p-6">
+    ${bloqueado && asp.puedeReingreso ? `
+      <div class="max-w-7xl mx-auto mb-4 bg-white rounded-2xl p-4 shadow-sm border border-emerald-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="text-xs text-slate-600 leading-snug">
+          <b class="text-slate-800">¿La persona vuelve a ingresar o pasa a otro cargo?</b><br>
+          Inicia un nuevo proceso con otra requisición. Este proceso queda guardado en el historial;
+          se conserva la Cédula y el resto de documentos y firmas se piden de nuevo.
+        </div>
+        <button type="button" onclick="document.getElementById('modalReingreso').classList.remove('hidden')"
+          class="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider py-2 px-4 rounded-xl shadow-sm">
+          🔁 Iniciar reingreso
+        </button>
+      </div>
+      <div id="modalReingreso" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl">
+          <h3 class="text-lg font-black text-slate-800 mb-1 uppercase tracking-tight">Iniciar reingreso</h3>
+          <p class="text-xs text-slate-500 mb-4">${asp.nombreCompleto} · C.C. ${asp.identificacion}</p>
+          <label class="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Nueva requisición (En Proceso)</label>
+          <select id="selectReqReingreso" class="w-full border-2 border-slate-100 rounded-xl p-3 bg-slate-50 font-bold text-slate-700 text-xs mb-3">
+            <option value="">Seleccione la requisición</option>
+            ${requisiciones.filter(r => String(r.IdRequisicion) !== String(asp.IdRequisicion)).map(r => {
+              const n = (r['N° Personas Requeridas'] !== null && r['N° Personas Requeridas'] !== undefined) ? ` - ${r['N° Personas Requeridas']}` : '';
+              return `<option value="${r.IdRequisicion}">${r['Requisición'] || 'S/R'} - ${r['Operación'] || 'S/O'} - ${r['Cargo Requerido'] || 'S/C'}${n}</option>`;
+            }).join('')}
+          </select>
+          <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4 leading-snug">
+            Si la persona sigue activa en Activos, solo se puede si la requisición es de otro cargo.
+            El aspirante vuelve a estado Registro y debe cargar sus documentos y firmar los del nuevo ingreso.
+          </p>
+          <div class="flex gap-3">
+            <button type="button" onclick="document.getElementById('modalReingreso').classList.add('hidden')" class="flex-1 text-slate-400 font-bold hover:text-slate-600">CANCELAR</button>
+            <button type="button" id="btnReingreso" onclick="iniciarReingreso()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black uppercase shadow-lg hover:bg-emerald-700">Iniciar</button>
+          </div>
+        </div>
+      </div>
+      <script>
+        async function iniciarReingreso() {
+          const idReq = document.getElementById('selectReqReingreso').value;
+          if (!idReq) { alert('Escoge la nueva requisición.'); return; }
+          if (!confirm('¿Iniciar el reingreso con la requisición escogida? El proceso actual queda en el historial.')) return;
+          const btn = document.getElementById('btnReingreso');
+          btn.disabled = true; btn.textContent = 'Procesando...';
+          try {
+            const res = await fetch('/seleccion/iniciar-reingreso?usuario=${encodeURIComponent(usuario)}', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id_aspirante: '${uuid}', id_requisicion: idReq })
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Error desconocido');
+            alert(data.mensaje);
+            window.location.href = window.location.pathname + '?usuario=${encodeURIComponent(usuario)}';
+          } catch (e) {
+            alert('⚠️ No se pudo iniciar el reingreso: ' + e.message);
+            btn.disabled = false; btn.textContent = 'Iniciar';
+          }
+        }
+      </script>
+    ` : ''}
+    ${(asp.procesosAnteriores || []).length ? `
+      <details class="max-w-7xl mx-auto mb-4 bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <summary class="cursor-pointer text-[11px] font-black text-slate-700 uppercase tracking-wider">
+          🗂️ Procesos anteriores (${asp.procesosAnteriores.length}) · proceso actual: ${asp.procesosAnteriores.length + 1}
+        </summary>
+        <div class="mt-3 space-y-3">
+          ${asp.procesosAnteriores.map(p => `
+            <div class="border border-slate-100 rounded-xl p-3">
+              <div class="text-xs font-bold text-slate-700">Proceso ${p.proceso_numero} · ${p.requisicion || 'Sin requisición'} · ${p.cargo || ''} · ${p.operacion || ''}</div>
+              <div class="text-[10px] text-slate-500 mb-2">Cerrado el ${p.fecha_cierre || ''} por ${p.usuario_cierre || ''} · ${p.motivo_cierre || ''}</div>
+              <div class="flex flex-wrap gap-1.5">
+                ${p.documentos.map(d => d.gcs_path
+                  ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.gcs_path}" target="_blank" class="text-[10px] bg-slate-100 text-blue-600 font-bold px-2 py-0.5 rounded-md hover:underline" title="${d.estado || ''}">${d.nombre}</a>`
+                  : `<span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md">${d.nombre}</span>`).join('') || '<span class="text-[10px] text-slate-400">Sin documentos</span>'}
+              </div>
+            </div>`).join('')}
+        </div>
+      </details>
+    ` : ''}
     <div class="max-w-7xl mx-auto ${bloqueado ? 'interfaz-bloqueada' : ''}">
       <!-- Consola Unificada de Control y Acciones del Aspirante -->
       <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-200 mb-6">
