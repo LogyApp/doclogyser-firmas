@@ -147,7 +147,7 @@ router.get('/api/trabajadores', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT \`Identificación\` AS identificacion, Trabajador, Cargo, \`Operación\` AS operacion
          FROM \`Maestro_Vinculación\`
-        WHERE Estado = 'Activo' AND (Trabajador LIKE ? OR CAST(\`Identificación\` AS CHAR) LIKE ?)
+        WHERE Estado = 'Activo' AND (Trabajador COLLATE utf8mb4_unicode_ci LIKE ? OR CAST(\`Identificación\` AS CHAR) LIKE ?)
         ORDER BY Trabajador LIMIT 25`,
       [`%${q}%`, `${q}%`]
     );
