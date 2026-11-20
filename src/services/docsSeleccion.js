@@ -107,6 +107,8 @@ const P = {
   AVISO_FIRMAS_PARA:      'Aviso de firmas completas - Para:',
   AVISO_FIRMAS_COPIA:     'Aviso de firmas completas - Copia:',
   ROLES_DESBLOQUEAR:      'Roles que pueden desbloquear aspirantes',
+  ROLES_REINGRESO:        'Roles que pueden iniciar un reingreso',
+  DOCS_CONSERVAR_REINGRESO: 'Documentos que se conservan en un reingreso',
 };
 const DEFAULTS = {
   [P.EXIGIR_DOCS_EN_PROCESO]: '0',
@@ -118,6 +120,8 @@ const DEFAULTS = {
   [P.AVISO_FIRMAS_PARA]:      'CoorSelección',
   [P.AVISO_FIRMAS_COPIA]:     '',
   [P.ROLES_DESBLOQUEAR]:      'Sistema, CoorSelección',
+  [P.ROLES_REINGRESO]:        'Selección, Selección Centro, CoorSelección, Sistema, AuxiliarR',
+  [P.DOCS_CONSERVAR_REINGRESO]: 'CC',
 };
 
 const TTL_MS = 5 * 60 * 1000;
@@ -296,7 +300,31 @@ async function puedeDesbloquearAspirante(usuarioId) {
   }
 }
 
+/** ¿El usuario puede iniciar un reingreso? (Config_Parametros talenthub/Aspirantes) */
+async function puedeIniciarReingreso(usuarioId) {
+  if (!usuarioId) return false;
+  try {
+    const [[u], params] = await Promise.all([
+      pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]),
+      obtenerParametrosAspirantes(),
+    ]);
+    if (!u.length) return false;
+    return listaParametro(params, P.ROLES_REINGRESO).map(normalizar).includes(normalizar(u[0].Rol));
+  } catch (err) {
+    console.error('[docsSeleccion] No se pudo validar el permiso de reingreso:', err.message);
+    return false;
+  }
+}
+
+/** Prefijos (Config_Doc_Trabajador) de los documentos que se conservan al iniciar un reingreso */
+async function prefijosConservarReingreso() {
+  const params = await obtenerParametrosAspirantes();
+  return listaParametro(params, P.DOCS_CONSERVAR_REINGRESO).map(x => x.toUpperCase());
+}
+
 module.exports = {
+  puedeIniciarReingreso,
+  prefijosConservarReingreso,
   PARAMETROS_ASPIRANTES: P,
   obtenerParametrosAspirantes,
   parametroActivo,
