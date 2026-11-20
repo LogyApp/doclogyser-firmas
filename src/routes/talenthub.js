@@ -3001,7 +3001,10 @@ router.get('/api/sociodemografica/catalogos', async (req, res) => {
       [epsRows],
       [pensionRows],
       [cesantiasRows],
-      [ccfRows]
+      [ccfRows],
+      [rhRows],
+      [escRows],
+      [depRows]
     ] = await Promise.all([
       obtenerPermisosSociodemografica(acceso.rol),
       pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, `OPERACIÓN`"),
@@ -3014,7 +3017,10 @@ router.get('/api/sociodemografica/catalogos', async (req, res) => {
       pool.execute("SELECT EPS AS eps FROM Config_EPS ORDER BY EPS"),
       pool.execute("SELECT `Fondo de Pensión` AS pension FROM Config_Pensión ORDER BY `Fondo de Pensión`"),
       pool.execute("SELECT `Administradora de Cesantias` AS cesantias FROM Config_Cesantias ORDER BY `Administradora de Cesantias`"),
-      pool.execute("SELECT DISTINCT Entidad AS entidad FROM Config_Caja_Compensación ORDER BY Entidad")
+      pool.execute("SELECT DISTINCT Entidad AS entidad FROM Config_Caja_Compensación ORDER BY Entidad"),
+      pool.execute("SELECT DISTINCT `Tipo de Sangre (RH)` AS rh FROM Config_Grupo_Sanguineo WHERE `Tipo de Sangre (RH)` IS NOT NULL AND `Tipo de Sangre (RH)` != '' ORDER BY `Tipo de Sangre (RH)`"),
+      pool.execute("SELECT DISTINCT Nivel AS nivel FROM Config_Grado_Escolaridad WHERE Nivel IS NOT NULL AND Nivel != '' ORDER BY Nivel"),
+      pool.execute("SELECT DISTINCT Departamento AS departamento FROM Config_Departamentos WHERE Departamento IS NOT NULL AND Departamento != '' ORDER BY Departamento")
     ]);
 
     // Filtrar operaciones según el alcance de Maestro_Menu
@@ -3047,7 +3053,10 @@ router.get('/api/sociodemografica/catalogos', async (req, res) => {
         eps: epsRows.map(r => r.eps),
         pensiones: pensionRows.map(r => r.pension),
         cesantias: cesantiasRows.map(r => r.cesantias),
-        cajasCompensacion: ccfRows.map(r => r.entidad)
+        cajasCompensacion: ccfRows.map(r => r.entidad),
+        gruposSanguineos: rhRows.map(r => r.rh),
+        gradosEscolaridad: escRows.map(r => r.nivel),
+        departamentos: depRows.map(r => r.departamento)
       }
     });
   } catch (err) {
@@ -3137,6 +3146,11 @@ router.get('/api/sociodemografica', async (req, res) => {
           ca.AREA AS area,
           v.\`Fecha de Ingreso\` AS fecha_ingreso,
           v.\`Fecha de Retiro\` AS fecha_retiro,
+          v.\`Tipo de Contrato\` AS tipo_contrato,
+          v.\`Grupo Nomina\` AS grupo_nomina,
+          v.Salario AS salario,
+          v.\`Auxilio de Transporte\` AS auxilio_transporte,
+          v.\`Observaciones Vinculación\` AS observaciones_vinculacion,
           COALESCE(v.usuarioactualiza, v.Usuario) AS usuario_actualiza,
           v.\`Fecha Actualización\` AS fecha_actualizacion,
           v.Condicion AS condicion,
@@ -3161,6 +3175,11 @@ router.get('/api/sociodemografica', async (req, res) => {
         area: item.area || '',
         fecha_ingreso: formatearFechaYMD(item.fecha_ingreso),
         fecha_retiro: formatearFechaYMD(item.fecha_retiro),
+        tipo_contrato: item.tipo_contrato || '',
+        grupo_nomina: item.grupo_nomina || '',
+        salario: (item.salario !== null && item.salario !== undefined) ? item.salario : '',
+        auxilio_transporte: item.auxilio_transporte || '',
+        observaciones_vinculacion: item.observaciones_vinculacion || '',
         usuario_actualiza: item.usuario_actualiza || '',
         fecha_actualizacion: item.fecha_actualizacion || null,
         condicion: item.condicion || '',
@@ -3255,11 +3274,17 @@ router.get('/api/sociodemografica', async (req, res) => {
           s.\`Segundo Apellido\` AS segundo_apellido,
           s.\`Género\` AS genero,
           s.\`Fecha Nacimiento\` AS fecha_nacimiento,
+          s.RH AS rh,
+          s.\`Fecha Expedición\` AS fecha_expedicion,
           s.\`Estado Civil\` AS estado_civil,
           s.Celular AS celular,
           s.Email AS email,
+          s.\`Departamento Residencia\` AS departamento_residencia,
           s.\`Ciudad de Residencia\` AS ciudad_residencia,
           s.\`Dirección de Residencia\` AS direccion_residencia,
+          s.\`Grado Escolaridad\` AS grado_escolaridad,
+          s.\`Nombre Contacto de Emergencia\` AS nombre_contacto_emergencia,
+          s.\`Telefono Contacto de Emergencia\` AS telefono_contacto_emergencia,
           s.Camiseta AS camiseta,
           s.Numero AS numero_buzo,
           s.Pantalon AS pantalon,
@@ -3270,6 +3295,7 @@ router.get('/api/sociodemografica', async (req, res) => {
           s.\`N° Cuenta Bancaria\` AS cuenta_bancaria,
           s.EPS AS eps,
           s.\`Radicacion EPS\` AS radicacion_eps,
+          s.\`Tipo afiliado\` AS tipo_afiliado,
           s.\`Pensión\` AS pension,
           s.\`Radicacion AFP\` AS radicacion_afp,
           s.\`Cesantías\` AS cesantias,
@@ -3341,8 +3367,10 @@ router.get('/api/sociodemografica', async (req, res) => {
             primer_apellido: item.primer_apellido || '',
             segundo_apellido: item.segundo_apellido || '',
             genero: item.genero || '',
+            rh: item.rh || '',
             fecha_nacimiento: fnac,
-            edad: calcularEdadAnios(fnac)
+            edad: calcularEdadAnios(fnac),
+            fecha_expedicion: formatearFechaYMD(item.fecha_expedicion)
           };
         }
         if (opcionKey === 'info_personal') {
@@ -3351,8 +3379,12 @@ router.get('/api/sociodemografica', async (req, res) => {
             estado_civil: item.estado_civil || '',
             celular: item.celular || '',
             email: item.email || '',
+            departamento_residencia: item.departamento_residencia || '',
             ciudad_residencia: item.ciudad_residencia || '',
-            direccion_residencia: item.direccion_residencia || ''
+            direccion_residencia: item.direccion_residencia || '',
+            grado_escolaridad: item.grado_escolaridad || '',
+            nombre_contacto_emergencia: item.nombre_contacto_emergencia || '',
+            telefono_contacto_emergencia: item.telefono_contacto_emergencia || ''
           };
         }
         if (opcionKey === 'dotacion') {
@@ -3379,6 +3411,7 @@ router.get('/api/sociodemografica', async (req, res) => {
             ...base,
             eps: item.eps || '',
             radicacion_eps: formatearFechaYMD(item.radicacion_eps),
+            tipo_afiliado: item.tipo_afiliado || '',
             doc_eps: docsPorIdentificacion.get(`${item.identificacion}_15`) || '',
             pension: item.pension || '',
             radicacion_afp: formatearFechaYMD(item.radicacion_afp),
@@ -3484,6 +3517,11 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
                 v.Estado AS estado, v.Cargo AS cargo, v.Area AS area_id, ca.AREA AS area,
                 v.\`Fecha de Ingreso\` AS fecha_ingreso, v.\`Fecha de Retiro\` AS fecha_retiro,
                 v.\`Motivo del Retiro\` AS motivo_retiro,
+                v.\`Tipo de Contrato\` AS tipo_contrato,
+                v.\`Grupo Nomina\` AS grupo_nomina,
+                v.Salario AS salario,
+                v.\`Auxilio de Transporte\` AS auxilio_transporte,
+                v.\`Observaciones Vinculación\` AS observaciones_vinculacion,
                 COALESCE(v.usuarioactualiza, v.Usuario) AS usuario_actualiza_vinc,
                 v.\`Fecha Actualización\` AS fecha_actualizacion_vinc,
                 v.Condicion AS condicion,
@@ -3590,6 +3628,11 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       nombre_trabajador: extraerNombreLimpio(r.trabajador_vinc),
       cargo: r.cargo || '',
       operacion: r.operacion || '',
+      tipo_contrato: r.tipo_contrato || '',
+      grupo_nomina: r.grupo_nomina || '',
+      salario: (r.salario !== null && r.salario !== undefined) ? r.salario : '',
+      auxilio_transporte: r.auxilio_transporte || '',
+      observaciones_vinculacion: r.observaciones_vinculacion || '',
       fecha_ingreso: formatearFechaYMD(r.fecha_ingreso),
       fecha_retiro: formatearFechaYMD(r.fecha_retiro),
       motivo_retiro: r.motivo_retiro || ''
@@ -3644,6 +3687,11 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       fecha_ingreso: formatearFechaYMD(v.fecha_ingreso),
       fecha_retiro: formatearFechaYMD(v.fecha_retiro),
       motivo_retiro: v.motivo_retiro || '',
+      tipo_contrato: v.tipo_contrato || '',
+      grupo_nomina: v.grupo_nomina || '',
+      salario: (v.salario !== null && v.salario !== undefined) ? v.salario : '',
+      auxilio_transporte: v.auxilio_transporte || '',
+      observaciones_vinculacion: v.observaciones_vinculacion || '',
       condicion: v.condicion || '',
       contrato_firmado: v.contrato_firmado ? 1 : 0,
       contrato_url: v.contrato_url || '',
@@ -3655,15 +3703,21 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       primer_apellido: s['Primer Apellido'] || '',
       segundo_apellido: s['Segundo Apellido'] || '',
       genero: s['Género'] || '',
+      rh: s.RH || '',
       fecha_nacimiento: fnac,
       edad: calcularEdadAnios(fnac),
+      fecha_expedicion: formatearFechaYMD(s['Fecha Expedición']),
 
       // Información Personal
       estado_civil: s['Estado Civil'] || '',
       celular: s.Celular || '',
       email: s.Email || '',
+      departamento_residencia: s['Departamento Residencia'] || '',
       ciudad_residencia: s['Ciudad de Residencia'] || '',
       direccion_residencia: s['Dirección de Residencia'] || '',
+      grado_escolaridad: s['Grado Escolaridad'] || '',
+      nombre_contacto_emergencia: s['Nombre Contacto de Emergencia'] || '',
+      telefono_contacto_emergencia: s['Telefono Contacto de Emergencia'] || '',
 
       // Dotación
       camiseta: s.Camiseta || '',
@@ -3681,6 +3735,7 @@ router.get('/api/sociodemografica/detalle/:identificacion', async (req, res) => 
       // Seguridad Social
       eps: s.EPS || '',
       radicacion_eps: formatearFechaYMD(s['Radicacion EPS']),
+      tipo_afiliado: s['Tipo afiliado'] || '',
       doc_eps: docsMap['15'] || '',
       pension: s['Pensión'] || '',
       radicacion_afp: formatearFechaYMD(s['Radicacion AFP']),
@@ -3835,6 +3890,13 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
       const nuevaArea = datos.area_id ? parseInt(datos.area_id, 10) || null : null;
       const nuevaFechaIngreso = limpiarFecha(datos.fecha_ingreso);
       const nuevaFechaRetiro = limpiarFecha(datos.fecha_retiro);
+      const nuevoTipoContrato = limpiarTexto(datos.tipo_contrato);
+      const nuevoGrupoNomina = limpiarTexto(datos.grupo_nomina);
+      const nuevoSalario = (datos.salario !== undefined && datos.salario !== null && String(datos.salario).trim() !== '')
+        ? parseInt(String(datos.salario).replace(/[^0-9]/g, ''), 10) || null
+        : null;
+      const nuevoAuxTransporte = limpiarTexto(datos.auxilio_transporte);
+      const nuevasObsVinc = limpiarTexto(datos.observaciones_vinculacion);
 
       await pool.execute(
         `UPDATE \`Maestro_Vinculación\`
@@ -3845,10 +3907,20 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
              Area = ?,
              \`Fecha de Ingreso\` = ?,
              \`Fecha de Retiro\` = ?,
+             \`Tipo de Contrato\` = ?,
+             \`Grupo Nomina\` = ?,
+             Salario = ?,
+             \`Auxilio de Transporte\` = ?,
+             \`Observaciones Vinculación\` = ?,
              usuarioactualiza = ?,
              \`Fecha Actualización\` = CONVERT_TZ(NOW(), 'SYSTEM', '-05:00')
          WHERE \`Id Vinculación\` = ?`,
-        [nuevaRegional, nuevaOperacion, nuevoEstado, nuevoCargo, nuevaArea, nuevaFechaIngreso, nuevaFechaRetiro, usuarioAuditoria, exist[0]['Id Vinculación']]
+        [
+          nuevaRegional, nuevaOperacion, nuevoEstado, nuevoCargo, nuevaArea,
+          nuevaFechaIngreso, nuevaFechaRetiro, nuevoTipoContrato, nuevoGrupoNomina,
+          nuevoSalario, nuevoAuxTransporte, nuevasObsVinc,
+          usuarioAuditoria, exist[0]['Id Vinculación']
+        ]
       );
       programarRellenoVinculacion(exist[0]['Id Vinculación'], [exist[0].fi, exist[0].fr]);
 
@@ -3961,6 +4033,8 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
       const sApellido = (limpiarTexto(datos.segundo_apellido) || '').toUpperCase() || null;
       const genero = limpiarTexto(datos.genero);
       const fechaNac = limpiarFecha(datos.fecha_nacimiento);
+      const rh = limpiarTexto(datos.rh);
+      const fechaExp = limpiarFecha(datos.fecha_expedicion);
 
       const nombreCompleto = [pNombre, sNombre, pApellido, sApellido].filter(Boolean).join(' ');
       const trabajadorStr = `${id} ** ${nombreCompleto}`;
@@ -3976,10 +4050,12 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
              Trabajador = ?,
              \`Género\` = ?,
              \`Fecha Nacimiento\` = ?,
+             RH = ?,
+             \`Fecha Expedición\` = ?,
              usuarioactualiza = ?,
              \`Fecha de Actualización\` = CONVERT_TZ(NOW(), 'SYSTEM', '-05:00')
          WHERE \`Identificación\` = ?`,
-        [tipoDoc, codTipoDoc, pNombre || null, sNombre, pApellido || null, sApellido, trabajadorStr, genero, fechaNac, usuarioAuditoria, id]
+        [tipoDoc, codTipoDoc, pNombre || null, sNombre, pApellido || null, sApellido, trabajadorStr, genero, fechaNac, rh, fechaExp, usuarioAuditoria, id]
       );
 
       // Sincronizar también en Maestro_Vinculación y Maestro_Examenes mientras persista la columna Trabajador
@@ -3997,8 +4073,12 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
          SET \`Estado Civil\` = ?,
              Celular = ?,
              Email = ?,
+             \`Departamento Residencia\` = ?,
              \`Ciudad de Residencia\` = ?,
              \`Dirección de Residencia\` = ?,
+             \`Grado Escolaridad\` = ?,
+             \`Nombre Contacto de Emergencia\` = ?,
+             \`Telefono Contacto de Emergencia\` = ?,
              usuarioactualiza = ?,
              \`Fecha de Actualización\` = CONVERT_TZ(NOW(), 'SYSTEM', '-05:00')
          WHERE \`Identificación\` = ?`,
@@ -4006,8 +4086,12 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
           limpiarTexto(datos.estado_civil),
           limpiarTexto(datos.celular),
           limpiarTexto(datos.email),
+          limpiarTexto(datos.departamento_residencia),
           limpiarTexto(datos.ciudad_residencia),
           limpiarTexto(datos.direccion_residencia),
+          limpiarTexto(datos.grado_escolaridad),
+          limpiarTexto(datos.nombre_contacto_emergencia),
+          limpiarTexto(datos.telefono_contacto_emergencia),
           usuarioAuditoria,
           id
         ]
@@ -4064,6 +4148,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
         `UPDATE \`Maestro_Segmentación\`
          SET EPS = ?,
              \`Radicacion EPS\` = ?,
+             \`Tipo afiliado\` = ?,
              \`Pensión\` = ?,
              \`Radicacion AFP\` = ?,
              \`Cesantías\` = ?,
@@ -4077,6 +4162,7 @@ router.put('/api/sociodemografica/:opcion/:id', async (req, res) => {
         [
           limpiarTexto(datos.eps),
           limpiarFecha(datos.radicacion_eps),
+          limpiarTexto(datos.tipo_afiliado),
           limpiarTexto(datos.pension),
           limpiarFecha(datos.radicacion_afp),
           limpiarTexto(datos.cesantias),

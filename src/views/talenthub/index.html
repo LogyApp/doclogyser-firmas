@@ -8934,6 +8934,81 @@
       ]
     };
 
+    // Definición de campos para el panel de Detalle / Modal (tarjetas en modo lectura)
+    // Permite enriquecer la visualización detallada sin alterar las columnas de la tabla principal
+    const CAMPOS_DETALLE_SOCIODEMOGRAFICA = {
+      colaboradores: [
+        { key: 'regional',                  label: 'Regional' },
+        { key: 'operacion',                 label: 'Operación' },
+        { key: 'trabajador',                label: 'Trabajador', bold: true },
+        { key: 'estado',                    label: 'Estado', type: 'estado' },
+        { key: 'cargo',                     label: 'Cargo' },
+        { key: 'area',                      label: 'Área' },
+        { key: 'tipo_contrato',             label: 'Tipo de Contrato' },
+        { key: 'grupo_nomina',              label: 'Grupo Nómina' },
+        { key: 'salario',                   label: 'Salario Base', type: 'moneda' },
+        { key: 'auxilio_transporte',        label: 'Auxilio de Transporte' },
+        { key: 'fecha_ingreso',             label: 'Fecha de Ingreso' },
+        { key: 'fecha_retiro',              label: 'Fecha de Retiro' },
+        { key: 'contrato_firmado',          label: 'Contrato Firmado', type: 'contrato' },
+        { key: 'observaciones_vinculacion', label: 'Observaciones Vinculación' }
+      ],
+      datos_generales: [
+        { key: 'regional',            label: 'Regional' },
+        { key: 'operacion',           label: 'Operación' },
+        { key: 'trabajador',          label: 'Trabajador', bold: true },
+        { key: 'tipo_documento',      label: 'Tipo de Documento' },
+        { key: 'primer_nombre',       label: 'Primer Nombre' },
+        { key: 'segundo_nombre',      label: 'Segundo Nombre' },
+        { key: 'primer_apellido',     label: 'Primer Apellido' },
+        { key: 'segundo_apellido',    label: 'Segundo Apellido' },
+        { key: 'genero',              label: 'Género' },
+        { key: 'rh',                  label: 'RH / Factor Sanguíneo' },
+        { key: 'fecha_nacimiento',    label: 'Fecha Nacimiento' },
+        { key: 'edad',                label: 'Edad', type: 'edad' },
+        { key: 'fecha_expedicion',    label: 'Fecha de Expedición' }
+      ],
+      info_personal: [
+        { key: 'regional',                    label: 'Regional' },
+        { key: 'operacion',                   label: 'Operación' },
+        { key: 'trabajador',                  label: 'Trabajador', bold: true },
+        { key: 'estado_civil',                label: 'Estado Civil' },
+        { key: 'celular',                     label: 'Celular' },
+        { key: 'email',                       label: 'Email' },
+        { key: 'departamento_residencia',     label: 'Departamento Residencia' },
+        { key: 'ciudad_residencia',           label: 'Ciudad de Residencia' },
+        { key: 'direccion_residencia',        label: 'Dirección de Residencia' },
+        { key: 'grado_escolaridad',           label: 'Grado Escolaridad' },
+        { key: 'nombre_contacto_emergencia',  label: 'Contacto de Emergencia' },
+        { key: 'telefono_contacto_emergencia',label: 'Tel. Contacto Emergencia' }
+      ],
+      dotacion: COLUMNAS_SOCIODEMOGRAFICA.dotacion,
+      info_bancaria: COLUMNAS_SOCIODEMOGRAFICA.info_bancaria,
+      seguridad_social: [
+        { key: 'regional',            label: 'Regional' },
+        { key: 'operacion',           label: 'Operación' },
+        { key: 'trabajador',          label: 'Trabajador', bold: true },
+        { key: 'cargo',               label: 'Cargo' },
+        { key: 'fecha_ingreso',       label: 'Fecha de Ingreso' },
+        { key: 'fecha_retiro',        label: 'Fecha de Retiro' },
+        { key: 'eps',                 label: 'EPS' },
+        { key: 'radicacion_eps',      label: 'Radicación EPS' },
+        { key: 'tipo_afiliado',       label: 'Tipo de Afiliado' },
+        { key: 'doc_eps',             label: 'Doc EPS', type: 'doc_url' },
+        { key: 'pension',             label: 'Pensión' },
+        { key: 'radicacion_afp',      label: 'Radicación AFP' },
+        { key: 'doc_afp',             label: 'Doc AFP', type: 'doc_url' },
+        { key: 'cesantias',           label: 'Cesantías' },
+        { key: 'caja_compensacion',   label: 'Caja de Compensación' },
+        { key: 'radicacion_ccf',      label: 'Radicación CCF' },
+        { key: 'doc_ccf',             label: 'Doc CCF', type: 'doc_url' },
+        { key: 'arl',                 label: 'ARL' },
+        { key: 'riesgo_arl',          label: 'Riesgo ARL' },
+        { key: 'doc_arl',             label: 'Doc ARL', type: 'doc_url' }
+      ],
+      examenes: COLUMNAS_SOCIODEMOGRAFICA.examenes
+    };
+
     let _socioUrlParamsAplicados = false;
     let _socioPendingAbrirDetalle = null;
 
@@ -9422,6 +9497,12 @@
       if (col.type === 'edad') {
         if (val === null || val === undefined || val === '') return '<span style="color:var(--text-muted);">—</span>';
         return `<span style="font-weight:600;">${esc(String(val))} años</span>`;
+      }
+      if (col.type === 'moneda') {
+        if (val === null || val === undefined || val === '') return '<span style="color:var(--text-muted);">—</span>';
+        const num = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+        if (isNaN(num)) return `<span>${esc(String(val))}</span>`;
+        return `<strong style="font-family:'JetBrains Mono',monospace;">$ ${num.toLocaleString('es-CO')}</strong>`;
       }
       if (col.type === 'datetime') {
         return `<span style="font-size:0.78rem; color:var(--text-muted);">${formatearFechaHoraSocio(val)}</span>`;
@@ -10383,7 +10464,7 @@
 
       if (!_socioDetalleModoEdicion) {
         if (acciones) acciones.style.display = 'none';
-        const cols = COLUMNAS_SOCIODEMOGRAFICA[_socioDetalleTabActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
+        const cols = (CAMPOS_DETALLE_SOCIODEMOGRAFICA && CAMPOS_DETALLE_SOCIODEMOGRAFICA[_socioDetalleTabActiva]) || COLUMNAS_SOCIODEMOGRAFICA[_socioDetalleTabActiva] || COLUMNAS_SOCIODEMOGRAFICA.colaboradores;
 
         const cardsHtml = cols
           .filter(c => c.key !== 'usuario_actualiza' && c.key !== 'fecha_actualizacion')
@@ -10486,6 +10567,32 @@
             <label>Fecha de Retiro</label>
             <input type="date" id="editSocio_fecha_retiro" class="req-input" value="${esc(row.fecha_retiro || '')}">
           </div>
+          <div class="req-field">
+            <label>Tipo de Contrato</label>
+            <select id="editSocio_tipo_contrato" class="req-input">
+              ${buildOptions(['Obra Labor', 'Indefinido', 'Fijo', 'Aprendizaje'], row.tipo_contrato, 'Seleccione tipo contrato...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Grupo Nómina</label>
+            <select id="editSocio_grupo_nomina" class="req-input">
+              ${buildOptions(['Operativo', 'Administrativo', 'Aprendiz'], row.grupo_nomina, 'Seleccione grupo nómina...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Salario Base ($)</label>
+            <input type="number" id="editSocio_salario" class="req-input" value="${esc(row.salario || '')}" placeholder="Ej: 1300000" min="0" step="1000">
+          </div>
+          <div class="req-field">
+            <label>Auxilio de Transporte</label>
+            <select id="editSocio_auxilio_transporte" class="req-input">
+              ${buildOptions(['SI', 'NO'], row.auxilio_transporte, 'Seleccione...')}
+            </select>
+          </div>
+          <div class="req-field" style="grid-column: 1 / -1;">
+            <label>Observaciones Vinculación</label>
+            <textarea id="editSocio_observaciones_vinculacion" class="req-input" rows="2" placeholder="Observaciones contractuales...">${esc(row.observaciones_vinculacion || '')}</textarea>
+          </div>
         `;
       } else if (_socioDetalleTabActiva === 'datos_generales') {
         const tiposDoc = (_socioCatalogos?.tiposDocumento || []).map(t => t.descripcion);
@@ -10519,8 +10626,18 @@
             </select>
           </div>
           <div class="req-field">
+            <label>RH / Factor Sanguíneo</label>
+            <select id="editSocio_rh" class="req-input">
+              ${buildOptions(_socioCatalogos?.gruposSanguineos || ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], row.rh, 'Seleccione RH...')}
+            </select>
+          </div>
+          <div class="req-field">
             <label>Fecha Nacimiento</label>
             <input type="date" id="editSocio_fecha_nacimiento" class="req-input" value="${esc(row.fecha_nacimiento || '')}">
+          </div>
+          <div class="req-field">
+            <label>Fecha de Expedición</label>
+            <input type="date" id="editSocio_fecha_expedicion" class="req-input" value="${esc(row.fecha_expedicion || '')}">
           </div>
         `;
       } else if (_socioDetalleTabActiva === 'info_personal') {
@@ -10540,6 +10657,12 @@
             <input type="email" id="editSocio_email" class="req-input" value="${esc(row.email || '')}">
           </div>
           <div class="req-field">
+            <label>Departamento de Residencia</label>
+            <select id="editSocio_departamento_residencia" class="req-input">
+              ${buildOptions(_socioCatalogos?.departamentos || [], row.departamento_residencia, 'Seleccione departamento...')}
+            </select>
+          </div>
+          <div class="req-field">
             <label>Ciudad de Residencia</label>
             <select id="editSocio_ciudad_residencia" class="req-input">
               ${buildOptions(_socioCatalogos?.ciudades || [], row.ciudad_residencia, 'Seleccione ciudad...')}
@@ -10548,6 +10671,20 @@
           <div class="req-field">
             <label>Dirección de Residencia</label>
             <input type="text" id="editSocio_direccion_residencia" class="req-input" value="${esc(row.direccion_residencia || '')}">
+          </div>
+          <div class="req-field">
+            <label>Grado de Escolaridad</label>
+            <select id="editSocio_grado_escolaridad" class="req-input">
+              ${buildOptions(_socioCatalogos?.gradosEscolaridad || [], row.grado_escolaridad, 'Seleccione escolaridad...')}
+            </select>
+          </div>
+          <div class="req-field">
+            <label>Nombre Contacto Emergencia</label>
+            <input type="text" id="editSocio_nombre_contacto_emergencia" class="req-input" value="${esc(row.nombre_contacto_emergencia || '')}" placeholder="Nombre de familiar o contacto">
+          </div>
+          <div class="req-field">
+            <label>Teléfono Contacto Emergencia</label>
+            <input type="text" id="editSocio_telefono_contacto_emergencia" class="req-input" value="${esc(row.telefono_contacto_emergencia || '')}" placeholder="Número de contacto de emergencia">
           </div>
         `;
       } else if (_socioDetalleTabActiva === 'dotacion') {
@@ -10601,6 +10738,12 @@
           <div class="req-field">
             <label>Radicación EPS</label>
             <input type="date" id="editSocio_radicacion_eps" class="req-input" value="${esc(row.radicacion_eps || '')}">
+          </div>
+          <div class="req-field">
+            <label>Tipo de Afiliado</label>
+            <select id="editSocio_tipo_afiliado" class="req-input">
+              ${buildOptions(['Cotizante', 'Beneficiario', 'Contributivo', 'Subsidiado', 'Cabeza de Familia'], row.tipo_afiliado, 'Seleccione tipo de afiliado...')}
+            </select>
           </div>
           <div class="req-field">
             <label>Pensión</label>
@@ -10728,7 +10871,12 @@
           cargo: val('cargo'),
           area_id: val('area_id'),
           fecha_ingreso: val('fecha_ingreso'),
-          fecha_retiro: val('fecha_retiro')
+          fecha_retiro: val('fecha_retiro'),
+          tipo_contrato: val('tipo_contrato'),
+          grupo_nomina: val('grupo_nomina'),
+          salario: val('salario'),
+          auxilio_transporte: val('auxilio_transporte'),
+          observaciones_vinculacion: val('observaciones_vinculacion')
         });
       } else if (tabEditando === 'datos_generales') {
         Object.assign(datos, {
@@ -10738,15 +10886,21 @@
           primer_apellido: val('primer_apellido'),
           segundo_apellido: val('segundo_apellido'),
           genero: val('genero'),
-          fecha_nacimiento: val('fecha_nacimiento')
+          rh: val('rh'),
+          fecha_nacimiento: val('fecha_nacimiento'),
+          fecha_expedicion: val('fecha_expedicion')
         });
       } else if (tabEditando === 'info_personal') {
         Object.assign(datos, {
           estado_civil: val('estado_civil'),
           celular: val('celular'),
           email: val('email'),
+          departamento_residencia: val('departamento_residencia'),
           ciudad_residencia: val('ciudad_residencia'),
-          direccion_residencia: val('direccion_residencia')
+          direccion_residencia: val('direccion_residencia'),
+          grado_escolaridad: val('grado_escolaridad'),
+          nombre_contacto_emergencia: val('nombre_contacto_emergencia'),
+          telefono_contacto_emergencia: val('telefono_contacto_emergencia')
         });
       } else if (tabEditando === 'dotacion') {
         Object.assign(datos, {
@@ -10766,6 +10920,7 @@
         Object.assign(datos, {
           eps: val('eps'),
           radicacion_eps: val('radicacion_eps'),
+          tipo_afiliado: val('tipo_afiliado'),
           pension: val('pension'),
           radicacion_afp: val('radicacion_afp'),
           cesantias: val('cesantias'),
