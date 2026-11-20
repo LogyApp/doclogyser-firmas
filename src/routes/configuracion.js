@@ -172,11 +172,31 @@ function leerParametro(body) {
       descripcion: texto(body.descripcion, 500, 'Descripción', false),
     };
     const cond = normalizar(p.condicion);
-    if (cond === 'rol') p.parametro = unirRoles(p.parametro);
-    if (cond === 'booleano' && !['0', '1'].includes(p.parametro)) throw new Error('Un parámetro Booleano debe ser 1 (habilitado) o 0 (deshabilitado).');
-    if ((cond === 'numero' || cond === 'filas') && !/^\d+$/.test(p.parametro)) throw new Error(`Un parámetro ${p.condicion} debe ser un número entero.`);
-    if (cond === 'porcentaje' && !/^(100|[1-9]?\d)$/.test(p.parametro)) throw new Error('Un porcentaje debe ser un número entero entre 0 y 100.');
-    if (cond === 'hora' && !RE_HORA.test(p.parametro)) throw new Error('La hora debe tener el formato HH:mm (24 horas).');
+    if (cond === 'rol' || cond === 'roles') {
+      p.condicion = 'Rol';
+      p.parametro = unirRoles(p.parametro);
+    } else if (cond === 'booleano') {
+      p.condicion = 'Booleano';
+      if (!['0', '1'].includes(p.parametro)) throw new Error('Un parámetro Booleano debe ser 1 (habilitado) o 0 (deshabilitado).');
+    } else if (cond === 'numero' || cond === 'numeros') {
+      p.condicion = 'Número';
+      if (!/^\d+$/.test(p.parametro)) throw new Error('Un parámetro Número debe ser un número entero.');
+    } else if (cond === 'filas') {
+      p.condicion = 'Filas';
+      if (!/^\d+$/.test(p.parametro)) throw new Error('Un parámetro Filas debe ser un número entero.');
+    } else if (cond === 'porcentaje') {
+      p.condicion = 'Porcentaje';
+      if (!/^(100|[1-9]?\d)$/.test(p.parametro)) throw new Error('Un porcentaje debe ser un número entero entre 0 y 100.');
+    } else if (cond === 'hora') {
+      p.condicion = 'Hora';
+      if (!RE_HORA.test(p.parametro)) throw new Error('La hora debe tener el formato HH:mm (24 horas).');
+    } else if (cond === 'cargo' || cond === 'cargos') {
+      p.condicion = 'Cargo';
+    } else if (cond === 'operacion' || cond === 'operaciones') {
+      p.condicion = 'Operación';
+    } else if (cond === 'regional' || cond === 'regionales') {
+      p.condicion = 'Regional';
+    }
     return p;
   });
 }

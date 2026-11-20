@@ -319,7 +319,7 @@
         <div class="grid-3">
           <div class="campo"><label>Módulo *</label><input id="parModulo" list="dlModulosPar" maxlength="50" required></div>
           <div class="campo"><label>Sección *</label><input id="parSeccion" list="dlSeccionesPar" maxlength="50" required onfocus="llenarDatalistSecciones('par')"></div>
-          <div class="campo"><label>Condición *</label><input id="parCondicion" list="dlCondiciones" maxlength="50" required onchange="pintarEditorParametro()"></div>
+          <div class="campo"><label>Condición *</label><input id="parCondicion" list="dlCondiciones" maxlength="50" required onchange="pintarEditorParametro()" oninput="pintarEditorParametro()"></div>
         </div>
         <div class="campo"><label>Concepto *</label><input id="parConcepto" maxlength="150" required></div>
         <div class="nota" id="parNotaClave" style="display:none">El sistema busca cada parámetro por <strong>Módulo, Sección y Concepto</strong>. Si cambias alguno de esos tres en una fila que ya existe, el código dejará de encontrarla y usará su valor por defecto.</div>
@@ -615,6 +615,11 @@
   }
 
   const DIAS_SEMANA_OPCIONES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  function esCondicionRol(condicion) {
+    const cd = norm(condicion);
+    return cd === 'rol' || cd === 'roles';
+  }
+
   function esParametroDiasSemana(concepto, condicion) {
     const c = norm(concepto), cd = norm(condicion);
     if (cd === 'booleano' || c.includes('festivo')) return false;
@@ -628,7 +633,7 @@
       if (!dias.length) return '<span style="color:var(--text-muted)">(sin días seleccionados)</span>';
       return dias.map(d => `<span class="chip" style="background:var(--accent-soft); color:var(--accent-dark); border-color:var(--accent); font-weight:700;">✓ ${esc(d)}</span>`).join(' ');
     }
-    if (c === 'rol') return chipsRoles(p.parametro);
+    if (esCondicionRol(p.condicion)) return chipsRoles(p.parametro);
     if (c === 'booleano') {
       const isSi = ['1', 'true', 'si', 'habilitado'].includes(norm(p.parametro));
       if (norm(p.concepto).includes('festivos')) {
@@ -692,7 +697,7 @@
         </div>`;
       return;
     }
-    if (cond === 'rol') {
+    if (esCondicionRol(cond)) {
       if (!p.rolesSel.length && valorActual) p.rolesSel = listaRoles(valorActual);
       const modulo = norm(document.getElementById('parModulo').value);
       pintarRoles('parEditor', 'par', false, modulo === 'configuracion' ? 'Sistema' : '');
@@ -747,7 +752,7 @@
     const st = _st.par;
     st.editando = p ? p.id : null;
     st.valorTemporal = p ? p.parametro : '';
-    st.rolesSel = p && norm(p.condicion) === 'rol' ? listaRoles(p.parametro) : [];
+    st.rolesSel = p && esCondicionRol(p.condicion) ? listaRoles(p.parametro) : [];
     st.diasSel = p && esParametroDiasSemana(p.concepto, p.condicion) ? listaRoles(p.parametro) : [];
     const fm = document.getElementById('fParModulo').value, fs = document.getElementById('fParSeccion').value;
     document.getElementById('parTitulo').textContent = p ? (puedeEditar ? 'Editar parámetro' : 'Ver parámetro') : 'Agregar parámetro';
@@ -771,7 +776,7 @@
     const cond = norm(document.getElementById('parCondicion').value);
     const conc = document.getElementById('parConcepto')?.value || '';
     if (esParametroDiasSemana(conc, cond)) return (_st.par.diasSel || []).join(', ');
-    if (cond === 'rol') return _st.par.rolesSel.join(', ');
+    if (esCondicionRol(cond)) return _st.par.rolesSel.join(', ');
     if (cond === 'booleano') return _st.par.valorTemporal || '0';
     const el = document.getElementById('parValor');
     return el ? el.value.trim() : '';
@@ -984,7 +989,7 @@
     if (PERM.visual.editar) document.getElementById('btnAgregarMenu').style.display = 'inline-flex';
     // Al cambiar el módulo en la ventana, Sistema queda fijo si es el propio módulo Configuración
     document.getElementById('menModulo').addEventListener('change', () => pintarRoles('menRoles', 'men', true, bloqueadoMenu()));
-    document.getElementById('parModulo').addEventListener('change', () => { if (norm(document.getElementById('parCondicion').value) === 'rol') pintarEditorParametro(); });
+    document.getElementById('parModulo').addEventListener('change', () => { if (esCondicionRol(document.getElementById('parCondicion').value)) pintarEditorParametro(); });
     await cargarRoles();
     const pedida = norm(new URLSearchParams(location.search).get('tab'));
     const destino = (PERM[pedida] && PERM[pedida].ver) ? pedida : (PERM.parametros.ver ? 'parametros' : 'visual');
