@@ -171,6 +171,23 @@ async function subirPDFEvaluacionRetiro(identificacion, idVinculacion, bufferPdf
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+// Informe Disciplinario (Nómina): un archivo por informe en la carpeta del trabajador; regenerarlo
+// lo reemplaza sin cambiar la URL.
+async function subirPDFInformeDisciplinario(identificacion, idInforme, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.PDIS.${idInforme}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+// Fotos de evidencia del Informe Disciplinario
+async function subirEvidenciaInformeDisciplinario(idInforme, filename, buffer, contentType) {
+  const nombre = `informes_disciplinarios/${idInforme}/evidencias/${filename}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(buffer, { contentType: contentType || 'image/jpeg' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 async function subirPDFAstAsistencia(identificacion, formattedDate, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.ACTASI.${formattedDate}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
@@ -442,6 +459,8 @@ async function subirComprobanteConsignacion(idConsignacion, buffer, originalName
 }
 
 module.exports = {
+  subirPDFInformeDisciplinario,
+  subirEvidenciaInformeDisciplinario,
   subirComprobanteConsignacion,
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,

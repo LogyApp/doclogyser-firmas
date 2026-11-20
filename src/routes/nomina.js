@@ -333,12 +333,14 @@ router.get('/', async (req, res) => {
     // Quincena Excel: quincena que trae el Excel de nómina por operación (Maestro_Visual_Excel)
     const accesoQuincenaExcel = await computarAccesoNomina(usuario, 'Quincena_Excel');
     const paramsAsistencia = accesoAsistencia ? await obtenerParametrosAsistencia() : null;
+    // Informes Disciplinarios (public/js/nomina-informes-disciplinarios.js, API en src/routes/informesDisciplinarios.js)
+    const accesoInformes = await computarAccesoNomina(usuario, 'InformesDisciplinarios');
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia && !accesoQuincenaExcel) {
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia && !accesoQuincenaExcel && !accesoInformes) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia || accesoQuincenaExcel;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia || accesoQuincenaExcel || accesoInformes;
     const puedeGenerarDocs = await puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -419,6 +421,7 @@ router.get('/', async (req, res) => {
           ...(await obtenerPermisosProduccion(base.rol)),
         } : null,
         quincenaexcel: accesoQuincenaExcel ? { sinFiltro: accesoQuincenaExcel.sinFiltro } : null,
+        informesdisciplinarios: accesoInformes ? { habilitado: true } : null,
         asistencia: accesoAsistencia ? {
           sinFiltro: accesoAsistencia.sinFiltro,
           operacionesFiltro: accesoAsistencia.operacionesFiltro || [],

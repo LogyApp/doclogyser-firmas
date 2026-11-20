@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informe Disciplinario</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; color: #333; }
+    .wrapper { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    .card-titulo { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 20px 24px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .card-titulo img { height: 44px; flex-shrink: 0; }
+    .page-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; }
+    .page-sub { font-size: .82rem; color: #999; margin-top: 3px; }
+    .usuario-badge { display: inline-flex; align-items: center; gap: 5px; background: #eef1ff; border: 1px solid #c5d0ff; border-radius: 20px; padding: 3px 10px; font-size: .78rem; color: #1a1a2e; margin-top: 8px; font-weight: 600; }
+    .borrador-badge { display: inline-block; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; border-radius: 20px; padding: 3px 10px; font-size: .75rem; font-weight: 700; margin-top: 8px; margin-left: 6px; }
+
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); border-left: 4px solid #1a1a2e; padding: 22px 24px; margin-bottom: 14px; }
+    .section-title { font-size: .72rem; font-weight: bold; color: #1a1a2e; letter-spacing: 1.3px; text-transform: uppercase; padding-bottom: 12px; margin-bottom: 18px; border-bottom: 2px solid #eef1ff; }
+
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+    label .req { color: #e74c3c; margin-left: 2px; }
+    label .opt { font-weight: normal; color: #aaa; font-size: .75rem; margin-left: 4px; }
+    input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 6px; font-size: .93rem; color: #333; background: #fff; font-family: inherit; transition: border-color .15s; }
+    textarea { resize: vertical; min-height: 96px; line-height: 1.45; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #1a1a2e; box-shadow: 0 0 0 3px rgba(26,26,46,.1); }
+    input[readonly] { background: #f5f6fa; color: #666; border-color: #e8e8e8; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field-hint { font-size: .75rem; color: #999; margin-top: 4px; }
+    .err { color: #e74c3c; font-size: .78rem; margin-top: 4px; display: none; }
+    .err.visible { display: block; }
+
+    .autocomplete-wrap { position: relative; }
+    #inputTrabajador { padding-left: 36px; }
+    .search-ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: .95rem; color: #bbb; pointer-events: none; }
+    .ac-list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1.5px solid #1a1a2e; border-radius: 6px; max-height: 260px; overflow-y: auto; z-index: 200; display: none; box-shadow: 0 6px 20px rgba(26,26,46,.15); }
+    .ac-list.open { display: block; }
+    .ac-item { padding: 9px 14px; cursor: pointer; font-size: .86rem; border-bottom: 1px solid #f5f5f5; }
+    .ac-item small { display: block; color: #888; font-size: .75rem; }
+    .ac-item:hover, .ac-item.active { background: #eef1ff; color: #1a1a2e; }
+    .ac-empty { padding: 12px 14px; font-size: .85rem; color: #aaa; }
+
+    #datosTrabajador { display: none; margin-top: 18px; padding-top: 16px; border-top: 1px solid #eef1ff; }
+    .funciones { margin-top: 4px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 10px 14px; }
+    .funciones ol { padding-left: 18px; font-size: .74rem; color: #555; line-height: 1.4; columns: 2; column-gap: 22px; }
+    .funciones li { margin-bottom: 3px; break-inside: avoid; }
+    .aviso { border-radius: 6px; padding: 10px 14px; font-size: .82rem; line-height: 1.4; margin-top: 10px; }
+    .aviso-warn { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; }
+    .aviso-info { background: #eef1ff; border: 1px solid #c5d0ff; color: #1a1a2e; }
+    .aviso ul { margin: 6px 0 0 18px; }
+
+    .fotos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
+    .foto { position: relative; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; background: #f8fafc; aspect-ratio: 1; }
+    .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foto button { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: .85rem; line-height: 24px; }
+    .foto .pend { position: absolute; left: 4px; bottom: 4px; background: #f59e0b; color: #fff; font-size: .65rem; font-weight: 700; border-radius: 10px; padding: 1px 6px; }
+    .btn-fotos { display: inline-flex; align-items: center; gap: 6px; background: #eef1ff; border: 1.5px dashed #1a1a2e; color: #1a1a2e; border-radius: 6px; padding: 10px 16px; font-weight: 700; font-size: .88rem; cursor: pointer; }
+
+    .firma-opciones { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .firma-op { flex: 1; min-width: 200px; border: 1.5px solid #ddd; border-radius: 8px; padding: 12px; cursor: pointer; background: #fff; text-align: center; font-size: .85rem; font-weight: 600; color: #444; }
+    .firma-op.activa { border-color: #1a1a2e; background: #eef1ff; color: #1a1a2e; }
+    .firma-op img { max-height: 70px; max-width: 100%; display: block; margin: 8px auto 0; }
+    canvas { border: 2px dashed #1a1a2e; border-radius: 6px; background: #fff; cursor: crosshair; display: block; touch-action: none; width: 100%; height: 170px; }
+    .btn-mini { background: none; border: 1px solid #ccc; border-radius: 6px; padding: 5px 12px; font-size: .78rem; cursor: pointer; margin-top: 6px; color: #555; }
+
+    .acciones { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-submit { flex: 2; background: #e67e22; color: #fff; border: none; padding: 14px; border-radius: 7px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+    .btn-submit:hover { background: #d35400; }
+    .btn-borrador { flex: 1; background: #fff; color: #1a1a2e; border: 1.5px solid #1a1a2e; padding: 14px; border-radius: 7px; font-size: .95rem; font-weight: bold; cursor: pointer; }
+    .btn-submit:disabled, .btn-borrador:disabled { opacity: .55; cursor: not-allowed; }
+    .estado-guardado { font-size: .78rem; color: #777; margin-top: 8px; text-align: center; min-height: 1em; }
+
+    .success-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 40px 24px; text-align: center; display: none; }
+    .check-circle { width: 70px; height: 70px; border-radius: 50%; background: #e8f8ee; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 2rem; color: #27ae60; }
+    .success-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; margin-bottom: 6px; }
+    .success-sub { font-size: .88rem; color: #777; margin-bottom: 18px; line-height: 1.5; }
+    .btn-pdf { display: inline-block; background: #1a1a2e; color: #fff; text-decoration: none; padding: 11px 26px; border-radius: 6px; font-weight: bold; font-size: .92rem; }
+
+    @media (max-width: 520px) {
+      .card { padding: 16px; }
+      .card-titulo { padding: 16px; flex-wrap: wrap; }
+      .two-col { grid-template-columns: 1fr; }
+      .funciones ol { columns: 1; }
+    }
+  </style>
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
+  <meta name="theme-color" content="#1B2A5E">
+</head>
+<body>
+<div class="wrapper">
+  <div class="card-titulo">
+    <div>
+      <div class="page-title">Informe Disciplinario</div>
+      <div class="page-sub">Formato OP-R-010 · Reporte de novedades disciplinarias para Jurídica</div>
+      <div><span class="usuario-badge" id="badgeUsuario"></span><span class="borrador-badge" id="badgeBorrador" style="display:none">Borrador</span></div>
+    </div>
+    <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER" onerror="this.style.display='none'">
+  </div>
+
+  <div id="formulario">
+    <div class="card">
+      <div class="section-title">Trabajador reportado</div>
+      <div class="field">
+        <label for="inputTrabajador">Trabajador <span class="req">*</span></label>
+        <div class="autocomplete-wrap">
+          <span class="search-ico">&#128269;</span>
+          <input type="text" id="inputTrabajador" placeholder="Escriba el nombre o la cédula (trabajadores activos)" autocomplete="off">
+          <div class="ac-list" id="acList"></div>
+        </div>
+        <div class="err" id="errTrabajador">Escoja el trabajador de la lista.</div>
+      </div>
+      <div id="datosTrabajador">
+        <div class="two-col">
+          <div class="field"><label>Identificación</label><input type="text" id="dIdentificacion" readonly></div>
+          <div class="field"><label>Cargo</label><input type="text" id="dCargo" readonly></div>
+        </div>
+        <div class="two-col">
+          <div class="field"><label>Operación asignada</label><input type="text" id="dOperacion" readonly></div>
+          <div class="field"><label>Fecha de ingreso a la empresa</label><input type="text" id="dIngreso" readonly></div>
+        </div>
+        <div class="field" id="campoFunciones" style="display:none">
+          <label>Funciones principales del cargo</label>
+          <div class="funciones"><ol id="listaFunciones"></ol></div>
+        </div>
+        <div id="avisoAntecedentes"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Hechos</div>
+      <div class="two-col">
+        <div class="field">
+          <label for="fechaHechos">Fecha de los hechos <span class="req">*</span></label>
+          <input type="date" id="fechaHechos">
+          <div class="err" id="errFechaHechos">Indique la fecha de los hechos (no posterior a hoy).</div>
+        </div>
+        <div class="field">
+          <label for="tipoFalta">Tipo de falta <span class="req">*</span></label>
+          <select id="tipoFalta"><option value="">Seleccione…</option></select>
+          <div class="err" id="errTipoFalta">Escoja el tipo de falta.</div>
+        </div>
+      </div>
+      <div id="avisoInmediatez" style="margin:-6px 0 16px"></div>
+      <div class="field" id="campoOtro" style="display:none">
+        <label for="tipoFaltaOtro">¿Cuál falta? <span class="req">*</span></label>
+        <input type="text" id="tipoFaltaOtro" maxlength="255" placeholder="Describa brevemente la falta">
+        <div class="err" id="errTipoFaltaOtro">Escriba cuál es la falta.</div>
+      </div>
+      <div class="field">
+        <label for="descripcion_hechos">Descripción de los hechos <span class="req">*</span></label>
+        <textarea id="descripcion_hechos" rows="5" placeholder="Indique fechas, horas, lugares, intervinientes y detalles de la conducta"></textarea>
+        <div class="err" id="errdescripcion_hechos">Describa los hechos.</div>
+      </div>
+      <div class="field">
+        <label for="accion_inmediata">Acción inmediata tomada para normalizar la operación <span class="req">*</span></label>
+        <textarea id="accion_inmediata" rows="4"></textarea>
+        <div class="err" id="erraccion_inmediata">Indique la acción tomada.</div>
+      </div>
+      <div class="field">
+        <label for="consecuencias">Consecuencias de los hechos <span class="req">*</span></label>
+        <textarea id="consecuencias" rows="4" placeholder="Afectaciones técnicas, económicas, legales, etc."></textarea>
+        <div class="err" id="errconsecuencias">Indique las consecuencias.</div>
+      </div>
+      <div class="field">
+        <label for="forma_conocimiento">Forma de conocimiento de los hechos por parte de la empresa <span class="req">*</span></label>
+        <textarea id="forma_conocimiento" rows="3"></textarea>
+        <div class="err" id="errforma_conocimiento">Indique cómo se conocieron los hechos.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Evidencias <span style="text-transform:none; letter-spacing:0; font-weight:normal; color:#999">(opcional)</span></div>
+      <label class="btn-fotos" for="inputFotos">&#128247; Agregar fotos</label>
+      <input type="file" id="inputFotos" accept="image/*" multiple style="display:none">
+      <div class="field-hint" id="hintFotos"></div>
+      <div class="fotos-grid" id="fotosGrid"></div>
+      <div class="field" style="margin-top:16px">
+        <label for="comentarios_fotos">Comentarios de las evidencias <span class="opt">(opcional)</span></label>
+        <textarea id="comentarios_fotos" rows="3" placeholder="Qué muestran las fotos, testigos, soportes adicionales…"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Firma de quien reporta</div>
+      <p style="font-size:.83rem; color:#666; margin-bottom:12px">Al firmar, el informe queda registrado y ya no se puede editar. Se envía a Jurídica.</p>
+      <div class="firma-opciones">
+        <div class="firma-op" id="opRegistrada" style="display:none" onclick="modoFirma('registrada')">Usar mi firma registrada<img id="imgFirmaRegistrada" alt="Firma registrada"></div>
+        <div class="firma-op" id="opNueva" onclick="modoFirma('nueva')">Dibujar una firma nueva</div>
+      </div>
+      <div id="zonaCanvas" style="display:none">
+        <canvas id="sigCanvas" width="600" height="170"></canvas>
+        <button type="button" class="btn-mini" onclick="limpiarCanvas()">Borrar firma</button>
+      </div>
+      <div class="err" id="errFirma">Escoja su firma registrada o dibuje una.</div>
+    </div>
+
+    <div class="acciones">
+      <button type="button" class="btn-borrador" id="btnBorrador" onclick="guardarBorrador()">Guardar y continuar más tarde</button>
+      <button type="button" class="btn-submit" id="btnRegistrar" onclick="firmarYRegistrar()">Firmar y registrar</button>
+    </div>
+    <div class="estado-guardado" id="estadoGuardado"></div>
+  </div>
+
+  <div class="success-card" id="exito">
+    <div class="check-circle">&#10003;</div>
+    <div class="success-title">Informe registrado</div>
+    <div class="success-sub" id="exitoTexto"></div>
+    <a class="btn-pdf" id="exitoPdf" href="#" target="_blank" rel="noopener" style="display:none">Ver informe (PDF)</a>
+  </div>
+</div>
+
+<script>
+  const CONFIG = __CONFIG__;
+  const $ = (id) => document.getElementById(id);
+  const TEXTOS = ['descripcion_hechos', 'accion_inmediata', 'consecuencias', 'comentarios_fotos', 'forma_conocimiento'];
+  const st = {
+    id: CONFIG.borrador ? CONFIG.borrador.id : null,
+    trabajador: null,          // { identificacion, nombre, ... }
+    guardadas: CONFIG.borrador ? CONFIG.borrador.evidencias.map(e => ({ idEvidencia: e.id_evidencia, url: e.url })) : [],
+    pendientes: [],            // { dataUrl, contentType }
+    modoFirma: null,
+    canvasUsado: false,
+    ocupado: false,
+  };
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const api = (ruta, opciones = {}) => fetch(`/informes-disciplinarios${ruta}${ruta.includes('?') ? '&' : '?'}usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+    ...opciones, headers: opciones.body ? { 'Content-Type': 'application/json' } : undefined,
+  }).then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Error de conexión'); return d; });
+  function fechaTexto(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '—';
+  }
+
+  // ── Encabezado y listas ──────────────────────────────────────────────────
+  $('badgeUsuario').textContent = `${CONFIG.usuarioNombre}${CONFIG.cargo ? ' · ' + CONFIG.cargo : ''}`;
+  $('fechaHechos').max = CONFIG.hoy;
+  $('tipoFalta').insertAdjacentHTML('beforeend', CONFIG.tiposFalta.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join(''));
+  $('hintFotos').textContent = `Hasta ${CONFIG.maxEvidencias} fotos. Se reducen de tamaño antes de subirlas.`;
+
+  // ── Trabajador ───────────────────────────────────────────────────────────
+  let timerBusqueda = null, resultados = [], activo = -1;
+  $('inputTrabajador').addEventListener('input', () => {
+    st.trabajador = null;
+    $('datosTrabajador').style.display = 'none';
+    clearTimeout(timerBusqueda);
+    const q = $('inputTrabajador').value.trim();
+    if (q.length < 2) { $('acList').classList.remove('open'); return; }
+    timerBusqueda = setTimeout(async () => {
+      try {
+        const d = await api(`/api/trabajadores?q=${encodeURIComponent(q)}`);
+        resultados = d.trabajadores || [];
+        activo = -1;
+        $('acList').innerHTML = resultados.length
+          ? resultados.map((t, i) => `<div class="ac-item" data-i="${i}">${esc(t.nombre)}<small>${esc(t.identificacion)} · ${esc(t.Cargo || '')} · ${esc(t.operacion || '')}</small></div>`).join('')
+          : '<div class="ac-empty">No hay trabajadores activos con ese nombre o cédula.</div>';
+        $('acList').classList.add('open');
+      } catch (e) { $('acList').innerHTML = `<div class="ac-empty">${esc(e.message)}</div>`; $('acList').classList.add('open'); }
+    }, 250);
+  });
+  $('inputTrabajador').addEventListener('keydown', (e) => {
+    const items = [...$('acList').querySelectorAll('.ac-item')];
+    if (!items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      activo = (activo + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items.forEach((it, i) => it.classList.toggle('active', i === activo));
+    } else if (e.key === 'Enter' && activo >= 0) { e.preventDefault(); escogerTrabajador(resultados[activo].identificacion); }
+  });
+  $('acList').addEventListener('mousedown', (e) => {
+    const it = e.target.closest('.ac-item');
+    if (it) { e.preventDefault(); escogerTrabajador(resultados[Number(it.dataset.i)].identificacion); }
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.autocomplete-wrap')) $('acList').classList.remove('open'); });
+
+  async function escogerTrabajador(identificacion) {
+    $('acList').classList.remove('open');
+    try {
+      const t = await api(`/api/trabajador?identificacion=${encodeURIComponent(identificacion)}${st.id ? '&excluir=' + encodeURIComponent(st.id) : ''}`);
+      st.trabajador = t;
+      $('inputTrabajador').value = t.nombre;
+      $('dIdentificacion').value = t.identificacion;
+      $('dCargo').value = t.cargo || '—';
+      $('dOperacion').value = [t.operacion, t.regional ? `(${t.regional})` : ''].filter(Boolean).join(' ') || '—';
+      $('dIngreso').value = fechaTexto(t.fechaIngreso);
+      $('campoFunciones').style.display = t.funciones.length ? '' : 'none';
+      $('listaFunciones').innerHTML = t.funciones.map(f => `<li>${esc(f)}</li>`).join('');
+      const ant = t.antecedentes || [];
+      $('avisoAntecedentes').innerHTML = ant.length ? `<div class="aviso aviso-info"><strong>Antecedentes:</strong> este trabajador tiene ${ant.length} informe${ant.length === 1 ? '' : 's'} anterior${ant.length === 1 ? '' : 'es'}.<ul>${ant.slice(0, 5).map(a => `<li>${fechaTexto(a.fechaHechos)} · ${esc(a.tipoFalta)} · ${esc(a.estado)}${a.resultado ? ' (' + esc(a.resultado) + ')' : ''}</li>`).join('')}</ul></div>` : '';
+      $('datosTrabajador').style.display = 'block';
+      $('errTrabajador').classList.remove('visible');
+    } catch (e) { alert(e.message); }
+  }
+
+  // ── Hechos ───────────────────────────────────────────────────────────────
+  function revisarInmediatez() {
+    const f = $('fechaHechos').value;
+    let html = '';
+    if (f && CONFIG.diasInmediatez > 0) {
+      const dias = Math.floor((new Date(`${CONFIG.hoy}T12:00:00`) - new Date(`${f}T12:00:00`)) / 86400000);
+      if (dias > CONFIG.diasInmediatez) html = `<div class="aviso aviso-warn">Los hechos ocurrieron hace ${dias} días. Una sanción tardía puede perder validez: registre el informe cuanto antes.</div>`;
+    }
+    $('avisoInmediatez').innerHTML = html;
+  }
+  $('fechaHechos').addEventListener('change', revisarInmediatez);
+  $('tipoFalta').addEventListener('change', () => { $('campoOtro').style.display = esOtro() ? '' : 'none'; });
+  const esOtro = () => $('tipoFalta').value.trim().toUpperCase() === 'OTRO';
+
+  // ── Evidencias ───────────────────────────────────────────────────────────
+  function comprimir(file) {
+    return new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onerror = () => reject(new Error('No se pudo leer la foto.'));
+      lector.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('El archivo no es una imagen válida.'));
+        img.onload = () => {
+          const max = 1600;
+          const escala = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * escala);
+          c.height = Math.round(img.height * escala);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve({ dataUrl: c.toDataURL('image/jpeg', 0.82), contentType: 'image/jpeg' });
+        };
+        img.src = lector.result;
+      };
+      lector.readAsDataURL(file);
+    });
+  }
+  $('inputFotos').addEventListener('change', async (e) => {
+    const archivos = [...e.target.files];
+    e.target.value = '';
+    for (const f of archivos) {
+      if (st.guardadas.length + st.pendientes.length >= CONFIG.maxEvidencias) { alert(`Máximo ${CONFIG.maxEvidencias} fotos.`); break; }
+      try { st.pendientes.push(await comprimir(f)); } catch (err) { alert(err.message); }
+    }
+    pintarFotos();
+  });
+  function pintarFotos() {
+    $('fotosGrid').innerHTML = st.guardadas.map((f, i) => `<div class="foto"><img src="${esc(f.url)}" alt="Evidencia"><button type="button" title="Quitar" onclick="quitarGuardada(${i})">&times;</button></div>`).join('')
+      + st.pendientes.map((f, i) => `<div class="foto"><img src="${f.dataUrl}" alt="Evidencia"><span class="pend">Sin guardar</span><button type="button" title="Quitar" onclick="quitarPendiente(${i})">&times;</button></div>`).join('');
+  }
+  function quitarPendiente(i) { st.pendientes.splice(i, 1); pintarFotos(); }
+  async function quitarGuardada(i) {
+    if (!confirm('¿Quitar esta foto del informe?')) return;
+    try { await api(`/api/informe/${encodeURIComponent(st.id)}/evidencia/${st.guardadas[i].idEvidencia}`, { method: 'DELETE' }); st.guardadas.splice(i, 1); pintarFotos(); }
+    catch (e) { alert(e.message); }
+  }
+
+  // ── Firma ────────────────────────────────────────────────────────────────
+  const canvas = $('sigCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.strokeStyle = '#0f172a';
+  let dibujando = false;
+  const pos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: (p.clientX - r.left) * (canvas.width / r.width), y: (p.clientY - r.top) * (canvas.height / r.height) };
+  };
+  const iniciar = (e) => { e.preventDefault(); dibujando = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  const mover = (e) => { if (!dibujando) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); st.canvasUsado = true; };
+  const terminar = () => { dibujando = false; };
+  canvas.addEventListener('mousedown', iniciar); canvas.addEventListener('mousemove', mover);
+  canvas.addEventListener('mouseup', terminar); canvas.addEventListener('mouseleave', terminar);
+  canvas.addEventListener('touchstart', iniciar, { passive: false }); canvas.addEventListener('touchmove', mover, { passive: false });
+  canvas.addEventListener('touchend', terminar);
+  function limpiarCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); st.canvasUsado = false; }
+  function modoFirma(modo) {
+    st.modoFirma = modo;
+    $('opRegistrada').classList.toggle('activa', modo === 'registrada');
+    $('opNueva').classList.toggle('activa', modo === 'nueva');
+    $('zonaCanvas').style.display = modo === 'nueva' ? 'block' : 'none';
+    $('errFirma').classList.remove('visible');
+  }
+  api('/api/firma').then(d => {
+    if (d.tieneFirma) {
+      $('imgFirmaRegistrada').src = d.firmaBase64;
+      $('opRegistrada').style.display = '';
+      modoFirma('registrada');
+    } else {
+      $('opNueva').textContent = 'No tiene firma registrada: dibújela aquí abajo';
+      modoFirma('nueva');
+    }
+  }).catch(() => modoFirma('nueva'));
+
+  // ── Guardar / registrar ──────────────────────────────────────────────────
+  function datosFormulario() {
+    const d = {
+      id: st.id,
+      identificacion: st.trabajador ? st.trabajador.identificacion : '',
+      fecha_hechos: $('fechaHechos').value,
+      tipo_falta: $('tipoFalta').value,
+      tipo_falta_otro: esOtro() ? $('tipoFaltaOtro').value.trim() : '',
+    };
+    TEXTOS.forEach(c => { d[c] = $(c).value.trim(); });
+    return d;
+  }
+
+  function validar() {
+    const d = datosFormulario();
+    const errores = [];
+    const marcar = (id, mal) => { $(id).classList.toggle('visible', mal); if (mal) errores.push(id); };
+    marcar('errTrabajador', !d.identificacion);
+    marcar('errFechaHechos', !d.fecha_hechos || d.fecha_hechos > CONFIG.hoy);
+    marcar('errTipoFalta', !d.tipo_falta);
+    marcar('errTipoFaltaOtro', esOtro() && !d.tipo_falta_otro);
+    ['descripcion_hechos', 'accion_inmediata', 'consecuencias', 'forma_conocimiento'].forEach(c => marcar('err' + c, !d[c]));
+    const sinFirma = !st.modoFirma || (st.modoFirma === 'nueva' && !st.canvasUsado);
+    marcar('errFirma', sinFirma);
+    if (errores.length) {
+      const primero = $(errores[0]);
+      primero.closest('.field, .card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return !errores.length;
+  }
+
+  function ocupado(si, texto) {
+    st.ocupado = si;
+    $('btnBorrador').disabled = si;
+    $('btnRegistrar').disabled = si;
+    if (texto !== undefined) $('estadoGuardado').textContent = texto;
+  }
+
+  // Guarda los datos (crea el borrador si es nuevo) y sube las fotos pendientes una por una
+  async function guardar() {
+    const r = await api('/api/informe', { method: 'POST', body: JSON.stringify(datosFormulario()) });
+    st.id = r.id;
+    while (st.pendientes.length) {
+      const f = st.pendientes[0];
+      $('estadoGuardado').textContent = `Subiendo fotos… (faltan ${st.pendientes.length})`;
+      const ev = await api(`/api/informe/${encodeURIComponent(st.id)}/evidencia`, { method: 'POST', body: JSON.stringify({ base64: f.dataUrl, contentType: f.contentType }) });
+      st.guardadas.push({ idEvidencia: ev.idEvidencia, url: ev.url });
+      st.pendientes.shift();
+      pintarFotos();
+    }
+    $('badgeBorrador').style.display = '';
+  }
+
+  async function guardarBorrador() {
+    if (st.ocupado) return;
+    ocupado(true, 'Guardando borrador…');
+    try {
+      await guardar();
+      ocupado(false, `Borrador guardado (${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}). Lo puede continuar desde la pestaña Informes Disciplinarios.`);
+      avisarPadre('borrador');
+    } catch (e) { ocupado(false, ''); alert('No se pudo guardar: ' + e.message); }
+  }
+
+  async function firmarYRegistrar() {
+    if (st.ocupado || !validar()) return;
+    if (!confirm(`¿Firmar y registrar el informe disciplinario de ${st.trabajador.nombre}?\n\nDespués de firmado no se puede editar y se envía a Jurídica.`)) return;
+    ocupado(true, 'Guardando…');
+    try {
+      await guardar();
+      $('estadoGuardado').textContent = 'Firmando y generando el documento…';
+      const firma = st.modoFirma === 'registrada' ? { usarFirmaRegistrada: true } : { firmaBase64: canvas.toDataURL('image/png') };
+      const r = await api(`/api/informe/${encodeURIComponent(st.id)}/registrar`, { method: 'POST', body: JSON.stringify(firma) });
+      $('formulario').style.display = 'none';
+      $('exito').style.display = 'block';
+      $('exitoTexto').innerHTML = `Radicado <strong>${esc(r.radicado)}</strong>. ${r.urlDoc ? 'El documento quedó en la carpeta del trabajador.' : 'El documento se generará más tarde.'}<br>${r.correoEnviado ? 'Se envió el aviso a Jurídica.' : 'No se envió el correo de aviso (desactivado o sin destinatarios).'}`;
+      if (r.urlDoc) { $('exitoPdf').href = r.urlDoc; $('exitoPdf').style.display = 'inline-block'; }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      avisarPadre('registrado');
+    } catch (e) { ocupado(false, ''); alert('No se pudo registrar: ' + e.message); }
+  }
+
+  function avisarPadre(accion) {
+    try { window.parent.postMessage({ tipo: 'informeDisciplinario', accion, id: st.id }, window.location.origin); } catch (e) {}
+  }
+
+  // ── Borrador ─────────────────────────────────────────────────────────────
+  (async function cargarBorrador() {
+    const b = CONFIG.borrador;
+    if (!b) return;
+    $('badgeBorrador').style.display = '';
+    $('fechaHechos').value = b.fechaHechos || '';
+    if (b.tipoFalta && ![...$('tipoFalta').options].some(o => o.value === b.tipoFalta)) $('tipoFalta').insertAdjacentHTML('beforeend', `<option value="${esc(b.tipoFalta)}">${esc(b.tipoFalta)}</option>`);
+    $('tipoFalta').value = b.tipoFalta || '';
+    $('tipoFaltaOtro').value = b.tipoFaltaOtro || '';
+    $('campoOtro').style.display = esOtro() ? '' : 'none';
+    TEXTOS.forEach(c => { $(c).value = b[c] || ''; });
+    pintarFotos();
+    revisarInmediatez();
+    if (b.identificacion) {
+      $('inputTrabajador').value = b.nombreTrabajador || '';
+      escogerTrabajador(b.identificacion).catch(() => {});
+    }
+  })();
+</script>
+</body>
+</html>

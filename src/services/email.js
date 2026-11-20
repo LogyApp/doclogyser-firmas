@@ -3634,7 +3634,52 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   }
 }
 
+// Nómina › Informes Disciplinarios: aviso de un informe nuevo (Para / Copia por rol en Config_Parametros
+// nomina / Informes Disciplinarios, ver services/informesDisciplinarios.js). Interno: no va al trabajador.
+// Sin enlace a LogyApp hasta que el proyecto tenga la revisión de seguridad (rutas con ?usuario=).
+async function notificarInformeDisciplinario({ para, copia, radicado, trabajador, identificacion, cargo, operacion, tipoFalta, fechaHechos, reporta, cargoReporta, descripcion, urlDoc }) {
+  if (!para.length && !copia.length) { console.warn('[notificarInformeDisciplinario] Sin destinatarios configurados.'); return false; }
+  const e = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const resumen = String(descripcion || '').trim();
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h2 style="color:#1a1a2e;margin-top:0">Nuevo informe disciplinario</h2>
+        <p style="color:#555">Se registró un informe disciplinario que requiere revisión de Jurídica.</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Radicado</td><td style="padding:8px 12px;font-weight:bold">${e(radicado)}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Trabajador</td><td style="padding:8px 12px;font-weight:bold">${e(trabajador)}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Identificación</td><td style="padding:8px 12px">${e(identificacion)}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Cargo</td><td style="padding:8px 12px">${e(cargo) || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación</td><td style="padding:8px 12px">${e(operacion) || '—'}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Tipo de falta</td><td style="padding:8px 12px;font-weight:bold;color:#b45309">${e(tipoFalta)}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Fecha de los hechos</td><td style="padding:8px 12px">${e(fechaHechos)}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Reportado por</td><td style="padding:8px 12px">${e(reporta)}${cargoReporta ? `<br><span style="color:#888">${e(cargoReporta)}</span>` : ''}</td></tr>
+        </table>
+        ${resumen ? `<div style="margin-top:16px;padding:12px 16px;background:#f8f9fb;border-left:4px solid #1B2A5E;color:#333;font-size:.88rem;white-space:pre-line">${e(resumen.length > 600 ? resumen.slice(0, 600) + '…' : resumen)}</div>` : ''}
+        <div style="margin-top:22px;text-align:center">
+          ${urlDoc ? `<a href="${e(urlDoc)}" style="display:inline-block;background:#1B2A5E;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:bold;margin:4px">Ver informe (PDF)</a>` : ''}
+        </div>
+        <div style="margin-top:22px;padding:12px 16px;background:#fffbea;border-left:4px solid #f0d060;color:#7a6000;font-size:.88rem">
+          Estado: <strong>Recibido</strong>. Este informe es confidencial y no se envía al trabajador.
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+  await transporter.sendMail({
+    from:    `"LOG&SER Nómina" <${EMAIL_FROM}>`,
+    to:      (para.length ? para : copia).join(', '),
+    cc:      para.length && copia.length ? copia.join(', ') : undefined,
+    subject: `Nuevo informe disciplinario ${radicado} — ${trabajador}`,
+    html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+  return true;
+}
+
 module.exports = {
+  notificarInformeDisciplinario,
   notificarCreacionRequisicion,
   enviarNotificacionCesantias,
   enviarCorreoPortalAspirante,

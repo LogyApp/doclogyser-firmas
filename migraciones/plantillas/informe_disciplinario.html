@@ -1,0 +1,167 @@
+<style>
+  /* Estilos encerrados en .idis. Las funciones del cargo, las evidencias y la firma las arma src/services/informesDisciplinarios.js. */
+  .idis { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9.6pt; line-height: 1.5; -webkit-font-smoothing: antialiased }
+  .idis * { box-sizing: border-box }
+  .idis p { margin: 0 0 8px 0; text-align: justify }
+
+  .idis .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; border: 1px solid #cbd5e1 }
+  .idis .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle }
+  .idis .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff }
+  .idis .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto }
+  .idis .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px }
+  .idis .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25 }
+  .idis .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px }
+  .idis .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px }
+  .idis .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35 }
+  .idis .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt }
+  .idis .meta-ver { color: #334155 }
+  .idis .meta-date { color: #64748b; font-size: 7.5pt }
+
+  .idis .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 4px 0 14px 0 }
+  .idis .metric-item { display: table-cell; padding: 10px 14px; border-right: 1px solid #e2e8f0; vertical-align: top }
+  .idis .metric-item:last-child { border-right: none }
+  .idis .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px }
+  .idis .metric-value { font-size: 10pt; font-weight: 700; color: #000b59 }
+  .idis .metric-value-primary { font-size: 10pt; font-weight: 800; color: #f55400 }
+
+  .idis .section-block { margin-bottom: 14px }
+  .idis .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px }
+  .idis .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px }
+
+  .idis .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 9pt }
+  .idis .data-grid td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle }
+  .idis .data-grid tr:last-child td { border-bottom: none }
+  .idis .data-grid tr:nth-child(even) td { background: #fafafa }
+  .idis .data-label { width: 28%; font-weight: 700; color: #64748b; border-right: 1px solid #f1f5f9 }
+  .idis .data-val { font-weight: 600; color: #0f172a }
+
+  .idis .obs-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 8px 12px; font-size: 8.8pt; color: #1e293b; white-space: pre-line; line-height: 1.5; text-align: justify }
+
+  .idis .funciones-box { border: 1px dashed #cbd5e1; border-radius: 6px; padding: 6px 10px; background: #ffffff }
+  .idis .funciones-list { margin: 0; padding-left: 16px; columns: 2; column-gap: 22px; font-size: 7.2pt; line-height: 1.35; color: #475569 }
+  .idis .funciones-list li { margin-bottom: 2px; break-inside: avoid }
+
+  .idis .evidencias-grid { width: 100%; border-collapse: separate; border-spacing: 8px; margin: -8px; width: calc(100% + 16px) }
+  .idis .evidencias-grid td { width: 33.33%; vertical-align: top; text-align: center }
+  .idis .evidencia { border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #ffffff; page-break-inside: avoid }
+  .idis .evidencia img { max-width: 100%; max-height: 170px; object-fit: contain; display: block; margin: 0 auto }
+
+  .idis .sig-table { width: 100%; border-collapse: collapse; margin-top: 4px; page-break-inside: avoid }
+  .idis .sig-table td { width: 50%; vertical-align: top; text-align: center; padding: 0 14px }
+  .idis .sig-table td:first-child { padding-left: 0 }
+  .idis .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px }
+  .idis .sig-img-wrap { height: 92px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px }
+  .idis .sig-img { max-height: 70px; max-width: 220px; display: block; margin: 0 auto }
+  .idis .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px }
+  .idis .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase }
+  .idis .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35 }
+  .idis .firma-nota { font-size: 7.5pt; color: #94a3b8 }
+  .idis .nota-legal { font-size: 7.5pt; color: #64748b; font-style: italic; margin-top: 10px; text-align: justify }
+
+  .idis .doc-footer { margin-top: 22px; text-align: center }
+  .idis .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px }
+  .idis .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px }
+  .idis .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px }
+</style>
+
+<div class="idis">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Formato informe disciplinario</div>
+        <div class="doc-subtitle">Gestión Jurídica</div>
+        <div class="doc-subdetail">Radicado {{radicado}} &bull; Registrado el {{fecha_registro}}</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Trabajador(a)</div>
+      <div class="metric-value">{{nombre_trabajador}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Tipo de falta</div>
+      <div class="metric-value" style="font-size:9pt">{{tipo_falta}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Fecha de los hechos</div>
+      <div class="metric-value-primary">{{fecha_hechos}}</div>
+    </div>
+  </div>
+
+  <section class="section-block">
+    <div class="section-title">Datos del trabajador</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Nombre</td><td class="data-val">{{nombre_trabajador}}</td></tr>
+      <tr><td class="data-label">Identificación</td><td class="data-val">{{identificacion}}</td></tr>
+      <tr><td class="data-label">Cargo</td><td class="data-val">{{cargo_trabajador}}</td></tr>
+      <tr><td class="data-label">Operación asignada</td><td class="data-val">{{operacion}}</td></tr>
+      <tr><td class="data-label">Fecha de ingreso</td><td class="data-val">{{fecha_ingreso}}</td></tr>
+    </table>
+  </section>
+
+  {{seccion_funciones}}
+
+  <section class="section-block">
+    <div class="section-title">Datos del reporte</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Fecha del informe</td><td class="data-val">{{fecha_informe}}</td></tr>
+      <tr><td class="data-label">Fecha de los hechos</td><td class="data-val">{{fecha_hechos}}</td></tr>
+      <tr><td class="data-label">Tipo de falta</td><td class="data-val">{{tipo_falta}}</td></tr>
+      <tr><td class="data-label">Reportado por</td><td class="data-val">{{nombre_reporta}}<br><span style="color:#64748b;font-weight:600">{{cargo_reporta}}</span></td></tr>
+    </table>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Descripción de los hechos</div>
+    <div class="obs-box">{{descripcion_hechos}}</div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Acción inmediata tomada para normalizar la operación</div>
+    <div class="obs-box">{{accion_inmediata}}</div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Consecuencias de los hechos (técnicas, económicas, legales, etc.)</div>
+    <div class="obs-box">{{consecuencias}}</div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Forma de conocimiento de los hechos por parte de la empresa</div>
+    <div class="obs-box">{{forma_conocimiento}}</div>
+  </section>
+
+  {{seccion_evidencias}}
+
+  <section class="section-block" style="page-break-inside: avoid; break-inside: avoid">
+    <div class="section-title">Firma de quien reporta</div>
+    <table class="sig-table">
+      <tr>
+        <td>
+          <div class="sig-role">Quien reporta y diligencia</div>
+          <div class="sig-img-wrap">{{firma_reporta_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_reporta}}</div>
+          <div class="sig-details">{{cargo_reporta}}</div>
+        </td>
+        <td></td>
+      </tr>
+    </table>
+    <p class="nota-legal">Quien firma declara que la información consignada en este informe es veraz y corresponde a hechos de los que tuvo conocimiento. El informe es de uso interno y será evaluado por el área Jurídica, que determinará el trámite disciplinario que corresponda.</p>
+    <div class="doc-footer" style="margin-top:14px">
+      <div class="line"></div>
+      <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+      <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+    </div>
+  </section>
+
+</div>
