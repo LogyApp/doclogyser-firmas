@@ -325,7 +325,7 @@ router.post('/:proceso/:id', async (req, res) => {
     const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
 
     const newId = uuidv4();
-    const docTras = documentoTraslado(await obtenerParametrosTraslados());
+    const docTras = await documentoTraslado(await obtenerParametrosTraslados());
     await pool.execute(
       `INSERT INTO Maestro_docTrabajador
        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,

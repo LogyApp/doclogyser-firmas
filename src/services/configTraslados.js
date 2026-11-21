@@ -24,10 +24,8 @@ const P = {
   COPIA_POR_CARGO:   'Notificación traslado - Copia por cargo:',
   HABILITAR:         'Habilitar notificaciones de correo en Traslados',
   PUEDE_EDITAR:      'Puede editar traslados',
-  DIAS_ATRAS:        'Días máximos hacia atrás para la fecha de traslado',
-  DIAS_ADELANTE:     'Días máximos hacia adelante para la fecha de traslado',
+  FUERA_QUINCENA:    'Roles que pueden registrar traslados fuera de la quincena actual',
   TIPO_DOC:          'Tipo de documento del traslado en Maestro_docTrabajador',
-  PREFIJO_DOC:       'Prefijo del documento de traslado',
   ANOTACION_NO_FIRMA:'Anotación por defecto de No firma',
   MAX_LISTADO:       'Máximo de traslados en el listado',
 };
@@ -47,10 +45,8 @@ const DEFAULTS_TRASLADOS = {
   [P.COPIA_POR_CARGO]:  'Calidad, Directorth',
   [P.HABILITAR]:        '1',
   [P.PUEDE_EDITAR]:     '',      // vacío = cualquier rol con acceso a la pestaña (comportamiento anterior)
-  [P.DIAS_ATRAS]:       '',      // vacío = sin límite
-  [P.DIAS_ADELANTE]:    '',      // vacío = sin límite
-  [P.TIPO_DOC]:         '50',
-  [P.PREFIJO_DOC]:      'TRAS',
+  [P.FUERA_QUINCENA]:   'Sistema, Juridica',
+  [P.TIPO_DOC]:         '50',     // Id de Config_Doc_Trabajador; el prefijo sale de su columna Prefijo
   [P.ANOTACION_NO_FIRMA]: 'El trabajador no firma, se soporta por correo electrónico',
   [P.MAX_LISTADO]:      '300',
 };
@@ -112,31 +108,39 @@ async function obtenerPermisosTraslados(rol, params) {
   };
 }
 
-// Límite de días (número >= 0) o null si no hay límite
-function limiteDias(params, concepto) {
-  const v = String(valorParametro(params, concepto) || '').trim();
-  if (v === '') return null;
-  const n = parseInt(v, 10);
-  return Number.isFinite(n) && n >= 0 ? n : null;
+// Quincena (inicio y fin, AAAA-MM-DD) de una fecha: del 1 al 15 o del 16 al último día del mes
+function quincenaDe(fecha) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const p = n => String(n).padStart(2, '0');
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return d <= 15
+    ? { inicio: `${y}-${p(m)}-01`, fin: `${y}-${p(m)}-15` }
+    : { inicio: `${y}-${p(m)}-16`, fin: `${y}-${p(m)}-${p(ultimo)}` };
 }
 
-// Valida la fecha del traslado (AAAA-MM-DD) contra los días permitidos hacia atrás y adelante.
-// Devuelve un mensaje de error o null.
-function validarFechaTraslado(params, fecha, hoy) {
+// La fecha del traslado (AAAA-MM-DD) debe estar en la quincena actual, salvo para los roles de
+// "Roles que pueden registrar traslados fuera de la quincena actual". Devuelve un error o null.
+function validarFechaTraslado(params, fecha, hoy, rol) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return 'La fecha del traslado no es válida.';
-  const dias = Math.round((Date.parse(fecha + 'T12:00:00Z') - Date.parse(hoy + 'T12:00:00Z')) / 86400000);
-  const atras = limiteDias(params, P.DIAS_ATRAS);
-  const adelante = limiteDias(params, P.DIAS_ADELANTE);
-  if (atras !== null && dias < -atras) return `La fecha del traslado no puede ser de más de ${atras} día(s) atrás.`;
-  if (adelante !== null && dias > adelante) return `La fecha del traslado no puede ser de más de ${adelante} día(s) adelante.`;
+  if (estaEnParametro(params, P.FUERA_QUINCENA, rol)) return null;
+  const q = quincenaDe(hoy);
+  if (fecha < q.inicio || fecha > q.fin) {
+    return `La fecha del traslado debe estar en la quincena actual (${q.inicio} a ${q.fin}). Para otra fecha, comuníquese con Jurídica.`;
+  }
   return null;
 }
 
-function documentoTraslado(params) {
-  return {
-    tipoDocumento: String(valorParametro(params, P.TIPO_DOC) || '50').trim() || '50',
-    prefijo:       String(valorParametro(params, P.PREFIJO_DOC) || 'TRAS').trim() || 'TRAS',
-  };
+// Tipo de documento del traslado (Id de Config_Doc_Trabajador) y su Prefijo en esa tabla
+async function documentoTraslado(params) {
+  const tipoDocumento = String(valorParametro(params, P.TIPO_DOC) || '50').trim() || '50';
+  let prefijo = 'TRAS';
+  try {
+    const [rows] = await pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = ? LIMIT 1', [tipoDocumento]);
+    if (rows.length && rows[0].Prefijo) prefijo = String(rows[0].Prefijo).trim();
+  } catch (err) {
+    console.error('[configTraslados] No se pudo leer el prefijo en Config_Doc_Trabajador:', err.message);
+  }
+  return { tipoDocumento, prefijo };
 }
 
 function maximoListado(params) {

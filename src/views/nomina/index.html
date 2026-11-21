@@ -7600,7 +7600,7 @@
       case 'validado': {
         const btnWA = row.celular_trabajador ? iconoTraslado('whatsapp', '#16a34a', 'Enviar enlace de firma por WhatsApp', `abrirWhatsAppTraslado('${id}')`) : '';
         const btnEnlace = iconoTraslado('enlace', '#0ea5e9', 'Ver / copiar enlace de firma', `enlaceTraslado('${id}')`);
-        return `${btnWA}${btnEnlace}${btnEditar}${btnRevisar}${btnAnular}${btnNoFirma}`;
+        return `${btnWA}${btnEnlace}${btnRevisar}${btnAnular}${btnNoFirma}`;
       }
       case 'revisar': return `${btnEditar}${btnValidar}${btnAnular}`;
       case 'firmado':

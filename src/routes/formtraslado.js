@@ -116,7 +116,7 @@ router.post('/', async (req, res) => {
     if (norm(origenReal) === norm(operacion_destino)) {
       return res.status(400).json({ ok: false, error: `El trabajador ya está en ${origenReal}: escoja una operación destino distinta.` });
     }
-    const errorFecha = validarFechaTraslado(await obtenerParametrosTraslados(), String(fecha_traslado).slice(0, 10), hoyBogota());
+    const errorFecha = validarFechaTraslado(await obtenerParametrosTraslados(), String(fecha_traslado).slice(0, 10), hoyBogota(), acceso.rol);
     if (errorFecha) return res.status(400).json({ ok: false, error: errorFecha });
 
     const [abiertos] = await pool.execute(

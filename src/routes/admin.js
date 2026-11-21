@@ -538,18 +538,18 @@ router.post('/traslados/:id/editar', async (req, res) => {
     if (String(origen || '').trim().toUpperCase() === String(operacion_destino).trim().toUpperCase()) {
       return res.status(400).json({ ok: false, error: 'La operación destino debe ser distinta al origen' });
     }
-    const errorFecha = validarFechaTraslado(acceso.params, String(fecha_traslado).slice(0, 10), hoyBogota());
+    const errorFecha = validarFechaTraslado(acceso.params, String(fecha_traslado).slice(0, 10), hoyBogota(), acceso.rol);
     if (errorFecha) return res.status(400).json({ ok: false, error: errorFecha });
     const obs = observaciones === undefined ? alcance.traslado.observaciones : (String(observaciones).trim() || null);
     const [result] = await pool.execute(
       `UPDATE Dynamic_traslados_trabajador
        SET operacion_destino = ?, direccion_destino = ?,
            fecha_traslado = ?, hora_traslado = ?, celular_trabajador = ?, email_trabajador = ?, observaciones = ?
-       WHERE IdTraslado = ? AND estado_doc IN ('pendiente','validado','revisar')`,
+       WHERE IdTraslado = ? AND estado_doc IN ('pendiente','revisar')`,
       [operacion_destino, direccion_destino || null,
        fecha_traslado, hora_traslado || null, celular_trabajador || null, email_trabajador || null, obs, id]
     );
-    if (result.affectedRows === 0) return res.status(409).json({ ok: false, error: 'No editable en su estado actual' });
+    if (result.affectedRows === 0) return res.status(409).json({ ok: false, error: 'Solo se editan traslados en Pendiente o Revisar: si Jurídica ya lo validó, debe devolverlo a Revisar.' });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -698,7 +698,7 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
 
     const newId = uuidv4();
-    const docTras = documentoTraslado(acceso.params);
+    const docTras = await documentoTraslado(acceso.params);
     const obsDoc = (anotacion || 'El trabajador no firma (soporte correo electrónico)').replace(/\n/g, ' ');
     await pool.execute(
       `INSERT INTO Maestro_docTrabajador
