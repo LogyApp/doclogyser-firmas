@@ -256,6 +256,15 @@
             <input type="date" id="filtro-hasta" style="padding: 8px;">
           </div>
         </div>
+        <div class="field">
+          <label class="lbl">Estado</label>
+          <select id="filtro-estado">
+            <option value="">Todos los Estados</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="PENDIENTE">Pendiente (Sin PDF)</option>
+            <option value="COMPLETADO">Completado (Con PDF)</option>
+          </select>
+        </div>
       </div>
       <div class="btn-group" style="justify-content: flex-end;">
         <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
@@ -512,7 +521,9 @@
 
     const pdfBadge = item.url_doc
       ? `<span class="status-badge status-generado">Generado</span>`
-      : `<span class="status-badge status-pendiente">Pendiente</span>`;
+      : (item.es_borrador
+          ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;">Borrador</span>`
+          : `<span class="status-badge status-pendiente">Pendiente</span>`);
 
     const btnPdf = item.url_doc
       ? `<a href="${item.url_doc}" target="_blank" class="btn btn-secondary btn-small">Ver PDF</a>`
@@ -617,6 +628,7 @@
       if (document.getElementById('filtro-operacion').value) count++;
       if (document.getElementById('filtro-desde').value) count++;
       if (document.getElementById('filtro-hasta').value) count++;
+    if (document.getElementById('filtro-estado').value) count++;
       badge.innerText = count;
       badge.style.display = count > 0 ? 'inline-flex' : 'none';
     }
@@ -636,6 +648,7 @@
     document.getElementById('filtro-operacion').addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-desde').addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-hasta').addEventListener('change', filtrarAutomatico);
+  document.getElementById('filtro-estado').addEventListener('change', filtrarAutomatico);
 
     document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
       document.getElementById('filtro-tema').value = '';
@@ -643,6 +656,7 @@
       document.getElementById('filtro-operacion').value = '';
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
+    document.getElementById('filtro-estado').value = '';
       cargarListado();
       actualizarBadgeFiltros();
     });
@@ -682,6 +696,7 @@
       const operacion = document.getElementById('filtro-operacion').value;
       const desde = document.getElementById('filtro-desde').value;
       const hasta = document.getElementById('filtro-hasta').value;
+    const estado = document.getElementById('filtro-estado').value;
 
       let query = `?usuario=${CONFIG.usuarioId}`;
       if (tema) query += `&tema=${encodeURIComponent(tema)}`;
@@ -791,21 +806,32 @@
 
       if (esCreadorOSistema) {
         btnsHtml += `<div class="section-title" style="margin-top: 25px;">Acciones de Control</div>`;
-        const btnText = data.url_doc ? 'Regenerar PDF (Solo Firmas Listas)' : 'Generar PDF (Solo Firmas Listas)';
-        btnsHtml += `
-          <button class="btn btn-success" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">${btnText}</button>
-        `;
+        const esBorradorSst = Number(data.es_borrador) === 1;
 
-        if (!data.url_doc) {
+        if (esBorradorSst) {
           btnsHtml += `
-            <button class="btn btn-primary" onclick="notificarTodos()" style="width: 100%; margin-bottom: 8px;">Enviar Correo a Todos</button>
-            <button class="btn btn-secondary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%;">Editar Formato</button>
+            <div style="background:#fef3c7; border:1px solid #fde68a; color:#92400e; padding:10px; border-radius:6px; margin-bottom:10px; font-size:12px; font-weight:600;">
+              📝 Registro guardado como Borrador. No se han enviado correos a los asistentes.
+            </div>
+            <button class="btn btn-primary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%; margin-bottom: 8px; background: #8e44ad;">✏️ Editar y Enviar Formato</button>
           `;
         } else {
+          const btnText = data.url_doc ? 'Regenerar PDF (Solo Firmas Listas)' : 'Generar PDF (Solo Firmas Listas)';
           btnsHtml += `
-            <button class="btn btn-primary" disabled style="width: 100%; margin-bottom: 8px; opacity: 0.5; pointer-events: none;">Enviar Correo a Todos</button>
-            <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Editar Formato</button>
+            <button class="btn btn-success" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">${btnText}</button>
           `;
+
+          if (!data.url_doc) {
+            btnsHtml += `
+              <button class="btn btn-primary" onclick="notificarTodos()" style="width: 100%; margin-bottom: 8px;">Enviar Correo a Todos</button>
+              <button class="btn btn-secondary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%;">Editar Formato</button>
+            `;
+          } else {
+            btnsHtml += `
+              <button class="btn btn-primary" disabled style="width: 100%; margin-bottom: 8px; opacity: 0.5; pointer-events: none;">Enviar Correo a Todos</button>
+              <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Editar Formato</button>
+            `;
+          }
         }
       }
 
@@ -877,11 +903,16 @@
             const waUrl = celNum ? `https://wa.me/57${celNum}?text=${msgWaText}` : '#';
             const waDisabled = celNum ? '' : 'disabled style="opacity: 0.5; pointer-events: none;"';
 
+            const esRetPart = String(item.estado_trabajador || item.Estado || '').toLowerCase() === 'retirado';
+            const btnCorreoPart = esRetPart
+              ? '<button class="btn btn-primary btn-small" disabled title="Personal retirado: no se envía correo" style="opacity:0.5; cursor:not-allowed;">Correo</button>'
+              : `<button class="btn btn-primary btn-small" onclick="notificarIndividual(${item.id_item_asistencia})">Correo</button>`;
+
             controlButtons = `
               <div style="display: flex; gap: 5px;">
                 <button class="btn btn-secondary btn-small" onclick="abrirModalContacto('${item.identificacion}', '${item.nombre_trabajador}', '${item.celular || ''}', '${item.email || ''}')">Datos</button>
                 <a href="${waUrl}" target="_blank" class="btn btn-success btn-small" ${waDisabled}>WhatsApp</a>
-                <button class="btn btn-primary btn-small" onclick="notificarIndividual(${item.id_item_asistencia})">Correo</button>
+                ${btnCorreoPart}
                 <button class="btn btn-info btn-small" onclick="copiarAlPortapapeles('${urlFirmaLink}')">Copiar</button>
               </div>
             `;
@@ -892,10 +923,12 @@
         if (cleanNombreTrabajador.includes(' ** ')) {
           cleanNombreTrabajador = cleanNombreTrabajador.split(' ** ')[1];
         }
+        const esRetItem = String(item.estado_trabajador || item.Estado || '').toLowerCase() === 'retirado';
+        const badgeRetItem = esRetItem ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-left:6px;border:1px solid #fde68a;">RETIRADO</span>' : '';
 
         tr.innerHTML = `
           <td>
-            <strong>${cleanNombreTrabajador}</strong><br>
+            <strong>${cleanNombreTrabajador}</strong>${badgeRetItem}<br>
             <span style="font-size: 11px; color:#64748b;">C.C. ${item.identificacion}</span>
           </td>
           <td>${item.cargo}<br><span style="font-size: 11px; color:#64748b;">Op: ${item.operacion}</span></td>

@@ -3155,6 +3155,7 @@
                 <option value="COMPLETADO">Completados</option>
                 <option value="EVALUAR">Eficacia pendiente</option>
                 <option value="PENDIENTE">PDF pendiente</option>
+                <option value="BORRADOR">Borradores</option>
               </select>
             </div>
             <div class="filter-group">
@@ -11098,6 +11099,9 @@
     }
 
     function raCeldaAcciones(it) {
+      if (it.es_borrador || it.estado_doc === 'BORRADOR') {
+        return '<span class="ra-btn-pendiente" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:700;">📝 Borrador</span>';
+      }
       if (!it.url_doc) return '<span class="ra-btn-pendiente">Pendiente</span>';
       const verPdf = `<a href="${esc(it.url_doc)}" target="_blank" rel="noopener" class="ra-btn-pdf" onclick="event.stopPropagation();">Ver PDF ↗</a>`;
       if (it.formacion_eficaz != null) return `<div class="ra-acciones-celda">${verPdf}</div>`;
@@ -11205,6 +11209,8 @@
           acciones.push(`<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" onclick="abrirModalFormAsistencia(${id})">✏️ Editar Formato</button>`);
           acciones.push(`<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" onclick="generarPdfRegistroAsistencia(${id}, ${pendientes}, ${evidencias.length})">🔄 Regenerar PDF</button>`);
         }
+      } else if (Number(data.es_borrador) === 1) {
+        if (p.editar) acciones.push(`<button type="button" class="btn btn-primary" style="padding:6px 12px; font-size:0.78rem; background:#8e44ad;" onclick="abrirModalFormAsistencia(${id})">✏️ Editar y Enviar Formato</button>`);
       } else {
         if (p.generar) acciones.push(`<button type="button" class="btn btn-primary" style="padding:6px 12px; font-size:0.78rem;" onclick="generarPdfRegistroAsistencia(${id}, ${pendientes}, ${evidencias.length})">⚙️ Generar PDF</button>`);
         if (p.enlaces && pendientes > 0) acciones.push(`<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" onclick="notificarRegistroAsistencia(${id}, null)">✉️ Reenviar correo a los ${pendientes} sin firma</button>`);
@@ -11234,6 +11240,8 @@
 
       const asistentesHtml = items.length ? items.map((a, idx) => {
         const nombre = raNombre(a.nombre_trabajador) || '—';
+        const esRet = String(a.estado_trabajador || a.Estado || '').toLowerCase() === 'retirado';
+        const badgeRet = esRet ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-left:6px;border:1px solid #fde68a;">RETIRADO</span>' : '';
         const badge = a.estado_firma === 'FIRMADA'
           ? '<span class="ra-badge-firma firmo">✓ Firmó</span>'
           : a.estado_firma === 'CORREO_ENVIADO'
@@ -11250,7 +11258,7 @@
             <div class="ra-ast-actions">
               <button type="button" class="ra-ast-btn" onclick="abrirModalContactoAsistenteRa(${idx})">✏️ Datos</button>
               <a class="ra-ast-btn" ${cel && enlace ? `href="https://wa.me/${cel}?text=${msg}" target="_blank" rel="noopener"` : sinEnlace}>📲 WhatsApp</a>
-              <button type="button" class="ra-ast-btn" ${enlace ? `onclick="notificarRegistroAsistencia(${id}, ${Number(a.id_item_asistencia)})"` : sinEnlace}>✉️ Correo</button>
+              <button type="button" class="ra-ast-btn" ${enlace && !esRet ? `onclick="notificarRegistroAsistencia(${id}, ${Number(a.id_item_asistencia)})"` : (esRet ? 'disabled title="Personal retirado: no se envía correo"' : sinEnlace)}>✉️ Correo</button>
               <button type="button" class="ra-ast-btn" ${enlace ? `onclick="copiarEnlaceRegistroAsistencia(${idx})"` : sinEnlace}>📋 Copiar</button>
             </div>`;
         }
@@ -11258,7 +11266,7 @@
           <div class="ra-ast-card">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
               <div>
-                <div class="ra-ast-title">${idx + 1}. ${esc(nombre)}</div>
+                <div class="ra-ast-title">${idx + 1}. ${esc(nombre)}${badgeRet}</div>
                 <div class="ra-ast-sub">C.C. ${esc(a.identificacion)} • ${esc(a.cargo) || '—'} (Op: ${esc(a.operacion) || '—'})</div>
                 <div class="ra-ast-contact">
                   <span>📱 ${a.celular ? esc(a.celular) : '<em>Sin celular</em>'}</span>

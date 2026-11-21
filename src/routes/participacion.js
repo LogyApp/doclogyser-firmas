@@ -701,14 +701,23 @@ router.get('/api/usuario', async (req, res) => {
 // ═════ API: GET /api/asistentes-buscar (BÚSQUEDA GENERAL) ═════
 router.get('/api/asistentes-buscar', async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, usuario } = req.query;
     if (!q || q.length < 2) return res.json([]);
     const qUpper = q.toUpperCase();
 
+    let puedeRetirados = false;
+    if (usuario) {
+      const acceso = await computarAccesoParticipacion(usuario, perfilDeReq(req));
+      if (acceso) {
+        puedeRetirados = await puedeProcesarRetiradosSst(acceso.rol);
+      }
+    }
+    const condEstado = puedeRetirados ? "Estado IN ('Activo', 'Retirado')" : "Estado = 'Activo'";
+
     const [rows] = await pool.execute(
-      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional 
+      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación AS identificacion, Cargo, Operación, Regional, Estado 
        FROM \`Maestro_Vinculación\` 
-       WHERE Estado = 'Activo' AND (Identificación LIKE ? OR Trabajador LIKE ?) 
+       WHERE ${condEstado} AND (Identificación LIKE ? OR Trabajador LIKE ?) 
        LIMIT 30`,
       [`%${qUpper}%`, `%${qUpper}%`]
     );
@@ -723,15 +732,24 @@ router.get('/api/asistentes-buscar', async (req, res) => {
 // ═════ API: GET /api/trabajadores-por-operacion ═════
 router.get('/api/trabajadores-por-operacion', async (req, res) => {
   try {
-    const { regional, operacion } = req.query;
+    const { regional, operacion, usuario } = req.query;
     if (!regional || !operacion) {
       return res.status(400).json({ error: 'regional y operacion requeridos' });
     }
 
+    let puedeRetirados = false;
+    if (usuario) {
+      const acceso = await computarAccesoParticipacion(usuario, perfilDeReq(req));
+      if (acceso) {
+        puedeRetirados = await puedeProcesarRetiradosSst(acceso.rol);
+      }
+    }
+    const condEstado = puedeRetirados ? "Estado IN ('Activo', 'Retirado')" : "Estado = 'Activo'";
+
     const [rows] = await pool.execute(
-      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación AS identificacion, Cargo, Operación, Regional 
+      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación AS identificacion, Cargo, Operación, Regional, Estado 
        FROM \`Maestro_Vinculación\` 
-       WHERE Estado = 'Activo' AND Regional = ? AND Operación = ?
+       WHERE ${condEstado} AND Regional = ? AND Operación = ?
        ORDER BY Trabajador`,
       [regional, operacion]
     );
@@ -771,7 +789,7 @@ router.get('/api/trabajadores', async (req, res) => {
     if (operacion) { conds.push('`Operación` = ?'); params.push(operacion); }
 
     const [rows] = await pool.execute(
-      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación AS identificacion, Cargo, Operación, Regional
+      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación AS identificacion, Cargo, Operación, Regional, Estado
        FROM \`Maestro_Vinculación\`
        WHERE ${conds.join(' AND ')}
        ORDER BY Operación, Trabajador`,
@@ -846,7 +864,8 @@ router.get('/api/firma-evaluador', async (req, res) => {
 // Un formato cuenta (y se filtra) por cada Regional y Operación de sus asistentes.
 // Estado: PENDIENTE (sin PDF), EVALUAR (con PDF, falta la evaluación de eficacia) o
 // COMPLETADO (con PDF y evaluación).
-const SQL_ESTADO_TH = `CASE WHEN a.url_doc IS NULL OR a.url_doc = '' THEN 'PENDIENTE'
+const SQL_ESTADO_TH = `CASE WHEN a.es_borrador = 1 THEN 'BORRADOR'
+                            WHEN a.url_doc IS NULL OR a.url_doc = '' THEN 'PENDIENTE'
                             WHEN a.formacion_eficaz IS NULL THEN 'EVALUAR' ELSE 'COMPLETADO' END`;
 
 function condicionesVariasOperaciones(acceso, query) {
@@ -882,13 +901,13 @@ async function listarVariasOperaciones(acceso, query) {
     conds.push('EXISTS (SELECT 1 FROM Dynamic_formato_itemsAsistencia io WHERE io.id_asistencia = a.id_asistencia AND io.operacion = ?)');
     params.push(query.operacion);
   }
-  if (['PENDIENTE', 'EVALUAR', 'COMPLETADO'].includes(query.estado)) {
+  if (['PENDIENTE', 'EVALUAR', 'COMPLETADO', 'BORRADOR'].includes(query.estado)) {
     conds.push(`${SQL_ESTADO_TH} = ?`);
     params.push(query.estado);
   }
   const [rows] = await pool.execute(
     `SELECT a.id_asistencia, a.tema, a.fecha, a.hora_inicial, a.hora_final, a.duracion, a.lugar, a.objetivo,
-            a.url_doc, a.usuario, a.fecha_creacion, a.formacion_eficaz, a.fecha_evaluacion,
+            a.url_doc, a.usuario, a.fecha_creacion, a.formacion_eficaz, a.fecha_evaluacion, a.es_borrador,
             ${SQL_ESTADO_TH} AS estado_doc,
             u.Nombre AS nombre_responsable,
             it.regionales AS regional_responsable,
@@ -939,7 +958,7 @@ async function conteosVariasOperaciones(acceso, query) {
   const okEst = (f) => !estado || f.estado === estado;
   const regionales = {};
   const operaciones = {};
-  const estados = { COMPLETADO: 0, EVALUAR: 0, PENDIENTE: 0 };
+  const estados = { COMPLETADO: 0, EVALUAR: 0, PENDIENTE: 0, BORRADOR: 0 };
   porFormato.forEach((f) => {
     if (okOp(f) && okEst(f)) f.regionales.forEach((r) => { regionales[r] = (regionales[r] || 0) + 1; });
     if (okReg(f) && okEst(f)) f.operaciones.forEach((o) => { operaciones[o] = (operaciones[o] || 0) + 1; });
@@ -1089,16 +1108,18 @@ router.get('/api/asistencias', async (req, res) => {
       conds.push('a.fecha <= ?');
       params.push(fechaHasta);
     }
-    if (estado === 'COMPLETADO') {
-      conds.push("(a.url_doc IS NOT NULL AND a.url_doc != '')");
+    if (estado === 'BORRADOR') {
+      conds.push("a.es_borrador = 1");
+    } else if (estado === 'COMPLETADO') {
+      conds.push("a.es_borrador = 0 AND (a.url_doc IS NOT NULL AND a.url_doc != '')");
     } else if (estado === 'PENDIENTE') {
-      conds.push("(a.url_doc IS NULL OR a.url_doc = '')");
+      conds.push("a.es_borrador = 0 AND (a.url_doc IS NULL OR a.url_doc = '')");
     }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const [rows] = await pool.execute(
       `SELECT a.id_asistencia, a.tema, a.fecha, a.hora_inicial, a.hora_final, a.duracion, a.lugar, a.objetivo,
-              a.url_doc, a.usuario, a.fecha_creacion,
+              a.url_doc, a.usuario, a.fecha_creacion, a.es_borrador,
               u.Nombre AS nombre_responsable,
               COALESCE(item_reg.regional, u.Regional) AS regional_responsable,
               COALESCE(item_reg.operacion, u.\`Operación\`) AS operacion_responsable,
@@ -1152,9 +1173,11 @@ router.get('/api/asistencia/:id', async (req, res) => {
     const [items] = await pool.execute(
       `SELECT i.id_item_asistencia, i.id_asistencia, i.id_vinculacion, i.nombre_trabajador, i.identificacion,
               i.cargo, i.operacion, i.regional, i.firma_asistente, i.token_firma, i.fecha_envio_correo, i.fecha_firma,
-              s.Celular AS celular, s.Email AS email
+              s.Celular AS celular, s.Email AS email,
+              v.Estado AS estado_trabajador
        FROM Dynamic_formato_itemsAsistencia i
        LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = i.identificacion
+       LEFT JOIN \`Maestro_Vinculación\` v ON (v.\`Id Vinculación\` = i.id_vinculacion OR (i.id_vinculacion IS NULL AND v.Identificación = i.identificacion))
        WHERE i.id_asistencia = ?
        ORDER BY i.id_item_asistencia`,
       [req.params.id]
@@ -1226,39 +1249,53 @@ async function asistentesFueraDeAlcance(acceso, idsVinculacion, yaEstaban = new 
 }
 
 // ═════ API: POST /api/asistencias ═════
-// Crea el formato y envía a cada asistente el correo para firmar.
+// Crea el formato (como borrador o definitivo) y envía correos a los asistentes si no es borrador.
 router.post('/api/asistencias', async (req, res) => {
   const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, usuario, asistentes, evidencias } = req.body;
-  if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !usuario) {
-    return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
+  const esBorrador = (req.body.es_borrador === 1 || req.body.es_borrador === true || req.body.es_borrador === '1') ? 1 : 0;
+
+  if (esBorrador) {
+    if (!tema || !fecha || !usuario) {
+      return res.status(400).json({ error: 'Para guardar como borrador se requiere al menos el tema y la fecha.' });
+    }
+  } else {
+    if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !usuario) {
+      return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
+    }
+    if (!Array.isArray(asistentes) || asistentes.length === 0) {
+      return res.status(400).json({ error: 'Debe incluir al menos un asistente para enviar el formato.' });
+    }
   }
+
   const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   if (String(fecha).slice(0, 10) > hoyBogota) {
     return res.status(400).json({ error: 'La fecha de la actividad no puede ser superior a la fecha actual.' });
   }
-  if (!Array.isArray(asistentes) || asistentes.length === 0) {
-    return res.status(400).json({ error: 'Debe incluir al menos un asistente.' });
-  }
+
   const perfil = perfilDeReq(req);
   const acceso = await computarAccesoParticipacion(usuario, perfil).catch(() => null);
   if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
   if (!(await permisosParticipacion(acceso.rol, null, perfil.modulo)).crear) {
     return res.status(403).json({ error: `Su rol no tiene permiso para crear formatos en ${perfil.nombre}` });
   }
-  const fueraDeAlcance = await asistentesFueraDeAlcance(acceso, asistentes);
-  if (fueraDeAlcance) return res.status(403).json({ error: fueraDeAlcance });
+
+  const listaAsistentes = Array.isArray(asistentes) ? asistentes : [];
+  if (listaAsistentes.length > 0) {
+    const fueraDeAlcance = await asistentesFueraDeAlcance(acceso, listaAsistentes);
+    if (fueraDeAlcance) return res.status(403).json({ error: fueraDeAlcance });
+  }
 
   const conn = await pool.getConnection();
   let idAsistencia;
   try {
     await conn.beginTransaction();
     const [result] = await conn.execute(
-      `INSERT INTO Dynamic_formato_asistencia (tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, modulo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', usuario, usuario, perfil.modulo]
+      `INSERT INTO Dynamic_formato_asistencia (tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, modulo, es_borrador)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [tema, fecha, hora_inicial || '00:00', hora_final || '00:00', lugar || '', objetivo || '', usuario, usuario, perfil.modulo, esBorrador]
     );
     idAsistencia = result.insertId;
-    for (const idVinculacion of [...new Set(asistentes)]) await insertarAsistente(conn, idAsistencia, idVinculacion);
+    for (const idVinculacion of [...new Set(listaAsistentes)]) await insertarAsistente(conn, idAsistencia, idVinculacion);
     await guardarEvidencias(conn, idAsistencia, evidencias, false);
     await conn.commit();
   } catch (err) {
@@ -1269,30 +1306,42 @@ router.post('/api/asistencias', async (req, res) => {
     conn.release();
   }
 
-  let correos = { enviados: 0, sinCorreo: 0 };
-  try {
-    correos = await enviarSolicitudesFirma(idAsistencia, baseUrl(req));
-  } catch (err) {
-    console.error('[participacion] Error enviando correos de firma:', err.message);
+  let correos = { enviados: 0, sinCorreo: 0, esBorrador: !!esBorrador };
+  if (!esBorrador && listaAsistentes.length > 0) {
+    try {
+      correos = await enviarSolicitudesFirma(idAsistencia, baseUrl(req));
+    } catch (err) {
+      console.error('[participacion] Error enviando correos de firma:', err.message);
+    }
   }
-  res.status(201).json({ ok: true, id_asistencia: idAsistencia, correos });
+  res.status(201).json({ ok: true, id_asistencia: idAsistencia, es_borrador: esBorrador, correos });
 });
 
 // ═════ API: PUT /api/asistencia/:id ═════
-// Conserva a los asistentes que siguen (con su firma, clave y envío) y envía correo a los nuevos.
+// Conserva a los asistentes que siguen (con su firma, clave y envío) y envía correo si no es borrador.
 router.put('/api/asistencia/:id', async (req, res) => {
   const { id } = req.params;
   const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, usuario, asistentes, evidencias } = req.body;
-  if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !usuario) {
-    return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
+  const esBorrador = (req.body.es_borrador === 1 || req.body.es_borrador === true || req.body.es_borrador === '1') ? 1 : 0;
+
+  if (esBorrador) {
+    if (!tema || !fecha || !usuario) {
+      return res.status(400).json({ error: 'Para guardar como borrador se requiere al menos el tema y la fecha.' });
+    }
+  } else {
+    if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !usuario) {
+      return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
+    }
+    if (!Array.isArray(asistentes) || asistentes.length === 0) {
+      return res.status(400).json({ error: 'Debe incluir al menos un asistente para enviar el formato.' });
+    }
   }
+
   const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   if (String(fecha).slice(0, 10) > hoyBogota) {
     return res.status(400).json({ error: 'La fecha de la actividad no puede ser superior a la fecha actual.' });
   }
-  if (!Array.isArray(asistentes) || asistentes.length === 0) {
-    return res.status(400).json({ error: 'Debe incluir al menos un asistente.' });
-  }
+
   const acceso = await computarAccesoParticipacion(usuario, perfilDeReq(req)).catch(() => null);
   if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
   const f = await cargarFormato(acceso, id);
@@ -1308,9 +1357,13 @@ router.put('/api/asistencia/:id', async (req, res) => {
   } else if (!f.permisos.editar) {
     return res.status(403).json({ error: 'Su rol no tiene permiso para editar este formato' });
   }
+
+  const listaAsistentes = Array.isArray(asistentes) ? asistentes : [];
   const [yaEstaban] = await pool.execute('SELECT id_vinculacion FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?', [id]);
-  const fueraDeAlcance = await asistentesFueraDeAlcance(acceso, asistentes, new Set(yaEstaban.map((r) => String(r.id_vinculacion))));
-  if (fueraDeAlcance) return res.status(403).json({ error: fueraDeAlcance });
+  if (listaAsistentes.length > 0) {
+    const fueraDeAlcance = await asistentesFueraDeAlcance(acceso, listaAsistentes, new Set(yaEstaban.map((r) => String(r.id_vinculacion))));
+    if (fueraDeAlcance) return res.status(403).json({ error: fueraDeAlcance });
+  }
 
   const conn = await pool.getConnection();
   const nuevos = [];
@@ -1318,16 +1371,16 @@ router.put('/api/asistencia/:id', async (req, res) => {
     await conn.beginTransaction();
     await conn.execute(
       `UPDATE Dynamic_formato_asistencia
-       SET tema = ?, fecha = ?, hora_inicial = ?, hora_final = ?, lugar = ?, objetivo = ?
+       SET tema = ?, fecha = ?, hora_inicial = ?, hora_final = ?, lugar = ?, objetivo = ?, es_borrador = ?
        WHERE id_asistencia = ?`,
-      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', id]
+      [tema, fecha, hora_inicial || '00:00', hora_final || '00:00', lugar || '', objetivo || '', esBorrador, id]
     );
 
     const [actuales] = await conn.execute(
       'SELECT id_item_asistencia, id_vinculacion FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?',
       [id]
     );
-    const lista = [...new Set(asistentes.map(String))];
+    const lista = [...new Set(listaAsistentes.map(String))];
     const quitar = actuales.filter((r) => !lista.includes(String(r.id_vinculacion)));
     if (quitar.length) {
       await conn.execute(
@@ -1353,17 +1406,21 @@ router.put('/api/asistencia/:id', async (req, res) => {
     conn.release();
   }
 
-  let correos = { enviados: 0, sinCorreo: 0 };
-  if (nuevos.length) {
-    try {
-      correos = await enviarSolicitudesFirma(id, baseUrl(req), nuevos);
-    } catch (err) {
-      console.error('[participacion] Error enviando correos de firma:', err.message);
+  let correos = { enviados: 0, sinCorreo: 0, esBorrador: !!esBorrador };
+  if (!esBorrador) {
+    const eraBorrador = Number(f.asistencia.es_borrador) === 1;
+    const aEnviar = eraBorrador ? null : (nuevos.length ? nuevos : []);
+    if (eraBorrador || nuevos.length) {
+      try {
+        correos = await enviarSolicitudesFirma(id, baseUrl(req), aEnviar);
+      } catch (err) {
+        console.error('[participacion] Error enviando correos de firma:', err.message);
+      }
     }
   }
 
   let urlDoc = f.asistencia.url_doc || null;
-  if (f.asistencia.url_doc) {
+  if (f.asistencia.url_doc && !esBorrador) {
     try {
       const pdfRes = await generarPDFAsistencia(id, { usuarioId: acceso.usuarioId });
       urlDoc = pdfRes.urlGeneral;
@@ -1372,7 +1429,7 @@ router.put('/api/asistencia/:id', async (req, res) => {
     }
   }
 
-  res.json({ ok: true, id_asistencia: id, correos, url_doc: urlDoc });
+  res.json({ ok: true, id_asistencia: id, es_borrador: esBorrador, correos, url_doc: urlDoc });
 });
 
 // ═════ API: DELETE /api/asistencia/:id ═════
@@ -1447,6 +1504,9 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
     const f = await cargarFormato(acceso, id);
     if (f.error) return res.status(f.status).json({ error: f.error });
     if (!f.permisos.enlaces) return res.status(403).json({ error: 'Su rol no tiene permiso para enviar enlaces de firma de este formato' });
+    if (Number(f.asistencia.es_borrador) === 1) {
+      return res.status(400).json({ error: 'Este formato está en modo borrador. Debe abrirlo y presionar "Enviar Formato" para activarlo.' });
+    }
     if (f.asistencia.url_doc && !enviarATodos && !id_item_asistencia) return res.status(400).json({ error: 'Nada que enviar' });
 
     if (!enviarATodos && id_item_asistencia) {
@@ -1480,6 +1540,9 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
     const f = await cargarFormato(acceso, id);
     if (f.error) return res.status(f.status).json({ error: f.error });
+    if (Number(f.asistencia.es_borrador) === 1) {
+      return res.status(400).json({ error: 'No se puede generar el PDF de un formato guardado como borrador. Debe enviarlo primero.' });
+    }
     if (!f.permisos.generar) return res.status(403).json({ error: 'Su rol no tiene permiso para generar el PDF de este formato' });
 
     const result = await generarPDFAsistencia(id, { usuarioId: acceso.usuarioId });

@@ -279,9 +279,12 @@
       </div>
     </div>
 
-    <div class="btn-group" style="justify-content: space-between;">
+    <div class="btn-group" style="justify-content: space-between; align-items: center;">
       <button type="button" class="btn btn-secondary" id="btn-cancelar-form">Volver al Listado</button>
-      <button type="submit" class="btn btn-success" id="btn-guardar-form">Guardar Formato</button>
+      <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn" id="btn-borrador-form" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-weight:600; cursor:pointer;">💾 Guardar Borrador</button>
+        <button type="submit" class="btn btn-success" id="btn-guardar-form">✉️ Enviar Formato</button>
+      </div>
     </div>
   </form>
 </div>
@@ -349,7 +352,14 @@
 
     // Event Listeners
     document.getElementById('btn-cancelar-form').addEventListener('click', () => volverAlListado());
-    document.getElementById('form-asistencia').addEventListener('submit', guardarAsistencia);
+    document.getElementById('form-asistencia').addEventListener('submit', (e) => {
+    e.preventDefault();
+    guardarAsistencia(false);
+  });
+  document.getElementById('btn-borrador-form').addEventListener('click', (e) => {
+    e.preventDefault();
+    guardarAsistencia(true);
+  });
     document.getElementById('input-evidencia').addEventListener('change', manejarArchivosEvidencia);
 
     // Búsqueda en el checklist de asistentes
@@ -621,6 +631,8 @@
     }
   }
 
+  let esBorradorActual = false;
+
   // ════════ CARGAR PARA EDITAR ════════
   async function cargarAsistenciaParaEditar(id) {
     showLoading('Cargando datos del formato...');
@@ -631,10 +643,27 @@
 
       document.getElementById('form-tema').value = data.tema;
       document.getElementById('form-fecha').value = data.fecha.slice(0, 10);
-      document.getElementById('form-hora-inicial').value = data.hora_inicial.slice(0, 5);
-      document.getElementById('form-hora-final').value = data.hora_final.slice(0, 5);
-      document.getElementById('form-lugar').value = data.lugar;
-      document.getElementById('form-objetivo').value = data.objetivo;
+      document.getElementById('form-hora-inicial').value = (data.hora_inicial || '00:00').slice(0, 5);
+      document.getElementById('form-hora-final').value = (data.hora_final || '00:00').slice(0, 5);
+      document.getElementById('form-lugar').value = data.lugar || '';
+      document.getElementById('form-objetivo').value = data.objetivo || '';
+
+      esBorradorActual = Number(data.es_borrador) === 1;
+      const avisoPrev = document.getElementById('aviso-form-borrador');
+      if (avisoPrev) avisoPrev.remove();
+      if (esBorradorActual) {
+        const banner = document.createElement('div');
+        banner.id = 'aviso-form-borrador';
+        banner.style.cssText = 'background:#fef3c7; border:1px solid #fde68a; color:#92400e; padding:12px 16px; border-radius:8px; margin-bottom:20px; font-size:0.88rem; display:flex; align-items:center; gap:10px;';
+        banner.innerHTML = '<span>📝</span><div><strong>Este formato está guardado como Borrador.</strong> Los correos de firma aún no han sido enviados a los colaboradores. Puedes modificarlo y guardarlo nuevamente como borrador, o hacer clic en <strong>Enviar Formato</strong> cuando esté listo para enviar los correos.</div>';
+        const formEl = document.getElementById('form-asistencia');
+        formEl.insertBefore(banner, formEl.firstChild);
+        document.getElementById('btn-guardar-form').innerHTML = '✉️ Enviar Formato';
+        document.getElementById('btn-borrador-form').style.display = 'inline-flex';
+      } else {
+        document.getElementById('btn-guardar-form').innerHTML = 'Guardar Cambios';
+        document.getElementById('btn-borrador-form').style.display = 'none';
+      }
 
       asistentesOriginales = new Set(data.items.map(i => String(i.id_vinculacion)));
       formAsistentes = data.items.map(i => ({
@@ -643,7 +672,8 @@
         Identificación: i.identificacion,
         Cargo: i.cargo,
         Operación: i.operacion,
-        Regional: i.regional
+        Regional: i.regional,
+        Estado: i.estado_trabajador || i.Estado || 'Activo'
       }));
       actualizarConteoAsistentes();
 
@@ -663,46 +693,59 @@
   // Asistentes que ya tenía el formato al editar (a ellos no se les vuelve a enviar el correo)
   let asistentesOriginales = new Set();
 
-  async function guardarAsistencia(e) {
-    e.preventDefault();
-
+  async function guardarAsistencia(esBorrador) {
     const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const fechaVal = document.getElementById('form-fecha').value;
+    const temaVal = document.getElementById('form-tema').value.trim();
+
+    if (esBorrador) {
+      if (!temaVal || !fechaVal) {
+        showToast('Para guardar como borrador debe ingresar al menos el tema y la fecha.', 'error');
+        return;
+      }
+    } else {
+      if (!temaVal || !fechaVal || !document.getElementById('form-hora-inicial').value || !document.getElementById('form-hora-final').value || !document.getElementById('form-lugar').value.trim()) {
+        showToast('Faltan campos requeridos en la información básica.', 'error');
+        return;
+      }
+      if (!formAsistentes.length) {
+        showToast('Por favor selecciona al menos un asistente para enviar el formato.', 'error');
+        return;
+      }
+    }
+
     if (fechaVal && fechaVal > hoyBogota) {
       showToast('La fecha de la actividad no puede ser superior a la fecha actual.', 'error');
       return;
     }
 
-    if (!formAsistentes.length) {
-      showToast('Por favor selecciona al menos un asistente.', 'error');
-      return;
-    }
-
-    // Aviso: al guardar se envía un correo a los asistentes para que firmen.
-    if (CONFIG.notificacionesHabilitadas !== false) {
-      const nuevos = formAsistentes.filter(x => !asistentesOriginales.has(String(x.id_vinculacion))).length;
+    // Aviso de envío de correo si NO es borrador
+    if (!esBorrador && CONFIG.notificacionesHabilitadas !== false) {
+      const noRetirados = formAsistentes.filter(x => String(x.Estado || x.estado || '').toLowerCase() !== 'retirado');
+      const nuevos = selectedAsistenciaId && !esBorradorActual
+        ? noRetirados.filter(x => !asistentesOriginales.has(String(x.id_vinculacion))).length
+        : noRetirados.length;
       if (nuevos > 0) {
-        const msg = selectedAsistenciaId
-          ? `Se enviará un correo electrónico a ${nuevos} asistente(s) nuevo(s) para solicitar su firma. ¿Desea continuar?`
-          : `Al guardar se enviará un correo electrónico a los ${nuevos} trabajador(es) relacionados para solicitar su firma de asistencia. ¿Desea continuar?`;
+        const msg = `Al enviar el formato se notificará por correo electrónico a ${nuevos} colaborador(es) para solicitar su firma de asistencia. ¿Desea continuar?`;
         if (!confirm(msg)) return;
       }
     }
 
     const payload = {
-      tema: document.getElementById('form-tema').value,
-      fecha: document.getElementById('form-fecha').value,
-      hora_inicial: document.getElementById('form-hora-inicial').value,
-      hora_final: document.getElementById('form-hora-final').value,
-      lugar: document.getElementById('form-lugar').value,
-      objetivo: document.getElementById('form-objetivo').value,
+      tema: temaVal,
+      fecha: fechaVal,
+      hora_inicial: document.getElementById('form-hora-inicial').value || '00:00',
+      hora_final: document.getElementById('form-hora-final').value || '00:00',
+      lugar: document.getElementById('form-lugar').value.trim() || 'Sin definir',
+      objetivo: document.getElementById('form-objetivo').value.trim(),
       usuario: CONFIG.usuarioId,
       modulo: MODULO,
+      es_borrador: esBorrador ? 1 : 0,
       asistentes: formAsistentes.map(x => x.id_vinculacion),
       evidencias: evidenciasList
     };
 
-    showLoading('Guardando registro...');
+    showLoading(esBorrador ? 'Guardando borrador...' : 'Enviando formato...');
     try {
       const url = apiUrl(selectedAsistenciaId
         ? `/participacion/api/asistencia/${selectedAsistenciaId}`
@@ -717,15 +760,19 @@
       const resData = await res.json();
 
       if (resData.ok) {
-        const c = resData.correos || {};
-        showToast('Formato guardado.' + (c.enviados ? ` Correo de firma enviado a ${c.enviados} asistente(s).` : '') + (c.sinCorreo ? ` ${c.sinCorreo} sin correo registrado.` : ''));
+        if (esBorrador) {
+          showToast('Borrador guardado exitosamente.');
+        } else {
+          const c = resData.correos || {};
+          showToast('Formato enviado.' + (c.enviados ? ` Correo de firma enviado a ${c.enviados} asistente(s).` : '') + (c.sinCorreo ? ` ${c.sinCorreo} sin correo registrado.` : ''));
+        }
         setTimeout(() => volverAlListado(), 1000);
       } else {
         showToast(resData.error || 'Error al guardar.', 'error');
       }
     } catch (err) {
       console.error(err);
-      showToast('Error de red al guardar el formato.', 'error');
+      showToast('Error de red al procesar el formato.', 'error');
     } finally {
       hideLoading();
     }
