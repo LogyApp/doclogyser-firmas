@@ -23,6 +23,11 @@ const P = {
   CARGOS_CALIDAD:    'Cargos con copia de Calidad en traslados',
   COPIA_POR_CARGO:   'Notificación traslado - Copia por cargo:',
   HABILITAR:         'Habilitar notificaciones de correo en Traslados',
+  PUEDE_EDITAR:      'Puede editar traslados',
+  FUERA_QUINCENA:    'Roles que pueden registrar traslados fuera de la quincena actual',
+  TIPO_DOC:          'Tipo de documento del traslado en Maestro_docTrabajador',
+  ANOTACION_NO_FIRMA:'Anotación por defecto de No firma',
+  MAX_LISTADO:       'Máximo de traslados en el listado',
 };
 
 const DEFAULTS_TRASLADOS = {
@@ -39,6 +44,11 @@ const DEFAULTS_TRASLADOS = {
   [P.CARGOS_CALIDAD]:   'COORDINADOR LOGISTICO, AUXILIAR ADMINISTRATIVO DE OPERACIÓN, AUXILIAR ADMINISTRATIVO REGIONAL, COORDINADOR REGIONAL',
   [P.COPIA_POR_CARGO]:  'Calidad, Directorth',
   [P.HABILITAR]:        '1',
+  [P.PUEDE_EDITAR]:     '',      // vacío = cualquier rol con acceso a la pestaña (comportamiento anterior)
+  [P.FUERA_QUINCENA]:   'Sistema, Juridica',
+  [P.TIPO_DOC]:         '50',     // Id de Config_Doc_Trabajador; el prefijo sale de su columna Prefijo
+  [P.ANOTACION_NO_FIRMA]: 'El trabajador no firma, se soporta por correo electrónico',
+  [P.MAX_LISTADO]:      '300',
 };
 
 // Roles que se resuelven según la Operación Destino (misma lógica de Retiros:
@@ -91,7 +101,51 @@ async function obtenerPermisosTraslados(rol, params) {
     puedeEditarPlantilla: estaEnParametro(p, P.EDITAR_PLANTILLA, rol),
     puedePrevisualizar:   estaEnParametro(p, P.PREVISUALIZAR, rol),
     puedeRegenerar:       estaEnParametro(p, P.REGENERAR, rol),
+    // Si la lista está vacía, edita cualquier rol con acceso a la pestaña Traslados
+    puedeEditar:          listaParametro(p, P.PUEDE_EDITAR).length ? estaEnParametro(p, P.PUEDE_EDITAR, rol) : true,
+    horasEnlace:          horasVigenciaEnlace(p),
+    anotacionNoFirma:     String(valorParametro(p, P.ANOTACION_NO_FIRMA) || DEFAULTS_TRASLADOS[P.ANOTACION_NO_FIRMA]),
   };
+}
+
+// Quincena (inicio y fin, AAAA-MM-DD) de una fecha: del 1 al 15 o del 16 al último día del mes
+function quincenaDe(fecha) {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const p = n => String(n).padStart(2, '0');
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return d <= 15
+    ? { inicio: `${y}-${p(m)}-01`, fin: `${y}-${p(m)}-15` }
+    : { inicio: `${y}-${p(m)}-16`, fin: `${y}-${p(m)}-${p(ultimo)}` };
+}
+
+// La fecha del traslado (AAAA-MM-DD) debe estar en la quincena actual, salvo para los roles de
+// "Roles que pueden registrar traslados fuera de la quincena actual". Devuelve un error o null.
+function validarFechaTraslado(params, fecha, hoy, rol) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return 'La fecha del traslado no es válida.';
+  if (estaEnParametro(params, P.FUERA_QUINCENA, rol)) return null;
+  const q = quincenaDe(hoy);
+  if (fecha < q.inicio || fecha > q.fin) {
+    return `La fecha del traslado debe estar en la quincena actual (${q.inicio} a ${q.fin}). Para otra fecha, comuníquese con Jurídica.`;
+  }
+  return null;
+}
+
+// Tipo de documento del traslado (Id de Config_Doc_Trabajador) y su Prefijo en esa tabla
+async function documentoTraslado(params) {
+  const tipoDocumento = String(valorParametro(params, P.TIPO_DOC) || '50').trim() || '50';
+  let prefijo = 'TRAS';
+  try {
+    const [rows] = await pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = ? LIMIT 1', [tipoDocumento]);
+    if (rows.length && rows[0].Prefijo) prefijo = String(rows[0].Prefijo).trim();
+  } catch (err) {
+    console.error('[configTraslados] No se pudo leer el prefijo en Config_Doc_Trabajador:', err.message);
+  }
+  return { tipoDocumento, prefijo };
+}
+
+function maximoListado(params) {
+  const n = parseInt(valorParametro(params, P.MAX_LISTADO), 10);
+  return n > 0 ? Math.min(n, 5000) : 300;
 }
 
 function horasVigenciaEnlace(params) {
@@ -168,6 +222,9 @@ module.exports = {
   obtenerPermisosTraslados,
   horasVigenciaEnlace,
   obtenerDestinatariosTraslado,
+  validarFechaTraslado,
+  documentoTraslado,
+  maximoListado,
   PARAMETROS_TRASLADOS: P,
   DEFAULTS_TRASLADOS,
 };

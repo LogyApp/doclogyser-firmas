@@ -2668,13 +2668,14 @@
       <div class="ficha-grid">
         <div class="ficha-field" style="grid-column:1/-1"><label>Trabajador</label><input type="text" id="tras_e_trabajador" disabled></div>
         <div class="ficha-field"><label>Identificación</label><input type="text" id="tras_e_identificacion" disabled></div>
-        <div class="ficha-field"><label>Operación origen</label><input type="text" id="tras_e_op_origen"></div>
+        <div class="ficha-field"><label>Operación origen</label><input type="text" id="tras_e_op_origen" disabled title="Operación del trabajador cuando se registró el traslado"></div>
         <div class="ficha-field" style="grid-column:1/-1"><label>Operación destino *</label><select id="tras_e_op_destino"></select></div>
         <div class="ficha-field" style="grid-column:1/-1"><label>Dirección destino</label><input type="text" id="tras_e_direccion" placeholder="Se completa al cambiar operación destino"></div>
         <div class="ficha-field"><label>Fecha de traslado *</label><input type="date" id="tras_e_fecha"></div>
         <div class="ficha-field"><label>Hora de traslado</label><input type="time" id="tras_e_hora"></div>
         <div class="ficha-field"><label>Celular</label><input type="tel" id="tras_e_celular"></div>
         <div class="ficha-field"><label>Correo electrónico</label><input type="email" id="tras_e_email"></div>
+        <div class="ficha-field" style="grid-column:1/-1"><label>Observaciones</label><textarea id="tras_e_obs" rows="3" style="width:100%; resize:vertical;"></textarea></div>
       </div>
     </div>
     <div class="ficha-footer">
@@ -7587,7 +7588,7 @@
   function accionesTraslado(row) {
     const t = tabs.traslados;
     const id = row.IdTraslado;
-    const btnEditar  = iconoTraslado('lapiz', '#d97706', 'Editar', `abrirEditarTraslado('${id}')`);
+    const btnEditar  = t.puedeEditar === false ? '' : iconoTraslado('lapiz', '#d97706', 'Editar', `abrirEditarTraslado('${id}')`);
     const btnValidar = t.puedeValidar ? iconoTraslado('check', '#0284c7', 'Validar y generar enlace de firma', `validarTraslado('${id}')`) : '';
     const btnRevisar = t.puedeValidar ? iconoTraslado('revisar', '#ea580c', 'Devolver a Revisar', `cambiarEstadoTraslado('${id}','revisar')`) : '';
     const btnAnular  = t.puedeValidar ? iconoTraslado('anular', '#64748b', 'Anular', `cambiarEstadoTraslado('${id}','anulado')`) : '';
@@ -7599,7 +7600,7 @@
       case 'validado': {
         const btnWA = row.celular_trabajador ? iconoTraslado('whatsapp', '#16a34a', 'Enviar enlace de firma por WhatsApp', `abrirWhatsAppTraslado('${id}')`) : '';
         const btnEnlace = iconoTraslado('enlace', '#0ea5e9', 'Ver / copiar enlace de firma', `enlaceTraslado('${id}')`);
-        return `${btnWA}${btnEnlace}${btnEditar}${btnRevisar}${btnAnular}${btnNoFirma}`;
+        return `${btnWA}${btnEnlace}${btnRevisar}${btnAnular}${btnNoFirma}`;
       }
       case 'revisar': return `${btnEditar}${btnValidar}${btnAnular}`;
       case 'firmado':
@@ -7724,7 +7725,7 @@
       const msg = encodeURIComponent(
         `Estimado/a ${nombreCorto}, le informamos que tiene un documento de traslado laboral pendiente de su firma.\n\n` +
         `Por favor ingrese al siguiente enlace para firmarlo:\n\n${d.url}\n\n` +
-        `El enlace tiene una validez de 48 horas.\n\nGracias,\nLOG&SER S.A.S.`
+        `El enlace tiene una validez de ${(tabs.traslados && tabs.traslados.horasEnlace) || 48} horas.\n\nGracias,\nLOG&SER S.A.S.`
       );
 
       if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
@@ -7777,6 +7778,7 @@
       document.getElementById('tras_e_hora').value           = t.hora_traslado || '';
       document.getElementById('tras_e_celular').value        = t.celular_trabajador || '';
       document.getElementById('tras_e_email').value          = t.email_trabajador || '';
+      document.getElementById('tras_e_obs').value            = t.observaciones || '';
       trasSelOpDestino.value = t.operacion_destino || '';
 
       const overlay = document.getElementById('trasEditModalOverlay');
@@ -7797,13 +7799,13 @@
     if (!_trasState.editandoId) return;
     try {
       const body = {
-        operacion_origen:   document.getElementById('tras_e_op_origen').value || null,
         operacion_destino:  trasSelOpDestino.value,
         direccion_destino:  document.getElementById('tras_e_direccion').value || null,
         fecha_traslado:     document.getElementById('tras_e_fecha').value,
         hora_traslado:      document.getElementById('tras_e_hora').value || null,
         celular_trabajador: document.getElementById('tras_e_celular').value || null,
         email_trabajador:   document.getElementById('tras_e_email').value || null,
+        observaciones:      document.getElementById('tras_e_obs').value,
       };
       const r = await fetch(`/admin/traslados/${_trasState.editandoId}/editar?Usuario=${encodeURIComponent(usuario)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
@@ -7855,8 +7857,8 @@
 
   async function marcarNoFirmaTraslado(id) {
     const anotacion = prompt(
-      "Ingrese el texto de la anotación de soporte que saldrá en la firma (por ejemplo: 'El trabajador no firma, se soporta por correo electrónico'):",
-      "El trabajador no firma,\nse soporta por correo electrónico"
+      'Ingrese el texto de la anotación de soporte que saldrá en la firma:',
+      (tabs.traslados && tabs.traslados.anotacionNoFirma) || 'El trabajador no firma, se soporta por correo electrónico'
     );
     if (anotacion === null) return;
     try {

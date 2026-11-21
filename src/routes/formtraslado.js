@@ -5,6 +5,10 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { notificarNuevoTraslado } = require('../services/email');
 const { computarAccesoNomina } = require('../services/accesoNomina');
+const { obtenerParametrosTraslados, validarFechaTraslado } = require('../services/configTraslados');
+const { hoyBogota } = require('../services/trasladoVinculacion');
+
+const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 
 const router = express.Router();
 
@@ -106,6 +110,25 @@ router.post('/', async (req, res) => {
     if (!vinTrabajador) {
       return res.status(403).json({ ok: false, error: 'El trabajador no está activo en las operaciones que usted gestiona' });
     }
+    // El origen es la operación actual del trabajador en Activos (no lo que llegue del formulario)
+    const origenReal = vinTrabajador['Operación'] || operacion_origen || null;
+    const identificacionReal = vinTrabajador['Identificación'] || Identificacion || null;
+    if (norm(origenReal) === norm(operacion_destino)) {
+      return res.status(400).json({ ok: false, error: `El trabajador ya está en ${origenReal}: escoja una operación destino distinta.` });
+    }
+    const errorFecha = validarFechaTraslado(await obtenerParametrosTraslados(), String(fecha_traslado).slice(0, 10), hoyBogota(), acceso.rol);
+    if (errorFecha) return res.status(400).json({ ok: false, error: errorFecha });
+
+    const [abiertos] = await pool.execute(
+      `SELECT operacion_destino, estado_doc, DATE_FORMAT(fecha_traslado, '%Y-%m-%d') AS fecha
+         FROM Dynamic_traslados_trabajador
+        WHERE \`Identificación\` = ? AND estado_doc IN ('pendiente','validado','revisar') LIMIT 1`,
+      [identificacionReal]
+    );
+    if (abiertos.length) {
+      const a = abiertos[0];
+      return res.status(409).json({ ok: false, error: `El trabajador ya tiene un traslado en curso a ${a.operacion_destino} (${a.fecha}, estado ${a.estado_doc}). Termínelo o anúlelo antes de registrar otro.` });
+    }
 
     const ahora = fechaHoraBogota();
     const idTraslado = uuidv4();
@@ -120,9 +143,9 @@ router.post('/', async (req, res) => {
       [
         idTraslado,
         ahora,
-        Identificacion || null,
+        identificacionReal,
         Trabajador,
-        operacion_origen || null,
+        origenReal,
         operacion_destino,
         direccion_destino || null,
         fecha_traslado,
@@ -139,15 +162,15 @@ router.post('/', async (req, res) => {
 
     notificarNuevoTraslado({
       trabajador:       Trabajador,
-      identificacion:   Identificacion || '',
-      operacionOrigen:  operacion_origen || '',
+      identificacion:   identificacionReal || '',
+      operacionOrigen:  origenReal || '',
       operacionDestino: operacion_destino,
       direccionDestino: direccion_destino || '',
       fechaTraslado:    fecha_traslado,
       horaTraslado:     hora_traslado || '',
       observaciones:    observaciones || '',
       usuario,
-      emailUsuario:     usuRows[0].Email || '',
+      emailUsuario:     (usuRows[0] && usuRows[0].Email) || '',
       cargo,
       idTraslado,
     }).catch(e => console.error('Error enviando correo:', e.message));
