@@ -192,14 +192,13 @@ router.post('/api/crear', uploadTicket.single('evidencia'), async (req, res) => 
 // ══════════════════════════════════════════════════════════════════════════
 // Consulta de tickets (todos los módulos)
 //  - "Mis tickets" del botón: tickets del usuario en la quincena actual.
-//  - Pestaña Tickets del Directorio corporativo (Maestro_Menu: directorio /
-//    Tickets, Rol "Todos"): cada usuario ve solo los tickets que puso; los roles
-//    de Config_Parametros (directorio / Tickets / "Roles que ven todos los
-//    tickets", por defecto Sistema) ven los de todos.
+//  - Directorio › Tickets (Maestro_Menu directorio / Tickets, Rol "Todos"): cada
+//    usuario ve solo los tickets que puso.
 //  - Editar: solo quien puso el ticket y mientras esté En Proceso o Pendiente.
-//  - Resolver (Pendiente / Rechazado / Resuelto con respuesta): Config_Parametros
-//    directorio / Tickets / "Resolver tickets", Condicion = Rol, Parametro = módulos
-//    (o "Todos"). Quien resuelve ve los tickets de esos módulos. Por defecto, Sistema = Todos.
+//  - Configuración › Tickets (Maestro_Menu configuracion / Tickets): los roles de
+//    Config_Parametros configuracion / Tickets / "Roles que pueden resolver tickets"
+//    (por defecto Sistema) ven los tickets de todos los módulos y los pasan a
+//    Pendiente, Rechazado o Resuelto con la respuesta.
 // ══════════════════════════════════════════════════════════════════════════
 const { accesoSeccion } = require('../services/maestroMenu');
 
@@ -258,57 +257,34 @@ async function quincenaActual() {
     : { nombre: `Quincena 2 de ${mm}/${y}`, desde: `${y}-${mm}-16`, hasta: `${y}-${mm}-${ultimo}` };
 }
 
-// Config_Parametros (directorio / Tickets): roles que ven los tickets de todos.
-// Si la fila no existe, solo Sistema (lista separada por coma, sin distinguir mayúsculas ni tildes).
-const CONCEPTO_VER_TODOS = 'Roles que ven todos los tickets';
-const ROLES_VER_TODOS_DEFECTO = 'Sistema';
 function normalizarRol(v) {
   return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 }
-async function puedeVerTodosLosTickets(rol) {
-  let lista = ROLES_VER_TODOS_DEFECTO;
-  try {
-    const [r] = await pool.execute(
-      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
-      ['directorio', 'Tickets', CONCEPTO_VER_TODOS]
-    );
-    if (r.length) lista = r[0].Parametro == null ? '' : String(r[0].Parametro);
-  } catch (e) {
-    console.error('[tickets] No se pudo leer Config_Parametros, se usa el valor por defecto:', e.message);
-  }
-  const rolN = normalizarRol(rol);
-  return Boolean(rolN) && lista.split(',').some(x => normalizarRol(x) === rolN);
-}
 
-// Config_Parametros (directorio / Tickets / "Resolver tickets"): una fila por Rol (Condicion) con los
-// módulos cuyos tickets resuelve (Parametro, separados por coma, o "Todos"). Si no hay ninguna fila,
-// solo Sistema resuelve todos. @returns null | { todos: true } | { modulos: [normalizados], lista: [texto] }
-const CONCEPTO_RESOLVER = 'Resolver tickets';
+// Resolver tickets (Pendiente / Rechazado / Resuelto con respuesta) de CUALQUIER módulo:
+// Config_Parametros configuracion / Tickets / "Roles que pueden resolver tickets" (por defecto Sistema).
+// Se gestionan en Configuración › Tickets (Maestro_Menu configuracion / Tickets).
+// @returns null | { todos: true }
+const CONCEPTO_RESOLVER = 'Roles que pueden resolver tickets';
+const ROLES_RESOLVER_DEFECTO = 'Sistema';
 const ESTADOS_RESOLVER = ['En Proceso', 'Pendiente', 'Resuelto', 'Rechazado'];
 async function permisoResolverTickets(rol) {
   const rolN = normalizarRol(rol);
   if (!rolN) return null;
-  let filas = null;
+  let lista = ROLES_RESOLVER_DEFECTO;
   try {
     const [r] = await pool.execute(
-      'SELECT `Condicion` AS rol, `Parametro` AS modulos FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ?',
-      ['directorio', 'Tickets', CONCEPTO_RESOLVER]
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      ['configuracion', 'Tickets', CONCEPTO_RESOLVER]
     );
-    filas = r;
+    if (r.length) lista = r[0].Parametro == null ? '' : String(r[0].Parametro);
   } catch (e) {
-    console.error('[tickets] No se pudo leer Config_Parametros (Resolver tickets), se usa el valor por defecto:', e.message);
+    console.error('[tickets] No se pudo leer Config_Parametros (Roles que pueden resolver tickets), se usa Sistema:', e.message);
   }
-  if (!filas || !filas.length) filas = [{ rol: 'Sistema', modulos: 'Todos' }];
-  const fila = filas.find(f => normalizarRol(f.rol) === rolN);
-  if (!fila) return null;
-  const lista = String(fila.modulos || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (!lista.length) return null;
-  if (lista.some(m => normalizarRol(m) === 'todos')) return { todos: true };
-  return { modulos: lista.map(normalizarRol), lista };
+  return lista.split(',').some(x => normalizarRol(x) === rolN) ? { todos: true } : null;
 }
 function puedeResolverTicket(t, permiso) {
-  if (!permiso) return false;
-  return Boolean(permiso.todos) || permiso.modulos.includes(normalizarRol(t.modulo));
+  return Boolean(permiso && permiso.todos);
 }
 
 function conteoPorEstado(rows) {
@@ -347,8 +323,11 @@ router.get('/api/mis-tickets', async (req, res) => {
   }
 });
 
-// ── GET /api/listado — todos los tickets con filtros (pestaña Tickets del Directorio) ─
-// Filtros: desde, hasta (fecha de registro), estado, modulo, regional, operacion, q, mios=1.
+// ── GET /api/listado — tickets con filtros ─
+//  - ambito=gestion: Configuración › Tickets. Todos los tickets de todos los módulos, solo para los
+//    roles que resuelven (y con la pestaña configuracion / Tickets en Maestro_Menu).
+//  - Sin ambito: Directorio › Tickets. Cada usuario ve solo los tickets que puso.
+// Filtros: desde, hasta (fecha de registro), estado, modulo, regional, operacion, solicitante, q.
 // Cada faceta (estado, módulo, regional, operación) cuenta con los demás filtros aplicados,
 // para que las opciones muestren cuántos tickets quedarían al escogerlas.
 router.get('/api/listado', async (req, res) => {
@@ -356,23 +335,25 @@ router.get('/api/listado', async (req, res) => {
     const { usuario } = req.query;
     const user = await usuarioRegistrado(usuario);
     if (!user) return res.status(403).json({ error: 'Usuario no reconocido' });
-    if (!(await accesoSeccion('directorio', user.Rol, 'Tickets'))) {
+    const gestion = req.query.ambito === 'gestion';
+    let permisoResolver = null;
+    if (gestion) {
+      if (!(await accesoSeccion('configuracion', user.Rol, 'Tickets'))) {
+        return res.status(403).json({ error: 'No tienes acceso a la pestaña Tickets de Configuración.' });
+      }
+      permisoResolver = await permisoResolverTickets(user.Rol);
+      if (!permisoResolver) return res.status(403).json({ error: 'Tu rol no puede resolver tickets.' });
+    } else if (!(await accesoSeccion('directorio', user.Rol, 'Tickets'))) {
       return res.status(403).json({ error: 'No tienes acceso a la pestaña Tickets.' });
     }
 
-    const permisoResolver = await permisoResolverTickets(user.Rol);
-    const verTodos = (await puedeVerTodosLosTickets(user.Rol)) || Boolean(permisoResolver && permisoResolver.todos);
+    const verTodos = gestion;
     const quincena = await quincenaActual();
     const desde = RE_FECHA_YMD.test(req.query.desde || '') ? req.query.desde : quincena.desde;
     const hasta = RE_FECHA_YMD.test(req.query.hasta || '') ? req.query.hasta : quincena.hasta;
     const where = ['t.fecha_registro >= ?', 't.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)'];
     const params = [desde, hasta];
-    // Sin permiso de ver todos: sus propios tickets y los de los módulos que resuelve
-    if (req.query.mios === '1') { where.push('t.solicitante = ?'); params.push(usuario); }
-    else if (!verTodos && permisoResolver) {
-      where.push(`(t.solicitante = ? OR t.modulo IN (${permisoResolver.lista.map(() => '?').join(',')}))`);
-      params.push(usuario, ...permisoResolver.lista);
-    } else if (!verTodos) { where.push('t.solicitante = ?'); params.push(usuario); }
+    if (!gestion || req.query.mios === '1') { where.push('t.solicitante = ?'); params.push(usuario); }
     const q = String(req.query.q || '').trim();
     if (q) {
       const like = `%${q}%`;
@@ -389,7 +370,7 @@ router.get('/api/listado', async (req, res) => {
       modulo: String(req.query.modulo || ''),
       regional: String(req.query.regional || ''),
       operacion: String(req.query.operacion || ''),
-      solicitante: (verTodos || permisoResolver) ? String(req.query.solicitante || '') : ''
+      solicitante: verTodos ? String(req.query.solicitante || '') : ''
     };
     const valor = (t, campo) => (campo === 'regional' ? (t.regional || 'SIN REGIONAL') : (t[campo] || ''));
     const cumple = (t, excepto) => Object.keys(filtros).every(c => c === excepto || !filtros[c] || valor(t, c) === filtros[c]);
@@ -400,18 +381,18 @@ router.get('/api/listado', async (req, res) => {
     };
 
     const rows = base.filter(t => cumple(t, null));
-    rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); t.puedeResolver = puedeResolverTicket(t, permisoResolver); });
+    rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); t.puedeResolver = gestion && puedeResolverTicket(t, permisoResolver); });
     res.json({
       ok: true,
       verTodos,
-      resuelve: Boolean(permisoResolver),
-      verSolicitantes: verTodos || Boolean(permisoResolver),
+      resuelve: gestion,
+      verSolicitantes: verTodos,
       desde, hasta, quincena,
       truncado: base.length >= 5000,
       total: rows.length,
       facetas: {
         estado: faceta('estado'), modulo: faceta('modulo'), regional: faceta('regional'), operacion: faceta('operacion'),
-        solicitante: (verTodos || permisoResolver) ? faceta('solicitante') : []
+        solicitante: verTodos ? faceta('solicitante') : []
       },
       tickets: rows
     });
@@ -432,7 +413,7 @@ router.get('/api/ticket/:ticket', async (req, res) => {
     const t = rows[0];
     const permisoResolver = await permisoResolverTickets(user.Rol);
     t.puedeResolver = puedeResolverTicket(t, permisoResolver);
-    if (String(t.solicitante || '').trim() !== String(usuario).trim() && !t.puedeResolver && !(await puedeVerTodosLosTickets(user.Rol))) {
+    if (String(t.solicitante || '').trim() !== String(usuario).trim() && !t.puedeResolver) {
       return res.status(403).json({ error: 'Solo puedes ver los tickets que pusiste.' });
     }
     t.puedeEditar = puedeEditarTicket(t, usuario);
@@ -490,7 +471,7 @@ router.post('/api/ticket/:ticket/estado', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado' });
     const permisoResolver = await permisoResolverTickets(user.Rol);
     if (!puedeResolverTicket(rows[0], permisoResolver)) {
-      return res.status(403).json({ error: 'Tu rol no puede resolver tickets de este módulo.' });
+      return res.status(403).json({ error: 'Tu rol no puede resolver tickets.' });
     }
     const finaliza = estado === 'Resuelto' || estado === 'Rechazado';
     await pool.execute(
