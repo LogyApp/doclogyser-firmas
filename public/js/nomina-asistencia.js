@@ -410,7 +410,7 @@ async function cargarCatalogoNovedades() {
       if (selNovModal) {
         let opts = '<option value="">Seleccione el tipo de novedad...</option>';
         _asisState.novedades.forEach(n => {
-          opts += `<option value="${esc(n.novedad)}" data-prefijo="${esc(n.prefijoNovedad)}" data-rango="${n.esRangoFechas ? '1' : '0'}" data-soporte="${n.requiereSoporte ? '1' : '0'}" data-tipodoc="${n.tipoDocumento}" data-descsop="${esc(n.descripcionSoporte || '')}">${esc(n.novedad)}</option>`;
+          opts += `<option value="${esc(n.novedad)}" data-prefijo="${esc(n.prefijoNovedad)}" data-rango="${n.esRangoFechas ? '1' : '0'}" data-soporte="${n.requiereSoporte ? '1' : '0'}" data-tipodoc="${n.tipoDocumento}" data-descsop="${esc(n.descripcionSoporte || '')}" data-incap="${n.esIncapacidad ? '1' : '0'}" data-sinadj="${n.sinAdjunto ? '1' : '0'}">${esc(n.novedad)}</option>`;
         });
         selNovModal.innerHTML = opts;
       }
@@ -420,7 +420,7 @@ async function cargarCatalogoNovedades() {
       if (selIncModal) {
         let opts = '<option value="">Seleccione incapacidad...</option>';
         _asisState.incapacidades.forEach(inc => {
-          opts += `<option value="${esc(inc.novedad)}" data-prefijo="${esc(inc.prefijoNovedad)}" data-tipodoc="${inc.tipoDocumento}" data-descsop="${esc(inc.descripcionSoporte || '')}">${esc(inc.novedad)}</option>`;
+          opts += `<option value="${esc(inc.novedad)}" data-prefijo="${esc(inc.prefijoNovedad)}" data-tipodoc="${inc.tipoDocumento}" data-descsop="${esc(inc.descripcionSoporte || '')}" data-sinadj="${inc.sinAdjunto ? '1' : '0'}">${esc(inc.novedad)}</option>`;
         });
         selIncModal.innerHTML = opts;
       }
@@ -2346,12 +2346,12 @@ function calcularDiasNovedad() {
   }
 
   // Si es Incapacidad, evaluar obligatoriedad de Historia Clínica si días >= 3
-  const novedad = document.getElementById('asisModalNovedad')?.value || '';
-  const esIncapacidad = novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad');
-  if (esIncapacidad) {
+  if (esNovedadIncapacidadModal()) {
     const badgeReq = document.getElementById('asisReqHistoriaBadge');
     if (badgeReq) {
-      if (diff >= 3) {
+      if (tipoIncapacidadSinAdjunto()) {
+        badgeReq.innerHTML = '<span style="color:var(--text-muted); font-weight:normal;">(No se pide para este tipo)</span>';
+      } else if (diff >= 3) {
         badgeReq.innerHTML = '<span style="color:#ef4444; font-weight:700;">(Obligatorio por ser >= 3 días) *</span>';
       } else {
         badgeReq.innerHTML = '<span style="color:var(--text-muted); font-weight:normal;">(Opcional por ser < 3 días)</span>';
@@ -2360,12 +2360,33 @@ function calcularDiasNovedad() {
   }
 }
 
+// La novedad escogida abre la sección de incapacidad (según Config_Asistencia; API no la abre)
+function esNovedadIncapacidadModal() {
+  const sel = document.getElementById('asisModalNovedad');
+  const opt = sel?.options[sel.selectedIndex];
+  return opt?.getAttribute('data-incap') === '1';
+}
+
+// Tipo de incapacidad que no pide adjuntos (ej. Incapacidad Reconocida AFP)
+function tipoIncapacidadSinAdjunto() {
+  const sel = document.getElementById('asisModalTipoInc');
+  const opt = sel?.options[sel.selectedIndex];
+  return opt?.getAttribute('data-sinadj') === '1';
+}
+
+function onTipoIncapacidadModalChange() {
+  const sinAdj = tipoIncapacidadSinAdjunto();
+  const lblInc = document.getElementById('asisLabelIncapacidad');
+  if (lblInc) lblInc.textContent = sinAdj ? 'Adjuntar Incapacidad (opcional)' : 'Adjuntar Incapacidad (PDF o Foto) *';
+  calcularDiasNovedad();
+}
+
 function onTipoNovedadModalChange() {
   const sel = document.getElementById('asisModalNovedad');
   if (!sel) return;
   const opt = sel.options[sel.selectedIndex];
   const novedad = sel.value;
-  const esIncapacidad = novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad');
+  const esIncapacidad = opt?.getAttribute('data-incap') === '1';
   const esRango = opt?.getAttribute('data-rango') === '1';
   const requiereSoporte = opt?.getAttribute('data-soporte') === '1';
   const tipoDoc = Number(opt?.getAttribute('data-tipodoc') || 0);
@@ -2424,9 +2445,10 @@ function onTipoNovedadModalChange() {
   if (esIncapacidad) {
     if (secIncapacidad) secIncapacidad.style.display = 'block';
     if (secSoporte) secSoporte.style.display = 'none';
+    onTipoIncapacidadModalChange();
   } else {
     if (secIncapacidad) secIncapacidad.style.display = 'none';
-    if (requiereSoporte || tipoDoc !== 0) {
+    if (requiereSoporte) {
       if (secSoporte) secSoporte.style.display = 'block';
       if (labelSoporte) {
         labelSoporte.textContent = (descSoporte || 'Adjuntar Documento de Soporte (PDF o Foto)') + ' *';
@@ -2516,7 +2538,8 @@ async function guardarNovedadRango() {
     return;
   }
 
-  const esIncapacidad = novedad === 'Incapacidad' || novedad.toLowerCase().includes('incapacidad');
+  const esIncapacidad = optNov?.getAttribute('data-incap') === '1';
+  const incSinAdjunto = esIncapacidad && tipoIncapacidadSinAdjunto();
 
   const fileSoporte = document.getElementById('asisFileSoporte')?.files[0];
   const fileInc = document.getElementById('asisFileIncapacidad')?.files[0];
@@ -2528,15 +2551,15 @@ async function guardarNovedadRango() {
       alert('Por favor seleccione el Tipo de Incapacidad.');
       return;
     }
-    if (!fileInc) {
+    if (!incSinAdjunto && !fileInc) {
       alert('Es obligatorio adjuntar el documento PDF de la incapacidad.');
       return;
     }
-    if (diasTotales >= 3 && !fileHC) {
+    if (!incSinAdjunto && diasTotales >= 3 && !fileHC) {
       alert('Para incapacidades iguales o superiores a 3 días, es obligatorio adjuntar la Historia Clínica.');
       return;
     }
-  } else if (requiereSoporte || tipoDoc !== 0) {
+  } else if (requiereSoporte) {
     if (!fileSoporte) {
       alert('Es obligatorio adjuntar el documento de soporte PDF.');
       return;

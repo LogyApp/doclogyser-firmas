@@ -2521,7 +2521,7 @@
           <div class="filtros-grid" style="grid-template-columns: 1fr 2fr; margin-bottom:10px;">
             <div class="filtro-field">
               <label>Tipo Incapacidad</label>
-              <select id="asisModalTipoInc">
+              <select id="asisModalTipoInc" onchange="onTipoIncapacidadModalChange()">
                 <option value="Enfermedad General">Enfermedad General</option>
                 <option value="Accidente de Trabajo">Accidente de Trabajo</option>
                 <option value="Enfermedad Laboral">Enfermedad Laboral</option>
@@ -2539,12 +2539,12 @@
           </div>
           <div class="filtros-grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
             <div class="filtro-field">
-              <label>Adjuntar Incapacidad (PDF o Foto)</label>
+              <label id="asisLabelIncapacidad">Adjuntar Incapacidad (PDF o Foto) *</label>
               <div class="zona-archivo" data-input="asisFileIncapacidad"></div>
               <input type="file" id="asisFileIncapacidad" accept="application/pdf,image/*" style="display:none;">
             </div>
             <div class="filtro-field">
-              <label>Adjuntar Historia Clínica (PDF o Foto)</label>
+              <label>Adjuntar Historia Clínica (PDF o Foto) <span id="asisReqHistoriaBadge"></span></label>
               <div class="zona-archivo" data-input="asisFileHistoria"></div>
               <input type="file" id="asisFileHistoria" accept="application/pdf,image/*" style="display:none;">
             </div>

@@ -112,8 +112,11 @@ async function obtenerCatalogoNovedades(rol = '') {
 
   const novedades = [];
   const incapacidades = [];
+  const sinAdjunto = (paramsCfg.prefijosNovedadSinAdjunto || []).map(p => p.toUpperCase());
 
   rows.forEach(r => {
+    const prefijo = String(r.prefijoNovedad || '').trim().toUpperCase();
+    const exentaAdjunto = sinAdjunto.includes(prefijo);
     const item = {
       id: r.Id,
       novedad: r.Novedad,
@@ -122,8 +125,12 @@ async function obtenerCatalogoNovedades(rol = '') {
       evento: r.Evento || 'Novedad',
       tipoDocumento: Number(r.TipoDocumento || 0),
       color: r.color || '#FFFFFF',
-      requiereSoporte: String(r.requiereSoporte || '').trim().toUpperCase() === 'SI' || Number(r.TipoDocumento || 0) !== 0,
-      descripcionSoporte: r.descripcionSoporte || ''
+      requiereSoporte: !exentaAdjunto && (String(r.requiereSoporte || '').trim().toUpperCase() === 'SI' || Number(r.TipoDocumento || 0) !== 0),
+      descripcionSoporte: r.descripcionSoporte || '',
+      // Muestra la sección de incapacidad (tipo, diagnóstico, incapacidad e historia clínica)
+      esIncapacidad: !exentaAdjunto && /incapacidad/i.test(String(r.Novedad || '')),
+      // Prefijos_Novedad_Sin_Adjunto (API, AFP): no se pide ningún adjunto
+      sinAdjunto: exentaAdjunto
     };
 
     if (item.evento === 'Incapacidad') {
@@ -154,6 +161,32 @@ async function validarNovedadDeSistema(novedad, rol) {
 }
 
 /**
+ * Valida en el servidor los adjuntos obligatorios de una novedad (la pantalla ya los pide):
+ *  - Novedad con Soporte = SI o con TipoDocumento en Config_Asistencia → documento de soporte.
+ *  - Incapacidad → tipo de incapacidad y documento de incapacidad; historia clínica si son 3 días o más.
+ *  - Prefijos de Prefijos_Novedad_Sin_Adjunto (API, AFP) → no se pide nada.
+ * Lanza un error con validacion: true si falta algo.
+ */
+async function validarAdjuntosNovedad({ novedad, tipoIncapacidad, dias = 1, tieneSoporte, tieneIncapacidad, tieneHistoria }) {
+  if (!novedad) return;
+  const { novedades, incapacidades } = await obtenerCatalogoNovedades('Sistema');
+  const item = novedades.find(n => n.novedad === novedad);
+  if (!item || item.sinAdjunto) return;
+  const fallar = msg => { throw Object.assign(new Error(msg), { validacion: true }); };
+  if (item.esIncapacidad) {
+    if (!tipoIncapacidad) fallar('Seleccione el Tipo de Incapacidad.');
+    const tipo = incapacidades.find(i => i.novedad === tipoIncapacidad);
+    if (tipo && tipo.sinAdjunto) return;
+    if (!tieneIncapacidad) fallar('Es obligatorio adjuntar el documento de la incapacidad.');
+    if (Number(dias) >= 3 && !tieneHistoria) fallar('Para incapacidades de 3 días o más es obligatorio adjuntar la Historia Clínica.');
+    return;
+  }
+  if (item.requiereSoporte && !tieneSoporte) {
+    fallar(`"${novedad}" requiere adjuntar el soporte${item.descripcionSoporte ? ` (${item.descripcionSoporte})` : ''}.`);
+  }
+}
+
+/**
  * Obtiene los parámetros del módulo de Asistencia
  */
 async function obtenerParametrosAsistencia() {
@@ -180,7 +213,9 @@ async function obtenerParametrosAsistencia() {
       'ANALISTA DE SST'
     ],
     rolesExencionCargosAsistencia: ['Sistema', 'Nomina'],
-    rolesApoyoCualquierOperacion: ['Sistema', 'Nomina']
+    rolesApoyoCualquierOperacion: ['Sistema', 'Nomina'],
+    // Prefijo Novedad de Config_Asistencia que no piden adjunto (Ausentismo Pendiente Incapacidad, Incapacidad Reconocida AFP)
+    prefijosNovedadSinAdjunto: ['API', 'AFP']
   };
   for (const r of rows) {
     if (r.Concepto === 'Dias_Maximos_Pasados') {
@@ -215,6 +250,9 @@ async function obtenerParametrosAsistencia() {
     }
     if (r.Concepto === 'Roles_Exencion_Cargos_Asistencia') {
       config.rolesExencionCargosAsistencia = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Prefijos_Novedad_Sin_Adjunto') {
+      config.prefijosNovedadSinAdjunto = (r.Parametro || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     }
     if (r.Concepto === 'Roles_Apoyo_Cualquier_Operacion') {
       config.rolesApoyoCualquierOperacion = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1833,6 +1871,7 @@ async function editarAreaRelleno({ idAsistencia, area, operacionesPermitidas = [
 }
 
 module.exports = {
+  validarAdjuntosNovedad,
   editarAreaRelleno,
   obtenerCatalogoNovedades,
   obtenerParametrosAsistencia,
