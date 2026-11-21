@@ -9460,6 +9460,11 @@
       }
 
       const docsContainer = document.getElementById('ces_d_docs_container');
+      // Solicitud Devuelta: quien la radicó o un rol autorizado puede quitar documentos y cargar nuevos
+      const confCes = tabs.cesantias || {};
+      const puedeCorregir = sol.estado === 'devuelto' && (String(sol.usuario || '') === String(usuario) || confCes.puedeCorregirDevueltos);
+      const esCorregible = d => puedeCorregir && d.recurso === sol.Id && ['46', '11'].includes(String(d.TipoDocumento))
+        && d.Observaciones !== 'Formato de Solicitud de Retiro de Cesantías';
       if (docs.length) {
         docsContainer.innerHTML = docs.map(d => {
           const rawUrl = d.Url || d.Doc || '';
@@ -9471,13 +9476,33 @@
               <span class="ces-doc-title">📄 ${tituloMostrar}</span>
               <span class="ces-doc-sub">TipoDoc: ${d.TipoDocumento} • Prefijo: ${prefijoMostrar} • Fecha: ${d.FechaRegistro ? String(d.FechaRegistro).slice(0,19).replace('T',' ') : '—'} • Estado: ${d.validacion || 'PEND'}</span>
             </div>
-            <div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
               <a href="${docUrl}" target="_blank" rel="noopener noreferrer" class="ba bver" style="padding:5px 12px; font-size:.78rem;">Ver Documento</a>
+              ${esCorregible(d) ? `<button type="button" class="ba ban" style="padding:5px 12px; font-size:.78rem;" onclick="quitarDocumentoCesantia('${sol.Id}', '${d.id}', this)">Quitar</button>` : ''}
             </div>
           </div>`;
         }).join('');
       } else {
         docsContainer.innerHTML = '<div style="font-size:.82rem; color:var(--text-muted);">No hay soportes anexos en Maestro_docTrabajador.</div>';
+      }
+      if (puedeCorregir) {
+        docsContainer.innerHTML += `
+          <div class="ces-doc-card" style="flex-direction:column; align-items:stretch; gap:8px; border-style:dashed; border-color:#ea580c;">
+            <div style="font-weight:700; font-size:.84rem; color:#c2410c;">Corregir documentos de la solicitud devuelta</div>
+            <div style="display:grid; grid-template-columns: minmax(150px, 1fr) minmax(160px, 2fr); gap:8px;">
+              <select id="ces_corr_tipo" onchange="document.getElementById('ces_corr_etiqueta').style.display = this.value === 'soporte' ? '' : 'none'">
+                <option value="soporte">Soporte</option>
+                <option value="cedula">Cédula del trabajador</option>
+              </select>
+              <input type="text" id="ces_corr_etiqueta" placeholder="Nombre del soporte (ej. Recibo de matrícula)">
+            </div>
+            <input type="file" id="ces_corr_archivo" accept="application/pdf,image/*">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="ba bver" style="padding:6px 14px; font-size:.8rem;" onclick="agregarDocumentoCesantia('${sol.Id}', this)">Cargar documento</button>
+              <button type="button" class="btn-guardar-ficha" style="background:#0284c7;" onclick="reenviarCesantia('${sol.Id}')">↩ Reenviar a revisión</button>
+            </div>
+            <div style="font-size:.74rem; color:var(--text-muted);">Quite los documentos con novedad, cargue los correctos y al terminar presione "Reenviar a revisión": la solicitud vuelve a Pendiente.</div>
+          </div>`;
       }
 
       const pdfDoc = docs.find(d => String(d.TipoDocumento) === '60' || String(d.Prefijo).toUpperCase() === 'CRS') ||
@@ -9600,6 +9625,57 @@
     } catch (err) {
       alert('Error: ' + err.message);
     }
+  }
+
+  // ── Corrección de documentos (solicitud Devuelta) ──────────────────────────
+  async function quitarDocumentoCesantia(idSol, idDoc, btn) {
+    if (!confirm('¿Quitar este documento de la solicitud? Se borra el archivo y deberá cargar el correcto.')) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/nomina/api/cesantias/${encodeURIComponent(idSol)}/documentos/${encodeURIComponent(idDoc)}?usuario=${encodeURIComponent(usuario)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo quitar el documento.');
+      abrirModalDetalleCesantia(idSol);
+    } catch (err) { alert('Error: ' + err.message); btn.disabled = false; }
+  }
+
+  async function agregarDocumentoCesantia(idSol, btn) {
+    const tipo = document.getElementById('ces_corr_tipo').value;
+    const etiqueta = document.getElementById('ces_corr_etiqueta').value.trim();
+    const archivo = document.getElementById('ces_corr_archivo').files[0];
+    if (!archivo) { alert('Seleccione el archivo a cargar.'); return; }
+    if (tipo === 'soporte' && !etiqueta) { alert('Escriba el nombre del soporte.'); return; }
+    const maxMB = (tabs.cesantias && tabs.cesantias.maxSoporteMB) || 15;
+    if (archivo.size > maxMB * 1024 * 1024) { alert(`El archivo supera el tamaño máximo de ${maxMB} MB.`); return; }
+    const fd = new FormData();
+    fd.append('usuario', usuario);
+    fd.append('tipo', tipo);
+    fd.append('etiqueta', etiqueta);
+    fd.append('archivo', archivo);
+    const texto = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Cargando…';
+    try {
+      const res = await fetch(`/nomina/api/cesantias/${encodeURIComponent(idSol)}/documentos`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo cargar el documento.');
+      abrirModalDetalleCesantia(idSol);
+    } catch (err) { alert('Error: ' + err.message); btn.disabled = false; btn.textContent = texto; }
+  }
+
+  async function reenviarCesantia(idSol) {
+    const nota = prompt('¿Qué se corrigió? (queda en las observaciones de la solicitud)', '');
+    if (nota === null) return;
+    try {
+      const res = await fetch(`/nomina/api/cesantias/${encodeURIComponent(idSol)}/estado`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, estado: 'pendiente', observaciones: nota.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo reenviar la solicitud.');
+      alert('✅ Solicitud reenviada a revisión (Pendiente).');
+      abrirModalDetalleCesantia(idSol);
+      fetchCesantiasData();
+    } catch (err) { alert('Error: ' + err.message); }
   }
 
   async function anularSolicitudCesantia(id) {

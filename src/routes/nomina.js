@@ -47,6 +47,8 @@ const {
   crearSolicitudCesantias,
   obtenerDetalleCesantia,
   actualizarEstadoCesantia,
+  quitarDocumentoCesantia,
+  agregarDocumentoCesantia,
   tramitarSolicitudCesantias,
   eliminarSolicitudCesantias,
   obtenerPermisosUsuarioCesantias,
@@ -354,6 +356,7 @@ router.get('/', async (req, res) => {
       puedeEliminar: false,
       puedeTramitar: false,
       puedeDevolver: false,
+      puedeCorregirDevueltos: false,
       maxSoporteMB: 15,
       operacionesSinValidacion: ['administracion'],
     };
@@ -414,6 +417,7 @@ router.get('/', async (req, res) => {
           puedeEliminar:            permisosCesantias.puedeEliminar,
           puedeTramitar:            permisosCesantias.puedeTramitar,
           puedeDevolver:            permisosCesantias.puedeDevolver,
+          puedeCorregirDevueltos:   permisosCesantias.puedeCorregirDevueltos,
           maxSoporteMB:             permisosCesantias.maxSoporteMB,
           operacionesSinValidacion: permisosCesantias.operacionesSinValidacion || [],
           operacionesFiltro:        accesoCesantias.operacionesFiltro || [],
@@ -2501,6 +2505,33 @@ router.post('/api/cesantias/:id/estado', async (req, res) => {
   } catch (err) {
     console.error('[nomina Cesantias API] Error actualizando estado:', err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Corrección de documentos de una solicitud Devuelta (quitar uno y cargar otro)
+router.post('/api/cesantias/:id/documentos', uploadCesantias.single('archivo'), async (req, res) => {
+  try {
+    const { usuario, tipo, etiqueta } = req.body;
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario || '']);
+    if (!uRows.length) return res.status(403).json({ ok: false, error: 'Usuario no válido' });
+    const r = await agregarDocumentoCesantia(req.params.id, { tipo, etiqueta }, req.file, usuario, uRows[0].Rol);
+    res.json(r);
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error agregando documento:', err.message);
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/api/cesantias/:id/documentos/:idDoc', async (req, res) => {
+  try {
+    const usuario = req.query.usuario || '';
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length) return res.status(403).json({ ok: false, error: 'Usuario no válido' });
+    const r = await quitarDocumentoCesantia(req.params.id, req.params.idDoc, usuario, uRows[0].Rol);
+    res.json(r);
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error quitando documento:', err.message);
+    res.status(400).json({ ok: false, error: err.message });
   }
 });
 
