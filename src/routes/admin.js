@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('../services/db');
 const { programarRelleno } = require('../services/rellenoAsistencia');
+const { aplicarTrasladoEnVinculacion } = require('../services/trasladoVinculacion');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarToken } = require('../services/token');
 const { notificarFirmaTrabajador, notificarDocumentoGenerado } = require('../services/email');
@@ -19,6 +20,18 @@ const TRASLADOS_HTML = path.join(__dirname, '../views/admin/traslados.html');
 const TABLA_TR       = 'Dynamic_traslados_trabajador';
 const CAMPO_FK       = 'IdTraslado';
 const ESTADOS_VALIDOS_CAMBIO = ['revisar', 'anulado', 'pendiente'];
+// Desde qué estados se puede pasar a cada uno. Un traslado firmado o generado ya cambió la
+// operación del trabajador y tiene documento: no se devuelve, anula ni valida de nuevo.
+const TRANSICIONES_TRASLADO = {
+  validado:  ['pendiente', 'revisar'],
+  revisar:   ['pendiente', 'validado'],
+  anulado:   ['pendiente', 'validado', 'revisar'],
+  pendiente: ['revisar', 'anulado'],
+};
+const NOMBRE_ESTADO = { pendiente: 'Pendiente', validado: 'Validado', revisar: 'Revisar', anulado: 'Anulado', firmado: 'Firmado', generado: 'Generado' };
+function errorTransicion(actual, nuevo) {
+  return `No se puede pasar de ${NOMBRE_ESTADO[actual] || actual} a ${NOMBRE_ESTADO[nuevo] || nuevo}.`;
+}
 
 // El editor de plantillas solo se usa para el documento de traslado.
 const PLANTILLAS_EDITABLES = ['traslado'];
@@ -334,7 +347,10 @@ router.post('/traslados/:id/validar', async (req, res) => {
     const { id } = req.params;
     const alcance = await obtenerTrasladoEnAlcance(acceso, id);
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
-    await pool.execute("UPDATE Dynamic_traslados_trabajador SET estado_doc = 'validado' WHERE IdTraslado = ?", [id]);
+    const [val] = await pool.execute(
+      "UPDATE Dynamic_traslados_trabajador SET estado_doc = 'validado' WHERE IdTraslado = ? AND estado_doc IN ('pendiente','revisar')", [id]
+    );
+    if (!val.affectedRows) return res.status(409).json({ ok: false, error: errorTransicion(alcance.traslado.estado_doc, 'validado') });
     const token = await generarToken(TABLA_TR, CAMPO_FK, id, 'token_firma', 'token_expira', horasVigenciaEnlace(acceso.params));
     const url = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
 
@@ -397,6 +413,7 @@ router.post('/traslados/:id/enlace', async (req, res) => {
     const { id } = req.params;
     const alcance = await obtenerTrasladoEnAlcance(acceso, id);
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
+    if (alcance.traslado.estado_doc !== 'validado') return res.status(409).json({ ok: false, error: 'Solo los traslados validados tienen enlace de firma.' });
     const token = await generarToken(TABLA_TR, CAMPO_FK, id, 'token_firma', 'token_expira', horasVigenciaEnlace(acceso.params));
     const url = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
     res.json({ ok: true, url });
@@ -415,10 +432,13 @@ router.post('/traslados/:id/estado', async (req, res) => {
     if (!ESTADOS_VALIDOS_CAMBIO.includes(estado)) return res.status(400).json({ ok: false, error: 'Estado no permitido' });
     const alcance = await obtenerTrasladoEnAlcance(acceso, id);
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
-    await pool.execute(
-      'UPDATE Dynamic_traslados_trabajador SET estado_doc = ?, token_firma = NULL, token_expira = NULL WHERE IdTraslado = ?',
-      [estado, id]
+    const origenes = TRANSICIONES_TRASLADO[estado] || [];
+    const [cambio] = await pool.execute(
+      `UPDATE Dynamic_traslados_trabajador SET estado_doc = ?, token_firma = NULL, token_expira = NULL
+        WHERE IdTraslado = ? AND estado_doc IN (${origenes.map(() => '?').join(',')})`,
+      [estado, id, ...origenes]
     );
+    if (!cambio.affectedRows) return res.status(409).json({ ok: false, error: errorTransicion(alcance.traslado.estado_doc, estado) });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -435,6 +455,7 @@ router.post('/traslados/:id/correo', async (req, res) => {
     const alcance = await obtenerTrasladoEnAlcance(acceso, id);
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
     const t = alcance.traslado;
+    if (t.estado_doc !== 'validado') return res.status(409).json({ ok: false, error: 'Solo se envía el enlace de firma de traslados validados.' });
     if (!t.email_trabajador) return res.status(400).json({ ok: false, error: 'El trabajador no tiene correo registrado' });
 
     const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [t.Usuario]);
@@ -599,8 +620,10 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro de traslado no encontrado' : 'Sin autorización' });
     const t = alcance.traslado;
 
-    if (t.estado_doc === 'generado' && t.url_doc) {
-      return res.status(400).json({ ok: false, error: 'El documento ya fue generado anteriormente' });
+    if (!['pendiente', 'validado'].includes(t.estado_doc)) {
+      return res.status(409).json({ ok: false, error: t.estado_doc === 'generado'
+        ? 'El documento ya fue generado anteriormente'
+        : `No se puede generar el documento de un traslado en estado ${NOMBRE_ESTADO[t.estado_doc] || t.estado_doc}.` });
     }
 
     const plantilla = await obtenerPlantilla('traslado');
@@ -637,9 +660,11 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
       `UPDATE \`${plantilla.tabla_datos}\`
        SET url_doc = ?, estado_doc = 'generado', token_firma = NULL, token_expira = NULL,
            firma_trabajador = NULL, url_firma = NULL
-       WHERE \`${plantilla.id_campo_fk}\` = ?`,
+       WHERE \`${plantilla.id_campo_fk}\` = ? AND estado_doc IN ('pendiente','validado')`,
       [urlDoc, id]
-    );
+    ).then(([r]) => {
+      if (!r.affectedRows) throw Object.assign(new Error('El traslado cambió de estado mientras se generaba el documento.'), { conflicto: true });
+    });
 
     const [opRows] = await pool.execute(
       'SELECT REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ?',
@@ -676,16 +701,8 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
       ]
     );
 
-    if (vinRows.length) {
-      await pool.execute(
-        `UPDATE \`Maestro_Vinculación\`
-         SET Operación = ?, Usuario = ?, \`Fecha Actualización\` = ?
-         WHERE Identificación = ?
-         ORDER BY \`Fecha de Ingreso\` DESC
-         LIMIT 1`,
-        [t.operacion_destino, t.Usuario, t.Fecha_Registro, t['Identificación']]
-      );
-    }
+    // Operación en Activos: ahora si la fecha del traslado ya llegó; si es futura, ese día (trasladoVinculacion.js)
+    const aplicacion = await aplicarTrasladoEnVinculacion(t);
 
     const fechaTrasladoStr = t.fecha_traslado
       ? (typeof t.fecha_traslado === 'string' ? t.fecha_traslado : t.fecha_traslado.toISOString()).slice(0, 10)
@@ -720,10 +737,10 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
       cargo,
     }).catch(e => console.error('[admin] Error correo generado (no-firma):', e.message));
 
-    res.json({ ok: true, url_doc: urlDoc });
+    res.json({ ok: true, url_doc: urlDoc, programado: aplicacion.programado || null });
   } catch (err) {
-    console.error('[admin] Error en no-firma traslado:', err);
-    res.status(500).json({ ok: false, error: err.message });
+    if (!err.conflicto) console.error('[admin] Error en no-firma traslado:', err);
+    res.status(err.conflicto ? 409 : 500).json({ ok: false, error: err.message });
   }
 });
 

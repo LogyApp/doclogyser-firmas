@@ -7864,7 +7864,11 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ anotacion })
       });
       const d = await r.json();
-      if (d.ok) { alert('✅ Documento de soporte generado exitosamente.'); fetchTrasladosData(); }
+      if (d.ok) {
+        alert('✅ Documento de soporte generado exitosamente.' + (d.programado
+          ? `\n\nLa operación del trabajador en Activos cambiará el ${d.programado}, fecha del traslado.` : ''));
+        fetchTrasladosData();
+      }
       else alert('Error: ' + (d.error || 'No se pudo generar el documento'));
     } catch { alert('Error de conexión al generar documento de soporte'); }
   }

@@ -187,6 +187,11 @@ if (tareasDesactivadas) {
   // La notificación de nuevo ingreso ya no es una tarea periódica: se envía al
   // finalizar la contratación en Selección (ver src/services/notificacionIngreso.js).
 
+  // Traslados con fecha futura: cambia la Operación del trabajador en Activos el día del traslado
+  const { aplicarTrasladosPendientes } = require('./src/services/trasladoVinculacion');
+  aplicarTrasladosPendientes(); // al arrancar
+  setInterval(aplicarTrasladosPendientes, 60 * 60 * 1000); // cada hora
+
   // Generador automático de CT cuando el token expira sin firma del trabajador
   const { verificarCTExpirados } = require('./src/services/ctExpiryNotifier');
   verificarCTExpirados(); // verificación inicial al arrancar
