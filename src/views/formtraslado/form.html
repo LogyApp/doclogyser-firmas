@@ -256,7 +256,7 @@
     <div class="id-badge" id="successId"></div>
     <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn-nuevo" onclick="location.reload()">Registrar otro traslado</button>
-      <button class="btn-nuevo" id="btnVolver" style="background:#e67e22">← Volver al panel</button>
+      <button class="btn-nuevo" id="btnVolver" style="background:#e67e22">← Volver al listado</button>
     </div>
   </div>
 
@@ -419,7 +419,11 @@
         document.getElementById('successSection').style.display = 'block';
         document.getElementById('successId').textContent = 'ID de traslado: ' + data.IdTraslado;
         document.getElementById('btnVolver').onclick = () => {
-          window.location.href = '/admin/traslados?Usuario=' + encodeURIComponent(USUARIO);
+          // Dentro de la pestaña Traslados de Nómina (ventana emergente): se cierra y se recarga el listado
+          if (window.self !== window.top) {
+            try { window.parent.postMessage({ tipo: 'trasladoRegistrado', id: data.IdTraslado }, window.location.origin); return; } catch (e) {}
+          }
+          window.location.href = '/nomina?usuario=' + encodeURIComponent(USUARIO) + '&tab=traslados&subtab=listado';
         };
       } else {
         alert('Error: ' + (data.error || 'No se pudo registrar'));
