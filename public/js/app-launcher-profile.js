@@ -328,14 +328,8 @@
     }
     function showError(text) { const el = form.querySelector('.alp-error'); el.textContent = text; el.style.display = 'block'; }
     function paintHtmlSignature() {
-      const val = name => esc(form.querySelector(`[name="${name}"]`).value.trim());
-      const name = val('nombre') || 'Nombre y Apellido', cargo = val('cargo') || 'Cargo Corporativo';
-      const email = val('email') || 'colaborador@logyser.com', cellphone = val('celular') || '3000000000';
-      const address = val('direccion'), operation = esc(profile?.operacion || 'Sede Operación');
-      const logo = 'https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png';
-      const iso = 'https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/certificado-iso-9001-bureau-veritas.png';
-      const blue = '#1A2E44', orange = '#E8762B', style = `margin:0 0 3px;font-size:12px;color:${blue};font-family:Arial,Helvetica,sans-serif;`;
-      form.querySelector('[data-html-signature]').innerHTML = `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:480px;width:100%;background:#fff;border-collapse:collapse"><tr><td style="padding:16px 20px 12px;border:1px solid #DDE1E8;border-bottom:none"><p style="margin:0 0 2px;font-size:18px;font-weight:700;color:${blue}">${name}</p><p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${orange}">${cargo}</p><p style="${style}">Email: <a href="mailto:${email}" style="color:#06c;text-decoration:none;font-weight:600">${email}</a></p><p style="${style}">Celular: <span style="font-weight:600">+57 ${cellphone}</span></p><p style="${style}"><strong>Sede:</strong> ${operation}</p>${address ? `<p style="${style}">${address}</p>` : ''}</td></tr><tr><td style="padding:6px 20px;border-left:1px solid #DDE1E8;border-right:1px solid #DDE1E8"><table cellpadding="0" cellspacing="0" border="0" width="390" style="width:390px;border:none;border-collapse:collapse"><tr><td width="230" style="width:230px;vertical-align:middle;border:none;padding:0"><img src="${logo}" alt="Logyser S.A.S." width="220" height="63" style="display:block;width:220px;height:63px;border:0"></td><td width="160" align="right" style="width:160px;vertical-align:middle;text-align:right;border:none;padding:0"><img src="${iso}" alt="Certificado ISO 9001:2015 - Bureau Veritas" width="150" height="58" style="display:block;margin-left:auto;width:150px;height:58px;border:0"></td></tr></table></td></tr><tr><td style="background:#F8FAFC;padding:12px 20px;border:1px solid #DDE1E8"><p style="margin:0;color:#64748B;font-size:9px;line-height:1.4;text-align:justify"><strong>AVISO DE CONFIDENCIALIDAD:</strong> La información de este correo es confidencial y para uso exclusivo del destinatario. Si lo recibió por error, notifique al remitente y elimínelo.</p><p style="margin:6px 0 0;color:#15803D;font-size:9px">Por favor, cuida el medio ambiente antes de imprimir este mensaje.</p></td></tr></table>`;
+      const val = name => form.querySelector(`[name="${name}"]`).value.trim();
+      form.querySelector('[data-html-signature]').innerHTML = window.htmlFirmaCorreoLogyser({ nombre: val('nombre'), cargo: val('cargo'), email: val('email'), celular: val('celular'), direccion: val('direccion'), operacion: profile?.operacion });
     }
     function paintPng(url) {
       const panel = form.querySelector('[data-sign-panel="png"]');
@@ -346,12 +340,8 @@
       link.href = url; actions.style.display = 'flex'; empty.style.display = 'none';
     }
     async function copyHtmlSignature() {
-      const signature = form.querySelector('[data-html-signature]');
-      try {
-        if (navigator.clipboard && window.ClipboardItem) await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([signature.innerHTML], { type: 'text/html' }) })]);
-        else { const range = document.createRange(); range.selectNode(signature); window.getSelection().removeAllRanges(); window.getSelection().addRange(range); document.execCommand('copy'); window.getSelection().removeAllRanges(); }
-        view.querySelector('.alp-status').textContent = 'Firma HTML copiada. Pégala en Gmail o Outlook.'; view.querySelector('.alp-status').style.display = 'block';
-      } catch { showError('No se pudo copiar automáticamente. Selecciona la firma y cópiala.'); }
+      try { await window.copiarFirmaCorreoLogyser(form.querySelector('[data-html-signature]'), form.querySelector('[data-copy-signature]')); }
+      catch { showError('No se pudo copiar automáticamente. Selecciona la firma y cópiala.'); }
     }
     async function saveProfile(event) {
       event.preventDefault();

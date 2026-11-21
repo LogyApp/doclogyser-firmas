@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const pool = require('../services/db');
-const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
+const { guardarEmpleadoFirma, asegurarFirmaPngActual } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { menuDelRol } = require('../services/maestroMenu');
 
@@ -141,6 +141,7 @@ router.get('/api', async (req, res) => {
       });
     }
 
+    result.perfil.firma_url = await asegurarFirmaPngActual(result.perfil);
     let firmaDigital = null;
     try { firmaDigital = await obtenerFirmaBase64Reciente(result.perfil.identificacion); }
     catch (err) { console.warn('[perfil] No se pudo leer la firma digital reciente:', err.message); }

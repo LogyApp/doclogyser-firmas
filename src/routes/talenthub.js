@@ -6,7 +6,7 @@ const ExcelJS = require('exceljs');
 const pool = require('../services/db');
 const { storage, obtenerFirmaBase64Reciente, subirFirma, subirArchivoCloudDocs } = require('../services/storage');
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
-const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
+const { guardarEmpleadoFirma, asegurarFirmaPngActual } = require('../services/firmaSyncService');
 const { notificarCreacionRequisicion } = require('../services/email');
 const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
 const { obtenerPermisosActivos } = require('../services/configActivos');
@@ -244,6 +244,7 @@ router.get('/api/perfil', async (req, res) => {
     const resultado = await obtenerPerfilTalenthub(req.query.usuario);
     if (resultado.error) return res.status(resultado.status).json({ error: resultado.error });
     if (!resultado.perfil) return res.status(404).json({ error: 'No se encontró un perfil corporativo relacionado con este usuario.' });
+    if (resultado.perfil) resultado.perfil.firma_url = await asegurarFirmaPngActual(resultado.perfil);
     let firmaDigital = null;
     try {
       firmaDigital = await obtenerFirmaBase64Reciente(resultado.perfil.identificacion);

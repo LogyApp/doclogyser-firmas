@@ -6,7 +6,7 @@ const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
 const { seccionesDelRol, accesoSeccion } = require('../services/maestroMenu');
 const { obtenerPermisosProduccion } = require('../services/configProduccion');
-const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
+const { guardarEmpleadoFirma, asegurarFirmaPngActual } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma, subirArchivoCloudDocs } = require('../services/storage');
 const {
   obtenerCatalogoNovedades,
@@ -193,6 +193,7 @@ router.get('/api/perfil', async (req, res) => {
     const resultado = await obtenerPerfilNomina(req.query.usuario);
     if (resultado.error) return res.status(resultado.status).json({ error: resultado.error });
     if (!resultado.perfil) return res.status(404).json({ error: 'No se encontró un perfil corporativo relacionado con este usuario.' });
+    if (resultado.perfil) resultado.perfil.firma_url = await asegurarFirmaPngActual(resultado.perfil);
     let firmaDigital = null;
     try {
       firmaDigital = await obtenerFirmaBase64Reciente(resultado.perfil.identificacion);

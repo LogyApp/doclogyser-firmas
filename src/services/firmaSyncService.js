@@ -1,6 +1,7 @@
 const { nuevaPagina } = require('./renderer');
 const pool = require('./db');
 const { storage } = require('./storage');
+const { htmlFirmaCorreo } = require('../../public/js/firma-correo');
 
 const BUCKET_RECURSOS = process.env.BUCKET_RECURSOS || 'logyser-recursos-corporativos';
 const DEFAULT_FOTO = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
@@ -62,14 +63,14 @@ async function subirFotoEmpleado(identificacion, buffer, mimetype = 'image/png',
  * Sube una imagen PNG generada de firma
  */
 async function subirFirmaGeneradaPNG(identificacion, bufferPng) {
-  const nombreArchivo = `firmas-corporativas/generadas/${identificacion}.png`;
+  const nombreArchivo = `firmas-corporativas/firma-correo/${identificacion}.png`;
   const file = storage.bucket(BUCKET_RECURSOS).file(nombreArchivo);
 
   await file.save(bufferPng, {
     contentType: 'image/png',
     resumable: false,
     metadata: {
-      cacheControl: 'public, max-age=3600'
+      cacheControl: 'public, max-age=60'
     }
   });
 
@@ -77,141 +78,47 @@ async function subirFirmaGeneradaPNG(identificacion, bufferPng) {
 }
 
 /**
- * Genera la imagen PNG de la firma corporativa con Puppeteer usando el banner de fondo por área
+ * Genera la imagen PNG de la firma corporativa: el mismo diseño de la firma de correo HTML
+ * (public/js/firma-correo.js) renderizado con Puppeteer al doble de resolución.
  */
 async function generarFirmaPNG(datos) {
-  const area = datos.area || 'auxiliares_administrativos';
-  const fondoUrl = `https://storage.googleapis.com/${BUCKET_RECURSOS}/firmas-corporativas/areas/fondo-${area}.png`;
-  const fotoUrl = datos.foto_url || DEFAULT_FOTO;
-  const nombre = datos.nombre || datos.Trabajador || '';
-  const cargo = datos.cargo || '';
-  const operacion = datos.operacion || '';
-  const direccion = datos.direccion || '';
-  const celular = datos.celular || '';
-  const email = datos.email || '';
-
-  const html = `
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="utf-8">
-      <style>
-        * { box-sizing: border-box; }
-        body {
-          margin: 0; padding: 0; width: 1444px; height: 519px;
-          background-color: transparent !important;
-          font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          overflow: hidden;
-        }
-        .main-table {
-          width: 1444px;
-          height: 519px;
-          background-image: url('${fondoUrl}');
-          background-size: cover;
-          background-repeat: no-repeat;
-          table-layout: fixed;
-          background-color: transparent;
-        }
-        .avatar-wrap {
-          display: inline-block;
-          border: 4px solid #ffffff;
-          border-radius: 50%;
-          box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-        }
-        .avatar-img {
-          width: 290px;
-          height: 290px;
-          border-radius: 50%;
-          object-fit: cover;
-          display: block;
-        }
-        .nombre {
-          margin: 0;
-          font-size: 44px;
-          font-weight: 800;
-          color: #1F2E3A;
-          line-height: 1.1;
-          word-break: break-word;
-          max-width: 580px;
-          text-shadow: 2px 2px 0 #ffffff, -2px -2px 0 #ffffff, 2px -2px 0 #ffffff, -2px 2px 0 #ffffff, 0 0 6px #ffffff;
-        }
-        .cargo {
-          margin: 10px 0;
-          font-size: 28px;
-          font-weight: 700;
-          color: #C7743A;
-          text-shadow: 2px 2px 0 #ffffff, -1px -1px 0 #ffffff, 0 0 4px #ffffff;
-        }
-        .divisor {
-          width: 140px;
-          height: 5px;
-          background-color: #C7743A;
-          margin: 18px 0;
-          border-radius: 3px;
-        }
-        .datos-texto {
-          color: #2F3B45;
-          font-size: 23px;
-          line-height: 1.4;
-          text-shadow: 1px 1px 0 #ffffff;
-        }
-        .datos-texto td {
-          padding-bottom: 6px;
-        }
-        .label-tag {
-          color: #A45A2A;
-          font-weight: 700;
-        }
-        .email-link {
-          font-size: 34px;
-          font-weight: 700;
-          color: #1F2E3A;
-          text-shadow: 2px 2px 0 #ffffff, 0 0 4px #ffffff;
-        }
-      </style>
-    </head>
-    <body>
-      <table class="main-table" cellpadding="0" cellspacing="0" border="0">
-        <tr style="height: 410px;">
-          <td style="width: 410px; vertical-align: middle; text-align: center; padding-left: 20px;">
-            <div class="avatar-wrap">
-              <img src="${fotoUrl}" class="avatar-img">
-            </div>
-          </td>
-          <td style="vertical-align: middle; padding-left: 20px; width: 630px;">
-            <h1 class="nombre">${nombre}</h1>
-            <p class="cargo">${cargo}</p>
-            <div class="divisor"></div>
-            <table cellpadding="0" cellspacing="0" border="0" class="datos-texto">
-              <tr>
-                <td>
-                  <span class="label-tag">Sede:</span> <strong>${operacion}</strong>
-                  ${direccion ? `<br><span style="font-weight: 400; font-size: 20px;">${direccion}</span>` : ''}
-                </td>
-              </tr>
-              ${celular ? `<tr><td><span class="label-tag">Tel:</span> <strong>(+57) ${celular}</strong></td></tr>` : ''}
-            </table>
-          </td>
-          <td style="width: 404px;"></td>
-        </tr>
-        <tr style="height: 109px;">
-          <td colspan="3" style="vertical-align: top; text-align: left; padding-left: 55px; padding-top: 6px;">
-            <span class="email-link">${email}</span>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
+  const firma = htmlFirmaCorreo({
+    nombre: datos.nombre || datos.Trabajador || '',
+    cargo: datos.cargo,
+    email: datos.email,
+    celular: datos.celular,
+    operacion: datos.operacion,
+    direccion: datos.direccion,
+  });
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><style>body{margin:0;background:#fff}</style></head><body>${firma}</body></html>`;
 
   const page = await nuevaPagina();
   try {
-    await page.setViewport({ width: 1444, height: 519, deviceScaleFactor: 1 });
+    await page.setViewport({ width: 600, height: 400, deviceScaleFactor: 2 });
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
-    const buffer = await page.screenshot({ type: 'png', omitBackground: true });
-    return buffer;
+    const tabla = await page.$('body > table');
+    return await tabla.screenshot({ type: 'png' });
   } finally {
     await page.close().catch(() => {});
+  }
+}
+
+/**
+ * Regenera la firma PNG con el diseño actual cuando la guardada es de la versión anterior
+ * (otra carpeta del bucket) o no existe. Devuelve la URL vigente.
+ */
+async function asegurarFirmaPngActual(perfil) {
+  if (!perfil || !perfil.identificacion || !perfil.nombre) return perfil ? perfil.firma_url || null : null;
+  if (String(perfil.firma_url || '').includes('/firmas-corporativas/firma-correo/')) return perfil.firma_url;
+  try {
+    const [filas] = await pool.query('SELECT 1 FROM Maestro_firma_corporativa WHERE Identificacion = ? LIMIT 1', [perfil.identificacion]);
+    if (!filas.length) return perfil.firma_url || null;
+    const url = await subirFirmaGeneradaPNG(perfil.identificacion, await generarFirmaPNG(perfil));
+    await pool.query('UPDATE Maestro_firma_corporativa SET firma_url = ? WHERE Identificacion = ?', [url, perfil.identificacion]);
+    return url;
+  } catch (err) {
+    console.warn('[firmaSyncService] No se pudo actualizar la firma PNG:', err.message);
+    return perfil.firma_url || null;
   }
 }
 
@@ -735,6 +642,7 @@ module.exports = {
   subirFotoEmpleado,
   subirFirmaGeneradaPNG,
   generarFirmaPNG,
+  asegurarFirmaPngActual,
   validarEmpleadoNoRetirado,
   buscarEmpleadoParaFirma,
   buscarColaboradoresSugeridos,

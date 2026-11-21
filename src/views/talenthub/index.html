@@ -3504,7 +3504,7 @@
               <div id="profileFirmaHtmlPreview"></div>
               <div class="profile-signature-actions">
                 <small style="color:var(--text-muted)">La previsualización se actualiza mientras editas los datos.</small>
-                <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="copiarFirmaPerfilTalenthub()">Copiar firma HTML</button>
+                <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="copiarFirmaPerfilTalenthub(this)">Copiar firma HTML</button>
               </div>
             </div>
             <div class="profile-signature-preview profile-signature-png" id="profileFirmaPngPanel" style="display:none">
@@ -4900,42 +4900,14 @@
       const celular = document.getElementById('profileEditCelular').value.trim() || '3000000000';
       const operacion = _talenthubPerfil?.operacion || 'Sede Operación';
       const direccion = document.getElementById('profileEditDireccion').value.trim();
-      const safe = value => esc(value);
-      const logo = 'https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png';
-      const iso = 'https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/certificado-iso-9001-bureau-veritas.png';
-      const azul = '#1A2E44', naranja = '#E8762B';
-      const textStyle = `margin:0 0 3px 0;font-size:12px;color:${azul};font-family:Arial,Helvetica,sans-serif;`;
-      document.getElementById('profileFirmaHtmlPreview').innerHTML = `
-        <table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:480px;width:100%;background:#fff;border-collapse:collapse">
-          <tr><td style="padding:16px 20px 12px;border:1px solid #DDE1E8;border-bottom:none">
-            <p style="margin:0 0 2px;font-size:18px;font-weight:700;color:${azul}">${safe(nombre)}</p>
-            <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${naranja}">${safe(cargo)}</p>
-            <p style="${textStyle}">Email: <a href="mailto:${safe(email)}" style="color:#06c;text-decoration:none;font-weight:600">${safe(email)}</a></p>
-            <p style="${textStyle}">Celular: <span style="font-weight:600">+57 ${safe(celular)}</span></p>
-            <p style="${textStyle}"><strong>Sede:</strong> ${safe(operacion)}</p>
-            ${direccion ? `<p style="${textStyle}">${safe(direccion)}</p>` : ''}
-          </td></tr>
-          <tr><td style="padding:6px 20px;border-left:1px solid #DDE1E8;border-right:1px solid #DDE1E8"><table cellpadding="0" cellspacing="0" border="0" width="390" style="width:390px;border:none;border-collapse:collapse"><tr><td width="230" style="width:230px;vertical-align:middle;border:none;padding:0"><img src="${logo}" alt="Logyser S.A.S." width="220" height="63" style="display:block;width:220px;height:63px;border:0"></td><td width="160" align="right" style="width:160px;vertical-align:middle;text-align:right;border:none;padding:0"><img src="${iso}" alt="Certificado ISO 9001:2015 - Bureau Veritas" width="150" height="58" style="display:block;margin-left:auto;width:150px;height:58px;border:0"></td></tr></table></td></tr>
-          <tr><td style="background:#F8FAFC;padding:12px 20px;border:1px solid #DDE1E8"><p style="margin:0;color:#64748B;font-size:9px;line-height:1.4;text-align:justify"><strong>AVISO DE CONFIDENCIALIDAD:</strong> La información contenida en este correo es confidencial y para uso exclusivo del destinatario. Si usted ha recibido este mensaje por error, notifique al remitente y elimínelo.</p><p style="margin:6px 0 0;color:#15803D;font-size:9px">Por favor, cuida el medio ambiente antes de imprimir este mensaje.</p></td></tr>
-        </table>`;
+      // Mismo diseño que el perfil general (public/js/app-launcher-profile.js)
+      if (!window.htmlFirmaCorreoLogyser) return;
+      document.getElementById('profileFirmaHtmlPreview').innerHTML = window.htmlFirmaCorreoLogyser({ nombre, cargo, email, celular, operacion, direccion });
     }
 
-    async function copiarFirmaPerfilTalenthub() {
-      const html = document.getElementById('profileFirmaHtmlPreview').innerHTML;
+    async function copiarFirmaPerfilTalenthub(boton) {
       try {
-        if (navigator.clipboard && window.ClipboardItem) {
-          await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })]);
-        } else {
-          const range = document.createRange();
-          const preview = document.getElementById('profileFirmaHtmlPreview');
-          range.selectNode(preview);
-          window.getSelection().removeAllRanges();
-          window.getSelection().addRange(range);
-          document.execCommand('copy');
-          window.getSelection().removeAllRanges();
-        }
-        document.getElementById('talenthubProfileStatus').textContent = 'Firma HTML copiada. Pégala en Gmail o Outlook.';
-        document.getElementById('talenthubProfileStatus').style.display = 'block';
+        await window.copiarFirmaCorreoLogyser(document.getElementById('profileFirmaHtmlPreview'), boton);
       } catch {
         document.getElementById('talenthubProfileError').textContent = 'No se pudo copiar automáticamente. Selecciona la firma y cópiala.';
         document.getElementById('talenthubProfileError').style.display = 'block';
@@ -11619,7 +11591,8 @@
     }
   </script>
   <script src="/js/theme.js" defer></script>
-  <script src="/js/app-launcher-profile.js?v=20261120b" defer></script>
+  <script src="/js/firma-correo.js?v=20261120b" defer></script>
+  <script src="/js/app-launcher-profile.js?v=20261120e" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/boton-sync.js" defer></script>
   <script src="/js/modal-back.js" defer></script>
