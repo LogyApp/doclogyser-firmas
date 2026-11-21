@@ -8,7 +8,8 @@ const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../
 const { generarToken } = require('../services/token');
 const { notificarFirmaTrabajador, notificarDocumentoGenerado } = require('../services/email');
 const { computarAccesoNomina } = require('../services/accesoNomina');
-const { obtenerPermisosTraslados, horasVigenciaEnlace } = require('../services/configTraslados');
+const { obtenerPermisosTraslados, horasVigenciaEnlace, validarFechaTraslado, documentoTraslado, maximoListado } = require('../services/configTraslados');
+const { hoyBogota } = require('../services/trasladoVinculacion');
 const { v4: uuidv4 } = require('uuid');
 const { generarPDF } = require('../services/renderer');
 const { subirPDF, fechaFirmaPDFTraslado } = require('../services/storage');
@@ -124,6 +125,8 @@ async function computarAcceso(usuarioId) {
     puedeEditarPlantilla: permisos.puedeEditarPlantilla,
     puedePrevisualizar:   permisos.puedePrevisualizar,
     puedeRegenerar:       permisos.puedeRegenerar,
+    puedeEditar:          permisos.puedeEditar,
+    anotacionNoFirma:     permisos.anotacionNoFirma,
     sinFiltro:            accesoNomina.sinFiltro,
     filtroSQL:            accesoNomina.sinFiltro ? [] : accesoNomina.operacionesFiltro,
     operacionesFiltro:    accesoNomina.operacionesFiltro,
@@ -219,6 +222,9 @@ router.get('/traslados', (req, res) => {
   res.redirect(`/nomina?usuario=${encodeURIComponent(usuarioId)}&tab=traslados&subtab=listado`);
 });
 
+// Los traslados en curso (pendiente, validado, revisar) siempre salen, aunque se pase el máximo
+const ORDEN_LISTADO = "ORDER BY (estado_doc IN ('pendiente','validado','revisar')) DESC, Fecha_Registro DESC";
+
 // Variante JSON de GET /traslados, sin filtro de estado (se usa desde la pestaña
 // de Traslados en Nómina, que calcula los conteos por estado en el cliente).
 router.get('/traslados/datos', async (req, res) => {
@@ -231,14 +237,16 @@ router.get('/traslados/datos', async (req, res) => {
 
     let rows;
     if (acceso.sinFiltro) {
-      [rows] = await pool.execute('SELECT * FROM Dynamic_traslados_trabajador ORDER BY Fecha_Registro DESC LIMIT 300');
+      [rows] = await pool.query(
+        `SELECT * FROM Dynamic_traslados_trabajador ${ORDEN_LISTADO} LIMIT ?`, [maximoListado(acceso.params)]
+      );
     } else if (acceso.filtroSQL.length > 0) {
       // Un usuario ve un traslado si su operación es el origen O el destino —
       // así quien recibe el traslado también lo ve, no solo quien lo envía.
       const ph = acceso.filtroSQL.map(() => '?').join(',');
       [rows] = await pool.execute(
-        `SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) OR operacion_destino IN (${ph}) ORDER BY Fecha_Registro DESC LIMIT 300`,
-        [...acceso.filtroSQL, ...acceso.filtroSQL]
+        `SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) OR operacion_destino IN (${ph}) ${ORDEN_LISTADO} LIMIT ?`,
+        [...acceso.filtroSQL, ...acceso.filtroSQL, maximoListado(acceso.params)]
       );
     } else {
       rows = [];
@@ -370,8 +378,8 @@ router.post('/traslados/:id/validar', async (req, res) => {
       const emailRegistrador = (uRows[0] && uRows[0].Email) || '';
 
       const [cargoRows] = await pool.execute(
-        'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-        [t.Trabajador]
+        'SELECT Cargo FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY (Estado = \'Activo\') DESC, `Fecha de Ingreso` DESC LIMIT 1',
+        [t['Identificación']]
       );
       const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
 
@@ -462,8 +470,8 @@ router.post('/traslados/:id/correo', async (req, res) => {
     const emailUsuario = (uRows[0] && uRows[0].Email) || '';
 
     const [cargoRows] = await pool.execute(
-      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [t.Trabajador]
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY (Estado = \'Activo\') DESC, `Fecha de Ingreso` DESC LIMIT 1',
+      [t['Identificación']]
     );
     const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
 
@@ -521,15 +529,25 @@ router.post('/traslados/:id/editar', async (req, res) => {
     const { id } = req.params;
     const alcance = await obtenerTrasladoEnAlcance(acceso, id);
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
-    const { operacion_origen, operacion_destino, direccion_destino,
-            fecha_traslado, hora_traslado, celular_trabajador, email_trabajador } = req.body;
+    if (!acceso.puedeEditar) return res.status(403).json({ ok: false, error: 'Su rol no puede editar traslados' });
+    const { operacion_destino, direccion_destino,
+            fecha_traslado, hora_traslado, celular_trabajador, email_trabajador, observaciones } = req.body;
+    // El origen no se cambia al editar: es la operación del trabajador cuando se registró el traslado
+    const origen = alcance.traslado.operacion_origen;
+    if (!operacion_destino || !fecha_traslado) return res.status(400).json({ ok: false, error: 'La operación destino y la fecha son obligatorias' });
+    if (String(origen || '').trim().toUpperCase() === String(operacion_destino).trim().toUpperCase()) {
+      return res.status(400).json({ ok: false, error: 'La operación destino debe ser distinta al origen' });
+    }
+    const errorFecha = validarFechaTraslado(acceso.params, String(fecha_traslado).slice(0, 10), hoyBogota());
+    if (errorFecha) return res.status(400).json({ ok: false, error: errorFecha });
+    const obs = observaciones === undefined ? alcance.traslado.observaciones : (String(observaciones).trim() || null);
     const [result] = await pool.execute(
       `UPDATE Dynamic_traslados_trabajador
-       SET operacion_origen = ?, operacion_destino = ?, direccion_destino = ?,
-           fecha_traslado = ?, hora_traslado = ?, celular_trabajador = ?, email_trabajador = ?
+       SET operacion_destino = ?, direccion_destino = ?,
+           fecha_traslado = ?, hora_traslado = ?, celular_trabajador = ?, email_trabajador = ?, observaciones = ?
        WHERE IdTraslado = ? AND estado_doc IN ('pendiente','validado','revisar')`,
-      [operacion_origen || null, operacion_destino, direccion_destino || null,
-       fecha_traslado, hora_traslado || null, celular_trabajador || null, email_trabajador || null, id]
+      [operacion_destino, direccion_destino || null,
+       fecha_traslado, hora_traslado || null, celular_trabajador || null, email_trabajador || null, obs, id]
     );
     if (result.affectedRows === 0) return res.status(409).json({ ok: false, error: 'No editable en su estado actual' });
     res.json({ ok: true });
@@ -579,7 +597,7 @@ router.post('/traslados/:id/regenerar', async (req, res) => {
       const [docRows] = await pool.execute(
         'SELECT Observaciones FROM Maestro_docTrabajador WHERE Doc = ? ORDER BY FechaRegistro DESC LIMIT 1', [t.url_doc]
       );
-      const anotacion = (docRows[0] && docRows[0].Observaciones) || 'El trabajador no firma, se soporta por correo electrónico';
+      const anotacion = (docRows[0] && docRows[0].Observaciones) || acceso.anotacionNoFirma;
       firmaTrabajadorHtml = `
       <div style="border:1.5px dashed #c0392b;border-radius:4px;padding:8px 12px;color:#c0392b;font-size:8pt;font-weight:bold;line-height:1.4;display:inline-block;text-align:center;font-family:Arial,sans-serif;">
         ${esc(anotacion)}<br>
@@ -614,7 +632,7 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     }
 
     const { id } = req.params;
-    const { anotacion = 'El trabajador no firma,\nse soporta por correo electrónico' } = req.body;
+    const anotacion = String(req.body.anotacion || '').trim() || acceso.anotacionNoFirma;
 
     const alcance = await obtenerTrasladoEnAlcance(acceso, id);
     if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro de traslado no encontrado' : 'Sin autorización' });
@@ -680,13 +698,14 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
 
     const newId = uuidv4();
+    const docTras = documentoTraslado(acceso.params);
     const obsDoc = (anotacion || 'El trabajador no firma (soporte correo electrónico)').replace(/\n/g, ' ');
     await pool.execute(
       `INSERT INTO Maestro_docTrabajador
        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
         TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
         Justificacion_Solicitud, FechaRegistro, Usuario)
-       VALUES (?, 'PEND', ?, ?, ?, ?, ?, '50', 'TRAS', ?, ?, 'Ver', NULL, NULL, ?, ?)`,
+       VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ver', NULL, NULL, CONVERT_TZ(NOW(), '+00:00', '-05:00'), ?)`,
       [
         newId,
         regional,
@@ -694,9 +713,10 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
         t['Identificación'],
         estado,
         fechaIngreso,
+        docTras.tipoDocumento,
+        docTras.prefijo,
         urlDoc,
         obsDoc,
-        t.Fecha_Registro,
         t.Usuario,
       ]
     );
@@ -718,8 +738,8 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     const emailUsuario = (uRows[0] && uRows[0].Email) || '';
 
     const [cargoRows] = await pool.execute(
-      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [t.Trabajador]
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY (Estado = \'Activo\') DESC, `Fecha de Ingreso` DESC LIMIT 1',
+      [t['Identificación']]
     );
     const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
 

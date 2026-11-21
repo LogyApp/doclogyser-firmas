@@ -23,6 +23,13 @@ const P = {
   CARGOS_CALIDAD:    'Cargos con copia de Calidad en traslados',
   COPIA_POR_CARGO:   'Notificación traslado - Copia por cargo:',
   HABILITAR:         'Habilitar notificaciones de correo en Traslados',
+  PUEDE_EDITAR:      'Puede editar traslados',
+  DIAS_ATRAS:        'Días máximos hacia atrás para la fecha de traslado',
+  DIAS_ADELANTE:     'Días máximos hacia adelante para la fecha de traslado',
+  TIPO_DOC:          'Tipo de documento del traslado en Maestro_docTrabajador',
+  PREFIJO_DOC:       'Prefijo del documento de traslado',
+  ANOTACION_NO_FIRMA:'Anotación por defecto de No firma',
+  MAX_LISTADO:       'Máximo de traslados en el listado',
 };
 
 const DEFAULTS_TRASLADOS = {
@@ -39,6 +46,13 @@ const DEFAULTS_TRASLADOS = {
   [P.CARGOS_CALIDAD]:   'COORDINADOR LOGISTICO, AUXILIAR ADMINISTRATIVO DE OPERACIÓN, AUXILIAR ADMINISTRATIVO REGIONAL, COORDINADOR REGIONAL',
   [P.COPIA_POR_CARGO]:  'Calidad, Directorth',
   [P.HABILITAR]:        '1',
+  [P.PUEDE_EDITAR]:     '',      // vacío = cualquier rol con acceso a la pestaña (comportamiento anterior)
+  [P.DIAS_ATRAS]:       '',      // vacío = sin límite
+  [P.DIAS_ADELANTE]:    '',      // vacío = sin límite
+  [P.TIPO_DOC]:         '50',
+  [P.PREFIJO_DOC]:      'TRAS',
+  [P.ANOTACION_NO_FIRMA]: 'El trabajador no firma, se soporta por correo electrónico',
+  [P.MAX_LISTADO]:      '300',
 };
 
 // Roles que se resuelven según la Operación Destino (misma lógica de Retiros:
@@ -91,7 +105,43 @@ async function obtenerPermisosTraslados(rol, params) {
     puedeEditarPlantilla: estaEnParametro(p, P.EDITAR_PLANTILLA, rol),
     puedePrevisualizar:   estaEnParametro(p, P.PREVISUALIZAR, rol),
     puedeRegenerar:       estaEnParametro(p, P.REGENERAR, rol),
+    // Si la lista está vacía, edita cualquier rol con acceso a la pestaña Traslados
+    puedeEditar:          listaParametro(p, P.PUEDE_EDITAR).length ? estaEnParametro(p, P.PUEDE_EDITAR, rol) : true,
+    horasEnlace:          horasVigenciaEnlace(p),
+    anotacionNoFirma:     String(valorParametro(p, P.ANOTACION_NO_FIRMA) || DEFAULTS_TRASLADOS[P.ANOTACION_NO_FIRMA]),
   };
+}
+
+// Límite de días (número >= 0) o null si no hay límite
+function limiteDias(params, concepto) {
+  const v = String(valorParametro(params, concepto) || '').trim();
+  if (v === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+// Valida la fecha del traslado (AAAA-MM-DD) contra los días permitidos hacia atrás y adelante.
+// Devuelve un mensaje de error o null.
+function validarFechaTraslado(params, fecha, hoy) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return 'La fecha del traslado no es válida.';
+  const dias = Math.round((Date.parse(fecha + 'T12:00:00Z') - Date.parse(hoy + 'T12:00:00Z')) / 86400000);
+  const atras = limiteDias(params, P.DIAS_ATRAS);
+  const adelante = limiteDias(params, P.DIAS_ADELANTE);
+  if (atras !== null && dias < -atras) return `La fecha del traslado no puede ser de más de ${atras} día(s) atrás.`;
+  if (adelante !== null && dias > adelante) return `La fecha del traslado no puede ser de más de ${adelante} día(s) adelante.`;
+  return null;
+}
+
+function documentoTraslado(params) {
+  return {
+    tipoDocumento: String(valorParametro(params, P.TIPO_DOC) || '50').trim() || '50',
+    prefijo:       String(valorParametro(params, P.PREFIJO_DOC) || 'TRAS').trim() || 'TRAS',
+  };
+}
+
+function maximoListado(params) {
+  const n = parseInt(valorParametro(params, P.MAX_LISTADO), 10);
+  return n > 0 ? Math.min(n, 5000) : 300;
 }
 
 function horasVigenciaEnlace(params) {
@@ -168,6 +218,9 @@ module.exports = {
   obtenerPermisosTraslados,
   horasVigenciaEnlace,
   obtenerDestinatariosTraslado,
+  validarFechaTraslado,
+  documentoTraslado,
+  maximoListado,
   PARAMETROS_TRASLADOS: P,
   DEFAULTS_TRASLADOS,
 };

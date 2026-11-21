@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { programarRelleno } = require('../services/rellenoAsistencia');
 const { aplicarTrasladoEnVinculacion } = require('../services/trasladoVinculacion');
+const { obtenerParametrosTraslados, documentoTraslado } = require('../services/configTraslados');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const {
@@ -324,12 +325,13 @@ router.post('/:proceso/:id', async (req, res) => {
     const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
 
     const newId = uuidv4();
+    const docTras = documentoTraslado(await obtenerParametrosTraslados());
     await pool.execute(
       `INSERT INTO Maestro_docTrabajador
        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
         TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
         Justificacion_Solicitud, FechaRegistro, Usuario)
-       VALUES (?, 'PEND', ?, ?, ?, ?, ?, '50', 'TRAS', ?, NULL, 'Ver', NULL, NULL, ?, ?)`,
+       VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'Ver', NULL, NULL, CONVERT_TZ(NOW(), '+00:00', '-05:00'), ?)`,
       [
         newId,
         regional,
@@ -337,8 +339,9 @@ router.post('/:proceso/:id', async (req, res) => {
         t['Identificación'],
         estado,
         fechaIngreso,
+        docTras.tipoDocumento,
+        docTras.prefijo,
         urlDoc,
-        t.Fecha_Registro,
         t.Usuario,
       ]
     );
@@ -360,8 +363,8 @@ router.post('/:proceso/:id', async (req, res) => {
     const emailUsuario = (uRows[0] && uRows[0].Email) || '';
 
     const [cargoRows] = await pool.execute(
-      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [t.Trabajador]
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY (Estado = \'Activo\') DESC, `Fecha de Ingreso` DESC LIMIT 1',
+      [t['Identificación']]
     );
     const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
 
