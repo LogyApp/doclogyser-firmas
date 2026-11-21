@@ -4,6 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { programarRelleno } = require('../services/rellenoAsistencia');
+const { aplicarTrasladoEnVinculacion } = require('../services/trasladoVinculacion');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const {
@@ -299,12 +300,15 @@ router.post('/:proceso/:id', async (req, res) => {
     const idTraslado = t['IdTraslado'] || id;
     const urlDoc = await subirPDF(t['Identificación'], idTraslado, pdfBuffer);
 
-    await pool.execute(
+    const [gen] = await pool.execute(
       `UPDATE \`${plantilla.tabla_datos}\`
        SET url_doc = ?, estado_doc = 'generado'
-       WHERE \`${plantilla.id_campo_fk}\` = ?`,
+       WHERE \`${plantilla.id_campo_fk}\` = ? AND estado_doc = 'validado'`,
       [urlDoc, id]
     );
+    if (!gen.affectedRows) {
+      return res.status(409).json({ ok: false, error: 'El traslado cambió de estado mientras se firmaba. Comuníquese con quien registró el traslado.' });
+    }
 
     const [opRows] = await pool.execute(
       'SELECT REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ?',
@@ -339,16 +343,8 @@ router.post('/:proceso/:id', async (req, res) => {
       ]
     );
 
-    if (vinRows.length) {
-      await pool.execute(
-        `UPDATE \`Maestro_Vinculación\`
-         SET Operación = ?, Usuario = ?, \`Fecha Actualización\` = ?
-         WHERE Identificación = ?
-         ORDER BY \`Fecha de Ingreso\` DESC
-         LIMIT 1`,
-        [t.operacion_destino, t.Usuario, t.Fecha_Registro, t['Identificación']]
-      );
-    }
+    // Operación en Activos: ahora si la fecha del traslado ya llegó; si es futura, ese día (trasladoVinculacion.js)
+    await aplicarTrasladoEnVinculacion(t);
 
     const fechaTrasladoStr = t.fecha_traslado
       ? (typeof t.fecha_traslado === 'string' ? t.fecha_traslado : t.fecha_traslado.toISOString()).slice(0, 10)
