@@ -18,7 +18,7 @@ const {
   registrarAsistenciaDiaria,
   registrarNovedadPorRango,
   registrarNovedadDia,
-  editarRegistroAsistencia, editarAreaRelleno,
+  editarRegistroAsistencia, editarAreaRelleno, validarAdjuntosNovedad,
   eliminarRegistroAsistencia,
   eliminarRegistrosAsistenciaLote,
   listarAsistencias,
@@ -2826,6 +2826,19 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
       diaInicio, diaFin, codDiagnostico, diagnostico, tipoIncapacidad, observaciones,
       operacionApoya, apoyoOtraOperacion
     } = req.body;
+
+    // Adjuntos obligatorios según Config_Asistencia (antes de subir archivos)
+    const diasNovedad = diaInicio && diaFin
+      ? Math.round((new Date(diaFin + 'T12:00:00Z') - new Date(diaInicio + 'T12:00:00Z')) / 86400000) + 1
+      : 1;
+    await validarAdjuntosNovedad({
+      novedad,
+      tipoIncapacidad,
+      dias: diasNovedad,
+      tieneSoporte: !!(req.files && req.files.soporte && req.files.soporte[0]),
+      tieneIncapacidad: !!(req.files && req.files.incapacidad && req.files.incapacidad[0]),
+      tieneHistoria: !!(req.files && req.files.historiaClinica && req.files.historiaClinica[0])
+    });
 
     let urlSoporte = null;
     let urlIncapacidad = null;
