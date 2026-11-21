@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calificar ticket — LOG&amp;SER</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f1f5f9; color: #1e293b; line-height: 1.5; padding: 16px; }
+    .wrapper { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+    .header { background: #1B2A5E; color: #ffffff; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .header h2 { font-size: 1.08rem; font-weight: 700; }
+    .header small { display: block; font-size: .78rem; opacity: .8; font-weight: 400; }
+    .header img { height: 34px; background: #fff; border-radius: 6px; padding: 3px 6px; }
+    .content { padding: 22px 24px; }
+    .intro { font-size: .92rem; color: #475569; margin-bottom: 16px; }
+    .datos { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 20px; font-size: .88rem; }
+    .datos > div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 9px 14px; border-bottom: 1px solid #f1f5f9; }
+    .datos > div:last-child { border-bottom: none; }
+    .datos > div > span { color: #64748b; }
+    .estado { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+    .estrellas { display: flex; justify-content: center; gap: 6px; margin: 6px 0 4px; }
+    .estrella { background: none; border: none; cursor: pointer; font-size: 2.6rem; line-height: 1; color: #cbd5e1; padding: 2px; transition: transform .1s; }
+    .estrella.activa { color: #F5B301; }
+    .estrella:hover { transform: scale(1.12); }
+    .texto-estrellas { text-align: center; font-size: .88rem; color: #64748b; min-height: 1.4em; margin-bottom: 16px; }
+    label { display: block; font-size: .86rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    textarea { width: 100%; min-height: 100px; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 7px; font: inherit; font-size: .9rem; resize: vertical; }
+    textarea:focus { outline: none; border-color: #1B2A5E; }
+    .contador { text-align: right; font-size: .75rem; color: #94a3b8; margin-top: 3px; }
+    .btn { width: 100%; padding: 12px 18px; font-size: .95rem; font-weight: 700; border-radius: 7px; border: none; cursor: pointer; margin-top: 14px; background: #1B2A5E; color: #fff; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .error { display: none; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 7px; padding: 10px 12px; font-size: .86rem; margin-top: 12px; }
+    .mensaje { padding: 44px 24px; text-align: center; }
+    .mensaje .icono { font-size: 3.2rem; }
+    .mensaje h3 { font-size: 1.3rem; color: #0f172a; margin: 8px 0; }
+    .mensaje p { color: #64748b; }
+    .mensaje .dadas { color: #F5B301; font-size: 1.8rem; letter-spacing: 2px; margin: 6px 0; }
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .wrapper { border-radius: 0; min-height: 100vh; }
+      .content { padding: 18px 16px; }
+      .datos > div { grid-template-columns: 90px 1fr; }
+    }
+  </style>
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
+  <meta name="theme-color" content="#1B2A5E">
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h2>Califique la atención<small>Tickets · LOG&amp;SER</small></h2>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+    </div>
+    <div id="principal"></div>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+    const TEXTOS = ['', 'Muy mala', 'Mala', 'Regular', 'Buena', 'Excelente'];
+    const principal = document.getElementById('principal');
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    let nota = 0;
+
+    function mensaje(icono, titulo, texto, estrellas) {
+      principal.innerHTML = `<div class="mensaje"><div class="icono">${icono}</div><h3>${titulo}</h3>
+        ${estrellas ? `<div class="dadas">${'★'.repeat(estrellas)}${'☆'.repeat(5 - estrellas)}</div>` : ''}<p>${texto}</p></div>`;
+    }
+
+    function pintarEstrellas() {
+      document.querySelectorAll('.estrella').forEach(b => b.classList.toggle('activa', Number(b.dataset.n) <= nota));
+      document.getElementById('textoEstrellas').textContent = nota ? `${nota} de 5 · ${TEXTOS[nota]}` : 'Toque una estrella';
+      document.getElementById('enviar').disabled = !nota;
+    }
+
+    function formulario() {
+      const resuelto = CONFIG.estado === 'Resuelto';
+      principal.innerHTML = `<div class="content">
+        <p class="intro">Su ticket fue atendido. Nos ayuda mucho saber cómo le fue: califique de 1 a 5 y, si quiere, déjenos un comentario.</p>
+        <div class="datos">
+          <div><span>Ticket</span><b>#${esc(CONFIG.ticket)}</b></div>
+          <div><span>Estado</span><div><span class="estado" style="background:${resuelto ? '#dcfce7' : '#fee2e2'};color:${resuelto ? '#15803d' : '#b91c1c'}">${esc(CONFIG.estado)}</span></div></div>
+          <div><span>Módulo</span><div>${esc(CONFIG.modulo)}</div></div>
+          ${CONFIG.motivo ? `<div><span>Motivo</span><div>${esc(CONFIG.motivo)}</div></div>` : ''}
+          ${CONFIG.observaciones ? `<div><span>Respuesta</span><div>${esc(CONFIG.observaciones).replace(/\n/g, '<br>')}</div></div>` : ''}
+        </div>
+        <div class="estrellas" role="radiogroup" aria-label="Calificación de 1 a 5">
+          ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="estrella" data-n="${n}" role="radio" aria-label="${n} de 5">★</button>`).join('')}
+        </div>
+        <div class="texto-estrellas" id="textoEstrellas"></div>
+        <label for="sugerencia">Comentarios (opcional)</label>
+        <textarea id="sugerencia" maxlength="${CONFIG.maxSugerencia}" placeholder="¿Qué podemos mejorar?"></textarea>
+        <div class="contador" id="contador">0 / ${CONFIG.maxSugerencia}</div>
+        <button type="button" class="btn" id="enviar" disabled>Enviar calificación</button>
+        <div class="error" id="error"></div>
+      </div>`;
+      document.querySelectorAll('.estrella').forEach(b => b.addEventListener('click', () => { nota = Number(b.dataset.n); pintarEstrellas(); }));
+      const area = document.getElementById('sugerencia');
+      area.addEventListener('input', () => { document.getElementById('contador').textContent = `${area.value.length} / ${CONFIG.maxSugerencia}`; });
+      document.getElementById('enviar').addEventListener('click', enviar);
+      // Las estrellas del correo llegan con ?c=N para dejar esa calificación ya marcada
+      const desdeCorreo = Number(new URLSearchParams(location.search).get('c'));
+      if (desdeCorreo >= 1 && desdeCorreo <= 5) nota = desdeCorreo;
+      pintarEstrellas();
+    }
+
+    async function enviar() {
+      const boton = document.getElementById('enviar'), error = document.getElementById('error');
+      boton.disabled = true;
+      boton.textContent = 'Enviando…';
+      error.style.display = 'none';
+      try {
+        const r = await fetch('/tickets/api/calificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: CONFIG.token, satisfaccion: nota, sugerencia: document.getElementById('sugerencia').value })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.status === 409) return mensaje('✅', 'Este ticket ya fue calificado', '¡Gracias por su tiempo!');
+        if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo enviar la calificación.');
+        mensaje('🙌', '¡Gracias por calificar!', 'Su opinión nos ayuda a mejorar la atención.', nota);
+      } catch (e) {
+        error.textContent = e.message;
+        error.style.display = 'block';
+        boton.disabled = false;
+        boton.textContent = 'Enviar calificación';
+      }
+    }
+
+    if (CONFIG.invalido) mensaje('⚠️', 'Enlace no válido', 'Este enlace de calificación no existe. Revise que lo haya copiado completo.');
+    else if (CONFIG.satisfaccion) mensaje('✅', 'Este ticket ya fue calificado', '¡Gracias por su tiempo!', Number(CONFIG.satisfaccion));
+    else if (!CONFIG.porCalificar) mensaje('ℹ️', 'Este ticket no está pendiente por calificar', 'Puede que se haya reabierto. Cuando vuelva a quedar resuelto podrá calificarlo.');
+    else formulario();
+  </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ const { computarAccesoInventario, agruparOperacionesPorRegional } = require('../
 const { registrarKardexActa, construirDatosPlantilla, obtenerContactoTrabajador } = require('../services/actas');
 const { generarToken } = require('../services/token');
 const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
+const { prepararCalificacionTicket } = require('../services/calificacionTickets');
 const {
   obtenerConfigPestanaInventario,
   mesConfirmacionPermitido,
@@ -4643,6 +4644,7 @@ router.post('/api/tickets/:ticket/estado', async (req, res) => {
       `UPDATE Dynamic_Tickets SET Estado = ?, Observaciones = ?, fecha_finalizacion = ${finaliza ? 'NOW()' : 'NULL'} WHERE Ticket = ? AND modulo = ?`,
       [estado, obsVal, ticket, 'Inventario']
     );
+    if (finaliza) await prepararCalificacionTicket(ticket, process.env.BASE_URL || `${req.protocol}://${req.get('host')}`);
 
     console.log(`[inventario-tickets] Ticket ${ticket} actualizado a estado "${estado}" por ${acceso.usuarioId}`);
     res.json({ ok: true, ticket, estado, observaciones: obsVal });

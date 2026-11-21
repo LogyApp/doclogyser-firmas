@@ -19,6 +19,7 @@ const configServicios = require('../services/configServicios');
 const periodoServicios = require('../services/periodoServicios');
 const { buscarTarifa } = require('../services/tarifasServicio');
 const { avisarFotoTransferenciaPendiente } = require('../services/avisoFotoTransferencia');
+const { prepararCalificacionTicket } = require('../services/calificacionTickets');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
   area: 'area', actividad: 'actividad', vehiculo: 'vehiculo', unidad: 'unidad', remolque: 'remolque',
@@ -6965,6 +6966,7 @@ router.post('/api/tickets/:ticket/estado', async (req, res) => {
       `UPDATE Dynamic_Tickets SET Estado = ?, Observaciones = ?, fecha_finalizacion = ${finaliza ? 'NOW()' : 'NULL'} WHERE Ticket = ?`,
       [estado, obsVal, ticket]
     );
+    if (finaliza) await prepararCalificacionTicket(ticket, process.env.BASE_URL || `${req.protocol}://${req.get('host')}`);
 
     res.json({ ok: true, ticket, estado, observaciones: obsVal });
   } catch (err) {

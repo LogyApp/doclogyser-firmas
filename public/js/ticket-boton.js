@@ -233,7 +233,8 @@
     boton.id = 'tkb-boton';
     boton.className = 'tkb-flotante';
     boton.title = 'Reportar un ticket';
-    boton.innerHTML = '<span style="font-size:1.1rem;">🎫</span> <span class="tkb-label">Ticket</span>';
+    boton.innerHTML = '<span style="font-size:1.1rem;">🎫</span> <span class="tkb-label">Ticket</span>'
+      + '<span class="tkb-punto-boton" id="tkb-boton-calificar" title="Tickets por calificar"></span>';
     document.body.appendChild(boton);
 
     const overlay = document.createElement('div');
@@ -247,7 +248,7 @@
         </div>
         <div class="tkb-tabs" role="tablist">
           <button type="button" class="tkb-tab tkb-tab-activa" data-tkb-tab="nuevo" role="tab">＋ Nuevo ticket</button>
-          <button type="button" class="tkb-tab" data-tkb-tab="mis" role="tab">📋 Mis tickets <span class="tkb-tab-badge" id="tkb-mis-badge" style="display:none;"></span></button>
+          <button type="button" class="tkb-tab" data-tkb-tab="mis" role="tab">📋 Mis tickets <span class="tkb-tab-badge" id="tkb-mis-badge" style="display:none;"></span><span class="tkb-tab-badge tkb-badge-calificar" id="tkb-calificar-badge" style="display:none;" title="Por calificar"></span></button>
         </div>
         <div class="tkb-body">
           <div id="tkb-panel-mis" style="display:none;"></div>
@@ -707,7 +708,12 @@
   // Tickets que puso el usuario en la quincena actual, de cualquier módulo. Se pueden editar
   // (lápiz) mientras estén En Proceso o Pendiente; en los otros estados solo se ven.
   // Para otros periodos, el enlace lleva a la pestaña Tickets del Directorio corporativo.
+  // Los Resueltos o Rechazados pendientes por calificar salen con un punto verde (aunque sean de otra
+  // quincena) y se califican de 1 a 5 desde el detalle; el botón flotante muestra cuántos hay.
   let misTickets = null;          // respuesta de /tickets/api/mis-tickets
+  let misNota = 0;                // estrellas escogidas en el detalle
+  const TEXTOS_NOTA = ['', 'Muy mala', 'Mala', 'Regular', 'Buena', 'Excelente'];
+  const FILTRO_CALIFICAR = '__calificar';
   let misFiltroEstado = '';
   let misVista = { tipo: 'lista', ticket: null };
 
@@ -750,11 +756,25 @@
       const badge = document.getElementById('tkb-mis-badge');
       badge.textContent = abiertos;
       badge.style.display = abiertos ? '' : 'none';
+      pintarPendientesCalificar();
       if (pintar || document.getElementById('tkb-panel-mis').style.display !== 'none') renderMis();
     } catch (e) {
       if (pintar) panel.innerHTML = `<div class="tkb-vacio tkb-error">${esc(e.message)}</div>`;
     }
   }
+
+  function pintarPendientesCalificar() {
+    const n = misTickets ? misTickets.tickets.filter(t => t.porCalificar).length : 0;
+    const badge = document.getElementById('tkb-calificar-badge');
+    badge.textContent = n ? `⭐ ${n}` : '';
+    badge.style.display = n ? '' : 'none';
+    const punto = document.getElementById('tkb-boton-calificar');
+    punto.textContent = n;
+    punto.classList.toggle('tkb-visible', n > 0);
+    document.getElementById('tkb-boton').title = n ? `Reportar un ticket · ${n} por calificar` : 'Reportar un ticket';
+  }
+
+  const estrellasTexto = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
   function renderMis() {
     const panel = document.getElementById('tkb-panel-mis');
@@ -765,20 +785,28 @@
     const estados = ['En Proceso', 'Pendiente', 'Resuelto', 'Rechazado'];
     Object.keys(porEstado).forEach(e => { if (!estados.includes(e)) estados.push(e); });
     const chip = (valor, texto, n) => `<button type="button" class="tkb-chip ${misFiltroEstado === valor ? 'tkb-chip-activo' : ''}" data-tkb-filtro="${esc(valor)}"><b>${n}</b> ${esc(texto)}</button>`;
-    const lista = misFiltroEstado ? tickets.filter(t => t.estado === misFiltroEstado) : tickets;
+    const nCalificar = tickets.filter(t => t.porCalificar).length;
+    if (misFiltroEstado === FILTRO_CALIFICAR && !nCalificar) misFiltroEstado = '';
+    const lista = misFiltroEstado === FILTRO_CALIFICAR ? tickets.filter(t => t.porCalificar)
+      : misFiltroEstado ? tickets.filter(t => t.estado === misFiltroEstado) : tickets;
     panel.innerHTML = `
       <div class="tkb-quincena">Quincena actual: <b>${esc(quincena.nombre)}</b> <span>(${esc(quincena.desde)} a ${esc(quincena.hasta)})</span></div>
       <div class="tkb-chips">
         ${chip('', 'Total', total)}
         ${estados.map(e => chip(e, e, porEstado[e] || 0)).join('')}
+        ${nCalificar ? chip(FILTRO_CALIFICAR, '⭐ Por calificar', nCalificar) : ''}
       </div>
+      ${nCalificar ? `<div class="tkb-aviso-calificar"><span class="tkb-punto"></span>Tienes ${nCalificar === 1 ? 'un ticket' : nCalificar + ' tickets'} por calificar. Ábrelo y cuéntanos cómo te atendieron.</div>` : ''}
       ${lista.length ? lista.map(t => `
-        <div class="tkb-item" data-tkb-ver="${esc(t.ticket)}" role="button" tabindex="0">
+        <div class="tkb-item${t.porCalificar ? ' tkb-item-por-calificar' : ''}" data-tkb-ver="${esc(t.ticket)}" role="button" tabindex="0">
           <div class="tkb-item-top">
+            ${t.porCalificar ? '<span class="tkb-punto" title="Pendiente por calificar"></span>' : ''}
             <span class="tkb-item-id">#${esc(t.ticket)}</span>
             ${badgeEstado(t.estado)}
+            ${t.satisfaccion ? `<span class="tkb-estrellas-dadas" title="Tu calificación">${estrellasTexto(Number(t.satisfaccion))}</span>` : ''}
             <span class="tkb-item-fecha">${esc(t.fechaRegistro || '')}</span>
             ${t.puedeEditar ? `<button type="button" class="tkb-lapiz" data-tkb-editar="${esc(t.ticket)}" title="Editar ticket" aria-label="Editar ticket">✏️</button>` : ''}
+            ${t.porCalificar ? `<button type="button" class="tkb-btn-calificar" data-tkb-calificar="${esc(t.ticket)}">⭐ Calificar</button>` : ''}
           </div>
           <div class="tkb-item-meta">${esc(t.modulo)} · ${esc(t.operacion || '—')}</div>
           <div class="tkb-item-motivo">${esc(t.motivo || '')}</div>
@@ -809,7 +837,53 @@
       ${fila('Evidencia', t.evidencia ? `<a href="${esc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a>` : '')}
       ${fila('Observaciones', esc(t.observaciones).replace(/\n/g, '<br>'))}
       ${fila('Finalizado', esc(t.fechaFinalizacion))}
-      ${t.puedeEditar ? '' : '<div class="tkb-nota">Solo se puede editar mientras esté En Proceso o Pendiente.</div>'}`;
+      ${t.satisfaccion ? fila('Tu calificación', `<span class="tkb-estrellas-dadas">${estrellasTexto(Number(t.satisfaccion))}</span> ${esc(TEXTOS_NOTA[Number(t.satisfaccion)] || '')}`) : ''}
+      ${t.satisfaccion ? fila('Tu comentario', esc(t.sugerencia).replace(/\n/g, '<br>')) : ''}
+      ${t.porCalificar ? `
+        <div class="tkb-calif" id="tkb-calif">
+          <h4>⭐ ¿Cómo te atendieron?</h4>
+          <p>Califica de 1 a 5 y, si quieres, déjanos un comentario. Solo se puede calificar una vez.</p>
+          <div class="tkb-estrellas" role="radiogroup" aria-label="Calificación de 1 a 5">
+            ${[1, 2, 3, 4, 5].map(n => `<button type="button" class="tkb-estrella" data-tkb-estrella="${n}" role="radio" aria-label="${n} de 5">★</button>`).join('')}
+          </div>
+          <div class="tkb-texto-estrellas" id="tkb-texto-estrellas"></div>
+          <textarea id="tkb-calif-sugerencia" maxlength="2000" placeholder="Comentarios (opcional)"></textarea>
+          <button type="button" class="tkb-btn-primario" data-tkb-enviar-calif="${esc(t.ticket)}" disabled>Enviar calificación</button>
+        </div>` : ''}
+      ${t.puedeEditar || t.porCalificar ? '' : '<div class="tkb-nota">Solo se puede editar mientras esté En Proceso o Pendiente.</div>'}`;
+    if (t.porCalificar) { misNota = 0; pintarNota(); }
+  }
+
+  function pintarNota() {
+    document.querySelectorAll('[data-tkb-estrella]').forEach(b => b.classList.toggle('tkb-activa', Number(b.dataset.tkbEstrella) <= misNota));
+    const texto = document.getElementById('tkb-texto-estrellas');
+    if (texto) texto.textContent = misNota ? `${misNota} de 5 · ${TEXTOS_NOTA[misNota]}` : 'Toca una estrella';
+    const enviar = document.querySelector('[data-tkb-enviar-calif]');
+    if (enviar) enviar.disabled = !misNota;
+  }
+
+  async function enviarCalificacion(id, btn) {
+    if (!misNota) return;
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    try {
+      const r = await fetch(`/tickets/api/ticket/${encodeURIComponent(id)}/calificar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: cfg.usuarioId, satisfaccion: misNota, sugerencia: document.getElementById('tkb-calif-sugerencia').value })
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo enviar la calificación.');
+      const i = misTickets.tickets.findIndex(t => t.ticket === id);
+      if (i >= 0) misTickets.tickets[i] = { ...misTickets.tickets[i], ...data.ticket, porCalificar: false };
+      pintarPendientesCalificar();
+      misVista = { tipo: 'detalle', ticket: misTickets.tickets[i] || data.ticket };
+      renderMis();
+    } catch (e) {
+      alert(e.message);
+      btn.disabled = false;
+      btn.textContent = 'Enviar calificación';
+    }
   }
 
   async function renderEditar(t) {
@@ -862,6 +936,22 @@
   }
 
   function onClickMis(ev) {
+    const estrella = ev.target.closest('[data-tkb-estrella]');
+    if (estrella) { misNota = Number(estrella.dataset.tkbEstrella); return pintarNota(); }
+    const enviarCalif = ev.target.closest('[data-tkb-enviar-calif]');
+    if (enviarCalif) return enviarCalificacion(enviarCalif.dataset.tkbEnviarCalif, enviarCalif);
+    const calificar = ev.target.closest('[data-tkb-calificar]');
+    if (calificar) {
+      ev.stopPropagation();
+      const t = buscarTicket(calificar.dataset.tkbCalificar);
+      if (t) {
+        misVista = { tipo: 'detalle', ticket: t };
+        renderMis();
+        const caja = document.getElementById('tkb-calif');
+        if (caja) caja.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
     const filtro = ev.target.closest('[data-tkb-filtro]');
     if (filtro) { misFiltroEstado = filtro.dataset.tkbFiltro; return renderMis(); }
     const editar = ev.target.closest('[data-tkb-editar]');
@@ -982,5 +1072,6 @@
     document.getElementById('tkb-boton').classList.add('tkb-visible');
     yaInicializado = true;
     cargarOperacionesSiFaltan();
+    cargarMisTickets(false);
   };
 })();

@@ -365,3 +365,27 @@
   .tkb-det-fila { grid-template-columns: 1fr; gap: 2px; }
   .tkb-tab { padding: 8px 8px; font-size: .8rem; }
 }
+
+/* ── Calificación de tickets: punto verde de "pendiente por calificar" (como un mensaje no leído) ── */
+.tkb-punto-boton {
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px;
+  background: #22c55e; color: #fff; font-size: .72rem; font-weight: 800; display: none; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 2px #fff; line-height: 1;
+}
+.tkb-punto-boton.tkb-visible { display: inline-flex; }
+.tkb-badge-calificar { background: #22c55e; }
+.tkb-punto { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; display: inline-block; flex: none; box-shadow: 0 0 0 3px #dcfce7; }
+.tkb-aviso-calificar { display: flex; align-items: center; gap: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 8px; padding: 8px 10px; font-size: .8rem; margin-bottom: 10px; }
+.tkb-item-por-calificar { border-color: #86efac; background: #f7fef9; }
+.tkb-btn-calificar { border: 1.5px solid #22c55e; background: #22c55e; color: #fff; border-radius: 7px; padding: 2px 9px; cursor: pointer; font: inherit; font-size: .76rem; font-weight: 700; }
+.tkb-btn-calificar:hover { filter: brightness(1.06); }
+.tkb-estrellas-dadas { color: #F5B301; font-size: .85rem; letter-spacing: 1px; }
+.tkb-calif { margin-top: 14px; border: 1.5px solid #bbf7d0; background: #f7fef9; border-radius: 10px; padding: 12px; }
+.tkb-calif h4 { margin: 0 0 2px; font-size: .9rem; color: #166534; }
+.tkb-calif p { margin: 0 0 8px; font-size: .78rem; color: #64748b; }
+.tkb-estrellas { display: flex; gap: 2px; justify-content: center; }
+.tkb-estrella { border: none; background: none; cursor: pointer; font-size: 2rem; line-height: 1; color: #cbd5e1; padding: 2px 4px; }
+.tkb-estrella.tkb-activa { color: #F5B301; }
+.tkb-texto-estrellas { text-align: center; font-size: .78rem; color: #64748b; min-height: 1.3em; margin: 2px 0 8px; }
+.tkb-calif textarea { width: 100%; box-sizing: border-box; min-height: 70px; padding: 8px 10px; border: 1.5px solid #d1d5db; border-radius: 7px; font: inherit; font-size: .84rem; resize: vertical; }
+.tkb-calif .tkb-btn-primario { width: 100%; margin-top: 8px; }

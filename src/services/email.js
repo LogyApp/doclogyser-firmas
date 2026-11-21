@@ -3671,6 +3671,51 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   return true;
 }
 
+// Tickets: al pasar un ticket a Resuelto o Rechazado se pide a quien lo puso que califique la atención
+// (ver services/calificacionTickets.js). Solo le llega al solicitante.
+async function notificarCalificacionTicket({ email, nombre, ticket, modulo, motivo, estado, observaciones, urlCalificar }) {
+  const e = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const resuelto = estado === 'Resuelto';
+  const estrellas = [1, 2, 3, 4, 5].map(n =>
+    `<a href="${e(urlCalificar)}&amp;c=${n}" style="display:inline-block;margin:0 3px;font-size:30px;line-height:1;color:#F5B301;text-decoration:none" title="${n} de 5">&#9733;</a>`
+  ).join('');
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${e(nombre)}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Su ticket <strong>#${e(ticket)}</strong> fue <strong style="color:${resuelto ? '#15803d' : '#b91c1c'}">${e(estado).toLowerCase()}</strong>.
+          Nos ayuda mucho saber cómo fue la atención: califíquela de 1 a 5 y, si quiere, déjenos un comentario.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:24px">
+          <tr style="background:#f8f9fb"><td style="padding:10px 14px;color:#888;width:34%">Módulo</td><td style="padding:10px 14px;font-weight:700;color:#1a1a2e">${e(modulo) || '—'}</td></tr>
+          <tr><td style="padding:10px 14px;color:#888">Motivo</td><td style="padding:10px 14px">${e(motivo) || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:10px 14px;color:#888;vertical-align:top">Respuesta</td><td style="padding:10px 14px;line-height:1.5">${e(observaciones).replace(/\n/g, '<br>') || '—'}</td></tr>
+        </table>
+        <div style="text-align:center;margin-bottom:8px">${estrellas}</div>
+        <p style="text-align:center;color:#888;font-size:.8rem;margin:0 0 20px">Toque las estrellas para calificar</p>
+        <div style="text-align:center;margin-bottom:26px">
+          <a href="${e(urlCalificar)}" style="display:inline-block;background:#1B2A5E;color:#fff;text-decoration:none;padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700">Calificar atención</a>
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          También puede calificarlo desde el botón Ticket de LogyApp, en Mis tickets.<br>
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${e(urlCalificar)}</span>
+        </p>
+      </div>
+      ${FOOTER}
+    </div>`;
+  await transporter.sendMail({
+    from: `"LOG&SER Tickets" <${EMAIL_FROM}>`,
+    to: email,
+    subject: `Califique la atención de su ticket #${ticket} — LOG&SER`,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+  return true;
+}
+
 // Nómina › Informes Disciplinarios: aviso de un informe nuevo (Para / Copia por rol en Config_Parametros
 // nomina / Informes Disciplinarios, ver services/informesDisciplinarios.js). Interno: no va al trabajador.
 // Sin enlace a LogyApp hasta que el proyecto tenga la revisión de seguridad (rutas con ?usuario=).
@@ -3717,6 +3762,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 
 module.exports = {
   notificarFirmaARO,
+  notificarCalificacionTicket,
   notificarInformeDisciplinario,
   notificarCreacionRequisicion,
   enviarNotificacionCesantias,

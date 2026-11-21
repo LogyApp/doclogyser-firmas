@@ -2,10 +2,18 @@ const express = require('express');
 const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
+const fs = require('fs');
+const path = require('path');
 const { subirEvidenciaTicket } = require('../services/storage');
+const calificacion = require('../services/calificacionTickets');
 
 const router = express.Router();
 const uploadTicket = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+const HTML_CALIFICAR = path.join(__dirname, '../views/tickets/calificar.html');
+
+function urlBase(req) {
+  return process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // Backend compartido del botón "+ Ticket" (Dynamic_Tickets), reusado por
@@ -207,7 +215,9 @@ const SELECT_TICKET = `
          t.Evidencia AS evidencia, t.telefono AS telefono, t.Estado AS estado,
          t.Observaciones AS observaciones,
          DATE_FORMAT(t.fecha_finalizacion, '%Y-%m-%d %H:%i') AS fechaFinalizacion,
-         t.satisfaccion AS satisfaccion, t.sugerencia AS sugerencia
+         t.satisfaccion AS satisfaccion, t.sugerencia AS sugerencia,
+         DATE_FORMAT(t.fecha_calificacion, '%Y-%m-%d %H:%i') AS fechaCalificacion,
+         ${calificacion.SQL_POR_CALIFICAR} AS porCalificar
   FROM Dynamic_Tickets t
   LEFT JOIN (SELECT \`OPERACIÓN\`, MAX(REGIONAL) AS REGIONAL FROM Maestro_Operaciones GROUP BY \`OPERACIÓN\`) mo
     ON mo.\`OPERACIÓN\` = t.\`Operación\``;
@@ -308,6 +318,7 @@ function conteoPorEstado(rows) {
 }
 
 // ── GET /api/mis-tickets?usuario=X — tickets del usuario en la quincena actual ─
+// Incluye también, de cualquier fecha, los que tiene pendientes por calificar (los conteos son solo de la quincena).
 router.get('/api/mis-tickets', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -315,12 +326,21 @@ router.get('/api/mis-tickets', async (req, res) => {
     const quincena = await quincenaActual();
     const [rows] = await pool.query(
       `${SELECT_TICKET}
-       WHERE t.solicitante = ? AND t.fecha_registro >= ? AND t.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)
+       WHERE t.solicitante = ?
+         AND ((t.fecha_registro >= ? AND t.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)) OR ${calificacion.SQL_POR_CALIFICAR})
        ORDER BY t.fecha_registro DESC`,
       [usuario, quincena.desde, quincena.hasta]
     );
-    rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); });
-    res.json({ ok: true, quincena, total: rows.length, porEstado: conteoPorEstado(rows), tickets: rows });
+    rows.forEach(t => {
+      t.puedeEditar = puedeEditarTicket(t, usuario);
+      t.porCalificar = Boolean(t.porCalificar);
+      t.enQuincena = String(t.fechaRegistro || '').slice(0, 10) >= quincena.desde && String(t.fechaRegistro || '').slice(0, 10) <= quincena.hasta;
+    });
+    const deQuincena = rows.filter(t => t.enQuincena);
+    res.json({
+      ok: true, quincena, total: deQuincena.length, porEstado: conteoPorEstado(deQuincena),
+      porCalificar: rows.filter(t => t.porCalificar).length, tickets: rows
+    });
   } catch (err) {
     console.error('[tickets] GET /api/mis-tickets:', err);
     res.status(500).json({ error: 'No se pudieron cargar tus tickets.' });
@@ -477,6 +497,7 @@ router.post('/api/ticket/:ticket/estado', async (req, res) => {
       `UPDATE Dynamic_Tickets SET Estado = ?, Observaciones = ?, fecha_finalizacion = ${finaliza ? 'NOW()' : 'NULL'} WHERE Ticket = ?`,
       [estado, observaciones, req.params.ticket]
     );
+    if (finaliza) await calificacion.prepararCalificacionTicket(req.params.ticket, urlBase(req));
     const [act] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
     act[0].puedeEditar = puedeEditarTicket(act[0], usuario);
     act[0].puedeResolver = true;
@@ -484,6 +505,70 @@ router.post('/api/ticket/:ticket/estado', async (req, res) => {
   } catch (err) {
     console.error('[tickets] POST /api/ticket/:ticket/estado:', err);
     res.status(500).json({ error: 'No se pudo actualizar el ticket.' });
+  }
+});
+
+// ── Calificación de la atención (1 a 5 y comentario) por quien puso el ticket ─────
+// Solo la primera calificación cuenta (ver services/calificacionTickets.js).
+
+// POST /api/ticket/:ticket/calificar — desde Mis tickets. Body: { usuario, satisfaccion, sugerencia }
+router.post('/api/ticket/:ticket/calificar', async (req, res) => {
+  try {
+    const { usuario } = req.body || {};
+    if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
+    const datos = calificacion.validarCalificacion(req.body);
+    if (datos.error) return res.status(400).json({ error: datos.error });
+    const ok = await calificacion.guardarCalificacion({ ticket: req.params.ticket, solicitante: usuario }, datos);
+    if (!ok) return res.status(409).json({ error: 'Este ticket ya fue calificado o no está pendiente por calificar.' });
+    const [act] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    act[0].puedeEditar = puedeEditarTicket(act[0], usuario);
+    act[0].porCalificar = false;
+    res.json({ ok: true, ticket: act[0] });
+  } catch (err) {
+    console.error('[tickets] POST /api/ticket/:ticket/calificar:', err);
+    res.status(500).json({ error: 'No se pudo guardar la calificación.' });
+  }
+});
+
+// Ticket del enlace del correo (token aleatorio: no requiere iniciar sesión)
+async function ticketPorToken(token) {
+  if (!/^[a-f0-9]{48}$/.test(String(token || ''))) return null;
+  const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.token_calificacion = ? LIMIT 1`, [token]);
+  return rows[0] || null;
+}
+
+// GET /calificar?t=TOKEN — página para calificar desde el correo
+router.get('/calificar', async (req, res) => {
+  try {
+    const t = await ticketPorToken(req.query.t);
+    const config = t ? {
+      token: req.query.t,
+      ticket: t.ticket, modulo: t.modulo, motivo: t.motivo || '', estado: t.estado,
+      observaciones: t.observaciones || '', solicitante: t.solicitante,
+      porCalificar: Boolean(t.porCalificar), satisfaccion: t.satisfaccion, sugerencia: t.sugerencia || '',
+      maxSugerencia: calificacion.MAX_SUGERENCIA,
+    } : { invalido: true };
+    const json = JSON.stringify(config).replace(/</g, '\u003c');
+    res.send(fs.readFileSync(HTML_CALIFICAR, 'utf8').replace('__CONFIG__', () => json));
+  } catch (err) {
+    console.error('[tickets] GET /calificar:', err);
+    res.status(500).send('No se pudo abrir la calificación.');
+  }
+});
+
+// POST /api/calificar — desde la página del correo. Body: { token, satisfaccion, sugerencia }
+router.post('/api/calificar', async (req, res) => {
+  try {
+    const t = await ticketPorToken((req.body || {}).token);
+    if (!t) return res.status(404).json({ error: 'El enlace no es válido.' });
+    const datos = calificacion.validarCalificacion(req.body);
+    if (datos.error) return res.status(400).json({ error: datos.error });
+    const ok = await calificacion.guardarCalificacion({ token: req.body.token }, datos);
+    if (!ok) return res.status(409).json({ error: 'Este ticket ya fue calificado. ¡Gracias!' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[tickets] POST /api/calificar:', err);
+    res.status(500).json({ error: 'No se pudo guardar la calificación.' });
   }
 });
 
