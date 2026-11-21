@@ -51,6 +51,10 @@ async function verificarPermisoConRespaldo(rolUsuario, concepto, rolesRespaldo) 
 
 const RESPALDO_TRAMITAR = ['nomina', 'sistema'];
 const RESPALDO_DEVOLVER = ['sistema', 'juridica'];
+// "Puede corregir documentos de Cesantias devueltas": además de quien radicó la solicitud.
+// Si la fila no existe o está vacía, corrigen los mismos roles que validan (primer filtro).
+const RESPALDO_VALIDAR = ['sistema', 'juridica', 'auxiliar', 'auxiliarr', 'coordinador', 'coordinadorr', 'nomina'];
+const OBS_FORMATO_SOLICITUD = 'Formato de Solicitud de Retiro de Cesantías';
 const RESPALDO_DIAS_ENLACE = 30;
 const RESPALDO_MAX_SOPORTE_MB = 15;
 
@@ -99,6 +103,9 @@ async function obtenerPermisosUsuarioCesantias(rolUsuario) {
     puedeEliminar: check('Puede eliminar registros de Cesantias', ['sistema']),
     puedeTramitar: check('Puede tramitar registros de Cesantias', RESPALDO_TRAMITAR),
     puedeDevolver: check('Puede devolver registros de Cesantias', RESPALDO_DEVOLVER),
+    puedeCorregirDevueltos: (paramMap['Puede corregir documentos de Cesantias devueltas'] || []).length
+      ? check('Puede corregir documentos de Cesantias devueltas')
+      : check('Puede validar registros de Cesantias', RESPALDO_VALIDAR),
     operacionesSinValidacion: opsSinVal,
     maxSoporteMB: (await obtenerLimitesCesantias()).maxSoporteMB,
   };
@@ -956,8 +963,26 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
     if (!puedeDevolver) throw new Error('No tienes permisos para devolver solicitudes de Cesantías.');
   }
 
-  const [exist] = await pool.execute('SELECT Id, estado, identificacion, firma_trabajador FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
+  const [exist] = await pool.execute('SELECT Id, estado, identificacion, firma_trabajador, usuario FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
   if (!exist.length) throw new Error('Solicitud no encontrada.');
+
+  // Volver a Pendiente = reenviar a revisión una solicitud devuelta, ya corregida
+  if (estadoNormalizado === 'pendiente') {
+    if (exist[0].estado !== 'devuelto') throw new Error('Solo una solicitud Devuelta se puede reenviar a revisión.');
+    if (!(await puedeCorregirCesantia(exist[0], usuario, rolUsuario))) {
+      throw new Error('Solo quien radicó la solicitud o un rol autorizado puede corregirla y reenviarla.');
+    }
+    const nota = `Reenviada a revisión por ${usuario} el ${fechaHoraBogota()}${observaciones ? ': ' + observaciones : ''}`;
+    await pool.execute(
+      `UPDATE Dynamic_Cesantias
+          SET estado = 'pendiente',
+              observaciones = CONCAT(COALESCE(observaciones, ''), IF(COALESCE(observaciones, '') = '', '', ' | '), ?),
+              fecha_actualizacion = NOW()
+        WHERE Id = ? AND estado = 'devuelto'`,
+      [nota, idCesantia]
+    );
+    return { ok: true, estado: 'pendiente' };
+  }
 
   const fechaActual = fechaHoraBogota();
   let query = '';
@@ -1078,6 +1103,89 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
   });
 
   return { ok: true, estado: estadoNormalizado };
+}
+
+// ── Corrección de documentos de una solicitud Devuelta ───────────────────────
+// Quien radicó la solicitud o los roles de "Puede corregir documentos de Cesantias devueltas"
+// pueden quitar soportes / cédula de la solicitud y cargar nuevos, y luego reenviarla (estado pendiente).
+async function puedeCorregirCesantia(sol, usuario, rolUsuario) {
+  if (!sol || sol.estado !== 'devuelto') return false;
+  if (usuario && String(sol.usuario || '').trim() === String(usuario).trim()) return true;
+  const rolesCorregir = await obtenerRolesPermisoCesantias('Puede corregir documentos de Cesantias devueltas');
+  if (rolesCorregir.length) return rolesCorregir.includes(String(rolUsuario || '').trim().toLowerCase());
+  return verificarPermisoConRespaldo(rolUsuario, 'Puede validar registros de Cesantias', RESPALDO_VALIDAR);
+}
+
+async function solicitudParaCorregir(idCesantia, usuario, rolUsuario) {
+  const [rows] = await pool.execute('SELECT Id, estado, identificacion, usuario FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
+  if (!rows.length) throw new Error('Solicitud no encontrada.');
+  const sol = rows[0];
+  if (sol.estado !== 'devuelto') throw new Error('Los documentos solo se corrigen cuando la solicitud está Devuelta.');
+  if (!(await puedeCorregirCesantia(sol, usuario, rolUsuario))) {
+    throw new Error('Solo quien radicó la solicitud o un rol autorizado puede corregir sus documentos.');
+  }
+  return sol;
+}
+
+async function quitarDocumentoCesantia(idCesantia, idDoc, usuario, rolUsuario) {
+  await solicitudParaCorregir(idCesantia, usuario, rolUsuario);
+  const [docs] = await pool.execute(
+    `SELECT id, Doc, TipoDocumento, Observaciones FROM Maestro_docTrabajador
+      WHERE id = ? AND recurso = ? AND TipoDocumento IN ('46', '11') LIMIT 1`,
+    [idDoc, idCesantia]
+  );
+  if (!docs.length) throw new Error('Ese documento no pertenece a esta solicitud o no se puede quitar.');
+  const d = docs[0];
+  if (d.Observaciones === OBS_FORMATO_SOLICITUD) throw new Error('El formato de solicitud firmado no se quita.');
+
+  await pool.execute('DELETE FROM Maestro_docTrabajador WHERE id = ? AND recurso = ?', [idDoc, idCesantia]);
+  // El archivo se borra del bucket solo si ningún otro registro lo usa
+  if (d.Doc) {
+    const [usados] = await pool.execute('SELECT COUNT(*) AS c FROM Maestro_docTrabajador WHERE Doc = ?', [d.Doc]);
+    if (!usados.length || Number(usados[0].c) === 0) await eliminarArchivoBucket(d.Doc);
+  }
+  console.log(`[cesantias] ${usuario} quitó el documento ${idDoc} (${d.Observaciones || d.TipoDocumento}) de la solicitud ${idCesantia}`);
+  return { ok: true };
+}
+
+// tipo: 'cedula' (Cédula del trabajador, TipoDocumento 11) o 'soporte' (TipoDocumento 46, con su etiqueta)
+async function agregarDocumentoCesantia(idCesantia, { tipo, etiqueta }, file, usuario, rolUsuario) {
+  const sol = await solicitudParaCorregir(idCesantia, usuario, rolUsuario);
+  if (!file) throw new Error('Debe adjuntar el archivo.');
+  const limites = await obtenerLimitesCesantias();
+  if (file.size > limites.maxSoporteMB * 1024 * 1024) {
+    throw new Error(`El archivo supera el tamaño máximo de ${limites.maxSoporteMB} MB.`);
+  }
+  const esCedula = tipo === 'cedula';
+  const obs = esCedula ? 'Cédula de Ciudadanía' : (String(etiqueta || '').trim() || 'Soporte de Cesantías');
+  const urlBucket = esCedula
+    ? await subirCedulaTrabajador(sol.identificacion, file.buffer, file.originalname)
+    : await subirSoporteCesantias(sol.identificacion, file.buffer, file.originalname);
+
+  const worker = await buscarTrabajadorCesantias(sol.identificacion, { permitirRetirado: true }) || {};
+  await pool.execute(
+    `INSERT INTO Maestro_docTrabajador (
+       id, \`Validación\`, Regional, \`Operación\`, \`Identificación\`, Estado,
+       Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Observaciones,
+       Visualizar, Solicitud, Justificacion_Solicitud, Usuario, recurso
+     ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+    [
+      uuidv4(),
+      worker.regional || null,
+      worker.operacion || null,
+      sol.identificacion,
+      worker.estado || 'Activo',
+      worker.fechaIngreso && worker.fechaIngreso !== '—' ? worker.fechaIngreso : null,
+      esCedula ? '11' : '46',
+      esCedula ? 'CC' : 'RCES',
+      urlBucket,
+      obs,
+      usuario || 'sistema',
+      idCesantia,
+    ]
+  );
+  console.log(`[cesantias] ${usuario} agregó "${obs}" a la solicitud ${idCesantia}`);
+  return { ok: true, url: urlBucket };
 }
 
 // ── Tramitar Solicitud de Cesantías con Comprobante ──────────────────────────
@@ -1443,4 +1551,6 @@ module.exports = {
   obtenerOperacionesSinValidacion,
   registrarFirmaTrabajador,
   generarYGuardarPDFCesantias,
+  quitarDocumentoCesantia,
+  agregarDocumentoCesantia,
 };
