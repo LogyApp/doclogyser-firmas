@@ -17,7 +17,6 @@ const { subirPDF, fechaFirmaPDFTraslado } = require('../services/storage');
 const router = express.Router();
 
 const EDITOR_HTML    = path.join(__dirname, '../views/admin/editor.html');
-const TRASLADOS_HTML = path.join(__dirname, '../views/admin/traslados.html');
 const TABLA_TR       = 'Dynamic_traslados_trabajador';
 const CAMPO_FK       = 'IdTraslado';
 const ESTADOS_VALIDOS_CAMBIO = ['revisar', 'anulado', 'pendiente'];
@@ -244,7 +243,8 @@ router.get('/traslados/datos', async (req, res) => {
       // Un usuario ve un traslado si su operación es el origen O el destino —
       // así quien recibe el traslado también lo ve, no solo quien lo envía.
       const ph = acceso.filtroSQL.map(() => '?').join(',');
-      [rows] = await pool.execute(
+      // pool.query (no execute): MySQL rechaza "LIMIT ?" en sentencias preparadas
+      [rows] = await pool.query(
         `SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) OR operacion_destino IN (${ph}) ${ORDEN_LISTADO} LIMIT ?`,
         [...acceso.filtroSQL, ...acceso.filtroSQL, maximoListado(acceso.params)]
       );

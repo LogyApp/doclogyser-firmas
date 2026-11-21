@@ -31,7 +31,8 @@ const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/e
 const { obtenerPermisosActivos } = require('../services/configActivos');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
-const { obtenerPermisosTraslados } = require('../services/configTraslados');
+const { obtenerPermisosTraslados, rangoFechaTraslado } = require('../services/configTraslados');
+const { hoyBogota } = require('../services/trasladoVinculacion');
 const { programarRellenoVinculacion, sincronizarRelleno } = require('../services/rellenoAsistencia');
 const { obtenerControlQuincena } = require('../services/controlQuincena');
 const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
@@ -398,6 +399,7 @@ router.get('/', async (req, res) => {
           puedeEditar:          permisosTraslados.puedeEditar,
           horasEnlace:          permisosTraslados.horasEnlace,
           anotacionNoFirma:     permisosTraslados.anotacionNoFirma,
+          rangoFecha:           rangoFechaTraslado(permisosTraslados.params, hoyBogota(), accesoTraslados.rol),
           sinFiltro:            accesoTraslados.sinFiltro,
           operacionesFiltro:    accesoTraslados.operacionesFiltro,
           opsPorRegional:       accesoTraslados.opsPorRegional,

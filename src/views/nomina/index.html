@@ -7342,7 +7342,7 @@
   // ── Pestaña TRASLADOS (Frontend Controller) ───────────────────────────────
   // Las acciones (validar/enlace/correo/editar/estado/no-firma) llaman directo
   // a los endpoints ya existentes de /admin/traslados/:id/..., igual que el
-  // panel viejo (src/views/admin/traslados.html) — sin duplicar esa lógica aquí.
+  // panel viejo (ya eliminado) — sin duplicar esa lógica aquí.
   // ═══════════════════════════════════════════════════════════════════════════
   const _trasState = {
     cargado: false,
@@ -7775,6 +7775,9 @@
       document.getElementById('tras_e_op_origen').value      = t.operacion_origen || '';
       document.getElementById('tras_e_direccion').value      = t.direccion_destino || '';
       document.getElementById('tras_e_fecha').value          = t.fecha_traslado ? String(t.fecha_traslado).slice(0, 10) : '';
+      const rangoTras = tabs.traslados.rangoFecha;
+      document.getElementById('tras_e_fecha').min = rangoTras ? rangoTras.min : '';
+      document.getElementById('tras_e_fecha').max = rangoTras ? rangoTras.max : '';
       document.getElementById('tras_e_hora').value           = t.hora_traslado || '';
       document.getElementById('tras_e_celular').value        = t.celular_trabajador || '';
       document.getElementById('tras_e_email').value          = t.email_trabajador || '';
