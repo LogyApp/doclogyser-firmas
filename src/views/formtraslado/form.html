@@ -269,6 +269,14 @@
   const OPERACIONES  = _cfg.operaciones;
 
   document.getElementById('hidUsuario').value   = USUARIO;
+
+  // Fecha de traslado: solo la quincena actual (salvo roles autorizados)
+  if (_cfg.rangoFecha) {
+    const inpFecha = document.getElementById('fecha_traslado');
+    inpFecha.min = _cfg.rangoFecha.min;
+    inpFecha.max = _cfg.rangoFecha.max;
+    inpFecha.title = 'Debe estar en la quincena actual (' + _cfg.rangoFecha.min + ' a ' + _cfg.rangoFecha.max + ')';
+  }
   document.getElementById('badgeUsuario').textContent = '👤 ' + USU_NOMBRE;
 
   // ── Reloj Bogotá ──────────────────────────────────────────────
@@ -386,7 +394,10 @@
     setErr('errTrabajador', !document.getElementById('hidTrabajador').value);
     setErr('errOperacion',  !selectOp.value);
     setErr('errDireccion',     !document.getElementById('direccion_destino').value.trim());
-    setErr('errFecha',         !document.getElementById('fecha_traslado').value);
+    const vFecha = document.getElementById('fecha_traslado').value;
+    const fueraRango = !!(vFecha && _cfg.rangoFecha && (vFecha < _cfg.rangoFecha.min || vFecha > _cfg.rangoFecha.max));
+    setErr('errFecha',         !vFecha || fueraRango);
+    if (fueraRango) alert('La fecha del traslado debe estar en la quincena actual (' + _cfg.rangoFecha.min + ' a ' + _cfg.rangoFecha.max + ').');
     setErr('errHora',          !document.getElementById('hora_traslado').value);
     setErr('errObservaciones', !document.getElementById('observaciones').value.trim());
     if (!ok) return;

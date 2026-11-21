@@ -118,6 +118,14 @@ function quincenaDe(fecha) {
     : { inicio: `${y}-${p(m)}-16`, fin: `${y}-${p(m)}-${p(ultimo)}` };
 }
 
+// Rango de fechas permitido para el calendario: { min, max } de la quincena actual, o null si el rol
+// puede usar cualquier fecha.
+function rangoFechaTraslado(params, hoy, rol) {
+  if (estaEnParametro(params, P.FUERA_QUINCENA, rol)) return null;
+  const q = quincenaDe(hoy);
+  return { min: q.inicio, max: q.fin };
+}
+
 // La fecha del traslado (AAAA-MM-DD) debe estar en la quincena actual, salvo para los roles de
 // "Roles que pueden registrar traslados fuera de la quincena actual". Devuelve un error o null.
 function validarFechaTraslado(params, fecha, hoy, rol) {
@@ -223,6 +231,7 @@ module.exports = {
   horasVigenciaEnlace,
   obtenerDestinatariosTraslado,
   validarFechaTraslado,
+  rangoFechaTraslado,
   documentoTraslado,
   maximoListado,
   PARAMETROS_TRASLADOS: P,

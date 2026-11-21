@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { notificarNuevoTraslado } = require('../services/email');
 const { computarAccesoNomina } = require('../services/accesoNomina');
-const { obtenerParametrosTraslados, validarFechaTraslado } = require('../services/configTraslados');
+const { obtenerParametrosTraslados, validarFechaTraslado, rangoFechaTraslado } = require('../services/configTraslados');
 const { hoyBogota } = require('../services/trasladoVinculacion');
 
 const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
@@ -72,7 +72,9 @@ router.get('/', async (req, res) => {
     const operaciones = opRows.map(r => r['OPERACIÓN']).filter(Boolean);
 
     const template = fs.readFileSync(FORM_HTML, 'utf8');
-    const config = JSON.stringify({ usuario, usuarioNombre, trabajadores, operaciones })
+    // Calendario limitado a la quincena actual (salvo roles autorizados en Config_Parametros)
+    const rangoFecha = rangoFechaTraslado(await obtenerParametrosTraslados(), hoyBogota(), acceso.rol);
+    const config = JSON.stringify({ usuario, usuarioNombre, trabajadores, operaciones, rangoFecha })
       .replace(/<\/script>/gi, '<\\/script>');
 
     res.send(template.replace('__CONFIG__', config));

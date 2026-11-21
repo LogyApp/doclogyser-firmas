@@ -17,7 +17,6 @@ const { subirPDF, fechaFirmaPDFTraslado } = require('../services/storage');
 const router = express.Router();
 
 const EDITOR_HTML    = path.join(__dirname, '../views/admin/editor.html');
-const TRASLADOS_HTML = path.join(__dirname, '../views/admin/traslados.html');
 const TABLA_TR       = 'Dynamic_traslados_trabajador';
 const CAMPO_FK       = 'IdTraslado';
 const ESTADOS_VALIDOS_CAMBIO = ['revisar', 'anulado', 'pendiente'];
