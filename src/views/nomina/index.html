@@ -2035,7 +2035,7 @@
             <table class="retiros-table" id="trasladosTable">
               <thead>
                 <tr>
-                  <th style="width:230px" class="no-sort">Acciones</th>
+                  <th style="width:150px" class="no-sort">Acciones</th>
                   <th style="width:110px" data-sort="estado_doc">Estado<span id="trasSort-estado_doc" class="sort-indicator"></span></th>
                   <th style="width:220px" data-sort="Trabajador">Trabajador<span id="trasSort-Trabajador" class="sort-indicator"></span></th>
                   <th style="width:200px" data-sort="operacion_origen">Origen &#8594; Destino<span id="trasSort-operacion_origen" class="sort-indicator"></span></th>
@@ -7575,29 +7575,39 @@
     });
   });
 
+  const TRAS_ICONOS = {"ojo": "<path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "lapiz": "<path d=\"M12 20h9\"/><path d=\"M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z\"/>", "check": "<polyline points=\"20 6 9 17 4 12\"/>", "revisar": "<polyline points=\"9 14 4 9 9 4\"/><path d=\"M20 20v-7a4 4 0 0 0-4-4H4\"/>", "anular": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"15\" y1=\"9\" x2=\"9\" y2=\"15\"/><line x1=\"9\" y1=\"9\" x2=\"15\" y2=\"15\"/>", "nofirma": "<path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><line x1=\"9\" y1=\"13\" x2=\"15\" y2=\"13\"/>", "whatsapp": "<path d=\"M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z\"/>", "enlace": "<path d=\"M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7\"/><path d=\"M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7\"/>", "pdf": "<path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/><line x1=\"8\" y1=\"13\" x2=\"16\" y2=\"13\"/><line x1=\"8\" y1=\"17\" x2=\"13\" y2=\"17\"/>", "regenerar": "<polyline points=\"23 4 23 10 17 10\"/><polyline points=\"1 20 1 14 7 14\"/><path d=\"M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15\"/>"};
+  // Botón redondo con icono (mismo estilo de Cesantías / LogySign / Aspirantes)
+  function iconoTraslado(icono, color, titulo, onclick, href) {
+    const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${TRAS_ICONOS[icono]}</svg>`;
+    const est = `background:${color}; color:#fff;`;
+    if (href) return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" style="${est}" title="${titulo}">${svg}</a>`;
+    return `<button type="button" class="btn-icon-circle" style="${est}" title="${titulo}" onclick="${onclick}">${svg}</button>`;
+  }
+
   function accionesTraslado(row) {
     const t = tabs.traslados;
     const id = row.IdTraslado;
-    const btnEditar = `<button class="ba be" title="Editar" onclick="abrirEditarTraslado('${id}')">✏️ Editar</button>`;
-    const btnValidar = t.puedeValidar ? `<button class="ba bv" onclick="validarTraslado('${id}')">✓ Validar</button>` : '';
-    const btnRevisar = t.puedeValidar ? `<button class="ba br" onclick="cambiarEstadoTraslado('${id}','revisar')">↩ Revisar</button>` : '';
-    const btnAnular  = t.puedeValidar ? `<button class="ba ban" onclick="cambiarEstadoTraslado('${id}','anulado')">✗ Anular</button>` : '';
-    const btnPreview = t.puedePrevisualizar ? `<a class="ba bprev" href="/admin/traslados/${id}/preview?Usuario=${encodeURIComponent(usuario)}" target="_blank">👁 Ver doc</a>` : '';
-    const btnNoFirma = t.puedeValidar ? `<button class="ba bnf" onclick="marcarNoFirmaTraslado('${id}')" title="Generar documento con soporte (No Firma)">📋 No Firma</button>` : '';
+    const btnEditar  = iconoTraslado('lapiz', '#d97706', 'Editar', `abrirEditarTraslado('${id}')`);
+    const btnValidar = t.puedeValidar ? iconoTraslado('check', '#0284c7', 'Validar y generar enlace de firma', `validarTraslado('${id}')`) : '';
+    const btnRevisar = t.puedeValidar ? iconoTraslado('revisar', '#ea580c', 'Devolver a Revisar', `cambiarEstadoTraslado('${id}','revisar')`) : '';
+    const btnAnular  = t.puedeValidar ? iconoTraslado('anular', '#64748b', 'Anular', `cambiarEstadoTraslado('${id}','anulado')`) : '';
+    const btnPreview = t.puedePrevisualizar ? iconoTraslado('ojo', '#475569', 'Previsualizar documento', '', `/admin/traslados/${id}/preview?Usuario=${encodeURIComponent(usuario)}`) : '';
+    const btnNoFirma = t.puedeValidar ? iconoTraslado('nofirma', '#6366f1', 'No firma: generar documento con anotación de soporte', `marcarNoFirmaTraslado('${id}')`) : '';
 
     switch (row.estado_doc) {
       case 'pendiente': return `${btnPreview}${btnEditar}${btnValidar}${btnRevisar}${btnAnular}${btnNoFirma}`;
       case 'validado': {
-        const btnWA = row.celular_trabajador ? `<button class="ba bwa" onclick="abrirWhatsAppTraslado('${id}')">📱 WhatsApp</button>` : '';
-        return `${btnWA}<button class="ba bv" onclick="enlaceTraslado('${id}')">🔗 Enlace</button>${btnEditar}${btnRevisar}${btnAnular}${btnNoFirma}`;
+        const btnWA = row.celular_trabajador ? iconoTraslado('whatsapp', '#16a34a', 'Enviar enlace de firma por WhatsApp', `abrirWhatsAppTraslado('${id}')`) : '';
+        const btnEnlace = iconoTraslado('enlace', '#0ea5e9', 'Ver / copiar enlace de firma', `enlaceTraslado('${id}')`);
+        return `${btnWA}${btnEnlace}${btnEditar}${btnRevisar}${btnAnular}${btnNoFirma}`;
       }
       case 'revisar': return `${btnEditar}${btnValidar}${btnAnular}`;
       case 'firmado':
       case 'generado': {
         if (!row.url_doc) return '—';
         const btnRegenerar = (t.puedeRegenerar && row.estado_doc === 'generado')
-          ? `<button class="ba be" onclick="regenerarDocTraslado('${id}', this)" title="Volver a generar el PDF con la plantilla actual y reemplazar el documento">🔄 Regenerar</button>` : '';
-        return `<a class="ba bver" href="${esc(row.url_doc)}" target="_blank">📄 Ver</a>${btnRegenerar}`;
+          ? iconoTraslado('regenerar', '#0d9488', 'Regenerar el PDF con la plantilla actual', `regenerarDocTraslado('${id}', this)`) : '';
+        return `${iconoTraslado('pdf', '#dc2626', 'Ver documento de traslado (PDF)', '', esc(row.url_doc))}${btnRegenerar}`;
       }
       default: return '—';
     }
@@ -7823,9 +7833,9 @@
     const row = _trasState.allData.find(r => r.IdTraslado === id);
     const nombre = row ? String(row.Trabajador || '').split(' ** ').pop() : '';
     if (!confirm(`¿Regenerar el documento de traslado${nombre ? ' de ' + nombre : ''}?\n\nSe arma de nuevo con la plantilla actual, conservando la firma (o la anotación de soporte) y su fecha, y reemplaza el PDF actual.`)) return;
-    const texto = btn.textContent;
+    const texto = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = 'Regenerando…';
+    btn.style.opacity = '.5';
     try {
       const r = await fetch(`/admin/traslados/${id}/regenerar?Usuario=${encodeURIComponent(usuario)}`, { method: 'POST' });
       const d = await r.json();
@@ -7834,8 +7844,14 @@
         if (d.urlDoc) window.open(d.urlDoc + '?v=' + Date.now(), '_blank');
       } else alert('Error: ' + (d.error || 'No se pudo regenerar el documento'));
     } catch { alert('Error de conexión al regenerar el documento'); }
-    finally { btn.disabled = false; btn.textContent = texto; }
+    finally { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = texto; }
   }
+
+  // El formulario de nuevo traslado (iframe) avisa al presionar "Volver": se cierra y se recarga el listado
+  window.addEventListener('message', (e) => {
+    if (e.origin !== window.location.origin || !e.data || e.data.tipo !== 'trasladoRegistrado') return;
+    if (document.getElementById('trasladosModalOverlay').classList.contains('open')) cerrarModalNuevoTraslado();
+  });
 
   async function marcarNoFirmaTraslado(id) {
     const anotacion = prompt(
