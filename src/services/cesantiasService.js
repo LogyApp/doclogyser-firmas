@@ -51,8 +51,9 @@ async function verificarPermisoConRespaldo(rolUsuario, concepto, rolesRespaldo) 
 
 const RESPALDO_TRAMITAR = ['nomina', 'sistema'];
 const RESPALDO_DEVOLVER = ['sistema', 'juridica'];
-// "Puede corregir documentos de Cesantias devueltas": además de quien radicó la solicitud
-const RESPALDO_CORREGIR = ['sistema', 'juridica', 'nomina'];
+// "Puede corregir documentos de Cesantias devueltas": además de quien radicó la solicitud.
+// Si la fila no existe o está vacía, corrigen los mismos roles que validan (primer filtro).
+const RESPALDO_VALIDAR = ['sistema', 'juridica', 'auxiliar', 'auxiliarr', 'coordinador', 'coordinadorr', 'nomina'];
 const OBS_FORMATO_SOLICITUD = 'Formato de Solicitud de Retiro de Cesantías';
 const RESPALDO_DIAS_ENLACE = 30;
 const RESPALDO_MAX_SOPORTE_MB = 15;
@@ -102,7 +103,9 @@ async function obtenerPermisosUsuarioCesantias(rolUsuario) {
     puedeEliminar: check('Puede eliminar registros de Cesantias', ['sistema']),
     puedeTramitar: check('Puede tramitar registros de Cesantias', RESPALDO_TRAMITAR),
     puedeDevolver: check('Puede devolver registros de Cesantias', RESPALDO_DEVOLVER),
-    puedeCorregirDevueltos: check('Puede corregir documentos de Cesantias devueltas', RESPALDO_CORREGIR),
+    puedeCorregirDevueltos: (paramMap['Puede corregir documentos de Cesantias devueltas'] || []).length
+      ? check('Puede corregir documentos de Cesantias devueltas')
+      : check('Puede validar registros de Cesantias', RESPALDO_VALIDAR),
     operacionesSinValidacion: opsSinVal,
     maxSoporteMB: (await obtenerLimitesCesantias()).maxSoporteMB,
   };
@@ -1108,7 +1111,9 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
 async function puedeCorregirCesantia(sol, usuario, rolUsuario) {
   if (!sol || sol.estado !== 'devuelto') return false;
   if (usuario && String(sol.usuario || '').trim() === String(usuario).trim()) return true;
-  return verificarPermisoConRespaldo(rolUsuario, 'Puede corregir documentos de Cesantias devueltas', RESPALDO_CORREGIR);
+  const rolesCorregir = await obtenerRolesPermisoCesantias('Puede corregir documentos de Cesantias devueltas');
+  if (rolesCorregir.length) return rolesCorregir.includes(String(rolUsuario || '').trim().toLowerCase());
+  return verificarPermisoConRespaldo(rolUsuario, 'Puede validar registros de Cesantias', RESPALDO_VALIDAR);
 }
 
 async function solicitudParaCorregir(idCesantia, usuario, rolUsuario) {
