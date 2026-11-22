@@ -2067,7 +2067,7 @@
         document.getElementById('firmas-input-correo').value = data.correo || '';
         document.getElementById('firmas-badge-estado').textContent = data.estado;
         document.getElementById('firmas-badge-estado').className = `badge-status ${data.estado === 'Activo' ? 'badge-active' : 'badge-retired'}`;
-        document.getElementById('firmas-badge-conteo').textContent = `${data.totalFirmados} / ${data.totalDocs} firmados`;
+        document.getElementById('firmas-badge-conteo').textContent = `${data.totalFirmados} / ${data.totalDocs} firmados · ${data.totalSoporteCargados || 0} / ${data.totalSoporte || 0} soporte`;
 
         // Renderizar lista de documentos
         const container = document.getElementById('firmas-lista-docs');
@@ -2090,6 +2090,23 @@
               </div>
             </div>
           `).join('');
+        }
+        // Documentos de soporte: el trabajador sube desde el mismo enlace los que le falten y quedan en su carpeta
+        if (data.docsSoporte && data.docsSoporte.length) {
+          container.innerHTML += `
+            <div style="padding: 10px 10px 4px; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px;">
+              Documentos de soporte · ${data.totalSoporteCargados} / ${data.totalSoporte} en la carpeta
+            </div>
+            ${data.docsSoporte.map(d => `
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.9rem;">${d.cargado ? '✅' : '⏳'}</span>
+                  <span style="font-weight: 600; color: #334155;">${esc(d.nombre)}</span>
+                </div>
+                <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; ${d.cargado ? 'background: #dcfce7; color: #15803d;' : 'background: #fef3c7; color: #b45309;'}">
+                  ${d.cargado ? 'Cargado' : 'Pendiente'}
+                </span>
+              </div>`).join('')}`;
         }
       } catch (err) {
         console.error('[Firmas] Error al abrir portal:', err);

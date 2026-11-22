@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { Storage } = require('@google-cloud/storage');
 const pool = require('./db');
-const { obtenerDocsFirmaParaOperacion } = require('./docsSeleccion');
+const { obtenerDocsFirmaParaOperacion, obtenerDocsSeleccion, ID_HOJA_VIDA } = require('./docsSeleccion');
 const { enviarCorreoPortalAspirante } = require('./email');
 
 const storage = process.env.GCS_KEYFILE
@@ -210,6 +210,15 @@ async function obtenerDetallePortalTrabajador({ identificacion, usuario, baseUrl
     };
   });
 
+  // Documentos de soporte (cédula, ADRES, certificado laboral…): el trabajador completa los que le falten desde el
+  // mismo enlace y quedan en su carpeta digital (ver /api/confirm-doc en routes/seleccion.js)
+  const docsSoporte = (await obtenerDocsSeleccion()).aspirante
+    .filter(doc => doc.id !== ID_HOJA_VIDA)
+    .map(doc => {
+      const d = mapa[doc.id];
+      return { id: doc.id, nombre: doc.etiqueta || doc.nombre, prefijo: doc.prefijo, cargado: !!d && String(d.estado || '').toLowerCase() !== 'rechazado' };
+    });
+
   const portalRelativo = `/seleccion/portal/${idAspirante}`;
   const portalUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}${portalRelativo}` : portalRelativo;
 
@@ -235,7 +244,10 @@ async function obtenerDetallePortalTrabajador({ identificacion, usuario, baseUrl
     portalUrl,
     totalDocs: docsFirma.length,
     totalFirmados,
-    docs: docsDetalle
+    docs: docsDetalle,
+    docsSoporte,
+    totalSoporte: docsSoporte.length,
+    totalSoporteCargados: docsSoporte.filter(d => d.cargado).length
   };
 }
 

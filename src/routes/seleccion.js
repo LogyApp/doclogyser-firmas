@@ -421,7 +421,9 @@ router.get('/portal/:uuid', async (req, res) => {
       docsTrab.forEach(dt => {
         const id = Number(dt.TipoDocumento);
         if (!mapaDocs[id]) {
-          mapaDocs[id] = { estado: 'Firmado', path: dt.Doc };
+          mapaDocs[id] = { estado: 'Firmado', path: dt.Doc, carpeta: true };
+        } else {
+          mapaDocs[id].enCarpeta = true;
         }
       });
     } catch (errMdt) {
@@ -1346,7 +1348,7 @@ router.post('/api/confirm-doc', async (req, res) => {
     const [
       [aspRows], [configRows]
     ] = await Promise.all([
-      pool.execute('SELECT identificacion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [id_aspirante]),
+      pool.execute('SELECT identificacion, estado_proceso, docs_pendientes_vinculacion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [id_aspirante]),
       pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = ?', [idDoc])
     ]);
 
@@ -1355,6 +1357,8 @@ router.post('/api/confirm-doc', async (req, res) => {
     }
 
     const { identificacion } = aspRows[0];
+    // Ya es trabajador (pasó a la Sociodemográfica y el enlace salió de Cloud-Docs): lo que sube va también a su carpeta
+    const esTrabajadorCloudDocs = String(aspRows[0].estado_proceso || '').toLowerCase() === 'contratado' && Boolean(aspRows[0].docs_pendientes_vinculacion);
     const { Prefijo } = configRows[0];
 
     // Hoja de Vida (Id 30): la versión propia del aspirante va en un archivo aparte
@@ -1443,6 +1447,13 @@ router.post('/api/confirm-doc', async (req, res) => {
        ON DUPLICATE KEY UPDATE gcs_path = VALUES(gcs_path), estado = VALUES(estado), fecha_actualizacion = CURRENT_TIMESTAMP`,
       [id_aspirante, idDoc, destPath]
     );
+
+    // Trabajador que viene de Cloud-Docs: no pasa por "finalizar contratación", así que el documento se guarda
+    // de una vez en su carpeta digital (Maestro_docTrabajador, pendiente de validación), igual que sus firmas
+    if (esTrabajadorCloudDocs) {
+      const { sincronizarFirmaConDocTrabajador } = require('../services/clouddocsFirmas');
+      await sincronizarFirmaConDocTrabajador({ identificacion, idConfigDoc: idDoc, prefijo: Prefijo, gcsPath: destPath, usuario: 'Portal del trabajador' });
+    }
 
     // Notificación interna en campanita de Aspirantes
     setImmediate(async () => {
@@ -1900,6 +1911,14 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
+// Enlace "Ver" de un documento del portal: los que ya están en la carpeta digital (Maestro_docTrabajador) guardan una
+// URL completa o una ruta del bucket de empleados; los cargados en el portal están en el bucket de aspirantes
+function urlDocPortal(data) {
+  const ruta = String((data && data.path) || '');
+  if (/^https?:\/\//i.test(ruta)) return ruta;
+  return `https://storage.googleapis.com/${data && data.carpeta ? BUCKET_EMPLEADOS : BUCKET_ASPIRANTES}/${ruta}?v=${Date.now()}`;
+}
+
 function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null, docsPendientesVinculacion = false) {
   if (estadoProceso === 'bloqueado') {
     return `
@@ -1948,6 +1967,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 
   // Condición: Firmas activas si está En Proceso o si está Contratado con documentos pendientes de vinculación
   const estadoHabilitado = (estadoProceso === 'En proceso' || (estadoProceso === 'contratado' && docsPendientesVinculacion)) && tieneRequisicion;
+  // Ya es trabajador (enlace de Cloud-Docs): los documentos de soporte que sube se guardan en su carpeta digital
+  const esTrabajadorCloudDocs = estadoProceso === 'contratado' && docsPendientesVinculacion;
   const allUploaded = docs.every(doc => mapaDocs[doc.id]);
   const totalCargados = docs.filter(d => mapaDocs[d.id]).length;
   const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && ['Firmado', 'Aprobado'].includes(mapaDocs[d.id].estado)).length;
@@ -1978,8 +1999,12 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           (estaAprobado ? 
             '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
             (estaCargado ? 
-              `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
-               <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
+              `<a href="${urlDocPortal(data)}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+               ${data.carpeta || data.enCarpeta
+                 ? '<span class="text-[10px] font-black text-blue-700 border border-blue-200 px-3 py-1 rounded-lg bg-white uppercase">En su carpeta</span>'
+                 : esTrabajadorCloudDocs
+                 ? '<span class="text-[10px] font-black text-slate-600 border border-slate-200 px-3 py-1 rounded-lg bg-white uppercase">Cargado</span>'
+                 : `<button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>`}` : 
               `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${doc.id}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
             )
           )
@@ -2056,7 +2081,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         ${estaFirmado ? `
           <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">${estaAprobado ? '✓ Aprobado' : '✓ Firmado'}</span>
           ${esManualFunciones ? `
-            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
+            <a href="${urlDocPortal(data)}" target="_blank" 
               class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
               Ver PDF ↗
             </a>
@@ -2068,7 +2093,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         ` : (estaCargado ? `
           <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
           ${esManualFunciones ? `
-            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" 
+            <a href="${urlDocPortal(data)}" target="_blank" 
               class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
               Ver ↗
             </a>
@@ -2143,15 +2168,17 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
             <span class="text-xs font-black px-3.5 py-1.5 rounded-xl border ${totalCargados === docs.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}">
               ${totalCargados} de ${docs.length} cargados
             </span>
-            <div id="secSoporteChevron" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-transform duration-300">
+            <div id="secSoporteChevron" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-transform duration-300${esTrabajadorCloudDocs && !allUploaded ? ' rotate-180' : ''}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
             </div>
           </div>
         </button>
 
-        <div id="secSoporteContenido" class="hidden p-6 md:p-8 border-t border-slate-100 bg-slate-50/30">
+        <div id="secSoporteContenido" class="${esTrabajadorCloudDocs && !allUploaded ? '' : 'hidden '}p-6 md:p-8 border-t border-slate-100 bg-slate-50/30">
           <p class="text-slate-500 mb-6 text-xs md:text-sm font-medium">
-            Sube o actualiza los documentos de soporte requeridos. 
+            ${esTrabajadorCloudDocs
+              ? 'Completa los documentos de soporte que te faltan. Cada documento que subas queda guardado en tu carpeta digital. '
+              : 'Sube o actualiza los documentos de soporte requeridos. '}
             <span class="text-red-500 block mt-1">Los documentos aprobados no podrán ser modificados. El sistema procesará cada documento con Inteligencia Artificial al subirlo.</span>
           </p>
 
@@ -3004,7 +3031,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
               : estaFirmado 
               ? '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ FIRMADO</span>' 
               : '<span class="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">CARGADO</span>'}
-            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}?v=${Date.now()}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
+            <a href="${urlDocPortal(data)}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
             ${data.fuente === 'Sistema' && ['Firmado', 'Aprobado'].includes(data.estado)
               ? `<button type="button" onclick="regenerarFirma(${doc.id}, '${jsAttr(doc.nombre)}')" class="text-[10px] text-indigo-600 font-bold hover:underline" title="Vuelve a generar el PDF con la plantilla actual, la misma firma y la misma huella">REGENERAR</button>`
               : ''}
