@@ -609,8 +609,9 @@ router.get('/api/compromisos', async (req, res) => {
        LEFT JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
        LEFT JOIN \`Maestro_Segmentación\` seg ON a.identificaciontrabajador = seg.Identificación
        ${where}
+       -- Tope alto: la búsqueda de la pestaña se hace en el navegador sobre lo cargado
        ORDER BY a.fecha_registro DESC
-       LIMIT 500`,
+       LIMIT 5000`,
       params
     );
 

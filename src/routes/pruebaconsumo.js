@@ -528,8 +528,9 @@ router.get('/api/pruebas', async (req, res) => {
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        LEFT JOIN \`Maestro_Segmentación\` seg ON a.identificacion = seg.Identificación
        ${where}
+       -- Tope alto: la búsqueda de la pestaña se hace en el navegador sobre lo cargado
        ORDER BY a.fecha_registro DESC
-       LIMIT 500`,
+       LIMIT 5000`,
       params
     );
 

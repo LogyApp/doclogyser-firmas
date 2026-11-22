@@ -44,11 +44,17 @@
       cargarAts();
     }
 
+    // La búsqueda de ATS se filtra en el navegador (ver filtrarAtsLocal), sin volver a consultar
     function filtrarDebounceAts() {
       clearTimeout(atsState.searchTimer);
-      atsState.searchTimer = setTimeout(() => {
-        cargarAts();
-      }, 350);
+      atsState.searchTimer = setTimeout(() => renderTablaAts(filtrarAtsLocal(atsState.items)), 120);
+    }
+
+    function filtrarAtsLocal(items) {
+      const q = normalizarBusquedaSst((document.getElementById('filtro-ats-search')?.value || '').trim());
+      if (!q) return items || [];
+      return (items || []).filter(it => normalizarBusquedaSst([it.id_ats, it.regional, it.operacion, it.muelle_ubicacion,
+        it.coordinador_operacion_nombre, it.responsable_sst_nombre].join(' ')).includes(q));
     }
 
     function limpiarFiltrosAts() {
@@ -71,12 +77,13 @@
       const fHasta = document.getElementById('filtro-ats-hasta')?.value || '';
 
       const tbody = document.getElementById('tbody-ats');
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros ATS...</td></tr>';
+      const tarjetaAts = tbody.closest('.table-card');
+      if (atsState.items && atsState.items.length && tarjetaAts) tarjetaAts.classList.add('cargando-suave');
+      else tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros ATS...</td></tr>';
 
       try {
         const queryParams = new URLSearchParams({
           usuario: CONFIG.usuarioId,
-          busqueda: q,
           regional: reg,
           operacion: op,
           estado: est,
@@ -108,9 +115,11 @@
         const badgeFiltro = document.getElementById('filtros-badge-ats');
         if (badgeFiltro) badgeFiltro.textContent = filtrosCount;
 
-        renderTablaAts(atsState.items);
+        renderTablaAts(filtrarAtsLocal(atsState.items));
       } catch (e) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--danger);">Error cargando registros: ${e.message}</td></tr>`;
+      } finally {
+        if (tarjetaAts) tarjetaAts.classList.remove('cargando-suave');
       }
     }
 
@@ -1224,6 +1233,9 @@
       background: var(--accent);
       opacity: 0.7;
     }
+
+    /* Mientras se consultan los datos de un filtro la tabla se atenúa en vez de tapar la pantalla */
+    .table-card.cargando-suave { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
 
     /* Columna Acciones: botones redondos solo con icono (como Nómina › Traslados y Cesantías) */
     .acc-iconos { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; }
@@ -5178,7 +5190,28 @@
       }
     }
 
+    // Cuadro "Buscar…": se filtra en el navegador sobre lo ya cargado (como en Nómina y Talenthub), así no se
+    // vuelve a consultar el servidor ni se recarga la tabla mientras se escribe. Incapacidades filtra aparte.
+    const BUSQUEDA_LOCAL_SST = {
+      ev: { input: 'filtro-ev-trabajador', campos: it => [it.nombre_trabajador, it.identificacion] },
+      cap: { input: 'filtro-cap-trabajador', campos: it => [it.nombre_trabajador, it.identificacion, it.tema] },
+      pc: { input: 'filtro-pc-trabajador', campos: it => [it.nombre_trabajador, it.identificacion, it.cliente] },
+      part: { input: 'filtro-part-search', campos: it => [it.tema, it.nombre_responsable, it.lugar] },
+      csst: { input: 'filtro-csst-trabajador', campos: it => [it.nombre_trabajador, it.identificaciontrabajador, it.nombre_analista] },
+      cm: { input: 'filtro-cm-trabajador', campos: it => [it.nombre_trabajador, it.identificacion, it.ultimo_diagnostico_cod, it.ultimo_diagnostico_desc] },
+      ins: { input: 'filtro-ins-trabajador', campos: it => [it.trabajador, it.identificacion, it.placa, it.equipo_interno] }
+    };
+    const normalizarBusquedaSst = v => String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+    function filtrarBusquedaSst(modKey, items) {
+      const cfg = BUSQUEDA_LOCAL_SST[modKey];
+      const q = cfg ? normalizarBusquedaSst((document.getElementById(cfg.input)?.value || '').trim()) : '';
+      if (!q) return items;
+      return items.filter(it => normalizarBusquedaSst(cfg.campos(it).join(' ')).includes(q));
+    }
+
     function ordenarDatosSst(modKey, items) {
+      items = Array.isArray(items) ? filtrarBusquedaSst(modKey, items) : items;
       const cur = sortStateSst[modKey];
       if (!cur || !cur.key || !Array.isArray(items)) return items;
       return items.slice().sort((a, b) => {
@@ -6529,8 +6562,9 @@
     function filtrarDebounce(modKey) {
       clearTimeout(debounceTimers[modKey]);
       debounceTimers[modKey] = setTimeout(() => {
-        filtrarAutomatico(modKey);
-      }, 350);
+        actualizarBadgeFiltros(modKey);
+        reRenderTablaSst(modKey);
+      }, 120);
     }
 
     function filtrarAutomatico(modKey) {
@@ -6605,7 +6639,8 @@
     // CARGA DE DATOS Y CONTEOS PARA CADA MÓDULO
     // ══════════════════════════════════════════════════════════
     async function cargarDatos(modKey) {
-      showLoading('Cargando registros...');
+      const tarjeta = document.getElementById(`tbody-${modKey}`)?.closest('.table-card');
+      if (tarjeta) tarjeta.classList.add('cargando-suave');
       try {
         if (modKey === 'ev') await cargarEvaluaciones();
         if (modKey === 'cap') await cargarCapacitaciones();
@@ -6619,13 +6654,12 @@
         console.error(`Error cargando datos de ${modKey}:`, err);
         showToast(modKey === 'inc' && err.message ? err.message : 'Error al cargar datos', 'error');
       } finally {
-        hideLoading();
+        if (tarjeta) tarjeta.classList.remove('cargando-suave');
       }
     }
 
     // 1. EVALUACIÓN SST
     async function cargarEvaluaciones() {
-      const tr = document.getElementById('filtro-ev-trabajador').value.trim();
       const reg = document.getElementById('filtro-ev-regional').value;
       const op = document.getElementById('filtro-ev-operacion').value;
       const resVal = document.getElementById('filtro-ev-resultado').value;
@@ -6634,7 +6668,6 @@
 
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        trabajador: tr,
         regional: reg,
         operacion: op,
         fechaDesde: fd,
@@ -6948,7 +6981,6 @@
 
     // 2. CAPACITACIÓN SST
     async function cargarCapacitaciones() {
-      const tr = document.getElementById('filtro-cap-trabajador').value.trim();
       const reg = document.getElementById('filtro-cap-regional').value;
       const op = document.getElementById('filtro-cap-operacion').value;
       const resVal = document.getElementById('filtro-cap-resultado').value;
@@ -6957,7 +6989,6 @@
 
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        trabajador: tr,
         regional: reg,
         operacion: op,
         fechaDesde: fd,
@@ -7297,7 +7328,6 @@
 
     // 3. PRUEBA DE CONSUMO
     async function cargarPruebas() {
-      const tr = document.getElementById('filtro-pc-trabajador').value.trim();
       const reg = document.getElementById('filtro-pc-regional').value;
       const op = document.getElementById('filtro-pc-operacion').value;
       const est = document.getElementById('filtro-pc-estado').value;
@@ -7306,7 +7336,6 @@
 
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        trabajador: tr,
         regional: reg,
         operacion: op,
         fechaDesde: fd,
@@ -7614,7 +7643,6 @@
     let currentEvidenciasCount = 0;
 
     async function cargarParticipaciones() {
-      const q = (document.getElementById('filtro-part-search')?.value || '').trim();
       const est = document.getElementById('filtro-part-estado')?.value || '';
       const reg = document.getElementById('filtro-part-regional')?.value || '';
       const op = document.getElementById('filtro-part-operacion')?.value || '';
@@ -7623,7 +7651,6 @@
 
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        tema: q,
         estado: est,
         regional: reg,
         operacion: op,
@@ -8172,7 +8199,6 @@
 
     // 5. COMPROMISO SST
     async function cargarCompromisos() {
-      const tr = document.getElementById('filtro-csst-trabajador').value.trim();
       const reg = document.getElementById('filtro-csst-regional').value;
       const op = document.getElementById('filtro-csst-operacion').value;
       const est = document.getElementById('filtro-csst-estado').value;
@@ -8181,7 +8207,6 @@
 
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        trabajador: tr,
         regional: reg,
         operacion: op,
         fechaDesde: fd,
@@ -8966,7 +8991,6 @@
     }
 
     async function cargarCasosMedicos() {
-      const tr = document.getElementById('filtro-cm-trabajador').value.trim();
       const reg = document.getElementById('filtro-cm-regional').value;
       const op = document.getElementById('filtro-cm-operacion').value;
       const est = document.getElementById('filtro-cm-estado').value;
@@ -8976,7 +9000,6 @@
 
       const params = new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        trabajador: tr,
         regional: reg,
         operacion: op,
         estado: est,
@@ -10433,7 +10456,6 @@
     // 7. INSPECCIONES DE VEHÍCULOS Y EQUIPOS (SST)
     // ══════════════════════════════════════════════════════════
     function obtenerParamsFiltrosInspeccionesSST() {
-      const tr = (document.getElementById('filtro-ins-trabajador')?.value || '').trim();
       const reg = document.getElementById('filtro-ins-regional')?.value || '';
       const op = document.getElementById('filtro-ins-operacion')?.value || '';
       const tipo = document.getElementById('filtro-ins-tipo')?.value || '';
@@ -10443,7 +10465,6 @@
 
       return new URLSearchParams({
         usuario: CONFIG.usuarioId,
-        trabajador: tr,
         regional: reg,
         operacion: op,
         tipo,
