@@ -15,12 +15,12 @@ const SQL_POR_CALIFICAR = "(t.token_calificacion IS NOT NULL AND t.satisfaccion 
 
 const norm = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
-// Config_Parametros directorio / Tickets. Sin la fila no se envía correo.
+// Config_Parametros configuracion / Tickets. Sin la fila no se envía correo.
 async function correoHabilitado() {
   try {
     const [r] = await pool.execute(
       'SELECT Parametro FROM Config_Parametros WHERE Modulo = ? AND Seccion = ? AND Concepto = ? LIMIT 1',
-      ['directorio', 'Tickets', CONCEPTO_CORREO]
+      ['configuracion', 'Tickets', CONCEPTO_CORREO]
     );
     return r.length > 0 && ['1', 'si', 'true', 'habilitado'].includes(norm(r[0].Parametro));
   } catch (err) {

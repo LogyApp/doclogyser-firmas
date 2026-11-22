@@ -41,9 +41,9 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
-SELECT 'directorio', 'Tickets', 'Habilitar notificaciones de correo en Tickets', 'Booleano', '0',
+SELECT 'configuracion', 'Tickets', 'Habilitar notificaciones de correo en Tickets', 'Booleano', '0',
        'Si es 1, al pasar un ticket a Resuelto o Rechazado se envía un correo a quien lo puso (Email de Maestro_Usuarios) para que califique la atención de 1 a 5. Con 0 no se envía el correo, pero el ticket igual queda pendiente por calificar en Mis tickets.'
 WHERE NOT EXISTS (
   SELECT 1 FROM Config_Parametros
-  WHERE Modulo = 'directorio' AND Seccion = 'Tickets' AND Concepto = 'Habilitar notificaciones de correo en Tickets'
+  WHERE Modulo IN ('configuracion', 'directorio') AND Seccion = 'Tickets' AND Concepto = 'Habilitar notificaciones de correo en Tickets'
 );
