@@ -135,10 +135,61 @@ router.get('/api/operaciones', async (req, res) => {
   }
 });
 
+// ── Trabajadores del ticket (módulos de Config_Parametros configuracion / Tickets /
+//    "Módulos de ticket que piden trabajadores", por defecto Asistencia) ─────────
+async function modulosConTrabajadores() {
+  let lista = 'Asistencia';
+  try {
+    const [r] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      ['configuracion', 'Tickets', 'Módulos de ticket que piden trabajadores']
+    );
+    if (r.length) lista = r[0].Parametro == null ? '' : String(r[0].Parametro);
+  } catch (e) { /* se usa Asistencia */ }
+  return lista.split(',').map(normalizarRol).filter(Boolean);
+}
+async function moduloPideTrabajadores(modulo) {
+  return (await modulosConTrabajadores()).includes(normalizarRol(modulo));
+}
+
+// GET /api/modulo-info?modulo=X — { pideTrabajadores }
+router.get('/api/modulo-info', async (req, res) => {
+  try {
+    res.json({ pideTrabajadores: (await moduloPideTrabajadores(req.query.modulo)) && (await tieneColumnaIdentificaciones()) });
+  } catch (err) {
+    console.error('[tickets] GET /api/modulo-info:', err);
+    res.json({ pideTrabajadores: false });
+  }
+});
+
+// GET /api/trabajadores?usuario=X&operacion=Y — trabajadores de la operación (Maestro_Segmentación),
+// activos primero; incluye retirados (p. ej. "Agregar evento a personal retirado").
+router.get('/api/trabajadores', async (req, res) => {
+  try {
+    const { usuario, operacion } = req.query;
+    if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
+    if (!operacion) return res.json({ ok: true, trabajadores: [] });
+    const [rows] = await pool.execute(
+      `SELECT \`Identificación\` AS identificacion, Trabajador, Estado
+         FROM \`Maestro_Segmentación\`
+        WHERE \`Operación\` = ? AND \`Identificación\` IS NOT NULL
+        ORDER BY (Estado = 'Activo') DESC, Trabajador`,
+      [operacion]
+    );
+    res.json({
+      ok: true,
+      trabajadores: rows.map(r => ({ identificacion: String(r.identificacion), nombre: nombreTrabajador(r.Trabajador), estado: r.Estado || '' }))
+    });
+  } catch (err) {
+    console.error('[tickets] GET /api/trabajadores:', err);
+    res.status(500).json({ error: 'No se pudieron cargar los trabajadores.' });
+  }
+});
+
 // ── POST /api/crear — crea un ticket desde cualquier módulo con el botón ───
 router.post('/api/crear', uploadTicket.single('evidencia'), async (req, res) => {
   try {
-    const { usuario, modulo, operacion, motivo, idrecibo, descripcion, telefono } = req.body;
+    const { usuario, modulo, operacion, motivo, idrecibo, descripcion, telefono, identificaciones } = req.body;
 
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const [userRows] = await pool.execute('SELECT ID FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
@@ -181,6 +232,11 @@ router.post('/api/crear', uploadTicket.single('evidencia'), async (req, res) => 
        VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, 'En Proceso')`,
       [ticket, operacion, usuario, modulo, motivo.trim(), idReciboVal, descripcion.trim(), evidenciaUrl, telefonoVal]
     );
+    // Trabajadores del ticket (solo módulos que los piden), identificaciones separadas por coma
+    const ids = [...new Set(listaIdentificaciones(identificaciones))];
+    if (ids.length && (await moduloPideTrabajadores(modulo)) && (await tieneColumnaIdentificaciones())) {
+      await pool.execute('UPDATE Dynamic_Tickets SET identificaciones = ? WHERE Ticket = ?', [ids.join(',').slice(0, 2000), ticket]);
+    }
 
     res.json({ ok: true, ticket });
   } catch (err) {
@@ -205,7 +261,56 @@ const { accesoSeccion } = require('../services/maestroMenu');
 const ESTADOS_EDITABLES = ['en proceso', 'pendiente'];
 const RE_FECHA_YMD = /^\d{4}-\d{2}-\d{2}$/;
 
-const SELECT_TICKET = `
+// Dynamic_Tickets.identificaciones (trabajadores del ticket, identificaciones separadas por coma):
+// migraciones/2026-11-21_tickets_asistencia_trabajadores.sql. Mientras no exista la columna, el
+// SELECT no la pide, para que los tickets sigan funcionando.
+let _tieneIdentificaciones = null;
+async function tieneColumnaIdentificaciones() {
+  if (_tieneIdentificaciones) return true;
+  try {
+    const [r] = await pool.query(
+      `SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Dynamic_Tickets' AND COLUMN_NAME = 'identificaciones'`
+    );
+    _tieneIdentificaciones = Number(r[0].n) > 0;
+  } catch (e) { return false; }
+  return _tieneIdentificaciones;
+}
+async function selectTicket() {
+  return (await tieneColumnaIdentificaciones())
+    ? SELECT_TICKET_BASE.replace('t.Observaciones AS observaciones,', 't.Observaciones AS observaciones, t.identificaciones AS identificaciones,')
+    : SELECT_TICKET_BASE;
+}
+
+// Nombres de los trabajadores del ticket (Maestro_Segmentación.Trabajador = "Identificación ** Nombre")
+async function agregarTrabajadores(rows) {
+  const ids = new Set();
+  rows.forEach(t => listaIdentificaciones(t.identificaciones).forEach(id => ids.add(id)));
+  const nombres = {};
+  if (ids.size) {
+    try {
+      const lista = [...ids];
+      const [seg] = await pool.query(
+        `SELECT \`Identificación\` AS id, Trabajador FROM \`Maestro_Segmentación\` WHERE \`Identificación\` IN (${lista.map(() => '?').join(',')})`,
+        lista
+      );
+      seg.forEach(r => { nombres[String(r.id)] = nombreTrabajador(r.Trabajador); });
+    } catch (e) { console.error('[tickets] Nombres de trabajadores:', e.message); }
+  }
+  rows.forEach(t => {
+    t.trabajadores = listaIdentificaciones(t.identificaciones).map(id => ({ identificacion: id, nombre: nombres[id] || '' }));
+  });
+  return rows;
+}
+function listaIdentificaciones(texto) {
+  return String(texto || '').split(',').map(x => x.replace(/\D/g, '')).filter(Boolean);
+}
+function nombreTrabajador(trabajador) {
+  const partes = String(trabajador || '').split('**');
+  return (partes.length > 1 ? partes.slice(1).join('**') : partes[0]).trim();
+}
+
+const SELECT_TICKET_BASE = `
   SELECT t.Ticket AS ticket,
          DATE_FORMAT(t.fecha_registro, '%Y-%m-%d %H:%i') AS fechaRegistro,
          t.\`Operación\` AS operacion, mo.REGIONAL AS regional,
@@ -301,12 +406,13 @@ router.get('/api/mis-tickets', async (req, res) => {
     if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
     const quincena = await quincenaActual();
     const [rows] = await pool.query(
-      `${SELECT_TICKET}
+      `${await selectTicket()}
        WHERE t.solicitante = ?
          AND ((t.fecha_registro >= ? AND t.fecha_registro < DATE_ADD(?, INTERVAL 1 DAY)) OR ${calificacion.SQL_POR_CALIFICAR})
        ORDER BY t.fecha_registro DESC`,
       [usuario, quincena.desde, quincena.hasta]
     );
+    await agregarTrabajadores(rows);
     rows.forEach(t => {
       t.puedeEditar = puedeEditarTicket(t, usuario);
       t.porCalificar = Boolean(t.porCalificar);
@@ -357,11 +463,13 @@ router.get('/api/listado', async (req, res) => {
     const q = String(req.query.q || '').trim();
     if (q) {
       const like = `%${q}%`;
-      where.push('(t.Ticket LIKE ? OR t.solicitante LIKE ? OR t.motivo LIKE ? OR t.descripcion LIKE ? OR t.idrecibo LIKE ?)');
+      const conIds = await tieneColumnaIdentificaciones();
+      where.push(`(t.Ticket LIKE ? OR t.solicitante LIKE ? OR t.motivo LIKE ? OR t.descripcion LIKE ? OR t.idrecibo LIKE ?${conIds ? ' OR t.identificaciones LIKE ?' : ''})`);
       params.push(like, like, like, like, like);
+      if (conIds) params.push(like);
     }
     const [base] = await pool.query(
-      `${SELECT_TICKET} WHERE ${where.join(' AND ')} ORDER BY t.fecha_registro DESC LIMIT 5000`,
+      `${await selectTicket()} WHERE ${where.join(' AND ')} ORDER BY t.fecha_registro DESC LIMIT 5000`,
       params
     );
 
@@ -381,6 +489,7 @@ router.get('/api/listado', async (req, res) => {
     };
 
     const rows = base.filter(t => cumple(t, null));
+    await agregarTrabajadores(rows);
     rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); t.puedeResolver = gestion && puedeResolverTicket(t, permisoResolver); });
     res.json({
       ok: true,
@@ -408,9 +517,10 @@ router.get('/api/ticket/:ticket', async (req, res) => {
     const { usuario } = req.query;
     const user = await usuarioRegistrado(usuario);
     if (!user) return res.status(403).json({ error: 'Usuario no reconocido' });
-    const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    const [rows] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
     if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado' });
     const t = rows[0];
+    await agregarTrabajadores(rows);
     const permisoResolver = await permisoResolverTickets(user.Rol);
     t.puedeResolver = puedeResolverTicket(t, permisoResolver);
     if (String(t.solicitante || '').trim() !== String(usuario).trim() && !t.puedeResolver) {
@@ -431,7 +541,7 @@ router.put('/api/ticket/:ticket', async (req, res) => {
   try {
     const { usuario } = req.body || {};
     if (!(await usuarioRegistrado(usuario))) return res.status(403).json({ error: 'Usuario no reconocido' });
-    const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    const [rows] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
     if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado' });
     if (!puedeEditarTicket(rows[0], usuario)) {
       return res.status(403).json({ error: 'Solo quien puso el ticket puede editarlo, y solo mientras esté En Proceso o Pendiente.' });
@@ -445,7 +555,8 @@ router.put('/api/ticket/:ticket', async (req, res) => {
       'UPDATE Dynamic_Tickets SET motivo = ?, descripcion = ?, telefono = ? WHERE Ticket = ?',
       [motivo || null, descripcion, telefono, req.params.ticket]
     );
-    const [act] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    const [act] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    await agregarTrabajadores(act);
     act[0].puedeEditar = puedeEditarTicket(act[0], usuario);
     act[0].puedeResolver = puedeResolverTicket(act[0], await permisoResolverTickets((await usuarioRegistrado(usuario)).Rol));
     res.json({ ok: true, ticket: act[0] });
@@ -467,7 +578,7 @@ router.post('/api/ticket/:ticket/estado', async (req, res) => {
     const observaciones = String(req.body.observaciones || '').trim();
     if (!observaciones) return res.status(400).json({ error: 'Escribe la respuesta para quien puso el ticket.' });
 
-    const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    const [rows] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
     if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado' });
     const permisoResolver = await permisoResolverTickets(user.Rol);
     if (!puedeResolverTicket(rows[0], permisoResolver)) {
@@ -479,7 +590,8 @@ router.post('/api/ticket/:ticket/estado', async (req, res) => {
       [estado, observaciones, req.params.ticket]
     );
     if (finaliza) await calificacion.prepararCalificacionTicket(req.params.ticket, urlBase(req));
-    const [act] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    const [act] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    await agregarTrabajadores(act);
     act[0].puedeEditar = puedeEditarTicket(act[0], usuario);
     act[0].puedeResolver = true;
     res.json({ ok: true, ticket: act[0] });
@@ -501,7 +613,8 @@ router.post('/api/ticket/:ticket/calificar', async (req, res) => {
     if (datos.error) return res.status(400).json({ error: datos.error });
     const ok = await calificacion.guardarCalificacion({ ticket: req.params.ticket, solicitante: usuario }, datos);
     if (!ok) return res.status(409).json({ error: 'Este ticket ya fue calificado o no está pendiente por calificar.' });
-    const [act] = await pool.query(`${SELECT_TICKET} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    const [act] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    await agregarTrabajadores(act);
     act[0].puedeEditar = puedeEditarTicket(act[0], usuario);
     act[0].porCalificar = false;
     res.json({ ok: true, ticket: act[0] });
@@ -514,7 +627,7 @@ router.post('/api/ticket/:ticket/calificar', async (req, res) => {
 // Ticket del enlace del correo (token aleatorio: no requiere iniciar sesión)
 async function ticketPorToken(token) {
   if (!/^[a-f0-9]{48}$/.test(String(token || ''))) return null;
-  const [rows] = await pool.query(`${SELECT_TICKET} WHERE t.token_calificacion = ? LIMIT 1`, [token]);
+  const [rows] = await pool.query(`${await selectTicket()} WHERE t.token_calificacion = ? LIMIT 1`, [token]);
   return rows[0] || null;
 }
 

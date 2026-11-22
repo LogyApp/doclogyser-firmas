@@ -46,6 +46,10 @@
   let recibosDisponibles = [];
   let reciboSeleccionado = null;
   let reciboIndiceResaltado = -1;
+  // Trabajadores del ticket (módulos que los piden, p. ej. Asistencia)
+  let pideTrabajadores = false;
+  let trabajadoresOperacion = [];
+  const trabajadoresElegidos = new Map(); // identificacion -> { identificacion, nombre, estado }
 
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
@@ -220,7 +224,7 @@
     if (document.querySelector('link[data-ticket-boton-style]')) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/css/ticket-boton.css';
+    link.href = '/css/ticket-boton.css?v=20261121b';
     link.dataset.ticketBotonStyle = 'true';
     document.head.appendChild(link);
   }
@@ -272,6 +276,14 @@
             <div class="tkb-group">
               <label>Operación *</label>
               <select id="tkb-operacion"><option value="">— Seleccione primero la Regional —</option></select>
+            </div>
+
+            <div class="tkb-group" id="tkb-trab-wrap" style="display:none;">
+              <label for="tkb-trab-buscar">Trabajadores (Identificación)</label>
+              <div id="tkb-trab-elegidos" class="tkb-trab-elegidos"></div>
+              <input type="text" id="tkb-trab-buscar" placeholder="— Seleccione primero la Operación —" autocomplete="off" disabled>
+              <div id="tkb-trab-lista" class="tkb-trab-lista" style="display:none;"></div>
+              <small>Busque por nombre o identificación y toque cada trabajador para agregarlo.</small>
             </div>
 
             <div class="tkb-group" id="tkb-recibo-select-wrap" style="display:none;">
@@ -332,6 +344,30 @@
     document.getElementById('tkb-modulo').addEventListener('change', onModuloChange);
     document.getElementById('tkb-regional').addEventListener('change', onRegionalChange);
     document.getElementById('tkb-operacion').addEventListener('change', onOperacionChange);
+    document.getElementById('tkb-trab-buscar').addEventListener('input', pintarListaTrabajadores);
+    document.getElementById('tkb-trab-buscar').addEventListener('focus', pintarListaTrabajadores);
+    document.getElementById('tkb-trab-lista').addEventListener('click', (ev) => {
+      const item = ev.target.closest('[data-tkb-trab]');
+      if (!item) return;
+      const t = trabajadoresOperacion.find(x => x.identificacion === item.dataset.tkbTrab);
+      if (t) trabajadoresElegidos.set(t.identificacion, t);
+      document.getElementById('tkb-trab-buscar').value = '';
+      pintarTrabajadoresElegidos();
+      pintarListaTrabajadores();
+    });
+    document.getElementById('tkb-trab-elegidos').addEventListener('click', (ev) => {
+      const quitar = ev.target.closest('[data-tkb-quitar-trab]');
+      if (!quitar) return;
+      trabajadoresElegidos.delete(quitar.dataset.tkbQuitarTrab);
+      pintarTrabajadoresElegidos();
+      pintarListaTrabajadores();
+    });
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('#tkb-trab-wrap')) {
+        const lista = document.getElementById('tkb-trab-lista');
+        if (lista) lista.style.display = 'none';
+      }
+    });
 
     // Eventos combobox de Recibo
     const inputRecibo = document.getElementById('tkb-recibo-input');
@@ -522,6 +558,7 @@
 
     aplicarEstadoSegunModulo();
     cargarMotivos(selModulo.value);
+    revisarModuloTrabajadores();
 
     try {
       const resp = await fetch(`/tickets/api/usuario-info?usuario=${encodeURIComponent(cfg.usuarioId)}`);
@@ -587,6 +624,72 @@
   function onModuloChange() {
     aplicarEstadoSegunModulo();
     cargarMotivos(document.getElementById('tkb-modulo').value);
+    revisarModuloTrabajadores();
+  }
+
+  // ── Trabajadores (Identificación) ─────────────────────────────────────────
+  async function revisarModuloTrabajadores() {
+    const modulo = document.getElementById('tkb-modulo').value;
+    pideTrabajadores = false;
+    try {
+      const r = await fetch(`/tickets/api/modulo-info?modulo=${encodeURIComponent(modulo)}`);
+      const d = await r.json();
+      pideTrabajadores = Boolean(r.ok && d.pideTrabajadores);
+    } catch (e) { pideTrabajadores = false; }
+    document.getElementById('tkb-trab-wrap').style.display = pideTrabajadores ? 'block' : 'none';
+    if (pideTrabajadores) cargarTrabajadoresOperacion();
+  }
+
+  async function cargarTrabajadoresOperacion() {
+    const input = document.getElementById('tkb-trab-buscar');
+    const operacion = document.getElementById('tkb-operacion').value;
+    trabajadoresOperacion = [];
+    trabajadoresElegidos.clear();
+    pintarTrabajadoresElegidos();
+    if (!pideTrabajadores) return;
+    if (!operacion) {
+      input.disabled = true;
+      input.placeholder = '— Seleccione primero la Operación —';
+      return;
+    }
+    input.disabled = true;
+    input.placeholder = 'Cargando trabajadores...';
+    try {
+      const r = await fetch(`/tickets/api/trabajadores?usuario=${encodeURIComponent(cfg.usuarioId)}&operacion=${encodeURIComponent(operacion)}`);
+      const d = await r.json();
+      trabajadoresOperacion = (r.ok && d.ok && Array.isArray(d.trabajadores)) ? d.trabajadores : [];
+      input.disabled = false;
+      input.placeholder = trabajadoresOperacion.length ? '🔍 Buscar trabajador por nombre o identificación' : 'Sin trabajadores en esta operación';
+    } catch (e) {
+      input.placeholder = 'No se pudieron cargar los trabajadores';
+    }
+  }
+
+  function pintarListaTrabajadores() {
+    const lista = document.getElementById('tkb-trab-lista');
+    const filtro = normalizarTexto(document.getElementById('tkb-trab-buscar').value);
+    const opciones = trabajadoresOperacion
+      .filter(t => !trabajadoresElegidos.has(t.identificacion))
+      .filter(t => !filtro || normalizarTexto(`${t.identificacion} ${t.nombre}`).includes(filtro));
+    // La lista completa de la operación (activos primero, retirados al final) para escoger sin escribir
+    if (!trabajadoresOperacion.length) { lista.style.display = 'none'; return; }
+    lista.innerHTML = opciones.length
+      ? opciones.map(t => {
+          const retirado = String(t.estado || '').trim().toLowerCase() === 'retirado';
+          return `<div class="tkb-trab-item${retirado ? ' tkb-trab-retirado' : ''}" data-tkb-trab="${esc(t.identificacion)}">
+            <span>${esc(t.nombre)}${retirado ? ' <em class="tkb-tag-retirado">RETIRADO</em>' : ''}</span>
+            <small>${esc(t.identificacion)}</small>
+          </div>`;
+        }).join('')
+      : '<div class="tkb-trab-vacio">Sin coincidencias</div>';
+    lista.style.display = 'block';
+  }
+
+  function pintarTrabajadoresElegidos() {
+    const cont = document.getElementById('tkb-trab-elegidos');
+    cont.innerHTML = [...trabajadoresElegidos.values()].map(t =>
+      `<span class="tkb-trab-chip" title="${esc(t.identificacion)}">${esc(t.nombre || t.identificacion)}${String(t.estado || '').toLowerCase() === 'retirado' ? ' · RETIRADO' : ''}
+        <button type="button" data-tkb-quitar-trab="${esc(t.identificacion)}" aria-label="Quitar">&times;</button></span>`).join('');
   }
 
   function onRegionalChange() {
@@ -600,6 +703,7 @@
 
   function onOperacionChange() {
     refrescarRecibosDisponibles();
+    if (pideTrabajadores) cargarTrabajadoresOperacion();
   }
 
   async function refrescarRecibosDisponibles() {
@@ -684,6 +788,7 @@
       fd.append('idrecibo', idRecibo || '');
       fd.append('descripcion', descripcion);
       fd.append('telefono', telefono);
+      if (pideTrabajadores && trabajadoresElegidos.size) fd.append('identificaciones', [...trabajadoresElegidos.keys()].join(','));
       if (evidenciaInput.files[0]) fd.append('evidencia', evidenciaInput.files[0]);
 
       const resp = await fetch('/tickets/api/crear', { method: 'POST', body: fd });
@@ -832,6 +937,7 @@
       ${fila('Operación', esc(t.operacion))}
       ${fila('Recibo', esc(t.idrecibo))}
       ${fila('Motivo', esc(t.motivo))}
+      ${fila('Trabajadores', (t.trabajadores || []).map(w => `${esc(w.nombre || '')} (${esc(w.identificacion)})`).join('<br>'))}
       ${fila('Descripción', esc(t.descripcion).replace(/\n/g, '<br>'))}
       ${fila('Teléfono', esc(t.telefono))}
       ${fila('Evidencia', t.evidencia ? `<a href="${esc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a>` : '')}

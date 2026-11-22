@@ -10364,6 +10364,11 @@
     }
     switchTab('cesantias');
   } else if (tabDestino === 'asistencia' && tabs.asistencia) {
+    // ?identificacion= (p. ej. desde Configuración › Tickets): buscar a ese trabajador
+    if (busquedaParam) {
+      const asisSearch = document.getElementById('asisFilterBuscar');
+      if (asisSearch) asisSearch.value = busquedaParam;
+    }
     switchTab('asistencia');
     // ?subtab=control abre el Control de quincena (con &operacion= abre su planilla; &fecha=AAAA-MM-DD otra quincena)
     const subParamAsis = (paramsUrl.get('subtab') || paramsUrl.get('vista') || '').toLowerCase().replace(/[\s_-]/g, '');
@@ -10447,7 +10452,7 @@
       const SECCION_TICKET_NOMINA = {
         retiros: 'Retiro', activos: 'Activo', bloqueo: 'Bloqueo_datos',
         biometrico: 'Biometrico', incapacidades: 'Biometrico', traslados: 'Traslados',
-        cesantias: 'Cesantias'
+        cesantias: 'Cesantias', asistencia: 'Asistencia'
       };
       initBotonTicket({
         moduloErp: 'nomina',
@@ -10462,7 +10467,7 @@
 <script src="/js/theme.js" defer></script>
 <script src="/js/firma-correo.js?v=20261120b" defer></script>
 <script src="/js/app-launcher-profile.js?v=20261120e" defer></script>
-<script src="/js/ticket-boton.js" defer></script>
+<script src="/js/ticket-boton.js?v=20261121b" defer></script>
 <script src="/js/boton-sync.js" defer></script>
 <script src="/js/nomina-asistencia.js?v=20261116e"></script>
 <script src="/js/nomina-control-quincena.js?v=20261118a"></script>

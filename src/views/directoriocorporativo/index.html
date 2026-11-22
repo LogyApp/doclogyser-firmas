@@ -1349,6 +1349,7 @@
               <th style="width: 120px;" data-sort="modulo">Módulo<span class="sort-indicator"></span></th>
               <th style="width: 150px;" data-sort="operacion">Operación<span class="sort-indicator"></span></th>
               <th style="width: 170px;" data-sort="motivo">Motivo<span class="sort-indicator"></span></th>
+              <th style="width: 190px;" data-sort="identificaciones">Trabajadores<span class="sort-indicator"></span></th>
               <th style="width: 220px;" data-sort="descripcion">Descripción<span class="sort-indicator"></span></th>
               <th style="width: 170px;" data-sort="solicitante">Solicitante<span class="sort-indicator"></span></th>
               <th style="width: 220px;" data-sort="observaciones">Respuesta<span class="sort-indicator"></span></th>
@@ -1989,7 +1990,7 @@
       const body = document.getElementById('tkBody');
       tkState.vista = ordenarTickets(d.tickets);
       if (!tkState.vista.length) {
-        body.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
+        body.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
         return;
       }
       body.innerHTML = tkState.vista.map((t, i) => `
@@ -2001,6 +2002,7 @@
           <td>${tkEsc(t.modulo)}</td>
           <td title="${tkEsc(t.operacion || '')}">${tkEsc(t.operacion || '—')}</td>
           <td title="${tkEsc(t.motivo || '')}">${tkEsc(t.motivo || '—')}</td>
+          <td title="${tkEsc((t.trabajadores || []).map(w => w.nombre + ' (' + w.identificacion + ')').join(', '))}">${(t.trabajadores || []).length ? tkTrabajadoresHtml(t, ', ') : '—'}</td>
           <td title="${tkEsc(t.descripcion || '')}">${tkEsc(t.descripcion || '—')}</td>
           <td title="${tkEsc(t.solicitante || '')}">${tkEsc(t.solicitante || '—')}</td>
           <td title="${tkEsc(t.observaciones || '')}">${tkEsc(t.observaciones || '—')}</td>
@@ -2013,6 +2015,16 @@
       document.getElementById('tkModal').classList.add('abierto');
     }
     function cerrarModalTicket() { document.getElementById('tkModal').classList.remove('abierto'); }
+    // Trabajadores del ticket. En Configuración › Tickets cada uno abre Nómina › Asistencia y Novedades
+    // buscando su identificación, para hacer el cambio que piden.
+    function tkTrabajadoresHtml(t, separador) {
+      return (t.trabajadores || []).map(w => {
+        const txt = `${tkEsc(w.nombre || '')} (${tkEsc(w.identificacion)})`;
+        if (TK_AMBITO !== 'gestion') return txt;
+        const url = `/nomina?usuario=${encodeURIComponent(paramUsuario)}&tab=asistencia&identificacion=${encodeURIComponent(w.identificacion)}`;
+        return `<a href="${url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir Asistencia y Novedades con esta identificación">${txt}</a>`;
+      }).join(separador || '<br>');
+    }
     function verTicket(i) {
       const t = tkState.vista[i];
       const fila = (etq, val) => val ? `<div class="tk-det-fila"><span>${etq}</span><div>${val}</div></div>` : '';
@@ -2026,6 +2038,7 @@
         ${fila('Operación', tkEsc(t.operacion))}
         ${fila('Recibo', tkEsc(t.idrecibo))}
         ${fila('Motivo', tkEsc(t.motivo))}
+        ${fila('Trabajadores', tkTrabajadoresHtml(t))}
         ${fila('Descripción', multilinea(t.descripcion))}
         ${fila('Teléfono', tkEsc(t.telefono))}
         ${fila('Evidencia', t.evidencia ? `<a href="${tkEsc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a>` : '')}
@@ -2040,7 +2053,7 @@
             </div>`
           : '<div class="tk-nota">Solo quien puso el ticket puede editarlo, y solo mientras esté En Proceso o Pendiente.</div>'}`);
     }
-    // Gestionar (resolver): roles de Config_Parametros directorio / Tickets / "Resolver tickets"
+    // Gestionar (resolver): roles de Config_Parametros configuracion / Tickets / "Roles que pueden resolver tickets"
     function gestionarTicket(i) {
       const t = tkState.vista[i];
       const multilinea = v => tkEsc(v).replace(/\n/g, '<br>');
@@ -2048,6 +2061,7 @@
       abrirModalTicket(`🛠️ Gestionar ticket #${tkEsc(t.ticket)}`, `
         <div style="margin-bottom:10px;">${tkBadge(t.estado)} <span style="color:var(--text-muted); font-size:.82rem;">${tkEsc(t.modulo)} · ${tkEsc(t.operacion || '')} · ${tkEsc(t.solicitante || '')}</span></div>
         <div class="tk-det-fila"><span>Motivo</span><div>${tkEsc(t.motivo || '—')}</div></div>
+        ${(t.trabajadores || []).length ? `<div class="tk-det-fila"><span>Trabajadores</span><div>${tkTrabajadoresHtml(t)}</div></div>` : ''}
         <div class="tk-det-fila"><span>Descripción</span><div>${multilinea(t.descripcion || '—')}</div></div>
         ${t.telefono ? `<div class="tk-det-fila"><span>Teléfono</span><div>${tkEsc(t.telefono)}</div></div>` : ''}
         ${t.evidencia ? `<div class="tk-det-fila"><span>Evidencia</span><div><a href="${tkEsc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a></div></div>` : ''}
@@ -2979,7 +2993,7 @@
   <script src="/js/boton-sync.js" defer></script>
   <script src="/js/firma-correo.js?v=20261120b" defer></script>
   <script src="/js/app-launcher-profile.js?v=20261120e" defer></script>
-  <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/ticket-boton.js?v=20261121b" defer></script>
   <!-- Botón flotante "Ticket" (compartido, ver public/js/ticket-boton.js) -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
