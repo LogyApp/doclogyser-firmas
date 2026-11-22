@@ -12,6 +12,7 @@ const { computarAccesoSst } = require('../services/accesoSst');
 const { rolPuedeSst, puedeProcesarRetiradosSst } = require('../services/configSst');
 const { subirFirma, obtenerUrlFirmaReciente, descargarFirmaBase64PorUrl } = require('../services/storage');
 const { notificarFirmaARO } = require('../services/email');
+const { crearNotificacionDocInicialSST } = require('../services/notificacionesService');
 const aro = require('../services/aro');
 
 const router = express.Router();
@@ -96,7 +97,6 @@ router.post('/api/firmar', async (req, res) => {
     }
 
     const cfg = await aro.configuracion();
-    const puedeRetirados = await puedeProcesarRetiradosSst(acceso.rol);
     const sst = await aro.firmanteSst(cfg.rolSst);
     const ahora = ahoraBogota();
     const [upd] = await pool.execute(
@@ -110,6 +110,12 @@ router.post('/api/firmar', async (req, res) => {
     const urlDoc = await aro.generarPdf(firmado);
     await pool.execute('UPDATE Dynamic_aro SET url_doc = ? WHERE id_aro = ?', [urlDoc, a.id_aro]);
     await aro.registrarDocumentoTrabajador(firmado, urlDoc, null);
+    const nombre = nombreSinCedula(firmado.nombre_trabajador);
+    crearNotificacionDocInicialSST(pool, {
+      subtipo: 'ARO', referencia_id: firmado.id_aro, identificacion: firmado.identificacion, nombre_trabajador: nombre,
+      operacion: firmado.operacion, regional: firmado.regional, titulo: 'ARO firmado',
+      mensaje: `${nombre} firmó el Análisis de Riesgo por Oficio`, resultado: 'FIRMADO', url_doc: urlDoc, usuarioCreador: firmado.usuario,
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[aro] POST /api/firmar:', err);
@@ -209,6 +215,7 @@ router.post('/api/crear', async (req, res) => {
     if (!ids.length) return res.status(400).json({ error: 'Escoja al menos un trabajador.' });
     const cfg = await aro.configuracion();
     const enviarCorreo = !!(req.body && req.body.enviarCorreo) && cfg.correoHabilitado;
+    const puedeRetirados = await puedeProcesarRetiradosSst(acceso.rol);
     const [[usu]] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [acceso.usuarioId]);
     const [[plantilla]] = await pool.execute("SELECT version_formato FROM Maestro_Plantillas WHERE nombre_proceso = 'ARO' ORDER BY activo DESC, version DESC LIMIT 1");
 

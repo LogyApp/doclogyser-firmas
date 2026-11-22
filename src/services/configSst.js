@@ -40,6 +40,14 @@ const PERMISOS_SST = {
     editarFirmado: 'Roles que pueden editar y regenerar PDF de ARO firmados',
     eliminarFirmado: 'Roles que pueden eliminar ARO firmados',
   },
+  // EVIN (Evaluación de Inducción Corporativa): src/routes/evin.js
+  EVIN: {
+    clave: 'evin',
+    crear: 'Roles que pueden crear EVIN',
+    eliminar: 'Roles que pueden eliminar EVIN',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de EVIN firmadas',
+    eliminarFirmado: 'Roles que pueden eliminar EVIN firmadas',
+  },
   'Compromiso SST': {
     clave: 'csst',
     crear: 'Roles que pueden crear compromisos SST',

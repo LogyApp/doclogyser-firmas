@@ -372,6 +372,36 @@ async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, us
 }
 
 /**
+ * Notificación de la campanita de SST › Documentación Inicial (ARO, EVIN, INGE) cuando el trabajador firma.
+ * La reciben los usuarios SST de la operación o regional del trabajador y quien generó el registro.
+ * subtipo: 'ARO' | 'EVIN' | ...; referencia_id: id del registro en su tabla Dynamic_*.
+ */
+async function crearNotificacionDocInicialSST(pool, { subtipo, referencia_id, identificacion, nombre_trabajador, operacion, regional,
+  titulo, mensaje, resultado, puntaje = null, url_doc = null, usuarioCreador = null }) {
+  try {
+    const recipients = new Set(await obtenerDestinatariosSST(pool, operacion, regional));
+    if (usuarioCreador) recipients.add(usuarioCreador);
+    for (const userId of recipients) {
+      const [exists] = await pool.execute(
+        "SELECT id FROM Maestro_notificaciones WHERE usuario_id = ? AND modulo = 'docinicial' AND referencia_id = ? LIMIT 1",
+        [userId, referencia_id]
+      );
+      if (exists.length > 0) continue;
+      await pool.execute(
+        `INSERT INTO Maestro_notificaciones
+         (usuario_id, modulo, subtipo, referencia_id, identificacion_trabajador, nombre_trabajador,
+          operacion, regional, titulo, mensaje, resultado, puntaje, url_doc, leido, fecha_creacion)
+         VALUES (?, 'docinicial', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())`,
+        [userId, subtipo, referencia_id, identificacion, nombre_trabajador, operacion || null, regional || null,
+          titulo, mensaje, resultado, puntaje, url_doc]
+      );
+    }
+  } catch (err) {
+    console.error('[notificacionesService] Error creando notificación de Documentación Inicial SST:', err);
+  }
+}
+
+/**
  * Obtiene los destinatarios para notificaciones de Aspirantes.
  * Prioriza al Responsable de Selección asignado a la requisición (Maestro_Usuarios).
  * Si no hay responsable asignado o no se encuentra, notifica a los roles de Selección / Sistema.
@@ -569,6 +599,7 @@ module.exports = {
   crearNotificacionCapacitacionSST,
   crearNotificacionPruebaConsumoSST,
   crearNotificacionCompromisoSST,
+  crearNotificacionDocInicialSST,
   crearNotificacionCargaDocumentosAspirante,
   crearNotificacionFirmasCompletasAspirante,
   obtenerNotificacionesUsuario,

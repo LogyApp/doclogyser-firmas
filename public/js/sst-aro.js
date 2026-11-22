@@ -2,7 +2,7 @@
  * Como Prueba de Consumo: se escogen los trabajadores de una operación (cargos de Config_Parametros sst / ARO),
  * se genera el enlace de firma y se comparte por WhatsApp, correo o copiándolo; el trabajador lee y firma, y el
  * PDF queda en su carpeta como documento 7. API: src/routes/aro.js. Usa del hub de SST: CONFIG.usuarioId,
- * registrarModalBack() / cerrarModalBack() (modal-back.js).
+ * registrarModalBack() / cerrarModalBack() (modal-back.js), iconoSst() y docInicial (sst-docinicial.js).
  */
 (function () {
   'use strict';
@@ -30,11 +30,6 @@
   function estilos() {
     if ($('aro-estilos')) return;
     document.head.insertAdjacentHTML('beforeend', `<style id="aro-estilos">
-      .aro-chips { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-      .aro-chip { border:1.5px solid var(--border); background:var(--card-bg); border-radius:10px; padding:10px 16px; cursor:pointer; min-width:120px; text-align:left; font-family:inherit; color:var(--text); }
-      .aro-chip strong { display:block; font-size:1.25rem; }
-      .aro-chip span { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
-      .aro-chip.activo { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft, rgba(245,84,0,.15)); }
       .aro-acc { display:flex; gap:6px; flex-wrap:wrap; }
       .aro-ico { border:1px solid var(--border); background:var(--card-bg); color:var(--text); border-radius:6px; padding:4px 9px; font-size:.78rem; cursor:pointer; text-decoration:none; font-family:inherit; white-space:nowrap; }
       .aro-ico:hover { background:var(--bg-elevated); }
@@ -68,7 +63,6 @@
           <button class="btn btn-accent" id="aro-btn-generar" style="display:none" onclick="aroAbrirGenerar()"><span>➕</span> Generar ARO</button>
         </div>
       </div>
-      <div class="aro-chips" id="aro-chips"></div>
       <div class="card-filters">
         <div class="filtros-toggle" onclick="aroToggleFiltros()">
           <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="aro-badge">0</span></span>
@@ -77,7 +71,7 @@
         </div>
         <div class="filtros-body" id="aro-filtros" style="display:none">
           <div class="filters-grid">
-            <div class="form-group"><label class="form-label">Regional</label><select class="form-control" id="aro-f-regional" onchange="aroFiltro('regional')"><option value="">Todas</option></select></div>
+            <div class="form-group"><label class="form-label">Regional</label><select class="form-control" id="aro-f-regional" onchange="aroFiltro()"><option value="">Todas</option></select></div>
             <div class="form-group"><label class="form-label">Operación</label><select class="form-control" id="aro-f-operacion" onchange="aroFiltro()"><option value="">Todas</option></select></div>
             <div class="form-group"><label class="form-label">Estado de firma</label><select class="form-control" id="aro-f-estado" onchange="aroFiltro()"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="firmado">Firmados</option></select></div>
             <div class="form-group"><button class="btn btn-secondary btn-sm" onclick="aroLimpiar()" style="height:38px;">Limpiar</button></div>
@@ -86,10 +80,9 @@
       </div>
       <div class="table-card"><div class="table-container">
         <table class="data-table" id="aro-tabla">
-          <thead><tr>
-            <th style="width:100px">Radicado</th><th style="width:240px">Trabajador</th><th style="width:170px">Cargo</th>
-            <th style="width:170px">Operación</th><th style="width:130px">Estado</th><th style="width:170px">Generado</th><th style="width:250px">Acciones</th>
-          </tr></thead>
+          <thead>${docInicial.encabezado('aro-tabla', {
+            columnas: COLUMNAS, orden: { clave: 'generado', dir: 'desc' }, anchoAcciones: 150, alOrdenar: () => pintar(),
+          })}</thead>
           <tbody id="aro-body"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando ARO...</td></tr></tbody>
         </table>
       </div></div>
@@ -101,7 +94,23 @@
           <div class="aro-modal-ft" id="aro-modal-ft"></div>
         </div>
       </div>`;
+    docInicial.activar('aro-tabla');
   }
+
+  const COLUMNAS = [
+    { clave: 'radicado', titulo: 'Radicado', ancho: 100, valor: a => a.radicado },
+    { clave: 'trabajador', titulo: 'Trabajador', ancho: 240, valor: a => a.trabajador },
+    { clave: 'cargo', titulo: 'Cargo', ancho: 170, valor: a => a.cargo },
+    { clave: 'operacion', titulo: 'Operación', ancho: 170, valor: a => `${a.operacion} ${a.regional}` },
+    { clave: 'estado', titulo: 'Estado', ancho: 130, valor: a => (a.firmado ? 1 : 0) },
+    { clave: 'generado', titulo: 'Generado', ancho: 170, valor: a => String(a.fechaCreacion || '') },
+  ];
+  const ESTADOS = [['pendiente', 'Pendientes'], ['firmado', 'Firmados']];
+  const PRUEBAS = {
+    regional: (a, v) => a.regional === v,
+    operacion: (a, v) => a.operacion === v,
+    estado: (a, v) => (v === 'firmado' ? a.firmado : !a.firmado),
+  };
 
   async function cargar() {
     try {
@@ -115,46 +124,39 @@
       return;
     }
     $('aro-btn-generar').style.display = st.permisos.crear ? '' : 'none';
-    const selR = $('aro-f-regional');
-    const regs = [...new Set(st.aros.map(a => a.regional).filter(Boolean))].sort();
-    selR.innerHTML = '<option value="">Todas</option>' + regs.map(r => `<option ${r === st.regional ? 'selected' : ''}>${esc(r)}</option>`).join('');
-    pintarOperaciones();
     pintar();
   }
 
-  function pintarOperaciones() {
-    const ops = [...new Set(st.aros.filter(a => !st.regional || a.regional === st.regional).map(a => a.operacion).filter(Boolean))].sort();
-    if (st.operacion && !ops.includes(st.operacion)) st.operacion = '';
-    $('aro-f-operacion').innerHTML = '<option value="">Todas</option>' + ops.map(o => `<option ${o === st.operacion ? 'selected' : ''}>${esc(o)}</option>`).join('');
-  }
-
   function pintar() {
-    const base = st.aros.filter(a => (!st.regional || a.regional === st.regional) && (!st.operacion || a.operacion === st.operacion)
-      && (!st.q || norm(`${a.trabajador} ${a.identificacion} ${a.radicado}`).includes(norm(st.q))));
-    const n = { '': base.length, pendiente: base.filter(a => !a.firmado).length, firmado: base.filter(a => a.firmado).length };
-    $('aro-chips').innerHTML = [['', 'Todos'], ['pendiente', 'Pendientes de firma'], ['firmado', 'Firmados']]
-      .map(([e, l]) => `<button type="button" class="aro-chip ${st.estado === e ? 'activo' : ''}" onclick="aroChip('${e}')"><strong>${n[e]}</strong><span>${l}</span></button>`).join('');
-    const lista = base.filter(a => !st.estado || (st.estado === 'firmado' ? a.firmado : !a.firmado));
+    const buscados = st.aros.filter(a => !st.q || norm(`${a.trabajador} ${a.identificacion} ${a.radicado}`).includes(norm(st.q)));
+    const sin = docInicial.facetas(buscados, PRUEBAS, { regional: st.regional, operacion: st.operacion, estado: st.estado });
+    docInicial.select($('aro-f-regional'), { opciones: docInicial.distintos(st.aros, 'regional'), base: sin('regional'), prueba: PRUEBAS.regional, actual: st.regional, todos: 'Todas' });
+    docInicial.select($('aro-f-operacion'), { opciones: docInicial.distintos(sin('operacion'), 'operacion'), base: sin('operacion'), prueba: PRUEBAS.operacion, actual: st.operacion, todos: 'Todas' });
+    docInicial.select($('aro-f-estado'), { opciones: ESTADOS, base: sin('estado'), prueba: PRUEBAS.estado, actual: st.estado });
+    const lista = docInicial.ordenar('aro-tabla', sin(null));
     $('aro-total').textContent = `${lista.length} Registro${lista.length === 1 ? '' : 's'}`;
     const filtros = (st.regional ? 1 : 0) + (st.operacion ? 1 : 0) + (st.estado ? 1 : 0);
     $('aro-badge').textContent = filtros;
     const p = st.permisos;
     $('aro-body').innerHTML = lista.length ? lista.map(a => {
+      const id = esc(a.id);
       const acciones = a.firmado
-        ? `<a class="aro-ico" href="${esc(a.urlDoc)}" target="_blank" rel="noopener">📄 PDF</a>${p.editarFirmado ? `<button class="aro-ico" onclick="aroRegenerar('${esc(a.id)}', this)">↻ Regenerar</button>` : ''}${p.eliminarFirmado ? `<button class="aro-ico peligro" onclick="aroEliminar('${esc(a.id)}', true)">🗑</button>` : ''}`
-        : `<button class="aro-ico" onclick="aroCopiar('${esc(a.urlFirma)}')">🔗 Copiar enlace</button>
-           ${a.celular ? `<a class="aro-ico" href="${esc(enlaceWhatsApp(a.celular, a.trabajador, a.urlFirma))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-           ${p.crear && p.correoHabilitado && a.tieneEmail ? `<button class="aro-ico" onclick="aroCorreo('${esc(a.id)}', this)">✉ Correo</button>` : ''}
-           <a class="aro-ico" href="${esc(a.urlFirma)}" target="_blank" rel="noopener" title="Abrir para que firme en este equipo">✍ Firmar aquí</a>
-           ${p.eliminar && (p.esSistema || a.propio) ? `<button class="aro-ico peligro" onclick="aroEliminar('${esc(a.id)}', false)">🗑</button>` : ''}`;
+        ? iconoSst('pdf', '#dc2626', 'Abrir PDF', { href: a.urlDoc })
+          + (p.editarFirmado ? iconoSst('regenerar', '#0284c7', 'Regenerar PDF', { onclick: `aroRegenerar('${id}', this)` }) : '')
+          + (p.eliminarFirmado ? iconoSst('eliminar', '#b91c1c', 'Eliminar ARO firmado', { onclick: `aroEliminar('${id}', true)` }) : '')
+        : iconoSst('enlace', '#6366f1', 'Copiar enlace de firma', { onclick: `aroCopiar('${esc(a.urlFirma)}')` })
+          + (a.celular ? iconoSst('whatsapp', '#25d366', 'Enviar por WhatsApp', { href: enlaceWhatsApp(a.celular, a.trabajador, a.urlFirma) }) : '')
+          + (p.crear && p.correoHabilitado && a.tieneEmail ? iconoSst('correo', '#0ea5e9', 'Enviar enlace por correo', { onclick: `aroCorreo('${id}', this)` }) : '')
+          + iconoSst('firmar', '#d97706', 'Firmar aquí (abre el formato en este equipo)', { href: a.urlFirma })
+          + (p.eliminar && (p.esSistema || a.propio) ? iconoSst('eliminar', '#b91c1c', 'Eliminar ARO pendiente', { onclick: `aroEliminar('${id}', false)` }) : '');
       return `<tr>
+        <td><div class="acc-iconos">${acciones}</div></td>
         <td style="font-family:monospace;font-weight:700">${esc(a.radicado)}</td>
         <td><strong>${esc(a.trabajador)}</strong><div style="font-size:.75rem;color:var(--text-muted)">C.C. ${esc(a.identificacion)}</div></td>
         <td>${esc(a.cargo)}</td>
         <td>${esc(a.operacion)}<div style="font-size:.75rem;color:var(--text-muted)">${esc(a.regional)}</div></td>
         <td>${a.firmado ? `<span class="badge badge-success">Firmado</span><div style="font-size:.75rem;color:var(--text-muted)">${fecha(a.fechaFirma)}</div>` : '<span class="badge badge-warning">Pendiente</span>'}</td>
         <td>${fecha(a.fechaCreacion)}<div style="font-size:.75rem;color:var(--text-muted)">${esc(a.creador)}</div></td>
-        <td><div class="aro-acc">${acciones}</div></td>
       </tr>`;
     }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">${st.aros.length ? 'No hay ARO con estos filtros.' : 'Aún no se ha generado ningún ARO. Use «Generar ARO» para notificar a los trabajadores.'}</td></tr>`;
   }
@@ -310,16 +312,20 @@
     });
     actualizarBoton();
   };
-  window.aroChip = (e) => { st.estado = e; $('aro-f-estado').value = e; pintar(); };
-  window.aroFiltro = (campo) => {
+  window.aroFiltro = () => {
     st.regional = $('aro-f-regional').value;
-    if (campo === 'regional') pintarOperaciones();
     st.operacion = $('aro-f-operacion').value;
     st.estado = $('aro-f-estado').value;
     pintar();
   };
   window.aroBuscar = () => { clearTimeout(st.timer); st.timer = setTimeout(() => { st.q = $('aro-buscar').value; pintar(); }, 200); };
-  window.aroLimpiar = () => { st.regional = st.operacion = st.estado = st.q = ''; $('aro-buscar').value = ''; $('aro-f-regional').value = ''; $('aro-f-estado').value = ''; pintarOperaciones(); pintar(); };
+  window.aroLimpiar = () => { st.regional = st.operacion = st.estado = st.q = ''; $('aro-buscar').value = ''; pintar(); };
+  // Desde la campanita: muestra los ARO del trabajador
+  window.buscarAroSst = (texto) => {
+    st.regional = st.operacion = st.estado = '';
+    st.q = texto || '';
+    if ($('aro-buscar')) { $('aro-buscar').value = st.q; pintar(); }
+  };
   window.aroToggleFiltros = () => {
     const b = $('aro-filtros');
     const abrir = b.style.display !== 'block';
