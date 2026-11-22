@@ -389,3 +389,30 @@
 .tkb-texto-estrellas { text-align: center; font-size: .78rem; color: #64748b; min-height: 1.3em; margin: 2px 0 8px; }
 .tkb-calif textarea { width: 100%; box-sizing: border-box; min-height: 70px; padding: 8px 10px; border: 1.5px solid #d1d5db; border-radius: 7px; font: inherit; font-size: .84rem; resize: vertical; }
 .tkb-calif .tkb-btn-primario { width: 100%; margin-top: 8px; }
+
+/* ── Trabajadores del ticket (módulos como Asistencia) ── */
+#tkb-trab-wrap { position: relative; }
+.tkb-trab-elegidos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.tkb-trab-elegidos:empty { display: none; }
+.tkb-trab-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #ede9fe; color: #6b21a8; border: 1px solid #d8b4fe;
+  border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 0.8rem; font-weight: 600;
+}
+.tkb-trab-chip button {
+  border: none; background: transparent; color: inherit; cursor: pointer;
+  font-size: 1rem; line-height: 1; padding: 0 4px;
+}
+.tkb-trab-lista {
+  position: absolute; left: 0; right: 0; z-index: 100;
+  max-height: 220px; overflow-y: auto;
+  background: #ffffff; border: 1.5px solid #d8b4fe; border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18);
+}
+.tkb-trab-item {
+  padding: 7px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+  font-size: 0.86rem; color: #1e293b; border-bottom: 1px solid #f1f5f9;
+}
+.tkb-trab-item small { color: #64748b; font-size: 0.74rem; }
+.tkb-trab-item:hover { background: #f5f3ff; color: #581c87; }
+.tkb-trab-vacio { padding: 10px 12px; font-size: 0.84rem; color: #64748b; }
