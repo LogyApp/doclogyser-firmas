@@ -1055,6 +1055,9 @@
       .org-node-title { font-size: 0.75rem; }
       .org-people { grid-template-columns: 1fr; }
     }
+    /* Configuración › Tickets muestra esta pestaña dentro de un marco (?embed=1): sin menú lateral ni encabezado móvil */
+    body.embebido .sidebar, body.embebido .mobile-header, body.embebido .mobile-backdrop { display: none !important; }
+    body.embebido .wrapper { margin-left: 0 !important; height: 100vh; }
     /* ── Pestaña Tickets ── */
     .tk-lapiz { border: 1.5px solid var(--border); background: var(--card-bg); color: var(--text); border-radius: 7px; padding: 2px 7px; cursor: pointer; font-size: .85rem; line-height: 1.4; }
     .tk-lapiz:hover { border-color: var(--accent); }
@@ -1291,7 +1294,7 @@
     <div id="view-tickets" style="display: none;">
       <div class="page-hd">
         <div>
-          <div class="page-title">Directorio · Tickets</div>
+          <div class="page-title" id="tituloTickets">Directorio · Tickets</div>
           <div class="page-sub" id="tkSubtitulo">Tickets que has puesto desde cualquier módulo</div>
         </div>
         <div class="page-hd-actions tk-acciones">
@@ -1616,6 +1619,10 @@
     // Obtener parámetro de usuario de la URL
     const urlParams = new URLSearchParams(window.location.search);
     const paramUsuario = urlParams.get('usuario') || '';
+    // Configuración › Tickets: ?embed=1&ambito=gestion (todos los tickets, para resolverlos)
+    const TK_EMBEBIDO = urlParams.get('embed') === '1';
+    const TK_AMBITO = urlParams.get('ambito') === 'gestion' ? 'gestion' : '';
+    if (TK_EMBEBIDO) document.body.classList.add('embebido');
 
     document.addEventListener('DOMContentLoaded', async () => {
       activarOrdenEncabezados('colaboradores-table', toggleOrdenColumna);
@@ -1631,6 +1638,11 @@
         });
       }
       await inicializarUsuario();
+      if (TK_EMBEBIDO) {
+        cambiarModoVista('tickets');
+        if (TK_AMBITO === 'gestion') document.getElementById('tituloTickets').textContent = 'Configuración · Tickets';
+        return; // no se carga el directorio de colaboradores
+      }
       // Pestaña desde la URL (?tab=departamentos | organigrama | registros)
       const tabUrl = (urlParams.get('tab') || '').toLowerCase();
       const modoUrl = Object.keys(PESTANAS_DIRECTORIO).find(k => PESTANAS_DIRECTORIO[k].url === tabUrl);
@@ -1758,8 +1770,8 @@
     }
 
     // ════════ PESTAÑA TICKETS (API compartida en src/routes/tickets.js) ════════
-    // Cada usuario ve solo los tickets que puso; los roles de Config_Parametros
-    // (directorio / Tickets / "Roles que ven todos los tickets", por defecto Sistema) ven todos.
+    // Directorio: cada usuario ve solo los tickets que puso. Configuración › Tickets carga esta
+    // misma pestaña con ?embed=1&ambito=gestion: todos los tickets, para resolverlos.
     const tkState = {
       cargado: false, datos: null, temporizador: null,
       anio: '', mes: 0, q: 0,   // quincena escogida (mes 0 = todas las quincenas del año)
@@ -1894,6 +1906,7 @@
       if (!tkState.anio) tkIrAQuincenaActual();
       const { desde, hasta } = tkRangoFechas();
       const qs = new URLSearchParams({ usuario: paramUsuario, desde, hasta });
+      if (TK_AMBITO) qs.set('ambito', TK_AMBITO);
       tkPintarSelectoresQuincena();
       const q = document.getElementById('tkBuscar').value.trim();
       if (q) qs.set('q', q);
@@ -1937,10 +1950,8 @@
       const verTodos = Boolean(d.verTodos);
       const verSolicitantes = Boolean(d.verSolicitantes);
       document.getElementById('tkSubtitulo').textContent = d.resuelve
-        ? (verTodos ? 'Tickets de todos los usuarios y módulos. Con 🛠️ Gestionar los pasa a Pendiente, Rechazado o Resuelto con la respuesta.'
-                    : 'Tus tickets y los de los módulos que resuelves. Con 🛠️ Gestionar los pasa a Pendiente, Rechazado o Resuelto con la respuesta.')
-        : (verTodos ? 'Tickets de todos los usuarios y módulos. Quien puso el ticket lo edita mientras esté En Proceso o Pendiente.'
-                    : 'Tickets que has puesto desde cualquier módulo. Puedes editarlos mientras estén En Proceso o Pendiente.');
+        ? 'Tickets de todos los usuarios y módulos. Con 🛠️ Gestionar los pasa a Pendiente, Rechazado o Resuelto con la respuesta.'
+        : 'Tickets que has puesto desde cualquier módulo. Puedes editarlos mientras estén En Proceso o Pendiente. Para poner uno nuevo usa el botón Ticket de cada módulo.';
       document.getElementById('tkMiosWrap').style.display = verSolicitantes ? 'inline-flex' : 'none';
       document.getElementById('tkCampoSolicitante').style.display = verSolicitantes ? '' : 'none';
 
@@ -2973,7 +2984,8 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const usuarioTicket = new URLSearchParams(window.location.search).get('usuario');
-      if (usuarioTicket && typeof initBotonTicket === 'function') {
+      const embebido = new URLSearchParams(window.location.search).get('embed') === '1';
+      if (usuarioTicket && !embebido && typeof initBotonTicket === 'function') {
         initBotonTicket({ usuarioId: usuarioTicket, moduloErp: 'directorio' });
       }
     });

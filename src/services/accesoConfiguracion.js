@@ -2,7 +2,7 @@ const pool = require('./db');
 const { seccionesDelRol, normalizar } = require('./maestroMenu');
 
 // Módulo Configuración. Ver cada pestaña lo decide Maestro_Menu (Modulo 'configuracion',
-// secciones Parametros y Visual); crear, editar y eliminar dentro de ellas lo decide
+// secciones Parametros, Visual y Tickets); crear, editar y eliminar dentro de ellas lo decide
 // Config_Parametros (configuracion / Parametros y configuracion / Visual).
 // Si la fila no existe se usa solo Sistema.
 const MODULO = 'configuracion';
@@ -58,6 +58,11 @@ async function permisosDelRol(rol, secciones) {
       eliminar: ver && rolEnLista(valor(seccion, def.eliminar), rol),
     };
   });
+  // Tickets: ver la pestaña (Maestro_Menu configuracion / Tickets) y resolver tickets de cualquier módulo
+  // (configuracion / Tickets / "Roles que pueden resolver tickets"; sin fila, Sistema)
+  const verTickets = ve('Tickets');
+  const resolver = verTickets && rolEnLista(valor('Tickets', 'Roles que pueden resolver tickets'), rol);
+  resultado.tickets = { ver: verTickets && resolver, editar: resolver, eliminar: false };
   return resultado;
 }
 
