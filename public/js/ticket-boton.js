@@ -224,7 +224,7 @@
     if (document.querySelector('link[data-ticket-boton-style]')) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/css/ticket-boton.css?v=20261121a';
+    link.href = '/css/ticket-boton.css?v=20261121b';
     link.dataset.ticketBotonStyle = 'true';
     document.head.appendChild(link);
   }
@@ -670,14 +670,17 @@
     const filtro = normalizarTexto(document.getElementById('tkb-trab-buscar').value);
     const opciones = trabajadoresOperacion
       .filter(t => !trabajadoresElegidos.has(t.identificacion))
-      .filter(t => !filtro || normalizarTexto(`${t.identificacion} ${t.nombre}`).includes(filtro))
-      .slice(0, 60);
+      .filter(t => !filtro || normalizarTexto(`${t.identificacion} ${t.nombre}`).includes(filtro));
+    // La lista completa de la operación (activos primero, retirados al final) para escoger sin escribir
     if (!trabajadoresOperacion.length) { lista.style.display = 'none'; return; }
     lista.innerHTML = opciones.length
-      ? opciones.map(t => `<div class="tkb-trab-item" data-tkb-trab="${esc(t.identificacion)}">
-          <span>${esc(t.nombre)}</span>
-          <small>${esc(t.identificacion)}${t.estado && t.estado !== 'Activo' ? ' · ' + esc(t.estado) : ''}</small>
-        </div>`).join('')
+      ? opciones.map(t => {
+          const retirado = String(t.estado || '').trim().toLowerCase() === 'retirado';
+          return `<div class="tkb-trab-item${retirado ? ' tkb-trab-retirado' : ''}" data-tkb-trab="${esc(t.identificacion)}">
+            <span>${esc(t.nombre)}${retirado ? ' <em class="tkb-tag-retirado">RETIRADO</em>' : ''}</span>
+            <small>${esc(t.identificacion)}</small>
+          </div>`;
+        }).join('')
       : '<div class="tkb-trab-vacio">Sin coincidencias</div>';
     lista.style.display = 'block';
   }
@@ -685,7 +688,7 @@
   function pintarTrabajadoresElegidos() {
     const cont = document.getElementById('tkb-trab-elegidos');
     cont.innerHTML = [...trabajadoresElegidos.values()].map(t =>
-      `<span class="tkb-trab-chip" title="${esc(t.identificacion)}">${esc(t.nombre || t.identificacion)}
+      `<span class="tkb-trab-chip" title="${esc(t.identificacion)}">${esc(t.nombre || t.identificacion)}${String(t.estado || '').toLowerCase() === 'retirado' ? ' · RETIRADO' : ''}
         <button type="button" data-tkb-quitar-trab="${esc(t.identificacion)}" aria-label="Quitar">&times;</button></span>`).join('');
   }
 

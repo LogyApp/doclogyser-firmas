@@ -416,3 +416,10 @@
 .tkb-trab-item small { color: #64748b; font-size: 0.74rem; }
 .tkb-trab-item:hover { background: #f5f3ff; color: #581c87; }
 .tkb-trab-vacio { padding: 10px 12px; font-size: 0.84rem; color: #64748b; }
+
+.tkb-trab-retirado { background: #f8fafc; }
+.tkb-tag-retirado {
+  font-style: normal; font-size: 0.66rem; font-weight: 800; letter-spacing: .03em;
+  background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px;
+  padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+}
