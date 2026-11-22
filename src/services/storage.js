@@ -196,6 +196,14 @@ async function subirPDFEVIN(identificacion, idEvin, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+// INGE (SST): un archivo por comprobante en la carpeta del trabajador; regenerarlo lo reemplaza sin cambiar la URL.
+async function subirPDFINGE(identificacion, idInge, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.INGE.${idInge}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 // Fotos de evidencia del Informe Disciplinario
 async function subirEvidenciaInformeDisciplinario(idInforme, filename, buffer, contentType) {
   const nombre = `informes_disciplinarios/${idInforme}/evidencias/${filename}`;
@@ -477,6 +485,7 @@ async function subirComprobanteConsignacion(idConsignacion, buffer, originalName
 module.exports = {
   subirPDFARO,
   subirPDFEVIN,
+  subirPDFINGE,
   subirPDFInformeDisciplinario,
   subirEvidenciaInformeDisciplinario,
   subirComprobanteConsignacion,

@@ -2686,7 +2686,7 @@
         <span>Prueba de Consumo</span>
       </li>
 
-      <!-- 3b. Documentación Inicial: subpestañas ARO (/js/sst-aro.js) y EVIN (/js/sst-evin.js) -->
+      <!-- 3b. Documentación Inicial: subpestañas ARO (/js/sst-aro.js), EVIN (/js/sst-evin.js) e INGE (/js/sst-inge.js) -->
       <li class="nav-item" data-tab="docinicial" onclick="switchTab('docinicial')">
         <div class="nav-icon" title="Documentación Inicial">
           <svg viewBox="0 0 24 24" fill="currentColor">
@@ -3239,15 +3239,17 @@
       </div>
     </section>
 
-    <!-- PESTAÑA 3b: DOCUMENTACIÓN INICIAL. Cada subpestaña se ve según Maestro_Menu (sst / ARO, sst / EVIN).
-         ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js -->
+    <!-- PESTAÑA 3b: DOCUMENTACIÓN INICIAL. Cada subpestaña se ve según Maestro_Menu (sst / ARO, sst / EVIN, sst / INGE).
+         ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js · INGE: /js/sst-inge.js -->
     <section class="tab-pane" id="pane-docinicial" style="display: none;">
       <div class="subtabs-bar" role="tablist" aria-label="Documentación Inicial">
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-aro" data-subtab-docinicial="aro" role="tab" onclick="switchDocInicialSubtab('aro')">ARO</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-evin" data-subtab-docinicial="evin" role="tab" onclick="switchDocInicialSubtab('evin')">EVIN</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-inge" data-subtab-docinicial="inge" role="tab" onclick="switchDocInicialSubtab('inge')">INGE</button>
       </div>
       <div id="pane-aro" role="tabpanel" style="display: none;"></div>
       <div id="pane-evin" role="tabpanel" style="display: none;"></div>
+      <div id="pane-inge" role="tabpanel" style="display: none;"></div>
       <!-- Campana de Notificaciones de Documentación Inicial (se ubica en el encabezado de la subpestaña visible) -->
       <div style="display: none;" id="notif-bell-holder-doc">
         <div class="notif-bell-container" id="notif-bell-container-doc">
@@ -4954,7 +4956,8 @@
     // Documentación Inicial: una subpestaña por Sección de Maestro_Menu; la pestaña se ve si tiene alguna
     const SUBTABS_DOC_INICIAL = [
       { id: 'aro', seccion: 'ARO', titulo: 'ARO', buscar: 'buscarAroSst' },
-      { id: 'evin', seccion: 'EVIN', titulo: 'EVIN', buscar: 'buscarEvinSst' }
+      { id: 'evin', seccion: 'EVIN', titulo: 'EVIN', buscar: 'buscarEvinSst' },
+      { id: 'inge', seccion: 'INGE', titulo: 'INGE', buscar: 'buscarIngeSst' }
     ];
     let subtabDocInicial = null;
 
@@ -5317,9 +5320,9 @@
         targetSubtab = ['temas', 'tema'].includes(rawSubtab) ? 'temas' : 'evals';
       } else if (['pruebaconsumo', 'prueba', 'consumo', 'pc'].includes(rawTab)) {
         targetTab = 'pruebaconsumo';
-      } else if (['docinicial', 'documentacioninicial', 'aro', 'analisisriesgo', 'evin'].includes(rawTab)) {
+      } else if (['docinicial', 'documentacioninicial', 'aro', 'analisisriesgo', 'evin', 'inge'].includes(rawTab)) {
         targetTab = 'docinicial';
-        targetSubtab = ['aro', 'evin'].includes(rawTab) ? rawTab : (['aro', 'evin'].includes(rawSubtab) ? rawSubtab : null);
+        targetSubtab = ['aro', 'evin', 'inge'].includes(rawTab) ? rawTab : (['aro', 'evin', 'inge'].includes(rawSubtab) ? rawSubtab : null);
       } else if (['participacion', 'asistencia', 'part'].includes(rawTab)) {
         targetTab = 'participacion';
       } else if (['compromiso', 'compromisosst', 'csst'].includes(rawTab)) {
@@ -5594,6 +5597,10 @@
     function renderBadgeResultadoNotif(resultado, puntaje) {
       const resNorm = String(resultado || '').toUpperCase();
       const pts = puntaje ? ` (${puntaje}${String(puntaje).includes('/') || String(puntaje).includes('%') ? '' : '%'})` : '';
+      // INGE con temas marcados en NO (Documentación Inicial)
+      if (resNorm.startsWith('REFUERZO')) {
+        return `<span class="notif-tag notif-tag-warning">⚠️ ${resultado}</span>`;
+      }
       if (resNorm.includes('PENDIENTE')) {
         return `<span class="notif-tag notif-tag-warning">⏳ Pendiente Firma</span>`;
       }
@@ -6226,7 +6233,7 @@
 
       const syncOpts = options || { id: null, identificacion: null };
 
-      // Documentación Inicial: subpestañas con su propio archivo (/js/sst-aro.js, /js/sst-evin.js)
+      // Documentación Inicial: subpestañas con su propio archivo (/js/sst-aro.js, /js/sst-evin.js, /js/sst-inge.js)
       if (tabId === 'docinicial') {
         switchDocInicialSubtab(subtabDocInicial, syncOpts);
         return;
@@ -6291,6 +6298,7 @@
       actualizarTituloMovilSst(actual.titulo);
       if (actual.id === 'aro' && typeof window.inicializarAroSst === 'function') window.inicializarAroSst();
       if (actual.id === 'evin' && typeof window.inicializarEvinSst === 'function') window.inicializarEvinSst();
+      if (actual.id === 'inge' && typeof window.inicializarIngeSst === 'function') window.inicializarIngeSst();
       const acciones = document.querySelector(`#pane-${actual.id} .tab-actions`);
       const campana = document.getElementById('notif-bell-container-doc');
       if (acciones && campana && campana.parentElement !== acciones) {
@@ -6392,7 +6400,7 @@
     function actualizarVistaActual() {
       if (currentTab === 'ats') return cargarAts();
       if (currentTab === 'docinicial') {
-        const recargar = subtabDocInicial === 'evin' ? window.recargarEvinSst : window.recargarAroSst;
+        const recargar = { aro: window.recargarAroSst, evin: window.recargarEvinSst, inge: window.recargarIngeSst }[subtabDocInicial];
         cargarNotificacionesSST('doc');
         return typeof recargar === 'function' ? recargar() : null;
       }
@@ -11493,5 +11501,6 @@
   <script src="/js/sst-docinicial.js?v=20261122a"></script>
   <script src="/js/sst-aro.js?v=20261122a"></script>
   <script src="/js/sst-evin.js?v=20261122b"></script>
+  <script src="/js/sst-inge.js?v=20261122a"></script>
 </body>
 </html>

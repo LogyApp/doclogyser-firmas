@@ -3708,6 +3708,43 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   return true;
 }
 
+// SST › INGE: enlace del Comprobante de Inducción General para el trabajador (quien lo generó en copia)
+async function notificarFirmaINGE({ email, nombreTrabajador, cargo, operacion, tipo, urlFirma, emailUsuario }) {
+  const e = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${e(nombreTrabajador)}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Seguridad y Salud en el Trabajo le comparte el <strong>Comprobante de ${e(String(tipo || 'Inducción').toLowerCase())} general</strong> (SST-F-050).
+          Marque los temas que recibió en la ${e(String(tipo || 'Inducción').toLowerCase())}, lea la declaración y fírmelo.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:26px">
+          <tr style="background:#f8f9fb"><td style="padding:10px 14px;color:#888;width:40%">Cargo</td><td style="padding:10px 14px;font-weight:700;color:#1a1a2e">${e(cargo) || '—'}</td></tr>
+          <tr><td style="padding:10px 14px;color:#888">Operación</td><td style="padding:10px 14px">${e(operacion) || '—'}</td></tr>
+        </table>
+        <div style="text-align:center;margin-bottom:26px">
+          <a href="${e(urlFirma)}" style="display:inline-block;background:#1B2A5E;color:#fff;text-decoration:none;padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700">Diligenciar el comprobante</a>
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${e(urlFirma)}</span>
+        </p>
+      </div>
+      ${FOOTER}
+    </div>`;
+  await transporter.sendMail({
+    from: `"LOG&SER SST" <${EMAIL_FROM}>`,
+    to: email,
+    cc: emailUsuario || undefined,
+    subject: 'Comprobante de inducción pendiente — LOG&SER',
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+  return true;
+}
+
 // Tickets: al pasar un ticket a Resuelto o Rechazado se pide a quien lo puso que califique la atención
 // (ver services/calificacionTickets.js). Solo le llega al solicitante.
 async function notificarCalificacionTicket({ email, nombre, ticket, modulo, motivo, estado, observaciones, urlCalificar }) {
@@ -3800,6 +3837,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 module.exports = {
   notificarFirmaARO,
   notificarFirmaEVIN,
+  notificarFirmaINGE,
   notificarCalificacionTicket,
   notificarInformeDisciplinario,
   notificarCreacionRequisicion,

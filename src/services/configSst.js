@@ -48,6 +48,14 @@ const PERMISOS_SST = {
     editarFirmado: 'Roles que pueden editar y regenerar PDF de EVIN firmadas',
     eliminarFirmado: 'Roles que pueden eliminar EVIN firmadas',
   },
+  // INGE (Comprobante de Inducción General): src/routes/inge.js
+  INGE: {
+    clave: 'inge',
+    crear: 'Roles que pueden crear INGE',
+    eliminar: 'Roles que pueden eliminar INGE',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de INGE firmados',
+    eliminarFirmado: 'Roles que pueden eliminar INGE firmados',
+  },
   'Compromiso SST': {
     clave: 'csst',
     crear: 'Roles que pueden crear compromisos SST',
