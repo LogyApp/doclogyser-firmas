@@ -20,6 +20,8 @@ const periodoServicios = require('../services/periodoServicios');
 const { buscarTarifa } = require('../services/tarifasServicio');
 const { avisarFotoTransferenciaPendiente } = require('../services/avisoFotoTransferencia');
 const { prepararCalificacionTicket } = require('../services/calificacionTickets');
+const columnasServicios = require('../services/columnasServicios');
+const vistaTablaUsuario = require('../services/vistaTablaUsuario');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
   area: 'area', actividad: 'actividad', vehiculo: 'vehiculo', unidad: 'unidad', remolque: 'remolque',
@@ -2357,6 +2359,52 @@ function sqlFiltroBodega(bodega, operacion, opsFiltroBodega, params) {
   return 's.Etapa = ?';
 }
 
+// ── Vista personal de la tabla de Servicios (Maestro_Preferencias_Tabla) ─────
+// Todos los que entran a Servicios pueden armar la suya; cada uno solo ve y cambia la propia.
+async function usuarioVistaServicios(req, res) {
+  const { usuario } = req.query;
+  if (!usuario) { res.status(400).json({ error: 'usuario requerido' }); return null; }
+  if (!(await computarAccesoFacturacion(usuario, 'Servicios'))) { res.status(403).json({ error: 'No autorizado' }); return null; }
+  return usuario;
+}
+
+router.get('/api/vista/servicios', async (req, res) => {
+  try {
+    const usuario = await usuarioVistaServicios(req, res);
+    if (!usuario) return;
+    const columnas = await vistaTablaUsuario.obtener(usuario, columnasServicios.VISTA, columnasServicios.CATALOGO);
+    res.json({ catalogo: columnasServicios.catalogoPublico(), columnas });
+  } catch (err) {
+    console.error('[GET /api/vista/servicios]', err);
+    res.status(500).json({ error: 'No se pudo cargar la vista' });
+  }
+});
+
+router.put('/api/vista/servicios', async (req, res) => {
+  try {
+    const usuario = await usuarioVistaServicios(req, res);
+    if (!usuario) return;
+    const columnas = await vistaTablaUsuario.guardar(usuario, columnasServicios.VISTA, req.body && req.body.columnas, columnasServicios.CATALOGO);
+    res.json({ ok: true, columnas });
+  } catch (err) {
+    if (/al menos una columna/.test(err.message)) return res.status(400).json({ error: err.message });
+    console.error('[PUT /api/vista/servicios]', err);
+    res.status(500).json({ error: 'No se pudo guardar la vista' });
+  }
+});
+
+router.delete('/api/vista/servicios', async (req, res) => {
+  try {
+    const usuario = await usuarioVistaServicios(req, res);
+    if (!usuario) return;
+    await vistaTablaUsuario.restaurar(usuario, columnasServicios.VISTA);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE /api/vista/servicios]', err);
+    res.status(500).json({ error: 'No se pudo restaurar la vista' });
+  }
+});
+
 // ── GET /api/servicios ────────────────────────────────────────────────────────
 router.get('/api/servicios', async (req, res) => {
   try {
@@ -2480,25 +2528,10 @@ router.get('/api/servicios', async (req, res) => {
 
     const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-    const sortMap = {
-      fechaServicio: 's.`Hora Inicio`',
-      consecutivoRecibo: 'r.`Consecutivo Recibo`',
-      estado: 's.Estado',
-      cantidad: 's.Cantidad',
-      valorUnitario: 's.`Valor Unitario`',
-      actividad: 'ca.Actividad',
-      unidad: 's.Unidad',
-      placa: 'mp.Placa',
-      vehiculo: 's.Vehiculo',
-      clienteAFacturar: 'r.`Cliente a Facturar`',
-      transportadora: 'mt.Transportadora',
-      proveedor: 'COALESCE(mpr.Proveedor, s.Proveedor)',
-      usuario: 's.Usuario',
-      fechaRegistro: 's.Fecha',
-      quincena: 'mf.Quincena'
-    };
-
-    const orderCol = sortMap[sortCol] || 's.Fecha';
+    // Ordenamiento y columnas adicionales según la vista personal del usuario (columnasServicios.js)
+    const impuestos = await getImpuestos();
+    const orderCol = columnasServicios.ordenSql(sortCol, impuestos, v => pool.escape(v)) || 's.Fecha';
+    const extras = columnasServicios.extrasConsulta(String(req.query.cols || '').split(','), sortCol);
     const orderDir = (String(sortDir || '').toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 1000);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
@@ -2526,7 +2559,7 @@ router.get('/api/servicios', async (req, res) => {
         r.ReteIVA as reteIVA,
         r.ReteICA as reteICA,
         r.\`Operación\` as operacion,
-        s.\`Forma De Pago\` as formaDePago
+        s.\`Forma De Pago\` as formaDePago${extras.select.map(x => ',\n        ' + x).join('')}
       FROM Dynamic_Servicios s
       LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
       LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID
@@ -2536,13 +2569,13 @@ router.get('/api/servicios', async (req, res) => {
       LEFT JOIN Maestro_Fechas mf ON mf.Fecha = DATE(s.\`Hora Inicio\`)
       LEFT JOIN Maestro_Operaciones mo ON r.\`Operación\` = mo.OPERACIÓN
       LEFT JOIN Maestro_Clientes mc ON r.Nit = mc.\`Código\`
+      ${extras.joins.join('\n      ')}
       ${whereSql}
       ORDER BY ${orderCol} ${orderDir}, s.IdServicio DESC
       LIMIT ? OFFSET ?
     `;
 
     const [rows] = await pool.query(querySql, [...params, limitNum, offsetNum]);
-    const impuestos = await getImpuestos();
 
     const data = rows.map(r => {
       const calc = calcularTotalesServicio(r, impuestos);

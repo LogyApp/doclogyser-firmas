@@ -551,6 +551,26 @@
     .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: var(--border-strong); transition: background 0.2s; }
     .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
 
+    /* Modal ⚙️ Columnas de mi vista (Servicios) */
+    .colserv-ayuda { margin: 0 0 12px; font-size: 0.82rem; line-height: 1.45; color: var(--text-muted); }
+    .colserv-barra { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .colserv-barra input { flex: 1; min-width: 0; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.86rem; background: var(--card-bg); color: var(--text); }
+    #colserv-conteo { font-size: 0.78rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    #colserv-lista { display: flex; flex-direction: column; gap: 6px; }
+    .colserv-fila { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-bg); transition: opacity .15s, border-color .15s; }
+    .colserv-fila.colserv-oculta { opacity: .55; background: var(--bg-elevated); }
+    .colserv-fila.colserv-arrastrando { opacity: .35; }
+    .colserv-fila.colserv-sobre-arriba { border-top: 3px solid var(--accent); }
+    .colserv-fila.colserv-sobre-abajo { border-bottom: 3px solid var(--accent); }
+    .colserv-arrastre { cursor: grab; color: var(--text-muted); font-weight: 800; letter-spacing: -2px; user-select: none; padding: 0 2px; }
+    .colserv-fila .switch { width: 38px; height: 20px; margin: 0; flex: none; }
+    .colserv-nombre { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .colserv-nombre input { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; font-weight: 600; background: var(--card-bg); color: var(--text); }
+    .colserv-nombre small { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .colserv-flechas { display: flex; gap: 4px; flex: none; }
+    .colserv-flechas button { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-weight: 800; cursor: pointer; }
+    .colserv-flechas button:disabled { opacity: .35; cursor: default; }
+
     /* Badges */
     .badge {
       display: inline-flex;
@@ -1646,6 +1666,9 @@
               <button type="button" id="serv-quincena-sig" onclick="facCambiarQuincena('serv', 1)" aria-label="Quincena siguiente">›</button>
             </div>
             <button type="button" class="btn-sync btn-sync-escritorio" onclick="sincronizarFacturacion(this)" title="Sincronizar" aria-label="Sincronizar"><svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg></button>
+            <button type="button" class="btn-secondary" onclick="abrirModalColumnasServicios()" title="Escoger, ordenar y renombrar las columnas de tu vista" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 1.5px solid var(--border-strong); background: var(--card-bg); color: var(--text); font-weight: 700; border-radius: 8px; cursor: pointer;">
+              ⚙️ Columnas
+            </button>
             <button type="button" class="btn-secondary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
               📋 Carga Masiva (Grid)
             </button>
@@ -1769,32 +1792,12 @@
           </div>
         </div>
 
-        <!-- Tabla de 20 Columnas (Redimensionable y Ordenable) -->
+        <!-- Tabla redimensionable y ordenable. Las columnas salen de la vista personal del usuario
+             (botón ⚙️ Columnas; catálogo en src/services/columnasServicios.js) -->
         <div class="table-container">
           <table class="data-table" id="tabla-servicios">
             <thead>
-              <tr>
-                <th style="width:140px" data-sort="fechaServicio">Fecha Servicio<span id="servSort-fechaServicio" class="sort-indicator"></span></th>
-                <th style="width:130px" data-sort="consecutivoRecibo">Consecutivo Recibo<span id="servSort-consecutivoRecibo" class="sort-indicator"></span></th>
-                <th style="width:120px" data-sort="totalPago">Total Pago<span id="servSort-totalPago" class="sort-indicator"></span></th>
-                <th style="width:85px; text-align:right" data-sort="cantidad">Cantidad<span id="servSort-cantidad" class="sort-indicator"></span></th>
-                <th style="width:110px; text-align:right" data-sort="valorUnitario">Valor Unitario<span id="servSort-valorUnitario" class="sort-indicator"></span></th>
-                <th style="width:110px; text-align:right" data-sort="valorBase">V. Base<span id="servSort-valorBase" class="sort-indicator"></span></th>
-                <th style="width:100px; text-align:right" data-sort="iva">IVA<span id="servSort-iva" class="sort-indicator"></span></th>
-                <th style="width:110px; text-align:right" data-sort="valorReteFuente">V. ReteFuente<span id="servSort-valorReteFuente" class="sort-indicator"></span></th>
-                <th style="width:100px; text-align:right" data-sort="valorReteIVA">V. ReteIVA<span id="servSort-valorReteIVA" class="sort-indicator"></span></th>
-                <th style="width:100px; text-align:right" data-sort="valorReteICA">V. ReteICA<span id="servSort-valorReteICA" class="sort-indicator"></span></th>
-                <th style="width:160px" data-sort="clienteAFacturar">Cliente a Facturar<span id="servSort-clienteAFacturar" class="sort-indicator"></span></th>
-                <th style="width:150px" data-sort="transportadora">Transportadora<span id="servSort-transportadora" class="sort-indicator"></span></th>
-                <th style="width:140px" data-sort="proveedor">Proveedor<span id="servSort-proveedor" class="sort-indicator"></span></th>
-                <th style="width:130px" data-sort="actividad">Actividad<span id="servSort-actividad" class="sort-indicator"></span></th>
-                <th style="width:90px" data-sort="unidad">Unidad<span id="servSort-unidad" class="sort-indicator"></span></th>
-                <th style="width:90px" data-sort="placa">Placa<span id="servSort-placa" class="sort-indicator"></span></th>
-                <th style="width:100px" data-sort="vehiculo">Vehículo<span id="servSort-vehiculo" class="sort-indicator"></span></th>
-                <th style="width:150px" data-sort="usuario">Usuario<span id="servSort-usuario" class="sort-indicator"></span></th>
-                <th style="width:140px" data-sort="fechaRegistro">Fecha Registro<span id="servSort-fechaRegistro" class="sort-indicator"></span></th>
-                <th style="width:140px" data-sort="quincena">Quincena<span id="servSort-quincena" class="sort-indicator"></span></th>
-              </tr>
+              <tr id="tabla-servicios-head"></tr>
             </thead>
             <tbody id="tabla-servicios-body">
               <tr><td colspan="20" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>
@@ -3715,6 +3718,36 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
+       MODAL: COLUMNAS DE MI VISTA (Servicios · Maestro_Preferencias_Tabla)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-columnas-servicios">
+    <div class="modal-card" style="max-width: 620px; max-height: 90vh;">
+      <div class="modal-header">
+        <span>⚙️ Columnas de mi vista · Servicios</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalColumnasServicios()">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 16px 18px;">
+        <p class="colserv-ayuda">
+          Activa las columnas que quieres ver, arrástralas (o usa ↑ ↓) para cambiar el orden y escribe otro nombre si lo prefieres.
+          Para el ancho, arrastra el borde de la columna en la tabla: se guarda solo. Estos cambios son solo para tu usuario.
+        </p>
+        <div class="colserv-barra">
+          <input type="search" id="colserv-buscar" placeholder="🔍 Buscar columna..." autocomplete="off" oninput="filtrarColumnasServicios(this.value)">
+          <span id="colserv-conteo"></span>
+        </div>
+        <div id="colserv-lista"></div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="btn-reset" style="margin-top: 0;" onclick="restaurarVistaServicios()">↺ Restaurar predeterminada</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-reset" style="margin-top: 0;" onclick="cerrarModalColumnasServicios()">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-colserv-guardar" onclick="guardarModalColumnasServicios()">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
        MODAL 3D: SERVICIOS ASOCIADOS EN DYNAMIC_SERVICIOS
   ══════════════════════════════════════════════════════════ -->
   <div class="modal-overlay" id="modal-servicios-cat-overlay">
@@ -5144,20 +5177,7 @@
       // Los datos de cada pestaña se cargan al abrirla (switchMainTab, más abajo): así la
       // pestaña visible no espera a Servicios, Bloqueos, Clientes Crédito y Tickets.
 
-      // Listeners de ordenamiento en tabla de servicios
-      document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
-        th.addEventListener('click', (e) => {
-          if (e.target.classList.contains('th-resize')) return;
-          const col = th.getAttribute('data-sort');
-          if (sortServiciosState.col === col) {
-            sortServiciosState.order = sortServiciosState.order === 'asc' ? 'desc' : 'asc';
-          } else {
-            sortServiciosState.col = col;
-            sortServiciosState.order = 'asc';
-          }
-          cargarServicios();
-        });
-      });
+      // El encabezado de Servicios (y su ordenamiento) se pinta con la vista del usuario: pintarEncabezadoServicios()
 
       // Listeners de ordenamiento en tabla de recibos
       document.querySelectorAll('#tabla-recibos thead th[data-sort]').forEach(th => {
@@ -5245,8 +5265,7 @@
         aplicarBusquedaServicios(paramsUrl.get('q').trim());
       }
 
-      // Inicializar columnas redimensionables
-      makeTableResizable(document.getElementById('tabla-servicios'));
+      // Inicializar columnas redimensionables (Servicios: en pintarEncabezadoServicios, guarda el ancho)
       makeTableResizable(document.getElementById('tabla-recibos'));
       makeTableResizable(document.getElementById('tabla-bloqueos'));
       makeTableResizable(document.getElementById('tabla-clientes'));
@@ -5260,7 +5279,8 @@
     // ──────────────────────────────────────────────────────────
     // FUNCIÓN PARA REDIMENSIONAR COLUMNAS (makeTableResizable)
     // ──────────────────────────────────────────────────────────
-    function makeTableResizable(table) {
+    // alTerminar(th, ancho): opcional, se llama al soltar el borde (Servicios guarda el ancho en la vista del usuario).
+    function makeTableResizable(table, alTerminar) {
       if (!table) return;
       const row = table.querySelector('thead tr');
       const cols = row ? row.children : [];
@@ -5303,6 +5323,7 @@
             handle.removeEventListener('pointermove', onPointerMove);
             handle.removeEventListener('pointerup', onPointerUp);
             handle.removeEventListener('pointercancel', onPointerUp);
+            if (alTerminar && th.offsetWidth !== startWidth) alTerminar(th, th.offsetWidth);
           };
           handle.addEventListener('pointermove', onPointerMove);
           handle.addEventListener('pointerup', onPointerUp);
@@ -8895,12 +8916,286 @@
       cargarMetricasServicios();
     }
 
+    // ── Vista personal de la tabla de Servicios (⚙️ Columnas, Maestro_Preferencias_Tabla) ──
+    // catalogo: todas las columnas posibles (src/services/columnasServicios.js), en el orden predeterminado.
+    // personal: lo que guardó el usuario [{clave, etiqueta, ancho, visible}] o null (vista predeterminada).
+    const VISTA_SERV = { catalogo: [], personal: null, promesa: null, tGuardar: null };
+    let colServBorrador = [];
+    let colServArrastrando = null;
+
+    function asegurarVistaServicios() {
+      if (!VISTA_SERV.promesa) {
+        VISTA_SERV.promesa = fetch(`/facturacion/api/vista/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`)
+          .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+          .then(d => {
+            VISTA_SERV.catalogo = d.catalogo || [];
+            VISTA_SERV.personal = d.columnas || null;
+            pintarEncabezadoServicios();
+          })
+          .catch(err => { console.error('[vistaServicios]', err); VISTA_SERV.promesa = null; });
+      }
+      return VISTA_SERV.promesa;
+    }
+
+    // Todas las columnas del catálogo en el orden del usuario, con lo que él personalizó. Las columnas nuevas
+    // del catálogo que no estén en su vista guardada quedan al final, ocultas.
+    function vistaCompletaServ(personal) {
+      const porClave = new Map(VISTA_SERV.catalogo.map(c => [c.clave, c]));
+      const base = personal || VISTA_SERV.catalogo.map(c => ({ clave: c.clave, visible: c.defecto }));
+      const lista = [];
+      base.forEach(p => {
+        const c = porClave.get(p.clave);
+        if (!c || lista.some(x => x.clave === c.clave)) return;
+        lista.push({ ...c, etiquetaPropia: p.etiqueta || '', anchoPropio: p.ancho || null, visible: p.visible !== false });
+      });
+      VISTA_SERV.catalogo.forEach(c => {
+        if (!lista.some(x => x.clave === c.clave)) lista.push({ ...c, etiquetaPropia: '', anchoPropio: null, visible: false });
+      });
+      return lista;
+    }
+
+    function aPersonalServ(lista) {
+      return lista.map(c => ({ clave: c.clave, etiqueta: c.etiquetaPropia || '', ancho: c.anchoPropio || null, visible: !!c.visible }));
+    }
+
+    // Columnas visibles, listas para pintar
+    function colsServ() {
+      return vistaCompletaServ(VISTA_SERV.personal).filter(c => c.visible).map(c => ({
+        clave: c.clave, tipo: c.tipo, alinear: c.alinear,
+        titulo: c.etiquetaPropia || c.etiqueta, ancho: c.anchoPropio || c.ancho
+      }));
+    }
+
+    function pintarEncabezadoServicios() {
+      const tr = document.getElementById('tabla-servicios-head');
+      if (!tr) return;
+      tr.innerHTML = colsServ().map(c =>
+        `<th style="width:${c.ancho}px;${c.alinear !== 'left' ? ` text-align:${c.alinear};` : ''}" data-sort="${esc(c.clave)}" title="${esc(c.titulo)}">${esc(c.titulo)}<span class="sort-indicator"></span></th>`
+      ).join('');
+      tr.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortServiciosState.col === col) {
+            sortServiciosState.order = sortServiciosState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortServiciosState.col = col;
+            sortServiciosState.order = 'asc';
+          }
+          cargarServicios();
+        });
+      });
+      makeTableResizable(document.getElementById('tabla-servicios'), (th, ancho) => guardarAnchoServicios(th.dataset.sort, ancho));
+    }
+
+    function celdaServicio(c, s) {
+      const v = s[c.clave];
+      const al = c.alinear !== 'left' ? `text-align: ${c.alinear};` : '';
+      const colorEstado = { Yellow: 'var(--warning)', Green: 'var(--success)', Red: 'var(--danger)' }[s.estado] || 'var(--text-muted)';
+      const texto = (v != null && v !== '') ? esc(String(v)) : '-';
+      switch (c.tipo) {
+        case 'fecha': return `<td style="${al}">${formatFechaBogota(v)}</td>`;
+        case 'consecutivo': return `<td style="color: ${colorEstado}; font-weight: 700; ${al}">${texto}</td>`;
+        case 'totalPago': return `<td style="color: ${colorEstado}; font-weight: 800; ${al}">$ ${formatMiles(v)}</td>`;
+        case 'numero': return `<td style="${al}">${v != null ? v : '-'}</td>`;
+        case 'moneda': return `<td style="${al}">$ ${formatMiles(v)}</td>`;
+        case 'monedaFuerte': return `<td style="${al} font-weight: 600;">$ ${formatMiles(v)}</td>`;
+        case 'retencion':
+          return `<td style="${al}">${v > 0
+            ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(v)}</span>`
+            : '<span style="color: var(--text-muted);">$ 0</span>'}</td>`;
+        case 'formaPago':
+          return `<td style="${al}">${v != null && v !== '' ? esc(FORMAS_PAGO_NOMBRES[v] || ('PAGO ' + v)) : '-'}</td>`;
+        case 'foto': {
+          const url = urlArchivoServicio(v);
+          return `<td style="${al}">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir archivo" style="text-decoration:none;">📎</a>` : '-'}</td>`;
+        }
+        case 'textoLargo':
+          return `<td style="${al} overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${v ? esc(String(v)) : ''}">${texto}</td>`;
+        default: return `<td style="${al}">${texto}</td>`;
+      }
+    }
+
+    // Al soltar el borde de una columna se guarda su ancho (espera un momento por si se ajustan varias seguidas)
+    function guardarAnchoServicios(clave, ancho) {
+      const lista = vistaCompletaServ(VISTA_SERV.personal);
+      const col = lista.find(c => c.clave === clave);
+      if (!col) return;
+      col.anchoPropio = Math.round(ancho);
+      VISTA_SERV.personal = aPersonalServ(lista);
+      clearTimeout(VISTA_SERV.tGuardar);
+      VISTA_SERV.tGuardar = setTimeout(() => {
+        enviarVistaServicios(VISTA_SERV.personal).catch(err => console.error('[guardarAnchoServicios]', err));
+      }, 800);
+    }
+
+    async function enviarVistaServicios(columnas) {
+      const resp = await fetch(`/facturacion/api/vista/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columnas })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || 'No se pudo guardar la vista');
+      VISTA_SERV.personal = data.columnas || columnas;
+      return data;
+    }
+
+    async function abrirModalColumnasServicios() {
+      await asegurarVistaServicios();
+      if (!VISTA_SERV.catalogo.length) { alert('No se pudo cargar la lista de columnas. Intenta de nuevo.'); return; }
+      colServBorrador = vistaCompletaServ(VISTA_SERV.personal);
+      document.getElementById('colserv-buscar').value = '';
+      pintarListaColumnasServicios();
+      const overlay = document.getElementById('modal-columnas-servicios');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalColumnasServicios());
+      }
+    }
+
+    function cerrarModalColumnasServicios() {
+      const overlay = document.getElementById('modal-columnas-servicios');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+    }
+
+    function pintarListaColumnasServicios() {
+      const cont = document.getElementById('colserv-lista');
+      const total = colServBorrador.length;
+      cont.innerHTML = colServBorrador.map((c, i) => `
+        <div class="colserv-fila${c.visible ? '' : ' colserv-oculta'}" draggable="true" data-clave="${esc(c.clave)}"
+             data-busqueda="${esc((c.etiqueta + ' ' + c.etiquetaPropia).toLowerCase())}">
+          <span class="colserv-arrastre" title="Arrastra para mover">⋮⋮</span>
+          <label class="switch" title="${c.visible ? 'Visible' : 'Oculta'}">
+            <input type="checkbox" ${c.visible ? 'checked' : ''} onchange="toggleColumnaServicios('${esc(c.clave)}', this.checked)">
+            <span class="slider round"></span>
+          </label>
+          <div class="colserv-nombre">
+            <input type="text" maxlength="60" value="${esc(c.etiquetaPropia)}" placeholder="${esc(c.etiqueta)}"
+                   oninput="renombrarColumnaServicios('${esc(c.clave)}', this.value)" aria-label="Etiqueta de ${esc(c.etiqueta)}">
+            <small>${esc(c.etiqueta)}${c.calculada ? ' · calculada' : ''}${c.anchoPropio ? ` · ${c.anchoPropio}px` : ''}</small>
+          </div>
+          <div class="colserv-flechas">
+            <button type="button" onclick="moverColumnaServicios(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="Subir" aria-label="Subir">↑</button>
+            <button type="button" onclick="moverColumnaServicios(${i}, 1)" ${i === total - 1 ? 'disabled' : ''} title="Bajar" aria-label="Bajar">↓</button>
+          </div>
+        </div>`).join('');
+      contarColumnasServicios();
+      filtrarColumnasServicios(document.getElementById('colserv-buscar').value);
+
+      cont.querySelectorAll('.colserv-fila').forEach(fila => {
+        fila.addEventListener('dragstart', (e) => {
+          if (e.target.closest('input, button')) { e.preventDefault(); return; }
+          colServArrastrando = fila.dataset.clave;
+          fila.classList.add('colserv-arrastrando');
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', colServArrastrando); } catch (err) {}
+        });
+        fila.addEventListener('dragend', () => {
+          colServArrastrando = null;
+          cont.querySelectorAll('.colserv-fila').forEach(f => f.classList.remove('colserv-arrastrando', 'colserv-sobre-arriba', 'colserv-sobre-abajo'));
+        });
+        fila.addEventListener('dragover', (e) => {
+          if (!colServArrastrando || colServArrastrando === fila.dataset.clave) return;
+          e.preventDefault();
+          const r = fila.getBoundingClientRect();
+          const arriba = e.clientY < r.top + r.height / 2;
+          fila.classList.toggle('colserv-sobre-arriba', arriba);
+          fila.classList.toggle('colserv-sobre-abajo', !arriba);
+        });
+        fila.addEventListener('dragleave', () => fila.classList.remove('colserv-sobre-arriba', 'colserv-sobre-abajo'));
+        fila.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (!colServArrastrando || colServArrastrando === fila.dataset.clave) return;
+          const arriba = fila.classList.contains('colserv-sobre-arriba');
+          const desde = colServBorrador.findIndex(c => c.clave === colServArrastrando);
+          const [movida] = colServBorrador.splice(desde, 1);
+          let hasta = colServBorrador.findIndex(c => c.clave === fila.dataset.clave);
+          if (!arriba) hasta += 1;
+          colServBorrador.splice(hasta, 0, movida);
+          colServArrastrando = null;
+          pintarListaColumnasServicios();
+        });
+      });
+    }
+
+    function contarColumnasServicios() {
+      const visibles = colServBorrador.filter(c => c.visible).length;
+      document.getElementById('colserv-conteo').textContent = `${visibles} de ${colServBorrador.length} visibles`;
+    }
+
+    function filtrarColumnasServicios(texto) {
+      const t = String(texto || '').trim().toLowerCase();
+      document.querySelectorAll('#colserv-lista .colserv-fila').forEach(f => {
+        f.style.display = !t || f.dataset.busqueda.includes(t) ? '' : 'none';
+      });
+    }
+
+    function toggleColumnaServicios(clave, visible) {
+      const c = colServBorrador.find(x => x.clave === clave);
+      if (!c) return;
+      c.visible = visible;
+      const fila = document.querySelector(`#colserv-lista .colserv-fila[data-clave="${clave}"]`);
+      if (fila) fila.classList.toggle('colserv-oculta', !visible);
+      contarColumnasServicios();
+    }
+
+    function renombrarColumnaServicios(clave, valor) {
+      const c = colServBorrador.find(x => x.clave === clave);
+      if (c) c.etiquetaPropia = String(valor || '').trim();
+    }
+
+    function moverColumnaServicios(i, paso) {
+      const j = i + paso;
+      if (j < 0 || j >= colServBorrador.length) return;
+      [colServBorrador[i], colServBorrador[j]] = [colServBorrador[j], colServBorrador[i]];
+      pintarListaColumnasServicios();
+    }
+
+    async function guardarModalColumnasServicios() {
+      if (!colServBorrador.some(c => c.visible)) { alert('Debe quedar al menos una columna visible.'); return; }
+      const btn = document.getElementById('btn-colserv-guardar');
+      btn.disabled = true;
+      try {
+        clearTimeout(VISTA_SERV.tGuardar);
+        await enviarVistaServicios(aPersonalServ(colServBorrador));
+        cerrarModalColumnasServicios();
+        pintarEncabezadoServicios();
+        cargarServicios();
+      } catch (err) {
+        alert('❌ ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function restaurarVistaServicios() {
+      if (!confirm('¿Volver a la vista predeterminada? Se quitan tus columnas, nombres y anchos personalizados.')) return;
+      try {
+        clearTimeout(VISTA_SERV.tGuardar);
+        const resp = await fetch(`/facturacion/api/vista/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'DELETE' });
+        if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error || 'No se pudo restaurar la vista');
+        VISTA_SERV.personal = null;
+        cerrarModalColumnasServicios();
+        pintarEncabezadoServicios();
+        cargarServicios();
+      } catch (err) {
+        alert('❌ ' + err.message);
+      }
+    }
+
     async function cargarServicios() {
       const tbody = document.getElementById('tabla-servicios-body');
-      tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>';
+      await asegurarVistaServicios();
+      tbody.innerHTML = `<tr><td colspan="${colsServ().length}" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>`;
 
       try {
         const params = new URLSearchParams({
+          cols: colsServ().map(c => c.clave).join(','),
           usuario: CONFIG.usuario,
           anio: document.getElementById('serv-filtro-anio')?.value || '2026',
           quincena: document.getElementById('serv-filtro-quincena')?.value || '',
@@ -8931,14 +9226,14 @@
         renderServiciosTable();
       } catch (err) {
         console.error('[cargarServicios]', err);
-        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de servicios.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${colsServ().length}" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de servicios.</td></tr>`;
       }
     }
 
     function renderServiciosTable() {
       const tbody = document.getElementById('tabla-servicios-body');
       if (!allServicios.length) {
-        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${colsServ().length}" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>`;
         const cEl = document.getElementById('serv-count-mostrados');
         const bEl = document.getElementById('serv-suma-base');
         const tEl = document.getElementById('serv-suma-total');
@@ -8977,50 +9272,12 @@
         }
       });
 
-      tbody.innerHTML = allServicios.map(s => {
-        // Colores de estado
-        let colorEstado = 'var(--text-muted)';
-        if (s.estado === 'Yellow') colorEstado = 'var(--warning)';
-        else if (s.estado === 'Green') colorEstado = 'var(--success)';
-        else if (s.estado === 'Red') colorEstado = 'var(--danger)';
-
-        const reteFuenteHtml = s.valorReteFuente > 0 
-          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(s.valorReteFuente)}</span>` 
-          : '<span style="color: var(--text-muted);">$ 0</span>';
-
-        const reteIvaHtml = s.valorReteIVA > 0 
-          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(s.valorReteIVA)}</span>` 
-          : '<span style="color: var(--text-muted);">$ 0</span>';
-
-        const reteIcaHtml = s.valorReteICA > 0 
-          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(s.valorReteICA)}</span>` 
-          : '<span style="color: var(--text-muted);">$ 0</span>';
-
-        return `
+      const cols = colsServ();
+      tbody.innerHTML = allServicios.map(s => `
           <tr onclick="origenReciboId = null; verDetalleServicio('${esc(s.idServicio)}')" style="cursor: pointer;" title="Clic para ver detalle del servicio">
-            <td>${formatFechaBogota(s.fechaServicio)}</td>
-            <td style="color: ${colorEstado}; font-weight: 700;">${esc(s.consecutivoRecibo || '-')}</td>
-            <td style="color: ${colorEstado}; font-weight: 800; text-align: right;">$ ${formatMiles(s.totalPago)}</td>
-            <td style="text-align: right;">${s.cantidad != null ? s.cantidad : '-'}</td>
-            <td style="text-align: right;">$ ${formatMiles(s.valorUnitario)}</td>
-            <td style="text-align: right; font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
-            <td style="text-align: right;">$ ${formatMiles(s.iva)}</td>
-            <td style="text-align: right;">${reteFuenteHtml}</td>
-            <td style="text-align: right;">${reteIvaHtml}</td>
-            <td style="text-align: right;">${reteIcaHtml}</td>
-            <td>${esc(s.clienteAFacturar || '-')}</td>
-            <td>${esc(s.transportadora || '-')}</td>
-            <td>${esc(s.proveedor || '-')}</td>
-            <td>${esc(s.actividad || '-')}</td>
-            <td>${esc(s.unidad || '-')}</td>
-            <td>${esc(s.placa || '-')}</td>
-            <td>${esc(s.vehiculo || '-')}</td>
-            <td>${esc(s.usuario || '-')}</td>
-            <td>${formatFechaBogota(s.fechaRegistro)}</td>
-            <td>${esc(s.quincena || '-')}</td>
+            ${cols.map(c => celdaServicio(c, s)).join('')}
           </tr>
-        `;
-      }).join('');
+        `).join('');
 
       makeTableResizable(document.getElementById('tabla-servicios'));
     }
