@@ -1924,18 +1924,24 @@
         </div>
 
         <div class="card">
-          <div class="contador-resultados" id="cooContador"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div class="contador-resultados" id="cooContador" style="margin:0;"></div>
+            <button type="button" class="btn-tomo-cargo" onclick="abrirNuevoPuntoModal()" style="margin:0;">➕ Nuevo Punto Satélite</button>
+          </div>
           <div class="table-container">
             <table class="retiros-table" id="cooTable">
               <thead>
                 <tr>
-                  <th style="width:90px" class="no-sort">Acciones</th>
+                  <th style="width:85px" class="no-sort">Acciones</th>
+                  <th style="width:105px" data-sort="tipo">Tipo<span id="cooSort-tipo" class="sort-indicator"></span></th>
                   <th style="width:130px" data-sort="regional">Regional<span id="cooSort-regional" class="sort-indicator"></span></th>
-                  <th style="width:180px" data-sort="operacion">Operación<span id="cooSort-operacion" class="sort-indicator"></span></th>
-                  <th style="width:110px" data-sort="codSiesa">Cod Siesa<span id="cooSort-codSiesa" class="sort-indicator"></span></th>
-                  <th style="width:300px" data-sort="direccion">Dirección<span id="cooSort-direccion" class="sort-indicator"></span></th>
-                  <th style="width:120px" data-sort="latitud">Latitud<span id="cooSort-latitud" class="sort-indicator"></span></th>
-                  <th style="width:120px" data-sort="longitud">Longitud<span id="cooSort-longitud" class="sort-indicator"></span></th>
+                  <th style="width:170px" data-sort="operacion">Operación<span id="cooSort-operacion" class="sort-indicator"></span></th>
+                  <th style="width:200px" data-sort="nombre_punto">Punto / Sede<span id="cooSort-nombre_punto" class="sort-indicator"></span></th>
+                  <th style="width:90px" data-sort="codSiesa">Cod Siesa<span id="cooSort-codSiesa" class="sort-indicator"></span></th>
+                  <th style="width:260px" data-sort="direccion">Dirección<span id="cooSort-direccion" class="sort-indicator"></span></th>
+                  <th style="width:85px; text-align:center;" data-sort="radio">Radio<span id="cooSort-radio" class="sort-indicator"></span></th>
+                  <th style="width:110px" data-sort="latitud">Latitud<span id="cooSort-latitud" class="sort-indicator"></span></th>
+                  <th style="width:110px" data-sort="longitud">Longitud<span id="cooSort-longitud" class="sort-indicator"></span></th>
                 </tr>
               </thead>
               <tbody id="cooBody"></tbody>
@@ -2768,7 +2774,7 @@
   </div>
 </div>
 
-<!-- Modal edición de dirección y coordenadas de una operación -->
+<!-- Modal edición de dirección y coordenadas de una operación o punto satélite -->
 <div class="modal-full-overlay" id="cooModalOverlay">
   <div class="modal-full" style="max-width: 760px; height: auto; max-height: 94vh;">
     <div class="modal-full-header">
@@ -2776,6 +2782,14 @@
       <button type="button" onclick="cerrarCooModal()">&#10005; Cerrar</button>
     </div>
     <div class="modal-ficha-body">
+      <div id="cooFieldOperacionWrap" class="ficha-field" style="margin-bottom:12px; display:none;">
+        <label>Operación Padre <span style="color:#ef4444">*</span></label>
+        <select id="cooInpOperacion" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border);"></select>
+      </div>
+      <div id="cooFieldNombrePuntoWrap" class="ficha-field" style="margin-bottom:12px;">
+        <label>Nombre del Punto / Oficina / Bodega <span style="color:#ef4444">*</span></label>
+        <input type="text" id="cooInpNombrePunto" maxlength="150" placeholder="Ej: Bodega Miraflores, Oficina Tocancipá, etc.">
+      </div>
       <div class="ficha-field" style="margin-bottom:12px">
         <label>Dirección</label>
         <div style="display:flex; gap:8px">
@@ -2783,20 +2797,26 @@
           <button type="button" class="btn-tomo-cargo" style="margin:0; white-space:nowrap" onclick="buscarDireccionCoo()">🔎 Ubicar</button>
         </div>
       </div>
-      <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-grid" style="margin-bottom:10px; grid-template-columns: 1fr 1fr 120px;">
         <div class="ficha-field"><label>Latitud</label><input type="text" id="cooInpLat" inputmode="decimal" placeholder="6.2442"></div>
         <div class="ficha-field"><label>Longitud</label><input type="text" id="cooInpLng" inputmode="decimal" placeholder="-75.5812"></div>
+        <div class="ficha-field"><label>Radio (m)</label><input type="number" id="cooInpRadio" min="50" max="2000" step="50" value="300" placeholder="300"></div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px">
         <button type="button" class="btn-reset" onclick="usarMiUbicacionCoo()">📍 Usar mi ubicación</button>
         <button type="button" class="btn-reset" onclick="limpiarCoordenadasCoo()">Quitar coordenadas</button>
         <span style="font-size:.76rem; color:var(--text-muted)">Haga clic en el mapa o arrastre el marcador para fijar la posición.</span>
       </div>
-      <div id="cooMap" style="width:100%; height:340px; border:1px solid var(--border); border-radius:8px;"></div>
+      <div id="cooMap" style="width:100%; height:320px; border:1px solid var(--border); border-radius:8px;"></div>
     </div>
-    <div class="ficha-footer">
-      <button type="button" class="btn-reset" onclick="cerrarCooModal()">Cancelar</button>
-      <button type="button" class="btn-guardar-ficha" id="cooBtnGuardar" onclick="guardarCoo()">Guardar</button>
+    <div class="ficha-footer" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <button type="button" class="btn-reset" id="cooBtnEliminar" style="color:var(--retiro); border-color:var(--retiro); display:none;" onclick="eliminarPuntoCoo()">🗑️ Desactivar Punto</button>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-reset" onclick="cerrarCooModal()">Cancelar</button>
+        <button type="button" class="btn-guardar-ficha" id="cooBtnGuardar" onclick="guardarCoo()">Guardar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -6491,7 +6511,7 @@
       return '<span class="badge-legal badge-dist-nocoord">Sin coords sede</span>';
     }
     const txt = distM >= 1000 ? `${(distM / 1000).toFixed(1)} km` : `${Math.round(distM)} m`;
-    if (distM <= 300) {
+    if (distM <= 350) {
       return `<span class="badge-legal badge-dist-cerca" title="A ${txt} de la operación">📍 ${txt} (En sede)</span>`;
     }
     const cls = distM <= 3000 ? 'badge-dist-media' : 'badge-dist-lejos';
@@ -6636,12 +6656,20 @@
 
       const opAsignadaStr = m.operacion_asignada || m.operacion || '—';
 
+      const puntoBadge = (m.op_punto_nombre && m.op_punto_nombre !== opAsignadaStr)
+        ? `<br><small style="color:var(--primary); font-size:.72rem; font-weight:600;">${esc(m.op_punto_nombre)}</small>`
+        : '';
+
       const gpsBtnHtml = (m.latitud && m.longitud)
-        ? `<button type="button" class="btn-tomo-cargo" style="padding:4px 8px; font-size:.72rem; margin:0;" onclick="openBioGPSModal(${m.latitud}, ${m.longitud}, '${esc(nombreLimpio)}', '${m.tipo}', '${esc(opAsignadaStr)}', ${m.op_lat || 'null'}, ${m.op_lng || 'null'}, ${m.distancia_metros || 'null'})">📍 Ver Mapa</button>`
+        ? `<button type="button" class="btn-tomo-cargo" style="padding:4px 8px; font-size:.72rem; margin:0;" onclick="openBioGPSModal(${m.latitud}, ${m.longitud}, '${esc(nombreLimpio)}', '${m.tipo}', '${esc(m.op_punto_nombre || opAsignadaStr)}', ${m.op_lat || 'null'}, ${m.op_lng || 'null'}, ${m.distancia_metros || 'null'})">📍 Ver Mapa</button>`
         : '<span style="color:var(--text-muted); font-size:.75rem;">Sin GPS</span>';
 
+      const cercanaNombre = (m.operacion_cercana_punto && m.operacion_cercana_punto !== m.operacion_cercana)
+        ? `${m.operacion_cercana} (${m.operacion_cercana_punto})`
+        : m.operacion_cercana;
+
       const cercanaHtml = m.operacion_cercana
-        ? `<strong style="color:var(--warning-dark); font-size:.82rem;">${esc(m.operacion_cercana)}</strong><br>${formatDistanciaBadge(m.operacion_cercana_dist)}`
+        ? `<strong style="color:var(--warning-dark); font-size:.82rem;">${esc(cercanaNombre)}</strong><br>${formatDistanciaBadge(m.operacion_cercana_dist)}`
         : '<span style="color:var(--text-muted);">—</span>';
 
       tr.innerHTML = `
@@ -6652,7 +6680,7 @@
         <td>${metodoHtml}</td>
         <td>${scoreHtml}</td>
         <td>${getClasBadge(m.clasificacion)}</td>
-        <td><strong style="color:var(--text); font-size:.82rem;">${esc(opAsignadaStr)}</strong><br>${formatDistanciaBadge(m.distancia_metros)}</td>
+        <td><strong style="color:var(--text); font-size:.82rem;">${esc(opAsignadaStr)}</strong>${puntoBadge}<br>${formatDistanciaBadge(m.distancia_metros)}</td>
         <td>${cercanaHtml}</td>
       `;
       tbody.appendChild(tr);
@@ -6707,7 +6735,16 @@
 
   function bioEtiquetaPunto(info, hayCoords) {
     if (!hayCoords) return { texto: 'Sin dato', html: '<span style="color:var(--text-muted)">Sin dato</span>', esOp: false };
-    if (info) return { texto: info.operacion, html: `<strong style="color:var(--success-dark)">${esc(info.operacion)}</strong> <span style="color:var(--text-muted)">(${info.dist} m)</span>`, esOp: true };
+    if (info) {
+      const nombreMostrar = (info.nombre_punto && info.nombre_punto !== info.operacion)
+        ? `${info.operacion} (${info.nombre_punto})`
+        : info.operacion;
+      return {
+        texto: nombreMostrar,
+        html: `<strong style="color:var(--success-dark)">${esc(nombreMostrar)}</strong> <span style="color:var(--text-muted)">(${info.dist} m)</span>`,
+        esOp: true
+      };
+    }
     return { texto: 'Otro lugar (no registrado)', html: '<span style="color:var(--warning-dark)">Otro lugar (no registrado)</span>', esOp: false };
   }
 
@@ -7058,7 +7095,7 @@
     return _cooState.all.filter(r =>
       (ignorarRegional || !reg || r.regional === reg) &&
       (ignorarOperacion || !op || r.operacion === op) &&
-      (!q || cooNorm(`${r.operacion} ${r.codSiesa} ${r.direccion}`).includes(q))
+      (!q || cooNorm(`${r.operacion} ${r.nombre_punto || ''} ${r.codSiesa || ''} ${r.direccion || ''}`).includes(q))
     );
   }
 
@@ -7120,7 +7157,7 @@
 
   function cooRender() {
     const col = _cooState.sortCol, dir = _cooState.sortOrder === 'asc' ? 1 : -1;
-    const numerica = col === 'latitud' || col === 'longitud';
+    const numerica = col === 'latitud' || col === 'longitud' || col === 'radio';
     const lista = cooFiltrar().sort((a, b) => {
       let x = a[col], y = b[col];
       const vx = x == null || x === '', vy = y == null || y === '';
@@ -7129,25 +7166,39 @@
       return cooNorm(x).localeCompare(cooNorm(y), 'es', { numeric: true }) * dir;
     });
 
-    ['regional', 'operacion', 'codSiesa', 'direccion', 'latitud', 'longitud'].forEach(k => {
+    ['tipo', 'regional', 'operacion', 'nombre_punto', 'codSiesa', 'direccion', 'radio', 'latitud', 'longitud'].forEach(k => {
       const span = document.getElementById('cooSort-' + k);
-      span.textContent = col === k ? (_cooState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
-      span.style.color = col === k ? 'var(--primary)' : '';
+      if (span) {
+        span.textContent = col === k ? (_cooState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+        span.style.color = col === k ? 'var(--primary)' : '';
+      }
     });
 
-    document.getElementById('cooContador').textContent = `${lista.length} operación(es)`;
+    document.getElementById('cooContador').textContent = `${lista.length} sede(s) y punto(s)`;
     document.getElementById('cooEmpty').style.display = lista.length ? 'none' : 'block';
     const body = document.getElementById('cooBody');
     body.innerHTML = '';
     lista.forEach(r => {
       const tr = document.createElement('tr');
       const sinCoords = r.latitud == null || r.longitud == null;
+      const isPrincipal = r.tipo === 'PRINCIPAL';
+      const tipoBadge = isPrincipal
+        ? '<span class="badge-legal badge-dist-media" style="font-size:.7rem;">PRINCIPAL</span>'
+        : '<span class="badge-legal badge-dist-cerca" style="font-size:.7rem;">SATÉLITE</span>';
+
+      const puntoHtml = isPrincipal
+        ? `<strong style="color:var(--text);">${esc(r.operacion)}</strong>`
+        : `<strong style="color:var(--primary); font-size:.82rem;">${esc(r.nombre_punto)}</strong>`;
+
       tr.innerHTML = `
-        <td></td>
+        <td style="text-align:center;"></td>
+        <td>${tipoBadge}</td>
         <td>${esc(r.regional)}</td>
-        <td>${esc(r.operacion)}</td>
-        <td>${esc(r.codSiesa)}</td>
+        <td><strong>${esc(r.operacion)}</strong></td>
+        <td>${puntoHtml}</td>
+        <td>${esc(r.codSiesa || '—')}</td>
         <td title="${esc(r.direccion)}">${esc(r.direccion) || '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td style="text-align:center;"><span class="badge-legal" style="font-size:.72rem;">${r.radio ? r.radio + ' m' : '300 m'}</span></td>
         <td>${sinCoords ? '<span class="badge-legal badge-dist-nocoord">Sin coords</span>' : esc(r.latitud)}</td>
         <td>${sinCoords ? '<span class="badge-legal badge-dist-nocoord">Sin coords</span>' : esc(r.longitud)}</td>`;
       const btn = document.createElement('button');
@@ -7187,30 +7238,80 @@
     }
   }
 
+  function initOrUpdateCooMap(lat, lng) {
+    if (!cooMap) {
+      cooMap = L.map('cooMap').setView([4.5709, -74.2973], 6);
+      L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps'
+      }).addTo(cooMap);
+      cooMap.on('click', (e) => { cooEscribirInputs(e.latlng.lat, e.latlng.lng); cooPonerMarcador(e.latlng.lat, e.latlng.lng, false); });
+      document.getElementById('cooInpLat').addEventListener('change', cooSincronizarDesdeInputs);
+      document.getElementById('cooInpLng').addEventListener('change', cooSincronizarDesdeInputs);
+    }
+    cooMap.invalidateSize();
+    if (cooMarker) { cooMap.removeLayer(cooMarker); cooMarker = null; }
+    if (lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+      cooPonerMarcador(Number(lat), Number(lng), true);
+    } else {
+      cooMap.setView([4.5709, -74.2973], 6);
+    }
+  }
+
   function abrirCooModal(row) {
     _cooState.editando = row;
-    document.getElementById('cooModalTitulo').textContent = `${row.operacion} · ${row.regional || ''}`;
+    _cooState.esNuevo = false;
+    const isPrincipal = row.tipo === 'PRINCIPAL';
+
+    document.getElementById('cooModalTitulo').textContent = isPrincipal
+      ? `Editar Sede Principal · ${row.operacion} (${row.regional || ''})`
+      : `Editar Punto Satélite · ${row.nombre_punto} (${row.operacion})`;
+
+    document.getElementById('cooFieldOperacionWrap').style.display = 'none';
+    document.getElementById('cooFieldNombrePuntoWrap').style.display = isPrincipal ? 'none' : 'block';
+    document.getElementById('cooInpNombrePunto').value = row.nombre_punto || '';
+    document.getElementById('cooInpRadio').value = row.radio || 300;
     document.getElementById('cooInpDireccion').value = row.direccion || '';
     document.getElementById('cooInpLat').value = row.latitud != null ? row.latitud : '';
     document.getElementById('cooInpLng').value = row.longitud != null ? row.longitud : '';
+    document.getElementById('cooBtnEliminar').style.display = (!isPrincipal && row.id) ? 'inline-block' : 'none';
+
     const cooOverlay = document.getElementById('cooModalOverlay');
     cooOverlay.classList.add('open');
     cooOverlay._backEntry = registrarModalBack(() => cerrarCooModal());
 
     setTimeout(() => {
-      if (!cooMap) {
-        cooMap = L.map('cooMap').setView([4.5709, -74.2973], 6);
-        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-          maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps'
-        }).addTo(cooMap);
-        cooMap.on('click', (e) => { cooEscribirInputs(e.latlng.lat, e.latlng.lng); cooPonerMarcador(e.latlng.lat, e.latlng.lng, false); });
-        document.getElementById('cooInpLat').addEventListener('change', cooSincronizarDesdeInputs);
-        document.getElementById('cooInpLng').addEventListener('change', cooSincronizarDesdeInputs);
-      }
-      cooMap.invalidateSize();
-      if (cooMarker) { cooMap.removeLayer(cooMarker); cooMarker = null; }
-      if (row.latitud != null && row.longitud != null) cooPonerMarcador(Number(row.latitud), Number(row.longitud), true);
-      else cooMap.setView([4.5709, -74.2973], 6);
+      initOrUpdateCooMap(row.latitud, row.longitud);
+    }, 200);
+  }
+
+  function abrirNuevoPuntoModal() {
+    _cooState.editando = null;
+    _cooState.esNuevo = true;
+
+    document.getElementById('cooModalTitulo').textContent = '➕ Nuevo Punto Satélite / Oficina / Bodega';
+
+    const ops = [...new Set(_cooState.all.map(r => r.operacion).filter(Boolean))].sort();
+    const selOp = document.getElementById('cooInpOperacion');
+    selOp.innerHTML = '<option value="">-- Seleccione la operación padre --</option>' +
+      ops.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+
+    if (cooFilterOperacion.value) selOp.value = cooFilterOperacion.value;
+
+    document.getElementById('cooFieldOperacionWrap').style.display = 'block';
+    document.getElementById('cooFieldNombrePuntoWrap').style.display = 'block';
+    document.getElementById('cooInpNombrePunto').value = '';
+    document.getElementById('cooInpRadio').value = 300;
+    document.getElementById('cooInpDireccion').value = '';
+    document.getElementById('cooInpLat').value = '';
+    document.getElementById('cooInpLng').value = '';
+    document.getElementById('cooBtnEliminar').style.display = 'none';
+
+    const cooOverlay = document.getElementById('cooModalOverlay');
+    cooOverlay.classList.add('open');
+    cooOverlay._backEntry = registrarModalBack(() => cerrarCooModal());
+
+    setTimeout(() => {
+      initOrUpdateCooMap(null, null);
     }, 200);
   }
 
@@ -7220,6 +7321,7 @@
     cerrarModalBack(cooOverlay._backEntry);
     cooOverlay._backEntry = null;
     _cooState.editando = null;
+    _cooState.esNuevo = false;
   }
 
   function limpiarCoordenadasCoo() {
@@ -7251,28 +7353,78 @@
   }
 
   async function guardarCoo() {
+    const isNuevo = _cooState.esNuevo;
     const row = _cooState.editando;
-    if (!row) return;
+    if (!isNuevo && !row) return;
+
+    const operacion = isNuevo ? document.getElementById('cooInpOperacion').value.trim() : row.operacion;
+    if (!operacion) { alert('Seleccione una operación.'); return; }
+
+    const nombrePunto = document.getElementById('cooInpNombrePunto').value.trim();
+    if ((isNuevo || row?.tipo === 'PUNTO') && !nombrePunto) {
+      alert('Escriba un nombre para el punto o sede.');
+      return;
+    }
+
     const lat = cooParse(document.getElementById('cooInpLat').value);
     const lng = cooParse(document.getElementById('cooInpLng').value);
     if (Number.isNaN(lat) || Number.isNaN(lng)) { alert('Latitud y longitud deben ser numéricas.'); return; }
     if ((lat === null) !== (lng === null)) { alert('Diligencie latitud y longitud juntas, o deje ambas vacías.'); return; }
     if (lat !== null && (Math.abs(lat) > 90 || Math.abs(lng) > 180)) { alert('Coordenadas fuera de rango.'); return; }
 
+    const radio = parseInt(document.getElementById('cooInpRadio').value, 10) || 300;
+    const direccion = document.getElementById('cooInpDireccion').value;
+
     const btn = document.getElementById('cooBtnGuardar');
     btn.disabled = true;
     try {
-      const res = await fetch(`/nomina/api/biometrico/operaciones?usuario=${encodeURIComponent(usuario)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operacion: row.operacion, direccion: document.getElementById('cooInpDireccion').value, latitud: lat, longitud: lng })
-      });
+      let res;
+      if (isNuevo) {
+        res = await fetch(`/nomina/api/biometrico/operaciones/puntos?usuario=${encodeURIComponent(usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operacion, nombre_punto: nombrePunto, direccion, latitud: lat, longitud: lng, radio })
+        });
+      } else {
+        res = await fetch(`/nomina/api/biometrico/operaciones?usuario=${encodeURIComponent(usuario)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: row.id,
+            tipo: row.tipo,
+            operacion,
+            nombre_punto: nombrePunto,
+            direccion,
+            latitud: lat,
+            longitud: lng,
+            radio
+          })
+        });
+      }
       const data = await res.json();
       if (!res.ok) { alert('Error: ' + (data.error || 'No se pudo guardar')); return; }
       cerrarCooModal();
       fetchBioCoords();
     } catch { alert('Error de conexión al guardar.'); }
     finally { btn.disabled = false; }
+  }
+
+  async function eliminarPuntoCoo() {
+    const row = _cooState.editando;
+    if (!row || !row.id || row.tipo !== 'PUNTO') return;
+    if (!confirm(`¿Está seguro de desactivar el punto "${row.nombre_punto}" de la operación ${row.operacion}?`)) return;
+
+    try {
+      const res = await fetch(`/nomina/api/biometrico/operaciones/puntos/${row.id}?usuario=${encodeURIComponent(usuario)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) { alert('Error: ' + (data.error || 'No se pudo desactivar')); return; }
+      cerrarCooModal();
+      fetchBioCoords();
+    } catch {
+      alert('Error de conexión al desactivar el punto.');
+    }
   }
 
   function openBioGPSModal(lat, lng, workerName, markType, opNombre, opLat, opLng, distM) {

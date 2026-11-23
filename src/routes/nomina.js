@@ -1537,35 +1537,74 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
 
 const RADIO_EN_SEDE_M = 300;
 
+let _geoOpsCache = null;
+let _geoOpsCacheTs = 0;
+const GEO_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de caché en memoria
+
 async function cargarOperacionesGeo() {
-  const [rows] = await pool.execute(
-    "SELECT `OPERACIÓN` AS operacion, LATITUD AS lat, LONGITUD AS lng FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' AND LATITUD IS NOT NULL AND LONGITUD IS NOT NULL"
-  );
-  return rows;
+  const now = Date.now();
+  if (_geoOpsCache && (now - _geoOpsCacheTs) < GEO_CACHE_TTL_MS) {
+    return _geoOpsCache;
+  }
+  try {
+    const [rowsOps] = await pool.execute(
+      "SELECT `OPERACIÓN` AS operacion, `OPERACIÓN` AS nombre_punto, LATITUD AS lat, LONGITUD AS lng, 300 AS radio FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' AND LATITUD IS NOT NULL AND LONGITUD IS NOT NULL"
+    );
+    let rowsPuntos = [];
+    try {
+      const [resP] = await pool.execute(
+        "SELECT operacion, nombre_punto, latitud AS lat, longitud AS lng, COALESCE(radio_metros, 300) AS radio FROM Maestro_Operaciones_Puntos WHERE activo = 1 AND latitud IS NOT NULL AND longitud IS NOT NULL"
+      );
+      rowsPuntos = resP || [];
+    } catch (eP) {
+      console.warn('[nomina Geo] Maestro_Operaciones_Puntos no disponible o error:', eP.message);
+    }
+    _geoOpsCache = [...rowsOps, ...rowsPuntos];
+    _geoOpsCacheTs = now;
+    return _geoOpsCache;
+  } catch (err) {
+    console.error('[nomina Geo] Error al cargar operaciones geo:', err);
+    return _geoOpsCache || [];
+  }
 }
 
-// Operación registrada a RADIO_EN_SEDE_M o menos del punto; null si es otro lugar (banco, almacén...).
+// Operación registrada a su radio permitido (o RADIO_EN_SEDE_M) o menos del punto; null si es otro lugar (banco, almacén...).
 function operacionEnPunto(lat, lng, ops) {
+  if (lat == null || lng == null) return null;
   let mejor = null, mejorDist = Infinity;
   for (const op of ops) {
     const d = calcularDistanciaMetros(lat, lng, op.lat, op.lng);
-    if (d != null && d < mejorDist) { mejorDist = d; mejor = op; }
+    const radio = op.radio || RADIO_EN_SEDE_M;
+    if (d != null && d <= radio && d < mejorDist) {
+      mejorDist = d;
+      mejor = op;
+    }
   }
-  return mejor && mejorDist <= RADIO_EN_SEDE_M ? { operacion: mejor.operacion, dist: Math.round(mejorDist) } : null;
+  return mejor ? { operacion: mejor.operacion, nombre_punto: mejor.nombre_punto || mejor.operacion, dist: Math.round(mejorDist) } : null;
 }
 
 // Null si el trabajador está en su operación asignada (o ella misma es la más cercana).
-function operacionMasCercana(r, distAsignadaM, ops) {
-  const vacio = { operacion_cercana: null, operacion_cercana_dist: null };
-  if (distAsignadaM != null && distAsignadaM <= RADIO_EN_SEDE_M) return vacio;
+function operacionMasCercana(r, distAsignadaM, ops, radioAsignado = RADIO_EN_SEDE_M) {
+  const vacio = { operacion_cercana: null, operacion_cercana_dist: null, operacion_cercana_punto: null };
+  if (distAsignadaM != null && distAsignadaM <= radioAsignado) return vacio;
+  if (r.latitud == null || r.longitud == null) return vacio;
+
+  const opAsig = String(r.operacion_asignada || '').trim().toUpperCase();
   let mejor = null, mejorDist = Infinity;
   for (const op of ops) {
+    if (String(op.operacion).trim().toUpperCase() === opAsig) continue;
     const d = calcularDistanciaMetros(r.latitud, r.longitud, op.lat, op.lng);
-    if (d != null && d < mejorDist) { mejorDist = d; mejor = op; }
+    if (d != null && d < mejorDist) {
+      mejorDist = d;
+      mejor = op;
+    }
   }
   if (!mejor) return vacio;
-  if (String(mejor.operacion).trim() === String(r.operacion_asignada || '').trim()) return vacio;
-  return { operacion_cercana: mejor.operacion, operacion_cercana_dist: mejorDist };
+  return {
+    operacion_cercana: mejor.operacion,
+    operacion_cercana_punto: mejor.nombre_punto || mejor.operacion,
+    operacion_cercana_dist: mejorDist
+  };
 }
 
 function obtenerCondicionesClasificacionBiometrico(isSstOnly) {
@@ -1699,14 +1738,60 @@ async function verificarAccesoCoordenadas(req, res, next) {
 
 router.get('/api/biometrico/operaciones', verificarAccesoCoordenadas, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      `SELECT REGIONAL AS regional, \`OPERACIÓN\` AS operacion, \`CODIGO CO SIESA\` AS codSiesa,
-              DIRECCION AS direccion, LATITUD AS latitud, LONGITUD AS longitud
-       FROM Maestro_Operaciones
-       WHERE REGIONAL != 'INACTIVO'
-       ORDER BY REGIONAL, \`OPERACIÓN\``
-    );
-    res.json({ ok: true, operaciones: rows });
+    const [rowsOps] = await pool.execute(`
+      SELECT 
+        NULL AS id,
+        REGIONAL AS regional,
+        \`OPERACIÓN\` AS operacion,
+        'Sede Principal' AS nombre_punto,
+        \`CODIGO CO SIESA\` AS codSiesa,
+        DIRECCION AS direccion,
+        LATITUD AS latitud,
+        LONGITUD AS longitud,
+        300 AS radio,
+        'PRINCIPAL' AS tipo,
+        1 AS activo
+      FROM Maestro_Operaciones
+      WHERE REGIONAL != 'INACTIVO'
+      ORDER BY REGIONAL, \`OPERACIÓN\`
+    `);
+
+    let rowsPuntos = [];
+    try {
+      const [resP] = await pool.execute(`
+        SELECT 
+          p.id AS id,
+          COALESCE(op.REGIONAL, 'OTRA') AS regional,
+          p.operacion AS operacion,
+          p.nombre_punto AS nombre_punto,
+          op.\`CODIGO CO SIESA\` AS codSiesa,
+          p.direccion AS direccion,
+          p.latitud AS latitud,
+          p.longitud AS longitud,
+          COALESCE(p.radio_metros, 300) AS radio,
+          'PUNTO' AS tipo,
+          p.activo AS activo
+        FROM Maestro_Operaciones_Puntos p
+        LEFT JOIN Maestro_Operaciones op ON TRIM(p.operacion) = TRIM(op.\`OPERACIÓN\`)
+        WHERE p.activo = 1
+        ORDER BY regional, p.operacion, p.nombre_punto
+      `);
+      rowsPuntos = resP || [];
+    } catch (eP) {
+      console.warn('[nomina Geo] Maestro_Operaciones_Puntos no disponible o error:', eP.message);
+    }
+
+    const unificadas = [...rowsOps, ...rowsPuntos].sort((a, b) => {
+      const regComp = String(a.regional || '').localeCompare(String(b.regional || ''), 'es');
+      if (regComp !== 0) return regComp;
+      const opComp = String(a.operacion || '').localeCompare(String(b.operacion || ''), 'es');
+      if (opComp !== 0) return opComp;
+      if (a.tipo === 'PRINCIPAL' && b.tipo !== 'PRINCIPAL') return -1;
+      if (a.tipo !== 'PRINCIPAL' && b.tipo === 'PRINCIPAL') return 1;
+      return String(a.nombre_punto || '').localeCompare(String(b.nombre_punto || ''), 'es');
+    });
+
+    res.json({ ok: true, operaciones: unificadas });
   } catch (err) {
     console.error('[nomina Biometrico API] Error en operaciones:', err);
     res.status(500).json({ error: err.message });
@@ -1715,7 +1800,7 @@ router.get('/api/biometrico/operaciones', verificarAccesoCoordenadas, async (req
 
 router.put('/api/biometrico/operaciones', verificarAccesoCoordenadas, async (req, res) => {
   try {
-    const { operacion, direccion } = req.body;
+    const { id, tipo, operacion, nombre_punto, direccion, radio } = req.body;
     if (!operacion) return res.status(400).json({ error: 'operacion requerida' });
 
     const parseCoord = (v, min, max) => {
@@ -1730,14 +1815,88 @@ router.put('/api/biometrico/operaciones', verificarAccesoCoordenadas, async (req
     if ((lat === null) !== (lng === null)) return res.status(400).json({ error: 'Latitud y longitud deben diligenciarse juntas' });
 
     const dir = direccion && String(direccion).trim() ? String(direccion).trim().slice(0, 255) : null;
-    const [result] = await pool.execute(
-      'UPDATE Maestro_Operaciones SET DIRECCION = ?, LATITUD = ?, LONGITUD = ? WHERE `OPERACIÓN` = ?',
-      [dir, lat, lng, operacion]
-    );
-    if (!result.affectedRows) return res.status(404).json({ error: 'Operación no encontrada' });
+    const radioM = Number(radio) && Number(radio) > 0 ? Math.min(Math.max(Number(radio), 50), 2000) : 300;
+
+    if (id || tipo === 'PUNTO') {
+      const ptoNom = nombre_punto && String(nombre_punto).trim() ? String(nombre_punto).trim().slice(0, 150) : operacion;
+      const [result] = await pool.execute(
+        'UPDATE Maestro_Operaciones_Puntos SET nombre_punto = ?, direccion = ?, latitud = ?, longitud = ?, radio_metros = ? WHERE id = ?',
+        [ptoNom, dir, lat, lng, radioM, id]
+      );
+      if (!result.affectedRows) return res.status(404).json({ error: 'Punto de operación no encontrado' });
+    } else {
+      const [result] = await pool.execute(
+        'UPDATE Maestro_Operaciones SET DIRECCION = ?, LATITUD = ?, LONGITUD = ? WHERE `OPERACIÓN` = ?',
+        [dir, lat, lng, operacion]
+      );
+      if (!result.affectedRows) return res.status(404).json({ error: 'Operación no encontrada' });
+    }
+
+    // Invalidar caché de georreferenciación
+    _geoOpsCache = null;
+    _geoOpsCacheTs = 0;
+
     res.json({ ok: true });
   } catch (err) {
     console.error('[nomina Biometrico API] Error al guardar coordenadas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Crear nuevo punto satélite de operación ──────────────────────────────────
+router.post('/api/biometrico/operaciones/puntos', verificarAccesoCoordenadas, async (req, res) => {
+  try {
+    const { operacion, nombre_punto, direccion, ciudad, radio } = req.body;
+    if (!operacion || !String(operacion).trim()) return res.status(400).json({ error: 'Operación requerida' });
+    if (!nombre_punto || !String(nombre_punto).trim()) return res.status(400).json({ error: 'Nombre del punto requerido' });
+
+    const parseCoord = (v, min, max) => {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      const n = Number(String(v).replace(',', '.'));
+      return Number.isFinite(n) && n >= min && n <= max ? n : NaN;
+    };
+    const lat = parseCoord(req.body.latitud, -90, 90);
+    const lng = parseCoord(req.body.longitud, -180, 180);
+    if (Number.isNaN(lat)) return res.status(400).json({ error: 'Latitud inválida (rango -90 a 90)' });
+    if (Number.isNaN(lng)) return res.status(400).json({ error: 'Longitud inválida (rango -180 a 180)' });
+    if ((lat === null) !== (lng === null)) return res.status(400).json({ error: 'Latitud y longitud deben diligenciarse juntas' });
+
+    const dir = direccion && String(direccion).trim() ? String(direccion).trim().slice(0, 255) : null;
+    const ciu = ciudad && String(ciudad).trim() ? String(ciudad).trim().slice(0, 100) : null;
+    const radioM = Number(radio) && Number(radio) > 0 ? Math.min(Math.max(Number(radio), 50), 2000) : 300;
+
+    const [result] = await pool.execute(`
+      INSERT INTO Maestro_Operaciones_Puntos
+      (operacion, nombre_punto, ciudad, direccion, latitud, longitud, radio_metros, activo, observaciones)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'Creado desde el panel de Nómina')
+    `, [String(operacion).trim(), String(nombre_punto).trim(), ciu, dir, lat, lng, radioM]);
+
+    _geoOpsCache = null;
+    _geoOpsCacheTs = 0;
+
+    res.json({ ok: true, id: result.insertId });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error al crear punto satélite:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Desactivar punto satélite de operación ───────────────────────────────────
+router.delete('/api/biometrico/operaciones/puntos/:id', verificarAccesoCoordenadas, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await pool.execute(
+      'UPDATE Maestro_Operaciones_Puntos SET activo = 0 WHERE id = ?',
+      [id]
+    );
+    if (!result.affectedRows) return res.status(404).json({ error: 'Punto no encontrado' });
+
+    _geoOpsCache = null;
+    _geoOpsCacheTs = 0;
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error al desactivar punto satélite:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1965,11 +2124,46 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
     const opsGeo = await cargarOperacionesGeo();
 
     const marcacionesConDistancia = filasVisibles.map(r => {
-      const distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
+      const opAsig = String(r.operacion_asignada || '').trim().toUpperCase();
+      let distM = null;
+      let opLat = r.op_lat;
+      let opLng = r.op_lng;
+      let opPuntoNombre = null;
+      let radioAsignado = RADIO_EN_SEDE_M;
+
+      // Buscar todos los puntos (principales y satélites) de la operación asignada
+      const puntosOpAsig = opsGeo.filter(
+        op => String(op.operacion).trim().toUpperCase() === opAsig
+      );
+
+      if (puntosOpAsig.length > 0 && r.latitud != null && r.longitud != null) {
+        let minDist = Infinity;
+        let mejorPunto = null;
+        for (const p of puntosOpAsig) {
+          const d = calcularDistanciaMetros(r.latitud, r.longitud, p.lat, p.lng);
+          if (d != null && d < minDist) {
+            minDist = d;
+            mejorPunto = p;
+          }
+        }
+        if (mejorPunto) {
+          distM = minDist;
+          opLat = mejorPunto.lat;
+          opLng = mejorPunto.lng;
+          opPuntoNombre = mejorPunto.nombre_punto;
+          radioAsignado = mejorPunto.radio || RADIO_EN_SEDE_M;
+        }
+      } else {
+        distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
+      }
+
       return {
         ...r,
+        op_lat: opLat,
+        op_lng: opLng,
+        op_punto_nombre: opPuntoNombre,
         distancia_metros: distM,
-        ...operacionMasCercana(r, distM, opsGeo),
+        ...operacionMasCercana(r, distM, opsGeo, radioAsignado),
       };
     });
 
