@@ -98,8 +98,10 @@ function cumpleCondicion(fila, contexto) {
 async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {} }) {
   let filas = [];
   try {
+    // La fila por defecto (todas las operaciones) queda con operacion NULL: la llave foránea a
+    // Maestro_Operaciones no admite '' y un trigger convierte el vacío en NULL al guardar.
     [filas] = await pool.execute(
-      'SELECT * FROM Config_Servicios WHERE seccion = ? AND operacion IN (?, \'\')',
+      'SELECT * FROM Config_Servicios WHERE seccion = ? AND (operacion IS NULL OR operacion IN (?, \'\'))',
       [seccion, operacion || '']
     );
   } catch (err) {

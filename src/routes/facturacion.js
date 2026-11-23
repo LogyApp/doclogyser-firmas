@@ -7192,7 +7192,7 @@ router.get('/api/ajustes-servicios', async (req, res) => {
   try {
     if (!(await accesoAjustesServicios(req, res))) return;
     const [rows] = await pool.query(
-      `SELECT id, seccion, operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados, valor_defecto, tipo_dato,
+      `SELECT id, seccion, COALESCE(operacion, '') AS operacion, modalidad, columna_origen, etiqueta_columna, datos_habilitados, valor_defecto, tipo_dato,
               visible, obligatorio, editable_validado, rol, condicion_campo, condicion_valores, orden, usuario, DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
        FROM Config_Servicios ORDER BY operacion, seccion, modalidad, COALESCE(orden, 999), columna_origen`
     );
@@ -7231,6 +7231,16 @@ async function guardarAjusteServicio(req, res, id) {
     if (!acceso) return;
     const { fila, error } = leerAjusteServicio(req.body || {});
     if (error) return res.status(400).json({ error });
+    // La fila de todas las operaciones queda con operacion NULL y la llave única no la compara:
+    // el repetido se revisa aquí
+    const [repetida] = await pool.execute(
+      `SELECT id FROM Config_Servicios
+        WHERE seccion = ? AND COALESCE(operacion, '') = ? AND modalidad = ? AND columna_origen = ? AND id <> ? LIMIT 1`,
+      [fila.seccion, fila.operacion, fila.modalidad, fila.columna_origen, id || 0]
+    );
+    if (repetida.length) {
+      return res.status(409).json({ error: 'Ya existe un ajuste para ese campo con la misma Sección, Operación y Modalidad. Edítelo en lugar de crear otro.' });
+    }
     const usuarioVal = acceso.usuarioId || req.query.usuario;
     const valores = [fila.seccion, fila.operacion, fila.modalidad, fila.columna_origen, fila.etiqueta_columna, fila.datos_habilitados,
       fila.valor_defecto, fila.tipo_dato, fila.visible, fila.obligatorio, fila.editable_validado, fila.rol, fila.condicion_campo, fila.condicion_valores, fila.orden, usuarioVal, formatearAhoraBogota()];
