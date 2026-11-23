@@ -498,8 +498,8 @@ router.post('/api/generar-pz-anticipado', async (req, res) => {
     );
     if (docExist.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
-        [urlPdf, urlPdf, fechaHoraBogota(), docExist[0].id]
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        [urlPdf, fechaHoraBogota(), docExist[0].id]
       );
     } else {
       const { v4: uuidv4 } = require('uuid');
@@ -571,8 +571,8 @@ router.post('/api/subir-terminacion-contrato', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, \`Validación\` = 'PEND', FechaRegistro = ? WHERE id = ?`,
-        [url, url, fechaHoraBogota(), docRows[0].id]
+        `UPDATE Maestro_docTrabajador SET Doc = ?, \`Validación\` = 'PEND', FechaRegistro = ? WHERE id = ?`,
+        [url, fechaHoraBogota(), docRows[0].id]
       );
     } else {
       await registrarDocTrabajador({

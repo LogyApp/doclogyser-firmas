@@ -79,15 +79,15 @@ async function registrarDocTrabajador({ regional, operacion, identificacion, fec
   tipoDocumento, prefijo, doc, url, observaciones, usuario }) {
   const id    = uuidv4();
   const ahora = fechaHoraBogota();
-  const urlFinal = url || doc;
+  // Url es columna generada a partir de Doc: no se escribe
   await pool.execute(
     `INSERT INTO Maestro_docTrabajador
      (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
-      TipoDocumento, Prefijo, Doc, Url, Observaciones, Visualizar, Solicitud,
+      TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
       Justificacion_Solicitud, FechaRegistro, Usuario)
-     VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+     VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
     [id, regional || null, operacion || null, identificacion,
-     toDateStr(fechaIngreso), tipoDocumento, prefijo, doc, urlFinal, observaciones || null, ahora, usuario]
+     toDateStr(fechaIngreso), tipoDocumento, prefijo, doc || url, observaciones || null, ahora, usuario]
   );
   return id;
 }
@@ -147,7 +147,7 @@ router.post('/api/subir-carta-renuncia', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
         [url, fechaHoraBogota(), docRows[0].id]
       );
     } else {
@@ -373,7 +373,7 @@ router.post('/api/reemplazar-ed', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
         [url, ahora, docRows[0].id]
       );
     } else {
@@ -429,7 +429,7 @@ router.post('/api/reemplazar-carta-renuncia', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
         [url, ahora, docRows[0].id]
       );
     } else {
@@ -953,7 +953,7 @@ router.post('/:idVinculacion', async (req, res) => {
         );
         if (existeED.length) {
           await pool.execute(
-            `UPDATE Maestro_docTrabajador SET Doc = ?, Url = ?, FechaRegistro = ? WHERE id = ?`,
+            `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
             [urlED, ahora, existeED[0].id]
           );
         } else {
