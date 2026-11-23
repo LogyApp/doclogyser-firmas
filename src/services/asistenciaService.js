@@ -353,10 +353,10 @@ async function buscarTrabajadoresVinculacion({
     params.push(...operacionesPermitidas);
   }
 
-  // Si no es apoyo a otra operación, se filtra por área
+  // Si no es apoyo a otra operación, se filtra por área (soporta ID numérico o nombre de área)
   if (area && !esApoyo) {
-    sql += ' AND mv.Area = ?';
-    params.push(area);
+    sql += ' AND (mv.Area = ? OR mv.Area IN (SELECT AREA FROM Config_Area WHERE ID = ?) OR mv.Area IN (SELECT ID FROM Config_Area WHERE AREA = ?))';
+    params.push(area, area, area);
   }
 
   if (puedeVerRetirados) {
@@ -516,6 +516,14 @@ async function registrarAsistenciaDiaria({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+
+    // Reemplazo de rellenos automáticos que la asistencia real sustituye
+    if (ajustes.rellenosReemplazar && ajustes.rellenosReemplazar.length > 0) {
+      await conn.query(
+        'DELETE FROM Dynamic_Asistencia WHERE IdAsistencia IN (?)',
+        [ajustes.rellenosReemplazar]
+      );
+    }
 
     // 1. Cadena de nombres para la cabecera
     const listaNombresTrabajador = trabRows.map(t => t.trabajador).join(' , ');
@@ -771,6 +779,12 @@ async function registrarNovedadPorRango({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+
+    // Reemplazo de rellenos automáticos que la novedad por rango sustituye
+    await conn.query(
+      "DELETE FROM Dynamic_Asistencia WHERE `Cédula` = ? AND `Día` BETWEEN ? AND ? AND `Operación` = ? AND IdAsistencia LIKE 'AUTO-%'",
+      [trab.identificacion, diaInicio, diaFin, opFinal]
+    );
 
     // Validar codDiagnostico contra Config_Diagnostico (Foreign Key)
     let codDiagValido = null;
@@ -1042,6 +1056,12 @@ async function registrarNovedadDia({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+
+    // Reemplazo de rellenos automáticos que la novedad sustituye
+    await conn.query(
+      "DELETE FROM Dynamic_Asistencia WHERE `Cédula` IN (?) AND `Día` = ? AND `Operación` = ? AND IdAsistencia LIKE 'AUTO-%'",
+      [trabRows.map(t => t.identificacion), dia, opFinal]
+    );
 
     let codDiagValido = null;
     let diagValido = diagnostico ? diagnostico.substring(0, 300) : null;

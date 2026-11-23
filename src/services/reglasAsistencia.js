@@ -96,7 +96,7 @@ function textoRelleno(r) {
  *                    aooActualizar: [{ id, operacionApoyada }], convertirAAOO: Map(identificacion -> operacionApoyada) }
  */
 async function validarAsistenciaDiaria({ conn = pool, operacion, dia, trabajadores, esApoyo, operacionApoya, prefijo = 'SI' }) {
-  const res = { errores: [], aooInsertar: [], aooActualizar: [], convertirAAOO: new Map() };
+  const res = { errores: [], aooInsertar: [], aooActualizar: [], convertirAAOO: new Map(), rellenosReemplazar: [] };
   const ids = trabajadores.map(t => Number(t.identificacion));
   const personas = await P.cargarTramos({ desde: dia, hasta: dia, identificaciones: ids }, conn);
   const registros = await cargarRegistros(conn, ids, dia, dia);
@@ -127,6 +127,7 @@ async function validarAsistenciaDiaria({ conn = pool, operacion, dia, trabajador
             : `${nombre}: ese día ya está registrado como apoyo en ${c.lugar}.`);
           ok = false;
         } else if (c.tipo === 'relleno') {
+          if (String(f.prefijo || '').toUpperCase() === 'TRAS' && f.operacion !== opCasa) continue;
           res.errores.push(`${nombre}: ese día ${textoRelleno(f)}.`);
           ok = false;
         } else if (c.tipo === 'otra') {
@@ -161,6 +162,15 @@ async function validarAsistenciaDiaria({ conn = pool, operacion, dia, trabajador
       for (const f of filas) {
         const c = clasificar(f, opDia || operacion);
         if (c.tipo === 'apoyo') { apoyoEn = c.lugar; continue; }
+        // Rellenos TRAS de otra operación son esperados por traslados (quincena de la otra sede)
+        if (c.tipo === 'relleno' && String(f.prefijo || '').toUpperCase() === 'TRAS' && f.operacion !== operacion) {
+          continue;
+        }
+        // Rellenos automáticos de esta operación se reemplazan por la asistencia real
+        if (c.tipo === 'relleno' && f.operacion === operacion && String(f.id || '').startsWith('AUTO-')) {
+          res.rellenosReemplazar.push(f.id);
+          continue;
+        }
         res.errores.push(c.tipo === 'relleno'
           ? `${nombre}: ese día ${textoRelleno(f)}.`
           : `${nombre}: ya tiene ${nombreNovedad(f)} registrado ese día${c.lugar !== operacion ? ` en ${c.lugar}` : ''}; edite ese registro en vez de crear otro.`);
@@ -191,6 +201,14 @@ async function validarNovedadRango({ conn = pool, operacion, identificacion, nom
     if (persona && opDia !== operacion) { fuera.push({ dia, opDia }); continue; }
     for (const f of registros.get(`${Number(identificacion)}|${dia}`) || []) {
       const c = clasificar(f, opDia || operacion);
+      // Rellenos TRAS de otra operación son esperados por traslados
+      if (c.tipo === 'relleno' && String(f.prefijo || '').toUpperCase() === 'TRAS' && f.operacion !== operacion) {
+        continue;
+      }
+      // Rellenos automáticos de esta operación se reemplazan al registrar novedad
+      if (c.tipo === 'relleno' && f.operacion === operacion && String(f.id || '').startsWith('AUTO-')) {
+        continue;
+      }
       ocupados.push({ dia, texto: c.tipo === 'apoyo' ? `asistencia como apoyo en ${c.lugar}` : c.tipo === 'relleno' ? `"${nombreNovedad(f)}"` : nombreNovedad(f) });
     }
   }

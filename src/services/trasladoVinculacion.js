@@ -45,16 +45,51 @@ async function existeColumnaAplicado() {
   return columnaExiste;
 }
 
-// Cambia la Operación de la vinculación activa más reciente. Devuelve true si la cambió.
+// Cambia la Operación y el Área de la vinculación activa más reciente. Devuelve true si la cambió.
 async function actualizarOperacionActiva(t) {
-  const [result] = await pool.execute(
-    `UPDATE \`Maestro_Vinculación\`
-        SET \`Operación\` = ?, Usuario = ?, \`Fecha Actualización\` = ?
-      WHERE \`Identificación\` = ? AND Estado = 'Activo'
-      ORDER BY \`Fecha de Ingreso\` DESC
-      LIMIT 1`,
-    [t.operacion_destino, t.Usuario, ahoraBogota(), t['Identificación']]
-  );
+  let areaDestino = null;
+  try {
+    const [curr] = await pool.execute(
+      'SELECT Area FROM `Maestro_Vinculación` WHERE `Identificación` = ? AND Estado = \'Activo\' ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [t['Identificación']]
+    );
+    if (curr.length && curr[0].Area) {
+      const [nombreArea] = await pool.execute('SELECT AREA FROM Config_Area WHERE ID = ? OR AREA = ? LIMIT 1', [curr[0].Area, curr[0].Area]);
+      const nombre = nombreArea.length ? nombreArea[0].AREA : null;
+      if (nombre) {
+        const [matchDestino] = await pool.execute('SELECT ID FROM Config_Area WHERE `OPERACIÓN` = ? AND AREA = ? LIMIT 1', [t.operacion_destino, nombre]);
+        if (matchDestino.length) areaDestino = matchDestino[0].ID;
+      }
+    }
+    if (!areaDestino) {
+      const [opDef] = await pool.execute('SELECT ID FROM Config_Area WHERE `OPERACIÓN` = ? AND AREA = \'OPERATIVO\' LIMIT 1', [t.operacion_destino]);
+      if (opDef.length) areaDestino = opDef[0].ID;
+      else {
+        const [firstArea] = await pool.execute('SELECT ID FROM Config_Area WHERE `OPERACIÓN` = ? AND ADMINISTRATIVO = \'V\' ORDER BY ID LIMIT 1', [t.operacion_destino]);
+        if (firstArea.length) areaDestino = firstArea[0].ID;
+      }
+    }
+  } catch (err) {
+    console.warn('[trasladoVinculacion] No se pudo resolver área destino automática:', err.message);
+  }
+
+  const sql = areaDestino
+    ? `UPDATE \`Maestro_Vinculación\`
+          SET \`Operación\` = ?, Area = ?, Usuario = ?, \`Fecha Actualización\` = ?
+        WHERE \`Identificación\` = ? AND Estado = 'Activo'
+        ORDER BY \`Fecha de Ingreso\` DESC
+        LIMIT 1`
+    : `UPDATE \`Maestro_Vinculación\`
+          SET \`Operación\` = ?, Usuario = ?, \`Fecha Actualización\` = ?
+        WHERE \`Identificación\` = ? AND Estado = 'Activo'
+        ORDER BY \`Fecha de Ingreso\` DESC
+        LIMIT 1`;
+
+  const params = areaDestino
+    ? [t.operacion_destino, areaDestino, t.Usuario, ahoraBogota(), t['Identificación']]
+    : [t.operacion_destino, t.Usuario, ahoraBogota(), t['Identificación']];
+
+  const [result] = await pool.execute(sql, params);
   if (!result.affectedRows) {
     console.warn(`[trasladoVinculacion] ${t['Identificación']} no tiene vinculación activa: no se cambia la operación (traslado ${t.IdTraslado}).`);
   }

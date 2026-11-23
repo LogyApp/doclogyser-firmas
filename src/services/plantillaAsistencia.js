@@ -162,6 +162,7 @@ async function cargarTramos({ desde, hasta, identificaciones = null, operaciones
       if (fin && t.fecha > fin) { opFinal = t.origen; break; }
       p.tramos.push({ ...base, operacion: t.origen, desde: inicio, hasta: sumarDias(t.fecha, -1) });
       inicio = t.fecha;
+      opFinal = t.destino;
     }
     p.tramos.push({ ...base, operacion: opFinal, desde: inicio, hasta: fin });
   }
