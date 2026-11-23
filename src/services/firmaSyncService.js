@@ -151,6 +151,20 @@ async function validarEmpleadoNoRetirado(identificacion) {
   return vinculacion;
 }
 
+async function resolverOperacionFirma(operacion) {
+  if (!operacion) return null;
+  if (operacion.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() !== 'administracion') return operacion;
+
+  const [rows] = await pool.query(
+    'SELECT `OPERACIÓN` AS operacion FROM Maestro_Operaciones WHERE `OPERACIÓN` COLLATE utf8mb4_unicode_ci = ?',
+    [operacion]
+  );
+  const exacta = rows.find(row => row.operacion === operacion);
+  if (exacta) return exacta.operacion;
+  if (rows.length === 1) return rows[0].operacion;
+  throw new Error('No se pudo identificar una operación de Administración única en Maestro_Operaciones.');
+}
+
 /**
  * Consulta un empleado para el generador de firmas.
  * 1. Busca en Maestro_firma_corporativa
@@ -309,10 +323,7 @@ async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomat
 
   await validarEmpleadoNoRetirado(identificacion);
 
-  let operacionLimpia = operacion || '';
-  if (operacionLimpia.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
-    operacionLimpia = 'Administración';
-  }
+  const operacionLimpia = await resolverOperacionFirma(operacion);
 
   const usuarioParaGuardar = usuarioId || datos.usuario || datos.usuario_id || null;
 
@@ -562,10 +573,7 @@ async function sincronizarConVinculacion() {
       [id]
     );
 
-    let opSync = v.operacion || '';
-    if (opSync.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
-      opSync = 'Administración';
-    }
+    const opSync = await resolverOperacionFirma(v.operacion);
 
     if (existentes.length === 0) {
       // Insertar nuevo registro base
