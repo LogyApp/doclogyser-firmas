@@ -21,6 +21,7 @@ const { crearNotificacionCargaDocumentosAspirante } = require('../services/notif
 const firmaUnica = require('../services/firmaUnica');
 const { programarRelleno } = require('../services/rellenoAsistencia');
 const { generarHtmlFirmaUnica } = require('../services/vistaFirmaUnica');
+const docSstPortal = require('../services/docSstPortal');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -433,10 +434,43 @@ router.get('/portal/:uuid', async (req, res) => {
     const docHv = docsSel.aspirante.find(d => d.id === ID_HOJA_VIDA);
     const filaHv = cargados.find(c => Number(c.id_config_doc) === ID_HOJA_VIDA);
     const hvPropiaPath = filaHv ? rutaHvAspirante(filaHv.observaciones) : null;
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion || Boolean(operacionAspirante), docHv ? docHv.etiqueta : undefined, hvPropiaPath, Boolean(asp.docs_pendientes_vinculacion)));
+    const docsSst = await docSstPortal.enlacesPortal(uuid, req).catch(err => { console.warn('[Portal Aspirante] Documentos SST:', err.message); return []; });
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion || Boolean(operacionAspirante), docHv ? docHv.etiqueta : undefined, hvPropiaPath, Boolean(asp.docs_pendientes_vinculacion), docsSst));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
+  }
+});
+
+// Habilitar Doc. SST (Panel Admin del aspirante y Cloud-Docs): estado de cada documento y habilitación
+router.get('/api/doc-sst/:uuid', async (req, res) => {
+  try {
+    res.json(await docSstPortal.estado(req.params.uuid, String(req.query.usuario || ''), req));
+  } catch (err) {
+    console.error('[seleccion] GET /api/doc-sst:', err);
+    res.status(500).json({ error: 'No se pudieron consultar los documentos SST' });
+  }
+});
+
+router.post('/api/doc-sst/:uuid/habilitar', async (req, res) => {
+  try {
+    const r = await docSstPortal.habilitar(req.params.uuid, (req.body || {}).claves, String(req.query.usuario || ''), req);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(r);
+  } catch (err) {
+    console.error('[seleccion] POST /api/doc-sst/habilitar:', err);
+    res.status(500).json({ error: 'No se pudieron habilitar los documentos SST' });
+  }
+});
+
+router.post('/api/doc-sst/:uuid/deshabilitar', async (req, res) => {
+  try {
+    const r = await docSstPortal.deshabilitar(req.params.uuid, (req.body || {}).claves, String(req.query.usuario || ''), req);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(r);
+  } catch (err) {
+    console.error('[seleccion] POST /api/doc-sst/deshabilitar:', err);
+    res.status(500).json({ error: 'No se pudieron deshabilitar los documentos SST' });
   }
 });
 
@@ -1877,6 +1911,10 @@ router.post('/finalizar-contratacion', async (req, res) => {
     // "Nuevo" en los días de la quincena anteriores al ingreso (reemplaza el trigger trg_MaestroVinculacion_AfterInsert)
     programarRelleno(a.identificacion, [fecha_ingreso]);
 
+    // Documentos SST habilitados desde el portal: quedan con la vinculación y los firmados pasan a la carpeta digital
+    const docSst = await docSstPortal.alVincular({ idAspirante: id_aspirante, idVinculacion: idVinculacionNueva, fechaIngreso: fecha_ingreso })
+      .catch(err => { console.error('[seleccion] Documentos SST al vincular:', err); return { errores: ['documentos SST'] }; });
+
     // Notificación de nuevo ingreso: solo después de confirmar la transacción y en
     // segundo plano, para no demorar ni afectar la contratación.
     setImmediate(() => notificarNuevoIngreso({
@@ -1896,7 +1934,10 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const avisoExistentes = docsYaExistian.length
       ? ` ${docsYaExistian.length} documento(s) ya existían en los documentos del trabajador para este ingreso y no se duplicaron (${docsYaExistian.join(', ')}).`
       : '';
-    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal + avisoCopia + avisoExistentes)}`);
+    const avisoSst = docSst.errores.length
+      ? ` ATENCIÓN: no se pudieron pasar a la carpeta los documentos SST (${docSst.errores.join(', ')}); avise a Sistemas.`
+      : '';
+    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal + avisoCopia + avisoExistentes + avisoSst)}`);
 
   } catch (error) {
     if (connection) await connection.rollback();
@@ -1919,7 +1960,7 @@ function urlDocPortal(data) {
   return `https://storage.googleapis.com/${data && data.carpeta ? BUCKET_EMPLEADOS : BUCKET_ASPIRANTES}/${ruta}?v=${Date.now()}`;
 }
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null, docsPendientesVinculacion = false) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false, ETIQUETA_HV_PROPIA = 'Mi propia versión de la Hoja de Vida', hvPropiaPath = null, docsPendientesVinculacion = false, docsSst = []) {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -2015,6 +2056,44 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 
   // Bloque de la Hoja de Vida: la que genera el sistema (ver / editar) y, opcional,
   // la versión propia del aspirante (Config_Doc_Trabajador Id 30, solo informativa).
+  // Documentos SST habilitados por Selección, Archivo o SST (services/docSstPortal.js): cada uno abre su página de
+  // firma de SST. Estilos en línea: seleccion.css es generado y no tiene todas las clases.
+  const renderBloqueDocsSst = () => {
+    if (!docsSst.length) return '';
+    const pendientesSst = docsSst.filter(d => !d.firmado).length;
+    const escSst = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return `
+      <div style="background:#fff;border:1px solid #f1f5f9;border-radius:24px;box-shadow:0 20px 25px -5px rgba(0,0,0,.08);padding:24px;margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:14px;background:#ecfdf5;color:#047857;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🦺</div>
+            <div>
+              <h3 style="margin:0;font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;font-style:italic;letter-spacing:-.01em">Documentos SST</h3>
+              <p style="margin:2px 0 0;font-size:12px;color:#94a3b8;font-weight:500">Seguridad y Salud en el Trabajo: léelos o respóndelos y fírmalos</p>
+            </div>
+          </div>
+          <span style="font-size:12px;font-weight:900;padding:6px 14px;border-radius:12px;border:1px solid ${pendientesSst ? '#fed7aa;background:#fff7ed;color:#c2410c' : '#a7f3d0;background:#ecfdf5;color:#047857'}">${docsSst.length - pendientesSst} de ${docsSst.length} firmados</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+          ${docsSst.map(d => d.firmado ? `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid #d1fae5;background:#f0fdf4">
+              <span style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:#334155"><span style="font-size:18px">${d.icono}</span>${escSst(d.nombre)}</span>
+              <span style="font-size:10px;font-weight:900;color:#047857;background:#dcfce7;padding:4px 10px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0">✓ Firmado</span>
+            </div>` : `
+            <a href="${escSst(d.enlace)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid #fed7aa;background:#fff7ed;text-decoration:none">
+              <span style="display:flex;align-items:center;gap:10px;min-width:0">
+                <span style="font-size:18px">${d.icono}</span>
+                <span style="min-width:0">
+                  <span style="display:block;font-size:14px;font-weight:700;color:#334155">${escSst(d.nombre)}</span>
+                  <span style="display:block;font-size:11px;font-weight:600;color:#c2410c">${escSst(d.accion)}</span>
+                </span>
+              </span>
+              <span style="font-size:11px;font-weight:900;color:#fff;background:#ea580c;padding:6px 12px;border-radius:10px;text-transform:uppercase;flex-shrink:0">Abrir →</span>
+            </a>`).join('')}
+        </div>
+      </div>`;
+  };
+
   const renderBloqueHojaVida = () => {
     // Solo cuenta como subida si el registro de la HV tiene la marca "Versión del aspirante"
     const propia = hvPropiaPath ? { path: hvPropiaPath } : null;
@@ -2290,6 +2369,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         </p>
       </div>
       `}
+
+      ${renderBloqueDocsSst()}
 
       ${renderBloqueHojaVida()}
     </div>
@@ -3377,6 +3458,10 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
 
               <!-- Acciones Rápidas -->
               <div class="shrink-0 flex items-center gap-1.5">
+                <button type="button" onclick="abrirDocSst()" id="btnDocSst" style="display:none;align-items:center;gap:4px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer"
+                        title="Habilitar Prueba de Consumo, ARO, EVIN e INGE para que el aspirante los firme desde su portal">
+                  <span>🦺</span> Habilitar Doc. SST
+                </button>
                 <button type="button" onclick="copiarVinculoPortal()" id="btnCopiarVinculo"
                         class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
                         title="Copiar enlace del portal del aspirante">
@@ -3483,12 +3568,40 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
         </form>
       </div>
 
+      <!-- 4. Documentos SST habilitados desde aquí o desde Cloud-Docs (public/js/doc-sst-habilitar.js) -->
+      <div id="cardDocSst" style="display:none;margin-top:24px;background:#fff;border:1px solid #e2e8f0;border-radius:24px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+        <div style="padding:16px;background:#059669;color:#fff;font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>4. Documentos SST</span>
+          <span id="docSstConteo" style="font-size:10px;background:#047857;color:#d1fae5;font-weight:800;padding:2px 10px;border-radius:999px"></span>
+        </div>
+        <div id="docSstLista" style="padding:8px"></div>
+      </div>
+
       <div class="mt-12 text-center pb-20">
         <button onclick="prepararEnvio('${asp.IdRequisicion}')" class="bg-slate-800 text-white px-16 py-6 rounded-3xl font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all">
           FINALIZAR Y ENVIAR A SOCIODEMOGRÁFICA
         </button>
       </div>
     </div>
+
+    <script src="/js/doc-sst-habilitar.js?v=20261122b"></script>
+    <script>
+      // Habilitar Doc. SST: el botón solo sale a los roles del parámetro sst / General
+      const ID_ASPIRANTE_SST = ${JSON.stringify(uuid)};
+      const USUARIO_SST = ${JSON.stringify(usuario || '')};
+      function pintarDocSst(estado) {
+        const habilitados = (estado.opciones || []).filter(o => o.estado);
+        document.getElementById('btnDocSst').style.display = estado.puede ? 'inline-flex' : 'none';
+        document.getElementById('cardDocSst').style.display = (estado.puede || habilitados.length) ? '' : 'none';
+        document.getElementById('docSstConteo').textContent = habilitados.length
+          ? habilitados.filter(o => o.estado === 'firmado').length + ' / ' + habilitados.length + ' firmados' : 'Sin habilitar';
+        document.getElementById('docSstLista').innerHTML = DocSst.htmlLista(estado);
+      }
+      function abrirDocSst() {
+        DocSst.abrir({ idAspirante: ID_ASPIRANTE_SST, usuario: USUARIO_SST, onCambio: pintarDocSst });
+      }
+      DocSst.consultar(ID_ASPIRANTE_SST, USUARIO_SST).then(pintarDocSst).catch(err => console.warn('[Doc. SST]', err.message));
+    </script>
 
     <div id="modalContratacion" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">

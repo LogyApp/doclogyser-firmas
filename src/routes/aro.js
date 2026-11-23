@@ -14,6 +14,7 @@ const { subirFirma, obtenerUrlFirmaReciente, descargarFirmaBase64PorUrl } = requ
 const { notificarFirmaARO } = require('../services/email');
 const { crearNotificacionDocInicialSST } = require('../services/notificacionesService');
 const aro = require('../services/aro');
+const { htmlVolverPortal } = require('../services/docSstPortal');
 
 const router = express.Router();
 const HTML_FIRMA = path.join(__dirname, '../views/aro/firmar.html');
@@ -72,7 +73,8 @@ router.get('/firmar', async (req, res) => {
       firmaBase64,
     }).replace(/<\/script>/gi, '<\\/script>');
     const documento = await aro.htmlDocumento(a);
-    res.send(fs.readFileSync(HTML_FIRMA, 'utf8').replace('__CONFIG_FIRMA__', () => config).replace('__DOCUMENTO__', () => documento));
+    res.send(fs.readFileSync(HTML_FIRMA, 'utf8').replace('__CONFIG_FIRMA__', () => config).replace('__DOCUMENTO__', () => documento)
+      .replace('</body>', () => htmlVolverPortal(req, a) + '</body>'));
   } catch (err) {
     console.error('[aro] GET /firmar:', err);
     res.status(500).send(paginaMensaje('Error', 'No se pudo cargar el documento. Intente de nuevo en unos minutos.'));

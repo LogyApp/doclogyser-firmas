@@ -23,6 +23,7 @@ const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const { LOGO_BASE64 } = require('../services/assets');
 const { computarAccesoSst } = require('../services/accesoSst');
 const { rolPuedeSst, permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
+const { registroDiferido, htmlVolverPortal } = require('../services/docSstPortal');
 
 const router = express.Router();
 
@@ -119,7 +120,7 @@ async function regenerarPdfPrueba(c) {
     );
     reemplazado = upd.affectedRows;
   }
-  if (!reemplazado) await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC');
+  if (!reemplazado) await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC', c.id_aspirante);
   return urlDoc;
 }
 
@@ -127,8 +128,10 @@ function hoyBogotaStr() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
 }
 
-async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, tipoDocumento, prefijo) {
+async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, tipoDocumento, prefijo, idAspirante) {
   try {
+    // Aspirante aún sin vincular (Doc. SST desde Aspirantes): pasa a la carpeta al vincularlo (docSstPortal.alVincular)
+    if (await registroDiferido(idAspirante)) return;
     const [vinRows] = await pool.execute(
       `SELECT Regional, \`Operación\`, Identificación, Estado, \`Fecha de Ingreso\` 
        FROM \`Maestro_Vinculación\` 
@@ -278,7 +281,7 @@ router.get('/firmar', async (req, res) => {
     }).replace(/<\/script>/gi, '<\\/script>');
 
     const html = fs.readFileSync(HTML_SIGN_PATH, 'utf8');
-    res.send(html.replace('__CONFIG_FIRMA__', config));
+    res.send(html.replace('__CONFIG_FIRMA__', config).replace('</body>', () => htmlVolverPortal(req, consent) + '</body>'));
   } catch (err) {
     console.error('[pruebaconsumo] Error serving signing page:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
@@ -387,7 +390,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
         return res.json({ regionales: {}, operaciones: {} });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      baseConds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      baseConds.push(`(COALESCE(v.Operación, a.operacion) IN (${ph}) OR a.usuario = ?)`);
       baseParams.push(...acceso.operacionesFiltro, usuario);
     }
 
@@ -420,11 +423,11 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const combWhere = combConds.length ? `WHERE ${combConds.join(' AND ')}` : '';
 
     const [combRows] = await pool.execute(
-      `SELECT v.Regional, v.Operación AS operacion, COUNT(*) AS total
+      `SELECT COALESCE(v.Regional, a.regional) AS Regional, COALESCE(v.Operación, a.operacion) AS operacion, COUNT(*) AS total
        FROM Dynamic_pruebaconsumo a
        LEFT JOIN \`Maestro_Vinculación\` v ON a.identificacion = v.Identificación AND v.Estado = 'Activo'
        ${combWhere}
-       GROUP BY v.Regional, v.Operación`,
+       GROUP BY COALESCE(v.Regional, a.regional), COALESCE(v.Operación, a.operacion)`,
       combParams
     );
 
@@ -472,7 +475,7 @@ router.get('/api/pruebas', async (req, res) => {
         return res.json([]);
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      conds.push(`(COALESCE(v.Operación, a.operacion) IN (${ph}) OR a.usuario = ?)`);
       params.push(...acceso.operacionesFiltro, usuario);
     }
 
@@ -489,11 +492,11 @@ router.get('/api/pruebas', async (req, res) => {
       params.push(fechaHasta);
     }
     if (regional) {
-      conds.push('v.Regional = ?');
+      conds.push('COALESCE(v.Regional, a.regional) = ?');
       params.push(regional);
     }
     if (operacion) {
-      conds.push('v.Operación = ?');
+      conds.push('COALESCE(v.Operación, a.operacion) = ?');
       params.push(operacion);
     }
 
@@ -511,8 +514,8 @@ router.get('/api/pruebas', async (req, res) => {
         a.usuario,
         a.fecha_registro,
         a.token_firma,
-        v.Regional AS regional,
-        v.\`Operación\` AS operacion,
+        COALESCE(v.Regional, a.regional) AS regional,
+        COALESCE(v.\`Operación\`, a.operacion) AS operacion,
         u.Nombre AS nombre_creador,
         seg.Celular AS celular_trabajador
        FROM Dynamic_pruebaconsumo a
@@ -548,7 +551,7 @@ router.get('/api/prueba/:id', async (req, res) => {
 
     const [[prueba]] = await pool.execute(
       `SELECT a.*, u.Nombre AS nombre_creador, seg.Celular AS celular_trabajador,
-              v.Regional AS regional, v.\`Operación\` AS operacion
+              COALESCE(v.Regional, a.regional) AS regional, COALESCE(v.\`Operación\`, a.operacion) AS operacion
        FROM Dynamic_pruebaconsumo a
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        LEFT JOIN Maestro_Segmentación seg ON a.identificacion = seg.Identificación
@@ -890,7 +893,7 @@ router.post('/api/firmar-asistente', async (req, res) => {
     );
 
     // Registrar en Maestro_docTrabajador
-    await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC');
+    await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC', c.id_aspirante);
 
     // Crear notificación interna en Maestro_notificaciones para analistas y líderes SST
     crearNotificacionPruebaConsumoSST(pool, {
@@ -938,7 +941,7 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
     );
 
     // Registrar en Maestro_docTrabajador
-    await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC');
+    await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC', c.id_aspirante);
 
     res.json({ ok: true, urlDoc });
   } catch (err) {

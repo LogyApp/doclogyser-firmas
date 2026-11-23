@@ -17,6 +17,7 @@ const { subirFirma, obtenerUrlFirmaReciente, descargarFirmaBase64PorUrl } = requ
 const { notificarFirmaINGE } = require('../services/email');
 const { crearNotificacionDocInicialSST } = require('../services/notificacionesService');
 const inge = require('../services/inge');
+const { htmlVolverPortal } = require('../services/docSstPortal');
 
 const router = express.Router();
 const HTML_FIRMA = path.join(__dirname, '../views/inge/firmar.html');
@@ -78,7 +79,7 @@ router.get('/firmar', async (req, res) => {
       firmaBase64,
       formulario: inge.formularioPublico(),
     }).replace(/</g, '\\u003c');
-    res.send(fs.readFileSync(HTML_FIRMA, 'utf8').replace('__CONFIG_INGE__', () => config));
+    res.send(fs.readFileSync(HTML_FIRMA, 'utf8').replace('__CONFIG_INGE__', () => config).replace('</body>', () => htmlVolverPortal(req, e) + '</body>'));
   } catch (err) {
     console.error('[inge] GET /firmar:', err);
     res.status(500).send(paginaMensaje('Error', 'No se pudo cargar el comprobante. Intente de nuevo en unos minutos.'));

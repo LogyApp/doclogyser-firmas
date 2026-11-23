@@ -263,6 +263,8 @@ const OBS_DOC = `INGE ${CODIGO_FORMATO}`;
 
 // Documento 32 (INGE) en Maestro_docTrabajador: solo queda el último generado aquí (los cargados a mano no se tocan)
 async function registrarDocumentoTrabajador(e, urlDoc) {
+  // Aspirante aún sin vincular (Doc. SST desde Aspirantes): pasa a la carpeta al vincularlo (docSstPortal.alVincular)
+  if (await require('./docSstPortal').registroDiferido(e.id_aspirante)) return;
   await pool.execute(
     'DELETE FROM Maestro_docTrabajador WHERE `Identificación` = ? AND Prefijo = ? AND Observaciones LIKE ?',
     [e.identificacion, PREFIJO_DOC, `${OBS_DOC}%`]

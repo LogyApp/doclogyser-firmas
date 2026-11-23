@@ -1657,6 +1657,19 @@
           </div>
         </div>
 
+        <!-- Documentos SST habilitados para el portal (public/js/doc-sst-habilitar.js) -->
+        <div id="firmas-sec-sst" style="display: none; margin-bottom: 18px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+            <label style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: #047857; letter-spacing: 0.05em;">
+              🦺 Documentos SST · <span id="firmas-sst-conteo">—</span>
+            </label>
+            <button type="button" id="btn-habilitar-doc-sst" onclick="abrirDocSstCloudDocs()" style="display: none; background: #059669; color: #ffffff; font-weight: 700; font-size: 0.78rem; padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer;">
+              Habilitar Doc. SST
+            </button>
+          </div>
+          <div id="firmas-sst-lista" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 4px;"></div>
+        </div>
+
         <!-- Lista de documentos de firma -->
         <div>
           <label style="display: block; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: #475569; letter-spacing: 0.05em; margin-bottom: 8px;">
@@ -2059,6 +2072,7 @@
         }
 
         activeFirmasData = data;
+        cargarDocSstCloudDocs();
 
         document.getElementById('firmas-trabajador-nombre').textContent = data.nombreCompleto;
         document.getElementById('firmas-trabajador-detalle').textContent = `C.C. ${data.identificacion} · Operación: ${data.operacion || 'Sin asignar'} · Cargo: ${data.cargo || 'Colaborador'}`;
@@ -2113,6 +2127,28 @@
         alert('Error de conexión al generar el portal de firmas: ' + err.message);
         closeModal('modal-firmas-trabajador');
       }
+    }
+
+    // Documentos SST (Prueba de Consumo, ARO, EVIN, INGE) que el trabajador firma desde el mismo portal
+    function pintarDocSstCloudDocs(estado) {
+      const habilitados = (estado.opciones || []).filter(o => o.estado);
+      document.getElementById('firmas-sec-sst').style.display = (estado.puede || habilitados.length) ? '' : 'none';
+      document.getElementById('btn-habilitar-doc-sst').style.display = estado.puede ? '' : 'none';
+      document.getElementById('firmas-sst-conteo').textContent = habilitados.length
+        ? `${habilitados.filter(o => o.estado === 'firmado').length} / ${habilitados.length} firmados` : 'sin habilitar';
+      document.getElementById('firmas-sst-lista').innerHTML = DocSst.htmlLista(estado);
+    }
+
+    function cargarDocSstCloudDocs() {
+      document.getElementById('firmas-sec-sst').style.display = 'none';
+      if (!activeFirmasData || !activeFirmasData.id_aspirante || !window.DocSst) return;
+      DocSst.consultar(activeFirmasData.id_aspirante, CONFIG.usuarioId).then(pintarDocSstCloudDocs)
+        .catch(err => console.warn('[Doc. SST]', err.message));
+    }
+
+    function abrirDocSstCloudDocs() {
+      if (!activeFirmasData || !activeFirmasData.id_aspirante) return;
+      DocSst.abrir({ idAspirante: activeFirmasData.id_aspirante, usuario: CONFIG.usuarioId, onCambio: pintarDocSstCloudDocs });
     }
 
     function copiarEnlaceFirmasModal() {
@@ -5288,5 +5324,6 @@ function cambiarPaginaTodo(delta) {
   <script src="/js/app-launcher-profile.js?v=20261120e" defer></script>
   <script src="/js/ticket-boton.js?v=20261121b" defer></script>
   <script src="/js/modal-back.js" defer></script>
+  <script src="/js/doc-sst-habilitar.js?v=20261122b" defer></script>
 </body>
 </html>

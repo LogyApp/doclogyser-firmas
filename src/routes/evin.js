@@ -17,6 +17,7 @@ const { subirFirma, obtenerUrlFirmaReciente, descargarFirmaBase64PorUrl } = requ
 const { notificarFirmaEVIN } = require('../services/email');
 const { crearNotificacionDocInicialSST } = require('../services/notificacionesService');
 const evin = require('../services/evin');
+const { htmlVolverPortal } = require('../services/docSstPortal');
 
 const router = express.Router();
 const HTML_FIRMA = path.join(__dirname, '../views/evin/firmar.html');
@@ -79,7 +80,7 @@ router.get('/firmar', async (req, res) => {
       firmaBase64,
       formulario: evin.formularioPublico(),
     }).replace(/</g, '\\u003c');
-    res.send(fs.readFileSync(HTML_FIRMA, 'utf8').replace('__CONFIG_EVIN__', () => config));
+    res.send(fs.readFileSync(HTML_FIRMA, 'utf8').replace('__CONFIG_EVIN__', () => config).replace('</body>', () => htmlVolverPortal(req, e) + '</body>'));
   } catch (err) {
     console.error('[evin] GET /firmar:', err);
     res.status(500).send(paginaMensaje('Error', 'No se pudo cargar la evaluación. Intente de nuevo en unos minutos.'));
