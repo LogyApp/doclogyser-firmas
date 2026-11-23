@@ -9651,10 +9651,12 @@
             </div>
             <input type="file" id="ces_corr_archivo" accept="application/pdf,image/*">
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button type="button" class="ba bver" style="padding:6px 14px; font-size:.8rem;" onclick="agregarDocumentoCesantia('${sol.Id}', this)">Cargar documento</button>
-              <button type="button" class="btn-guardar-ficha" style="background:#0284c7;" onclick="reenviarCesantia('${sol.Id}')">↩ Reenviar a revisión</button>
+              <button type="button" class="btn-guardar-ficha" style="background:#ea580c;" onclick="agregarDocumentoCesantia('${sol.Id}', this)">⬆ Cargar documento</button>
+              ${CES_CORRECCION_CAMBIOS.has(sol.Id) ? `<button type="button" class="btn-guardar-ficha" style="background:#0284c7;" onclick="reenviarCesantia('${sol.Id}')">↩ Reenviar a revisión</button>` : ''}
             </div>
-            <div style="font-size:.74rem; color:var(--text-muted);">Quite los documentos con novedad, cargue los correctos y al terminar presione "Reenviar a revisión": la solicitud vuelve a Pendiente.</div>
+            <div style="font-size:.74rem; color:var(--text-muted);">${CES_CORRECCION_CAMBIOS.has(sol.Id)
+              ? 'Verifique que los documentos correctos aparezcan en la lista de arriba. Si falta alguno, cárguelo; al terminar presione "Reenviar a revisión": la solicitud vuelve a Pendiente.'
+              : 'Quite los documentos con novedad, elija cada archivo correcto y presione "Cargar documento". Cuando cargue o quite un documento se habilita "Reenviar a revisión".'}</div>
           </div>`;
       }
 
@@ -9781,6 +9783,9 @@
   }
 
   // ── Corrección de documentos (solicitud Devuelta) ──────────────────────────
+  // Solicitudes en las que ya se cargó o quitó un documento: solo ahí se muestra "Reenviar a revisión"
+  const CES_CORRECCION_CAMBIOS = new Set();
+
   async function quitarDocumentoCesantia(idSol, idDoc, btn) {
     if (!confirm('¿Quitar este documento de la solicitud? Se borra el archivo y deberá cargar el correcto.')) return;
     btn.disabled = true;
@@ -9788,6 +9793,7 @@
       const res = await fetch(`/nomina/api/cesantias/${encodeURIComponent(idSol)}/documentos/${encodeURIComponent(idDoc)}?usuario=${encodeURIComponent(usuario)}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo quitar el documento.');
+      CES_CORRECCION_CAMBIOS.add(idSol);
       abrirModalDetalleCesantia(idSol);
     } catch (err) { alert('Error: ' + err.message); btn.disabled = false; }
   }
@@ -9811,11 +9817,18 @@
       const res = await fetch(`/nomina/api/cesantias/${encodeURIComponent(idSol)}/documentos`, { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo cargar el documento.');
+      CES_CORRECCION_CAMBIOS.add(idSol);
       abrirModalDetalleCesantia(idSol);
     } catch (err) { alert('Error: ' + err.message); btn.disabled = false; btn.textContent = texto; }
   }
 
   async function reenviarCesantia(idSol) {
+    // Un archivo elegido pero sin "Cargar documento" no se guarda: se perdería al reenviar
+    const archivoSinCargar = document.getElementById('ces_corr_archivo')?.files[0];
+    if (archivoSinCargar) {
+      alert(`Seleccionó el archivo "${archivoSinCargar.name}" pero aún no lo ha cargado.\n\nPresione primero "Cargar documento" y verifique que aparezca en la lista; luego presione "Reenviar a revisión".`);
+      return;
+    }
     const nota = prompt('¿Qué se corrigió? (queda en las observaciones de la solicitud)', '');
     if (nota === null) return;
     try {
