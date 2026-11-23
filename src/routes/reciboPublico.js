@@ -56,7 +56,7 @@ async function getImpuestosRecibo() {
     const reteIcaMap = {};
     rows.filter(r => r.Concepto === 'ReteICA' && r.Operación).forEach(r => {
       const key = (r.Operación || '').trim().toLowerCase();
-      reteIcaMap[key] = Number(r.Porcentaje) || 0.007;
+      reteIcaMap[key] = Number(r.Porcentaje) || 0;
     });
     cachedImpuestos = { iva, reteFuente, reteIva, reteIcaMap };
     lastImpuestosFetch = now;
@@ -165,7 +165,7 @@ async function cargarDatosRecibo(idRecibo) {
   const retefuente = String(r.Retefuente || '').toUpperCase() === 'V' ? Math.round(subtotal * (impuestos.reteFuente || 0.04)) : 0;
   const reteiva = String(r.ReteIVA || '').toUpperCase() === 'V' ? Math.round(iva * (impuestos.reteIva || 0.15)) : 0;
   const opKey = String(r['Operación'] || '').trim().toLowerCase();
-  const icaRate = impuestos.reteIcaMap[opKey] || 0.007;
+  const icaRate = impuestos.reteIcaMap[opKey] || 0;
   const reteica = String(r.ReteICA || '').toUpperCase() === 'V' ? Math.round(subtotal * icaRate) : 0;
   const total = subtotal + iva - retefuente - reteiva - reteica;
 

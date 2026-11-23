@@ -21,6 +21,7 @@ const { buscarTarifa } = require('../services/tarifasServicio');
 const { avisarFotoTransferenciaPendiente } = require('../services/avisoFotoTransferencia');
 const { prepararCalificacionTicket } = require('../services/calificacionTickets');
 const columnasServicios = require('../services/columnasServicios');
+const columnasRecibos = require('../services/columnasRecibos');
 const vistaTablaUsuario = require('../services/vistaTablaUsuario');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
@@ -2359,48 +2360,59 @@ function sqlFiltroBodega(bodega, operacion, opsFiltroBodega, params) {
   return 's.Etapa = ?';
 }
 
-// ── Vista personal de la tabla de Servicios (Maestro_Preferencias_Tabla) ─────
-// Todos los que entran a Servicios pueden armar la suya; cada uno solo ve y cambia la propia.
-async function usuarioVistaServicios(req, res) {
+// ── Vista personal de las tablas de Servicios y Recibos (Maestro_Preferencias_Tabla) ─────
+// Todos los que entran a la pestaña pueden armar la suya; cada uno solo ve y cambia la propia.
+// pestanas: con acceso a cualquiera de ellas se puede usar la vista (igual que /api/servicios y /api/recibos).
+const VISTAS_TABLA = {
+  servicios: { columnas: columnasServicios, pestanas: ['Servicios'] },
+  recibos: { columnas: columnasRecibos, pestanas: ['Recibos', 'Servicios'] }
+};
+
+async function usuarioVistaTabla(req, res) {
   const { usuario } = req.query;
+  const def = VISTAS_TABLA[req.params.vista];
+  if (!def) { res.status(404).json({ error: 'Vista no existe' }); return null; }
   if (!usuario) { res.status(400).json({ error: 'usuario requerido' }); return null; }
-  if (!(await computarAccesoFacturacion(usuario, 'Servicios'))) { res.status(403).json({ error: 'No autorizado' }); return null; }
-  return usuario;
+  for (const p of def.pestanas) {
+    if (await computarAccesoFacturacion(usuario, p)) return { usuario, def };
+  }
+  res.status(403).json({ error: 'No autorizado' });
+  return null;
 }
 
-router.get('/api/vista/servicios', async (req, res) => {
+router.get('/api/vista/:vista', async (req, res) => {
   try {
-    const usuario = await usuarioVistaServicios(req, res);
-    if (!usuario) return;
-    const columnas = await vistaTablaUsuario.obtener(usuario, columnasServicios.VISTA, columnasServicios.CATALOGO);
-    res.json({ catalogo: columnasServicios.catalogoPublico(), columnas });
+    const v = await usuarioVistaTabla(req, res);
+    if (!v) return;
+    const columnas = await vistaTablaUsuario.obtener(v.usuario, v.def.columnas.VISTA, v.def.columnas.CATALOGO);
+    res.json({ catalogo: v.def.columnas.catalogoPublico(), columnas });
   } catch (err) {
-    console.error('[GET /api/vista/servicios]', err);
+    console.error('[GET /api/vista]', err);
     res.status(500).json({ error: 'No se pudo cargar la vista' });
   }
 });
 
-router.put('/api/vista/servicios', async (req, res) => {
+router.put('/api/vista/:vista', async (req, res) => {
   try {
-    const usuario = await usuarioVistaServicios(req, res);
-    if (!usuario) return;
-    const columnas = await vistaTablaUsuario.guardar(usuario, columnasServicios.VISTA, req.body && req.body.columnas, columnasServicios.CATALOGO);
+    const v = await usuarioVistaTabla(req, res);
+    if (!v) return;
+    const columnas = await vistaTablaUsuario.guardar(v.usuario, v.def.columnas.VISTA, req.body && req.body.columnas, v.def.columnas.CATALOGO);
     res.json({ ok: true, columnas });
   } catch (err) {
     if (/al menos una columna/.test(err.message)) return res.status(400).json({ error: err.message });
-    console.error('[PUT /api/vista/servicios]', err);
+    console.error('[PUT /api/vista]', err);
     res.status(500).json({ error: 'No se pudo guardar la vista' });
   }
 });
 
-router.delete('/api/vista/servicios', async (req, res) => {
+router.delete('/api/vista/:vista', async (req, res) => {
   try {
-    const usuario = await usuarioVistaServicios(req, res);
-    if (!usuario) return;
-    await vistaTablaUsuario.restaurar(usuario, columnasServicios.VISTA);
+    const v = await usuarioVistaTabla(req, res);
+    if (!v) return;
+    await vistaTablaUsuario.restaurar(v.usuario, v.def.columnas.VISTA);
     res.json({ ok: true });
   } catch (err) {
-    console.error('[DELETE /api/vista/servicios]', err);
+    console.error('[DELETE /api/vista]', err);
     res.status(500).json({ error: 'No se pudo restaurar la vista' });
   }
 });
@@ -4748,21 +4760,8 @@ router.get('/api/recibos', async (req, res) => {
 
     const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-    const sortMap = {
-      consecutivo_recibo: 'dr.`Consecutivo Recibo`',
-      operacion: 'dr.`Operación`',
-      regional: 'mo.REGIONAL',
-      modalidad: 'dr.Modalidad',
-      cliente_credito: 'dr.`Cliente a Facturar`',
-      nit: 'dr.Nit',
-      nombres: 'mc.`Razón social`',
-      idrecibo: 'dr.IdRecibo',
-      usuario: 'dr.Usuario',
-      fecha_registro: 'dr.Fecha',
-      quincena: 'mf.Quincena'
-    };
-
-    const orderCol = sortMap[sortCol] || 'dr.Fecha';
+    // Ordenamiento según la columna del encabezado (columnasRecibos.js)
+    const orderCol = columnasRecibos.ordenSql(sortCol, await getImpuestos(), v => pool.escape(v)) || 'dr.Fecha';
     const orderDir = (String(sortDir || '').toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 1000);
     const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
@@ -4812,6 +4811,7 @@ router.get('/api/recibos', async (req, res) => {
         ds.IdRecibo,
         MIN(ds.\`Hora Inicio\`) as fecha_servicio,
         MAX(ds.\`Hora Inicio\`) as max_hora,
+        COUNT(*) as n_servicios,
         SUM(COALESCE(ds.Cantidad, 0) * COALESCE(ds.\`Valor Unitario\`, 0)) as subtotal,
         MAX(ds.Validacion) as max_validacion,
         SUBSTRING_INDEX(GROUP_CONCAT(ds.PL1 ORDER BY ds.\`Hora Inicio\` DESC, ds.IdServicio DESC SEPARATOR '|||'), '|||', 1) as PL1_latest,
@@ -4855,7 +4855,7 @@ router.get('/api/recibos', async (req, res) => {
       const retefuente = dr.retefuente_flag === 'V' ? Math.round(subtotal * (impuestos.reteFuente || 0.04)) : 0;
       const reteiva = dr.reteiva_flag === 'V' ? Math.round(iva * (impuestos.reteIva || 0.15)) : 0;
       const opKey = String(dr.operacion || '').trim().toLowerCase();
-      const icaRate = impuestos.reteIcaMap[opKey] || 0.007;
+      const icaRate = impuestos.reteIcaMap[opKey] || 0;
       const reteica = dr.reteica_flag === 'V' ? Math.round(subtotal * icaRate) : 0;
       const total = subtotal + iva - retefuente - reteiva - reteica;
 
@@ -4874,6 +4874,7 @@ router.get('/api/recibos', async (req, res) => {
         operacion: dr.operacion || '',
         idrecibo: dr.IdRecibo,
         consecutivo_recibo: dr.consecutivo_recibo || '',
+        n_servicios: Number(agg.n_servicios || 0),
         modalidad: dr.modalidad || '',
         area: areaMap[agg.area_latest] || agg.area_latest || '',
         transportadora: transpMap[agg.transportadora_latest] || agg.transportadora_latest || '',
@@ -5005,7 +5006,7 @@ router.get('/api/recibos/metricas', async (req, res) => {
     for (const [op, p] of Object.entries(impuestos.reteIcaMap || {})) {
       reteIcaCaseSql += `WHEN LOWER(TRIM(dr.\`Operación\`)) = ${pool.escape(op)} THEN ${Number(p)} `;
     }
-    reteIcaCaseSql += 'ELSE 0.007 END';
+    reteIcaCaseSql += 'ELSE 0 END';
 
     const subtotalExpr = '(COALESCE(ds.Cantidad, 0) * COALESCE(ds.`Valor Unitario`, 0))';
     const ivaExpr = `(${subtotalExpr} * ${ivaTax})`;
