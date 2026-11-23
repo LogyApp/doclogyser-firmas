@@ -3389,103 +3389,97 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
           ` : ''}
         </div>
 
-        <!-- Fila 2: Gestión de Requisición + Contacto + Acciones en Cuadrícula Compacta -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 pt-3 items-end">
-          <!-- Columna Requisición (lg:col-span-5) -->
-          <div class="lg:col-span-5 flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                <span>📋</span> Requisición (En Proceso)
-              </label>
+        <!-- Fila 2: tres bloques (Requisición · Datos de contacto · Portal del aspirante). Estilos en línea donde
+             seleccion.css (generado) no trae la clase. -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 pt-3">
+          <!-- Bloque 1: Requisición -->
+          <div class="bg-slate-50 border-slate-200" style="border-width:1px;border-style:solid;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span class="text-[10px] font-black text-slate-600 uppercase tracking-wider">📋 Requisición</span>
               ${asp.IdRequisicion ? `
-                <span class="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                  ✓ Vinculada
-                </span>
+                <span class="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ Vinculada</span>
               ` : `
-                <span class="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                  ⚠️ Sin Vincular
-                </span>
+                <span class="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md uppercase tracking-wider">⚠️ Sin vincular</span>
               `}
             </div>
-            <div class="flex items-center gap-1.5">
-              <select id="selectRequisicionAspirante" 
-                      class="flex-1 min-w-0 px-2.5 py-1.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none transition-all truncate">
-                <option value="">-- Seleccionar Requisición (EN PROCESO) --</option>
-                ${requisiciones.map(renderOpcionReq).join('')}
-              </select>
-              <button type="button" onclick="vincularRequisicion()" id="btnVincularReq"
-                      class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1"
-                      title="Guardar / Vincular Requisición">
-                <span>🔗</span> Vincular
-              </button>
+            <select id="selectRequisicionAspirante"
+                    class="w-full min-w-0 px-2.5 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg focus:border-blue-500 outline-none transition-all truncate"
+                    title="Requisiciones EN PROCESO">
+              <option value="">-- Seleccionar Requisición (EN PROCESO) --</option>
+              ${requisiciones.map(renderOpcionReq).join('')}
+            </select>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px">
               ${asp.IdRequisicion ? `
-                <button type="button" onclick="desvincularRequisicion()" 
-                        class="shrink-0 bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 text-xs font-bold px-2 py-1.5 rounded-lg transition-all"
+                <button type="button" onclick="desvincularRequisicion()"
+                        class="bg-white hover:bg-red-50 text-slate-500 hover:text-red-600 border border-slate-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all"
                         title="Desvincular Requisición">
-                  ✕
+                  ✕ Desvincular
                 </button>
               ` : ''}
+              <button type="button" onclick="vincularRequisicion()" id="btnVincularReq"
+                      class="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                      title="Guardar / Vincular Requisición">
+                <span>🔗</span> ${asp.IdRequisicion ? 'Cambiar' : 'Vincular'}
+              </button>
             </div>
           </div>
 
-          <!-- Columna Contacto y Acciones del Aspirante (lg:col-span-7) -->
-          <div class="lg:col-span-7 flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                <span>📱</span> Contacto y Enlaces del Portal
-              </label>
+          <!-- Bloque 2: Datos de contacto del aspirante -->
+          <div class="bg-slate-50 border-slate-200" style="border-width:1px;border-style:solid;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <span class="text-[10px] font-black text-slate-600 uppercase tracking-wider">👤 Datos de contacto</span>
+            <div style="position:relative">
+              <input type="text" id="inputTelefono" value="${asp.telefono || ''}" placeholder="Celular / WhatsApp" style="padding-left:28px"
+                     class="w-full pr-2 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg focus:border-blue-500 outline-none transition-all"
+                     title="Celular o WhatsApp del aspirante">
+              <span class="text-slate-400 text-xs" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none">📱</span>
             </div>
-            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div class="flex-1 flex items-center gap-1.5">
-                <div class="relative w-32 shrink-0">
-                  <input type="text" id="inputTelefono" value="${asp.telefono || ''}" placeholder="Tel / WhatsApp" 
-                         class="w-full pl-6 pr-2 py-1.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none transition-all"
-                         title="Teléfono o WhatsApp del aspirante">
-                  <span class="absolute left-1.5 top-1.5 text-slate-400 text-xs">📱</span>
-                </div>
-                <div class="relative flex-1 min-w-0">
-                  <input type="email" id="inputCorreo" value="${asp.correoElectronico || ''}" placeholder="correo@ejemplo.com" 
-                         class="w-full pl-6 pr-2 py-1.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none transition-all truncate"
-                         title="Correo electrónico del aspirante">
-                  <span class="absolute left-1.5 top-1.5 text-slate-400 text-xs">✉️</span>
-                </div>
-                <button type="button" onclick="guardarContacto()" id="btnGuardarContacto"
-                        class="shrink-0 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1"
-                        title="Guardar Teléfono y Correo">
-                  <span>💾</span> Guardar
-                </button>
-              </div>
+            <div style="position:relative">
+              <input type="email" id="inputCorreo" value="${asp.correoElectronico || ''}" placeholder="correo@ejemplo.com" style="padding-left:28px"
+                     class="w-full pr-2 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg focus:border-blue-500 outline-none transition-all truncate"
+                     title="Correo electrónico del aspirante">
+              <span class="text-slate-400 text-xs" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none">✉️</span>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button type="button" onclick="guardarContacto()" id="btnGuardarContacto"
+                      class="bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                      title="Guardar celular y correo">
+                <span>💾</span> Guardar
+              </button>
+            </div>
+          </div>
 
-              <!-- Acciones Rápidas -->
-              <div class="shrink-0 flex items-center gap-1.5">
-                <button type="button" onclick="abrirDocSst()" id="btnDocSst" style="display:none;align-items:center;gap:4px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer"
-                        title="Habilitar Prueba de Consumo, ARO, EVIN e INGE para que el aspirante los firme desde su portal">
-                  <span>🦺</span> Habilitar Doc. SST
-                </button>
-                <button type="button" onclick="copiarVinculoPortal()" id="btnCopiarVinculo"
-                        class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
-                        title="Copiar enlace del portal del aspirante">
-                  <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                  <span id="txtCopiar">Copiar</span>
-                </button>
-
-                <button type="button" onclick="enviarWhatsAppPortal()" id="btnWhatsApp"
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
-                        title="Enviar enlace por WhatsApp">
-                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                  <span>WhatsApp</span>
-                </button>
-
-                <button type="button" onclick="enviarCorreoPortal()" id="btnEnviarCorreo"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
-                        title="Enviar enlace por Correo">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                  <span id="txtCorreo">Correo</span>
-                </button>
-              </div>
+          <!-- Bloque 3: Portal del aspirante (un solo enlace: documentos, firmas y Documentos SST) -->
+          <div class="bg-slate-50 border-slate-200" style="border-width:1px;border-style:solid;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <span class="text-[10px] font-black text-slate-600 uppercase tracking-wider">🌐 Portal del aspirante</span>
+            <p class="text-slate-500" style="margin:0;font-size:11px;line-height:1.4">
+              Un solo enlace para subir documentos, firmar y responder los Documentos SST habilitados.
+            </p>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:auto">
+              <a href="/seleccion/portal/${uuid}" target="_blank" rel="noopener" class="portal-ico" style="background:#1d4ed8;color:#fff"
+                 title="Abrir el portal del aspirante" aria-label="Abrir el portal del aspirante">🌐</a>
+              <button type="button" onclick="copiarVinculoPortal()" id="btnCopiarVinculo" class="portal-ico portal-ico-suave"
+                      title="Copiar enlace del portal" aria-label="Copiar enlace del portal"><span id="txtCopiar">📋</span></button>
+              <button type="button" onclick="enviarWhatsAppPortal()" id="btnWhatsApp" class="portal-ico" style="background:#059669;color:#fff"
+                      title="Enviar enlace por WhatsApp" aria-label="Enviar enlace por WhatsApp">
+                <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+              </button>
+              <button type="button" onclick="enviarCorreoPortal()" id="btnEnviarCorreo" class="portal-ico" style="background:#4f46e5;color:#fff"
+                      title="Enviar enlace por correo" aria-label="Enviar enlace por correo"><span id="txtCorreo">✉️</span></button>
+              <button type="button" onclick="abrirDocSst()" id="btnDocSst" class="portal-ico portal-ico-sst" style="display:none"
+                      title="Habilitar Doc. SST: Prueba de Consumo, ARO, EVIN e INGE para firmar desde el portal" aria-label="Habilitar Doc. SST">🦺</button>
             </div>
           </div>
         </div>
+        <style>
+          .portal-ico { display:inline-flex; align-items:center; justify-content:center; min-width:36px; height:36px; padding:0 8px; border-radius:10px; border:1px solid transparent; font-size:15px; font-weight:700; cursor:pointer; text-decoration:none; transition:transform .15s, box-shadow .15s; }
+          .portal-ico:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(15,23,42,.15); }
+          .portal-ico:disabled { opacity:.6; cursor:wait; }
+          .portal-ico-suave { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+          .portal-ico-sst { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
+          html[data-theme="oscuro"] .portal-ico-suave { background:rgba(59,130,246,.18); color:#93c5fd; border-color:rgba(147,197,253,.35); }
+          html[data-theme="oscuro"] .portal-ico-sst { background:rgba(16,185,129,.18); color:#6ee7b7; border-color:rgba(110,231,183,.35); }
+          .portal-ico #txtCopiar, .portal-ico #txtCorreo { font-size:12px; white-space:nowrap; }
+        </style>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
