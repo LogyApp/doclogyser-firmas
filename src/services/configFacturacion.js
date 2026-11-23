@@ -104,7 +104,8 @@ const PR = {
   ELIMINAR:       'Roles que pueden eliminar recibos',
   ELIMINAR_SERV:  'Roles que pueden eliminar servicios',
   ANULAR_SERV:    'Roles que pueden anular servicios',
-  REASIGNAR:     'Roles que pueden reasignar servicios a otro recibo',
+  ANULAR_SERV_AMARILLO: 'Roles que pueden anular servicios en amarillo',
+  REASIGNAR:    'Roles que pueden reasignar servicios a otro recibo',
   CAMBIAR_CLIENTE_FACTURAR: 'Roles que pueden cambiar el Cliente a Facturar de un recibo con servicios',
   PERIODO_BLOQUEADO: 'Roles que pueden registrar servicios en periodos bloqueados',
   NITS_RETENCION: 'NITs con retención obligatoria de Fuente e IVA',
@@ -126,6 +127,7 @@ const DEFAULTS_RECIBOS = {
   [PR.ELIMINAR]:       'Sistema',
   [PR.ELIMINAR_SERV]:  'Sistema',
   [PR.ANULAR_SERV]:    '',
+  [PR.ANULAR_SERV_AMARILLO]: '',
   [PR.REASIGNAR]:     'Sistema, Facturación, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [PR.CAMBIAR_CLIENTE_FACTURAR]: 'Facturación, Sistema',
   [PR.PERIODO_BLOQUEADO]: '',
@@ -171,7 +173,8 @@ async function obtenerPermisosRecibos(rol) {
     aplicarRetenciones:   tiene(PR.APLICAR_RETENCIONES), // sección Retenciones del formulario del recibo
     eliminarRecibos:      tiene(PR.ELIMINAR),
     eliminarServicios:    tiene(PR.ELIMINAR_SERV),
-    anularServicios:      tiene(PR.ANULAR_SERV), // botón Anular del detalle del servicio
+    anularServicios:      tiene(PR.ANULAR_SERV), // botón Anular (detalle y masivo), en cualquier estado
+    anularServiciosAmarillo: tiene(PR.ANULAR_SERV_AMARILLO), // botón Anular solo con el servicio en amarillo
     reasignarServicios:   tiene(PR.REASIGNAR),
     cambiarClienteAFacturar:     tiene(PR.CAMBIAR_CLIENTE_FACTURAR), // recibo CREDITO que ya tiene servicios
     registrarEnPeriodoBloqueado: tiene(PR.PERIODO_BLOQUEADO),        // ignora Bloqueo_Nomina (Facturación)

@@ -6357,8 +6357,9 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       ? await procesarFotoServicio(files.fotoTransferencia?.[0], TIPO_DOC_FOTO_TRANSFERENCIA, idServicio, contexto, acceso)
       : null;
 
+    // Rojo no se escoge en el formulario: solo queda en rojo al anular (botón ⛔ Anular)
     let estado = (body.estado || 'Yellow');
-    if (!['Green', 'Yellow', 'Red'].includes(estado)) estado = 'Yellow';
+    if (!['Green', 'Yellow'].includes(estado)) estado = 'Yellow';
     if (estado === 'Green' && !puedeMarcarGreen({ cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl })) {
       return res.status(400).json({ error: 'Para marcar el servicio en Verde debe tener Cantidad, Valor Unitario y Forma de Pago; si la Forma de Pago es Transferencia, también la Foto de Transferencia.' });
     }
@@ -6569,7 +6570,12 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
       fotoTransferenciaUrl = null;
     }
 
+    // Rojo no se escoge en el formulario (para quitar un servicio está ⛔ Anular); si ya estaba en rojo
+    // (anulado o bloqueado por Facturación) se conserva al editar otros campos.
     let estado = (typeof body.estado !== 'undefined') ? body.estado : existente.Estado;
+    if (estado === 'Red' && existente.Estado !== 'Red') {
+      return res.status(400).json({ error: 'El servicio no se puede pasar a rojo desde el formulario. Para quitarlo use el botón ⛔ Anular.' });
+    }
     if (!['Green', 'Yellow', 'Red'].includes(estado)) estado = 'Yellow';
     if (estado === 'Green' && !puedeMarcarGreen({
       cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl, sinFotoTransferencia: permisosRecibos.verdeSinFotoTransferencia,
@@ -6667,48 +6673,93 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
   }
 });
 
-// ── POST /api/servicios/:idServicio/anular ──────────────────────────────────────
-// Botón Anular del detalle del servicio (antes, UPDATE manual): Estado Rojo, Valor Unitario 0,
-// Forma de Pago 0 (ANULADO), Edición Pendiente, Usuario = quien anula y Observaciones = la nota
-// que escriba (vacía: 'anular'). Roles: Config_Parametros facturacion / Recibos /
-// 'Roles que pueden anular servicios'.
-router.post('/api/servicios/:idServicio/anular', async (req, res) => {
-  try {
-    const { usuario } = req.query;
-    const { idServicio } = req.params;
-    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+// ── Anular servicios (botón ⛔ Anular del detalle y anulación masiva de la tabla) ─────────────
+// Estado Rojo, Valor Unitario 0, Forma de Pago 0 (ANULADO), Edición Pendiente, Usuario = quien anula y
+// Observaciones = la nota que escriba (vacía: 'anular'). Roles (Config_Parametros facturacion / Recibos):
+//   'Roles que pueden anular servicios'             → en cualquier estado (también verdes).
+//   'Roles que pueden anular servicios en amarillo' → solo servicios en amarillo.
+// Devuelve el acceso y permisos del usuario, o responde el error y devuelve null.
+async function accesoAnularServicios(usuario, res) {
+  if (!usuario) { res.status(400).json({ error: 'usuario requerido' }); return null; }
+  const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
+  if (!acceso) { res.status(403).json({ error: 'No autorizado' }); return null; }
+  const permisos = await obtenerPermisosRecibos(acceso.rol);
+  if (!permisos.anularServicios && !permisos.anularServiciosAmarillo) {
+    res.status(403).json({ error: 'Su rol no tiene permiso para anular servicios.' });
+    return null;
+  }
+  return { acceso, todos: permisos.anularServicios };
+}
 
-    const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
-    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-    if (!(await obtenerPermisosRecibos(acceso.rol)).anularServicios) return res.status(403).json({ error: 'Su rol no tiene permiso para anular servicios.' });
-
-    const [existRows] = await pool.execute(
-      'SELECT IdRecibo, `Forma De Pago`, `Validado Transferencia` FROM Dynamic_Servicios WHERE IdServicio = ? LIMIT 1',
-      [idServicio]
-    );
-    if (!existRows.length) return res.status(404).json({ error: 'Servicio no encontrado' });
-    const existente = existRows[0];
-    if (existente['Forma De Pago'] !== null && Number(existente['Forma De Pago']) === 0) {
-      return res.status(400).json({ error: 'Este servicio ya está anulado.' });
-    }
-    if (String(existente['Validado Transferencia'] || '').toUpperCase() === 'SI') {
-      return res.status(400).json({ error: 'La transferencia de este servicio ya fue validada por Contabilidad: no se puede anular.' });
-    }
-
-    const contexto = await obtenerContextoRecibo(existente.IdRecibo);
-    if (contexto && !acceso.sinFiltro && acceso.operacionesFiltro && !acceso.operacionesFiltro.includes(contexto.operacion)) {
-      return res.status(403).json({ error: 'No autorizado para anular este servicio' });
-    }
-
-    const observaciones = String((req.body && req.body.observaciones) || '').trim().slice(0, 512) || 'anular';
+// Anula los servicios que se puedan y dice por qué no los demás: { anulados: [ids], omitidos: [{ idServicio, motivo }] }
+async function anularServicios({ usuario, acceso, todos, ids, observaciones }) {
+  const unicos = [...new Set((ids || []).map(id => String(id || '').trim()).filter(Boolean))];
+  const omitidos = [];
+  const anulados = [];
+  if (!unicos.length) return { anulados, omitidos };
+  const [filas] = await pool.query(
+    `SELECT s.IdServicio, s.IdRecibo, s.Estado, s.\`Forma De Pago\` AS formaDePago, s.\`Validado Transferencia\` AS validado,
+            r.\`Operación\` AS operacion
+       FROM Dynamic_Servicios s LEFT JOIN Dynamic_Recibos r ON r.IdRecibo = s.IdRecibo
+      WHERE s.IdServicio IN (?)`,
+    [unicos]
+  );
+  const porId = new Map(filas.map(f => [f.IdServicio, f]));
+  const nota = String(observaciones || '').trim().slice(0, 512) || 'anular';
+  const recibos = new Set();
+  for (const id of unicos) {
+    const s = porId.get(id);
+    let motivo = null;
+    if (!s) motivo = 'Servicio no encontrado.';
+    else if (s.formaDePago !== null && Number(s.formaDePago) === 0) motivo = 'Ya está anulado.';
+    else if (String(s.validado || '').toUpperCase() === 'SI') motivo = 'La transferencia ya fue validada por Contabilidad.';
+    else if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(s.operacion)) motivo = 'No tiene acceso a la operación de este servicio.';
+    else if (!todos && String(s.Estado || '').toLowerCase() !== 'yellow') motivo = 'Su rol solo puede anular servicios en amarillo.';
+    if (motivo) { omitidos.push({ idServicio: id, motivo }); continue; }
     await pool.execute(
       `UPDATE Dynamic_Servicios SET
         Estado = 'Red', \`Valor Unitario\` = 0, \`Forma De Pago\` = 0, Usuario = ?, Observaciones = ?, \`Edición\` = 'Pendiente'
       WHERE IdServicio = ?`,
-      [String(usuario).slice(0, 50), observaciones, idServicio]
+      [String(usuario).slice(0, 50), nota, id]
     );
-    await recalcularRetencionesRecibo(existente.IdRecibo);
-    res.json({ ok: true, idServicio });
+    anulados.push(id);
+    recibos.add(s.IdRecibo);
+  }
+  for (const idRecibo of recibos) await recalcularRetencionesRecibo(idRecibo);
+  return { anulados, omitidos };
+}
+
+// Máximo de servicios por anulación masiva (la tabla muestra hasta 500)
+const MAX_ANULAR_MASIVO = 500;
+
+// ── POST /api/servicios/anular-masivo  body: { ids: [...], observaciones } ──────
+router.post('/api/servicios/anular-masivo', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const a = await accesoAnularServicios(usuario, res);
+    if (!a) return;
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids : [];
+    if (!ids.length) return res.status(400).json({ error: 'No hay servicios seleccionados.' });
+    if (ids.length > MAX_ANULAR_MASIVO) return res.status(400).json({ error: `Máximo ${MAX_ANULAR_MASIVO} servicios por vez.` });
+    const r = await anularServicios({ usuario, acceso: a.acceso, todos: a.todos, ids, observaciones: req.body.observaciones });
+    res.json({ ok: true, ...r });
+  } catch (err) {
+    console.error('[facturacion] POST /api/servicios/anular-masivo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/servicios/:idServicio/anular ──────────────────────────────────────
+router.post('/api/servicios/:idServicio/anular', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const a = await accesoAnularServicios(usuario, res);
+    if (!a) return;
+    const r = await anularServicios({
+      usuario, acceso: a.acceso, todos: a.todos, ids: [req.params.idServicio], observaciones: req.body && req.body.observaciones,
+    });
+    if (r.omitidos.length) return res.status(400).json({ error: r.omitidos[0].motivo });
+    res.json({ ok: true, idServicio: req.params.idServicio });
   } catch (err) {
     console.error('[facturacion] POST /api/servicios/:idServicio/anular:', err);
     res.status(500).json({ error: err.message });

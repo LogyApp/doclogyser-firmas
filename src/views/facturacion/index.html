@@ -551,6 +551,11 @@
     .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: var(--border-strong); transition: background 0.2s; }
     .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
 
+    /* Casillas para anular servicios de forma masiva */
+    .data-table th.col-sel, .data-table td.col-sel { width: 44px; min-width: 44px; padding-left: 4px !important; padding-right: 4px !important; text-align: center; text-overflow: clip !important; cursor: default; }
+    .data-table .col-sel input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--danger); }
+    .serv-barra-seleccion { align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; padding: 10px 14px; border-radius: 10px; border: 1.5px solid var(--danger); background: var(--danger-soft); color: var(--danger-dark); font-weight: 700; font-size: 0.88rem; }
+
     /* Modal ⚙️ Columnas de mi vista (Servicios) */
     .colserv-ayuda { margin: 0 0 12px; font-size: 0.82rem; line-height: 1.45; color: var(--text-muted); }
     .colserv-barra { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -1789,6 +1794,15 @@
             <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
               <button type="button" class="btn-reset" onclick="resetFiltrosServicios()">↺ Limpiar filtros</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Barra de selección: anular de forma masiva los servicios marcados con las casillas -->
+        <div id="serv-barra-seleccion" class="serv-barra-seleccion" style="display: none;">
+          <span id="serv-sel-conteo"></span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-reset" style="margin-top: 0;" onclick="limpiarSeleccionServicios()">Quitar selección</button>
+            <button type="button" class="btn-primary" onclick="abrirModalAnularMasivo()" style="background: var(--danger); border-color: var(--danger);">⛔ Anular seleccionados</button>
           </div>
         </div>
 
@@ -3308,8 +3322,9 @@
       </div>
       <div class="modal-body">
         <p style="margin: 0 0 12px; font-size: 0.9rem;">
-          El servicio <strong id="anular-serv-id" style="font-family: monospace;"></strong> quedará en <strong style="color: var(--danger);">rojo</strong>,
+          <span id="anular-serv-quien"></span> quedará en <strong style="color: var(--danger);">rojo</strong>,
           con Valor Unitario en 0 y Forma de Pago <strong>ANULADO</strong>. Ya no suma en el recibo ni en los resúmenes.
+          <strong>Esta acción no se puede deshacer desde aquí.</strong>
         </p>
         <div class="form-group">
           <label for="anular-serv-obs">Observaciones</label>
@@ -4258,8 +4273,9 @@
             <div class="btn-grupo">
               <button type="button" class="btn-grupo-opt" id="btn-ms-estado-green" style="color:var(--success-dark);" onclick="setEstadoServicio('Green')" title="Verde" aria-label="Verde">🟢</button>
               <button type="button" class="btn-grupo-opt" id="btn-ms-estado-yellow" style="color:var(--warning-dark);" onclick="setEstadoServicio('Yellow')" title="Amarillo" aria-label="Amarillo">🟡</button>
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-red" style="color:var(--danger-dark);" onclick="setEstadoServicio('Red')" title="Rojo" aria-label="Rojo">🔴</button>
             </div>
+            <!-- Rojo no se escoge aquí: para quitar un servicio está el botón ⛔ Anular -->
+            <small id="ms-estado-rojo-nota" style="display:none; color: var(--danger); font-size: 0.78rem;">🔴 Este servicio está en rojo (anulado o bloqueado).</small>
           </div>
 
           <div class="form-group">
@@ -5245,8 +5261,11 @@
     // FUNCIÓN PARA REDIMENSIONAR COLUMNAS (makeTableResizable)
     // ──────────────────────────────────────────────────────────
     // alTerminar(th, ancho): opcional, se llama al soltar el borde (Servicios guarda el ancho en la vista del usuario).
+    // La tabla recuerda alTerminar: las llamadas posteriores sin él (al cambiar de pestaña) lo conservan.
     function makeTableResizable(table, alTerminar) {
       if (!table) return;
+      if (alTerminar) table._alTerminarResize = alTerminar;
+      alTerminar = table._alTerminarResize;
       const row = table.querySelector('thead tr');
       const cols = row ? row.children : [];
       if (!cols.length) return;
@@ -8888,6 +8907,7 @@
       servicios: {
         titulo: 'Servicios', headId: 'tabla-servicios-head', tablaId: 'tabla-servicios',
         sort: () => sortServiciosState, recargar: () => cargarServicios(),
+        conSeleccion: () => puedeAnularServicios(), // casillas para anular de forma masiva
         catalogo: [], personal: null, promesa: null, tGuardar: null
       },
       recibos: {
@@ -8953,7 +8973,10 @@
       const def = VISTAS_TABLA[v];
       const tr = document.getElementById(def.headId);
       if (!tr) return;
-      tr.innerHTML = colsVista(v).map(c =>
+      const thSeleccion = (def.conSeleccion && def.conSeleccion())
+        ? '<th class="col-sel"><input type="checkbox" id="sel-todos-servicios" onclick="event.stopPropagation()" onchange="seleccionarTodosServicios(this.checked)" title="Seleccionar todos los que se pueden anular" aria-label="Seleccionar todos"></th>'
+        : '';
+      tr.innerHTML = thSeleccion + colsVista(v).map(c =>
         `<th style="width:${c.ancho}px;${c.alinear !== 'left' ? ` text-align:${c.alinear};` : ''}" data-sort="${esc(c.clave)}" title="${esc(c.titulo)}">${esc(c.titulo)}<span class="sort-indicator"></span></th>`
       ).join('');
       tr.querySelectorAll('th[data-sort]').forEach(th => {
@@ -9190,7 +9213,9 @@
     async function cargarServicios() {
       const tbody = document.getElementById('tabla-servicios-body');
       await asegurarVista('servicios');
-      tbody.innerHTML = `<tr><td colspan="${colsVista('servicios').length}" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>`;
+      SERV_SELECCION.clear(); // al cambiar filtros no se anula nada que ya no se vea
+      pintarBarraSeleccionServicios();
+      tbody.innerHTML = `<tr><td colspan="${colspanServicios()}" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>`;
 
       try {
         const params = new URLSearchParams({
@@ -9225,14 +9250,14 @@
         renderServiciosTable();
       } catch (err) {
         console.error('[cargarServicios]', err);
-        tbody.innerHTML = `<tr><td colspan="${colsVista('servicios').length}" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de servicios.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colspanServicios()}" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de servicios.</td></tr>`;
       }
     }
 
     function renderServiciosTable() {
       const tbody = document.getElementById('tabla-servicios-body');
       if (!allServicios.length) {
-        tbody.innerHTML = `<tr><td colspan="${colsVista('servicios').length}" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colspanServicios()}" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>`;
         const cEl = document.getElementById('serv-count-mostrados');
         const bEl = document.getElementById('serv-suma-base');
         const tEl = document.getElementById('serv-suma-total');
@@ -9272,13 +9297,17 @@
       });
 
       const cols = colsVista('servicios');
+      const conSeleccion = puedeAnularServicios();
       tbody.innerHTML = allServicios.map(s => `
           <tr onclick="origenReciboId = null; verDetalleServicio('${esc(s.idServicio)}')" style="cursor: pointer;" title="Clic para ver detalle del servicio">
-            ${cols.map(c => celdaTabla(c, s)).join('')}
+            ${conSeleccion ? celdaSeleccionServicio(s) : ''}${cols.map(c => celdaTabla(c, s)).join('')}
           </tr>
         `).join('');
+      pintarBarraSeleccionServicios();
+    }
 
-      makeTableResizable(document.getElementById('tabla-servicios'));
+    function colspanServicios() {
+      return colsVista('servicios').length + (puedeAnularServicios() ? 1 : 0);
     }
 
     async function cargarMetricasServicios() {
@@ -9506,9 +9535,8 @@
         servicioDetalleActual = { idServicio, idRecibo: s.IdRecibo, consecutivoRecibo: s.consecutivoRecibo, operacion: s.operacion, datos: s };
         // Estado: mientras no esté en verde se puede pasar a verde desde aquí (solo a verde)
         document.getElementById('btn-servicio-a-verde').style.display = (s.Estado !== 'Green' && PERMISOS_RECIBOS.crear) ? 'inline-flex' : 'none';
-        // Anular: roles de 'Roles que pueden anular servicios' y servicio aún no anulado (Forma de Pago 0)
-        const yaAnulado = s['Forma De Pago'] !== null && s['Forma De Pago'] !== undefined && s['Forma De Pago'] !== '' && Number(s['Forma De Pago']) === 0;
-        document.getElementById('btn-anular-servicio-detalle').style.display = (PERMISOS_RECIBOS.anularServicios && !yaAnulado) ? 'inline-flex' : 'none';
+        // Anular: servicio aún no anulado (Forma de Pago 0) y rol con permiso (en amarillo o en cualquier estado)
+        document.getElementById('btn-anular-servicio-detalle').style.display = servicioAnulable({ estado: s.Estado, formaDePago: s['Forma De Pago'] }) ? 'inline-flex' : 'none';
         document.getElementById('det-total-pago-header').textContent = '$ ' + formatMiles(s.totalPago);
         document.getElementById('det-total-pago-box').textContent = '$ ' + formatMiles(s.totalPago);
 
@@ -9833,17 +9861,45 @@
       }
     }
 
-    // Detalle del servicio: Anular (Estado Rojo, Valor Unitario 0, Forma de Pago ANULADO). La nota
-    // que se escriba queda en Observaciones; el servidor revisa el permiso del rol.
-    function abrirModalAnularServicio() {
-      const s = servicioDetalleActual?.datos;
-      if (!s) return;
-      document.getElementById('anular-serv-id').textContent = servicioDetalleActual.idServicio;
-      document.getElementById('anular-serv-obs').value = s.Observaciones || '';
+    // Anular (Estado Rojo, Valor Unitario 0, Forma de Pago ANULADO): uno desde el detalle del servicio o varios
+    // desde las casillas de la tabla de Servicios. La nota que se escriba queda en Observaciones.
+    // 'Roles que pueden anular servicios' → cualquier estado; '... en amarillo' → solo amarillos. El servidor lo revisa.
+    let anularMasivoIds = null; // null = anular el servicio del detalle
+
+    function servicioAnulable({ estado, formaDePago }) {
+      const yaAnulado = formaDePago !== null && formaDePago !== undefined && formaDePago !== '' && Number(formaDePago) === 0;
+      if (yaAnulado) return false;
+      return !!PERMISOS_RECIBOS.anularServicios
+        || (!!PERMISOS_RECIBOS.anularServiciosAmarillo && String(estado || '').toLowerCase() === 'yellow');
+    }
+
+    function puedeAnularServicios() {
+      return !!(PERMISOS_RECIBOS.anularServicios || PERMISOS_RECIBOS.anularServiciosAmarillo);
+    }
+
+    function abrirModalAnular(texto, obs) {
+      document.getElementById('anular-serv-quien').innerHTML = texto;
+      document.getElementById('anular-serv-obs').value = obs || '';
       const overlay = document.getElementById('modal-anular-servicio-overlay');
       overlay.classList.add('open');
       if (typeof registrarModalBack === 'function') overlay._backEntry = registrarModalBack(() => cerrarModalAnularServicio());
       setTimeout(() => document.getElementById('anular-serv-obs')?.focus(), 100);
+    }
+
+    function abrirModalAnularServicio() {
+      const s = servicioDetalleActual?.datos;
+      if (!s) return;
+      anularMasivoIds = null;
+      abrirModalAnular(`El servicio <strong style="font-family: monospace;">${esc(servicioDetalleActual.idServicio)}</strong>`, s.Observaciones);
+    }
+
+    function abrirModalAnularMasivo() {
+      const ids = [...SERV_SELECCION];
+      if (!ids.length) return;
+      anularMasivoIds = ids;
+      abrirModalAnular(ids.length === 1
+        ? 'El servicio seleccionado'
+        : `Los <strong>${ids.length}</strong> servicios seleccionados`, '');
     }
 
     function cerrarModalAnularServicio() {
@@ -9856,6 +9912,7 @@
     }
 
     async function confirmarAnularServicio() {
+      if (anularMasivoIds) return confirmarAnularMasivo();
       const idServicio = servicioDetalleActual?.idServicio;
       if (!idServicio) return;
       const btn = document.getElementById('btn-confirmar-anular-servicio');
@@ -9875,6 +9932,81 @@
         alert('Error de conexión al anular el servicio.');
       } finally {
         btn.disabled = false;
+      }
+    }
+
+    async function confirmarAnularMasivo() {
+      const ids = anularMasivoIds || [];
+      if (!ids.length) return;
+      const btn = document.getElementById('btn-confirmar-anular-servicio');
+      btn.disabled = true;
+      try {
+        const resp = await fetch(`/facturacion/api/servicios/anular-masivo?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, observaciones: document.getElementById('anular-serv-obs').value }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok) return alert('No se pudieron anular los servicios: ' + (data.error || 'error desconocido.'));
+        cerrarModalAnularServicio();
+        anularMasivoIds = null;
+        let msg = `✅ Servicios anulados: ${data.anulados.length}`;
+        if (data.omitidos.length) {
+          msg += `\n\nNo se anularon ${data.omitidos.length}:\n` + data.omitidos.slice(0, 10).map(o => `• ${o.idServicio}: ${o.motivo}`).join('\n');
+          if (data.omitidos.length > 10) msg += `\n… y ${data.omitidos.length - 10} más.`;
+        }
+        alert(msg);
+        SERV_SELECCION.clear();
+        cargarServicios();
+        cargarMetricasServicios();
+      } catch (e) {
+        alert('Error de conexión al anular los servicios.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── Selección de servicios en la tabla (casillas) para anular de forma masiva ──
+    const SERV_SELECCION = new Set();
+
+    function celdaSeleccionServicio(s) {
+      if (!servicioAnulable(s)) return '<td class="col-sel" onclick="event.stopPropagation()"></td>';
+      const id = esc(s.idServicio);
+      return `<td class="col-sel" onclick="event.stopPropagation()"><input type="checkbox" class="sel-serv" value="${id}"
+        ${SERV_SELECCION.has(s.idServicio) ? 'checked' : ''} onchange="toggleSeleccionServicio(this)" aria-label="Seleccionar ${id}"></td>`;
+    }
+
+    function toggleSeleccionServicio(chk) {
+      if (chk.checked) SERV_SELECCION.add(chk.value); else SERV_SELECCION.delete(chk.value);
+      pintarBarraSeleccionServicios();
+    }
+
+    function seleccionarTodosServicios(marcar) {
+      document.querySelectorAll('#tabla-servicios-body input.sel-serv').forEach(chk => {
+        chk.checked = marcar;
+        if (marcar) SERV_SELECCION.add(chk.value); else SERV_SELECCION.delete(chk.value);
+      });
+      pintarBarraSeleccionServicios();
+    }
+
+    function limpiarSeleccionServicios() {
+      SERV_SELECCION.clear();
+      document.querySelectorAll('#tabla-servicios-body input.sel-serv').forEach(chk => { chk.checked = false; });
+      pintarBarraSeleccionServicios();
+    }
+
+    function pintarBarraSeleccionServicios() {
+      const barra = document.getElementById('serv-barra-seleccion');
+      if (!barra) return;
+      const n = SERV_SELECCION.size;
+      barra.style.display = n ? 'flex' : 'none';
+      document.getElementById('serv-sel-conteo').textContent = n === 1 ? '1 servicio seleccionado' : `${n} servicios seleccionados`;
+      const todos = document.getElementById('sel-todos-servicios');
+      if (todos) {
+        const casillas = document.querySelectorAll('#tabla-servicios-body input.sel-serv');
+        const marcadas = [...casillas].filter(c => c.checked).length;
+        todos.checked = casillas.length > 0 && marcadas === casillas.length;
+        todos.indeterminate = marcadas > 0 && marcadas < casillas.length;
       }
     }
 
@@ -12676,7 +12808,8 @@
 
     function setEstadoServicio(estado) {
       msEstadoActual = estado;
-      ['green', 'yellow', 'red'].forEach(k => document.getElementById('btn-ms-estado-' + k).classList.toggle('sel', k === String(estado || '').toLowerCase()));
+      ['green', 'yellow'].forEach(k => document.getElementById('btn-ms-estado-' + k).classList.toggle('sel', k === String(estado || '').toLowerCase()));
+      document.getElementById('ms-estado-rojo-nota').style.display = estado === 'Red' ? 'block' : 'none';
     }
     function setGrupoDtjoServicio(valor) {
       msGrupoDtjoActual = valor;
