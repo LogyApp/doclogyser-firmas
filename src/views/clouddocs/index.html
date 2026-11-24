@@ -1070,6 +1070,48 @@
     .permiso-checkbox-item:hover {
       background: var(--bg-elevated);
     }
+
+    /* ── Pestaña Formatos (Maestro_Plantillas) ── */
+    .fmt-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+    .fmt-toolbar input, .fmt-toolbar select { padding:8px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--card-bg); color:var(--text); font-size:.88rem; }
+    .fmt-toolbar input { flex:1; min-width:200px; }
+    .fmt-aviso { font-size:.82rem; color:var(--text-muted); margin:0 0 12px 0; }
+    .fmt-tabla { width:max-content; min-width:100%; border-collapse:collapse; font-size:.86rem; table-layout:fixed; }
+    .fmt-tabla th { position:sticky; top:0; z-index:10; text-align:left; padding:10px 14px 10px 10px; background:var(--bg-elevated); color:var(--text-muted); font-weight:700; border-bottom:1.5px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; user-select:none; }
+    .fmt-tabla th[data-orden] { cursor:pointer; }
+    .fmt-tabla th[data-orden]:hover { color:var(--text); }
+    .fmt-tabla th .fmt-sort { margin-left:4px; opacity:.45; font-size:.75rem; }
+    .fmt-tabla th.ordenada .fmt-sort { opacity:1; color:var(--accent); }
+    .fmt-tabla td { padding:10px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text); overflow:hidden; text-overflow:ellipsis; word-break:break-word; }
+    .fmt-resizer { position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; touch-action:none; z-index:2; }
+    .fmt-resizer::after { content:''; position:absolute; top:25%; right:3px; height:50%; width:2px; background:var(--border); border-radius:2px; }
+    .fmt-resizer:hover::after, .fmt-resizer.activo::after { background:var(--accent); }
+    .fmt-tabla tbody tr { cursor:pointer; }
+    .fmt-tabla tbody tr:hover td, .fmt-tabla tbody tr:focus-visible td { background:var(--accent-soft, var(--bg-elevated)); }
+    .fmt-tabla tbody tr:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+    .fmt-sub { display:block; font-size:.76rem; color:var(--text-muted); }
+    .fmt-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:.74rem; font-weight:700; }
+    .fmt-pill.si { background:var(--success-soft, #dcfce7); color:var(--success, #16a34a); }
+    .fmt-pill.no { background:var(--danger-soft, #fee2e2); color:var(--danger, #dc2626); }
+    .fmt-modal-tabs { display:flex; gap:6px; flex-wrap:wrap; padding:10px 24px 0; border-bottom:1px solid var(--border); background:var(--card-bg); }
+    .fmt-modal-tabs button { border:none; background:transparent; padding:8px 12px; font-weight:700; font-size:.85rem; color:var(--text-muted); border-bottom:3px solid transparent; cursor:pointer; }
+    .fmt-modal-tabs button.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .fmt-panel { display:none; }
+    .fmt-panel.active { display:block; }
+    .fmt-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; }
+    .fmt-seg { border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; margin-bottom:8px; background:var(--card-bg); }
+    .fmt-seg.cambiado { border-color:var(--warning); background:var(--warning-soft); }
+    .fmt-seg textarea { width:100%; border:none; background:transparent; color:var(--text); font:inherit; font-size:.88rem; resize:vertical; outline:none; min-height:22px; }
+    .fmt-vars { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+    .fmt-vars span { font-size:.7rem; font-family:monospace; background:var(--bg-elevated); border:1px solid var(--border); border-radius:4px; padding:1px 5px; color:var(--text-muted); }
+    .fmt-preview { width:100%; height:65vh; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:#fff; }
+    .fmt-html { width:100%; height:60vh; font-family:monospace; font-size:.78rem; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:10px; background:var(--card-bg); color:var(--text); }
+    .fmt-hist { border-left:3px solid var(--accent); padding:6px 10px; margin-bottom:10px; background:var(--bg-elevated); border-radius:0 var(--radius-sm) var(--radius-sm) 0; font-size:.84rem; }
+    @media (max-width: 900px) {
+      .fmt-tabla .fmt-col-opc { display:none; }
+      .fmt-modal-tabs { padding:8px 10px 0; }
+      .fmt-preview { height:55vh; }
+    }
   </style>
   <!-- Ícono LogyApp: favicon e ícono de la PWA (ver public/manifest.webmanifest) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
@@ -1357,6 +1399,35 @@
       </div>
     </section>
 
+    <!-- Formatos: plantillas de documentos (Maestro_Plantillas). Ver: Maestro_Menu clouddocs/Formatos;
+         editar: Config_Parametros CloudDocs/Formatos -->
+    <section class="card" id="formatos-container" style="display: none; padding: 20px;">
+      <div class="fmt-toolbar">
+        <input type="search" id="fmt-buscar" placeholder="🔍 Buscar por nombre, código o descripción..." oninput="renderFormatos()" aria-label="Buscar formato">
+        <select id="fmt-filtro-activo" onchange="renderFormatos()" aria-label="Estado">
+          <option value="">Todos</option>
+          <option value="1" selected>Activos</option>
+          <option value="0">Inactivos</option>
+        </select>
+      </div>
+      <p class="fmt-aviso" id="fmt-aviso-permisos"></p>
+      <div class="table-container">
+        <table class="fmt-tabla">
+          <thead>
+            <tr id="fmt-thead-fila">
+              <th data-orden="nombre" data-col="nombre" style="width:340px;">Formato<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="codigo_formato" data-col="codigo" style="width:130px;">Código<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="version_formato" data-col="version" style="width:95px;">Versión<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="fecha_version" data-col="fecha" style="width:115px;">Fecha<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="activo" data-col="estado" class="fmt-col-opc" style="width:100px;">Estado<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="ultima_actualizacion" data-col="actualizado" class="fmt-col-opc" style="width:150px;">Actualizado<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+            </tr>
+          </thead>
+          <tbody id="fmt-tbody"><tr><td colspan="6">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- LogySign: Registros de firma integrados nativamente (mismo patrón que Trabajadores/Consolidado) -->
     <section id="logysign-container" style="display: none;">
       <section class="filters-card">
@@ -1525,6 +1596,62 @@
       <div class="modal-footer">
         <button class="btn btn-request" onclick="closeModal('modal-nuevo-tipo-doc-cd')">Cancelar</button>
         <button class="btn btn-submit" id="btn-guardar-nuevo-tipo-doc-cd" onclick="guardarNuevoTipoDocCD()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar formato (pestaña Formatos) -->
+  <div class="modal-overlay" id="modal-formato">
+    <div class="modal-content" style="max-width: 1100px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="fmt-modal-titulo">Formato</h3>
+        <button class="modal-close" onclick="cerrarFormato()">&times;</button>
+      </div>
+      <div class="fmt-modal-tabs" id="fmt-modal-tabs">
+        <button type="button" data-panel="datos" class="active" onclick="verPanelFormato('datos')">Datos</button>
+        <button type="button" data-panel="textos" onclick="verPanelFormato('textos')">Textos</button>
+        <button type="button" data-panel="vista" onclick="verPanelFormato('vista')">Vista previa</button>
+        <button type="button" data-panel="html" id="fmt-tab-html" onclick="verPanelFormato('html')" style="display:none;">Código HTML</button>
+        <button type="button" data-panel="historial" onclick="verPanelFormato('historial')">Historial</button>
+      </div>
+      <div class="modal-body" style="overflow-y:auto;">
+        <div class="fmt-panel active" id="fmt-panel-datos">
+          <div class="fmt-grid">
+            <div class="field"><label for="fmt-codigo">Código del formato</label><input type="text" id="fmt-codigo" maxlength="30" oninput="marcarCambioFormato()"></div>
+            <div class="field">
+              <label for="fmt-version">Versión del formato</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="fmt-version" maxlength="10" oninput="marcarCambioFormato()" style="flex:1;">
+                <button type="button" class="btn btn-request" id="fmt-btn-subir-version" onclick="subirVersionFormato()" title="Sube la versión y pone la fecha de hoy">+1</button>
+              </div>
+            </div>
+            <div class="field"><label for="fmt-fecha">Fecha de la versión</label><input type="date" id="fmt-fecha" onchange="marcarCambioFormato()"></div>
+            <div class="field" id="fmt-campo-activo"><label for="fmt-activo">Estado</label>
+              <select id="fmt-activo" onchange="marcarCambioFormato()"><option value="1">Activo</option><option value="0">Inactivo</option></select>
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px;"><label for="fmt-observaciones">Descripción</label><input type="text" id="fmt-observaciones" maxlength="200" oninput="marcarCambioFormato()"></div>
+          <p class="fmt-aviso" style="margin-top:14px;" id="fmt-info-tecnica"></p>
+        </div>
+        <div class="fmt-panel" id="fmt-panel-textos">
+          <p class="fmt-aviso">Cambia la redacción del documento. Lo que está entre <b>{{ }}</b> se llena solo con los datos de cada trabajador: debe quedar igual. Los textos cambiados se marcan en amarillo.</p>
+          <div class="fmt-toolbar"><input type="search" id="fmt-buscar-texto" placeholder="🔍 Buscar texto..." oninput="filtrarSegmentosFormato()"></div>
+          <div id="fmt-segmentos"></div>
+        </div>
+        <div class="fmt-panel" id="fmt-panel-vista">
+          <p class="fmt-aviso">Vista con los cambios sin guardar. Los datos del trabajador se ven como {{variable}}.</p>
+          <iframe id="fmt-preview" class="fmt-preview" sandbox="" title="Vista previa del formato"></iframe>
+        </div>
+        <div class="fmt-panel" id="fmt-panel-html">
+          <p class="fmt-aviso">Edición avanzada del código completo. Si cambias el código, no se aplican los cambios de la pestaña Textos.</p>
+          <textarea id="fmt-html" class="fmt-html" spellcheck="false" oninput="marcarCambioFormato()"></textarea>
+        </div>
+        <div class="fmt-panel" id="fmt-panel-historial"><div id="fmt-historial"></div></div>
+      </div>
+      <div class="modal-footer" id="fmt-footer" style="flex-wrap:wrap; gap:8px;">
+        <input type="text" id="fmt-motivo" maxlength="500" placeholder="Motivo del cambio" style="flex:1; min-width:200px; padding:9px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--card-bg); color:var(--text);">
+        <button class="btn btn-request" onclick="cerrarFormato()">Cerrar</button>
+        <button class="btn btn-submit" id="fmt-btn-guardar" onclick="guardarFormato()" disabled>Guardar cambios</button>
       </div>
     </div>
   </div>
@@ -1834,7 +1961,8 @@
       duplicados:       { icon: '🗂️', title: 'Duplicados',                 subtitle: 'Documentos duplicados detectados en el sistema' },
       logysign:         { icon: '✍️', title: 'LogySign (Firmas)',          subtitle: 'Registros de firma digital integrados' },
       permisos:         { icon: '🔐', title: 'Permisos',                   subtitle: 'Gestión de permisos de acceso por rol' },
-      descuentonomina:  { icon: '💳', title: 'Autorizaciones de Descuento', subtitle: 'Autorizaciones de descuento de nómina' }
+      descuentonomina:  { icon: '💳', title: 'Autorizaciones de Descuento', subtitle: 'Autorizaciones de descuento de nómina' },
+      formatos:         { icon: '🧾', title: 'Formatos',                   subtitle: 'Plantillas de los documentos: textos, código, versión y fecha' }
     };
 
     function actualizarTabHeaderCD(tab) {
@@ -2574,6 +2702,27 @@
         document.getElementById('tabs-container').insertBefore(tabDescuento, document.getElementById('tab-btn-logysign'));
       }
 
+      if (seccionesPermitidas.includes('Formatos')) {
+        const tabFmt = document.createElement('li');
+        tabFmt.className = 'nav-item';
+        tabFmt.id = 'tab-btn-formatos';
+        tabFmt.onclick = () => switchTab('formatos');
+        tabFmt.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15l2 2 4-4"></path></svg>
+          <span>Formatos</span>
+        `;
+        document.getElementById('tabs-container').appendChild(tabFmt);
+      }
+
+      // Roles que solo tienen la pestaña Formatos (sin acceso base a Cloud Docs): se ocultan las
+      // pestañas de documentos de trabajadores.
+      if (CONFIG.soloFormatos) {
+        ['trabajador', 'documento', 'todo', 'logysign'].forEach(t => {
+          const li = document.getElementById(`tab-btn-${t}`);
+          if (li) li.remove();
+        });
+      }
+
       // Populate filter dropdowns
       const regionalSelect = document.getElementById('filter-regional');
       const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
@@ -2593,7 +2742,7 @@
         modalRegionalSelect.appendChild(option);
       });
 
-      cargarTiposDocumentosParaFiltro();
+      if (!CONFIG.soloFormatos) cargarTiposDocumentosParaFiltro();
       
       // Auto-prefill regionals & operations if only 1 is allowed
       prellenoAutomaticoFiltros();
@@ -2616,7 +2765,8 @@
           _pendingOpenWorkerModal = { identificacion: buscarUrlParam, nombre: nombreUrlParam };
         }
       }
-      const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : 'trabajador';
+      const tabPorDefecto = CONFIG.soloFormatos ? 'formatos' : 'trabajador';
+      const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : tabPorDefecto;
       switchTab(tabSolicitada);
 
       // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
@@ -2624,7 +2774,7 @@
         const SECCION_TICKET_CLOUDDOCS = {
           trabajador: 'CloudDocs', documento: 'CloudDocs', todo: 'CloudDocs', logysign: 'CloudDocs',
           docretiros: 'DocRetiros', solicitudes: 'Solicitudes', validarcap: 'ValidarCap',
-          permisos: 'Permisos', duplicados: 'Duplicados'
+          permisos: 'Permisos', duplicados: 'Duplicados', formatos: 'Formatos'
         };
         initBotonTicket({
           moduloErp: 'cloud-docs',
@@ -2825,9 +2975,11 @@
       const btnNuevoTipoDoc = document.getElementById('btn-nuevo-tipo-doc-cd');
 
       if (descuentoContainer) descuentoContainer.style.display = tab === 'descuentonomina' ? 'block' : 'none';
+      const formatosContainer = document.getElementById('formatos-container');
+      if (formatosContainer) formatosContainer.style.display = tab === 'formatos' ? 'block' : 'none';
       const btnExportarExcel = document.getElementById('btn-exportar-excel-cd');
       if (btnExportarExcel) {
-        btnExportarExcel.style.display = (tab === 'descuentonomina' || tab === 'permisos') ? 'none' : 'inline-flex';
+        btnExportarExcel.style.display = (tab === 'descuentonomina' || tab === 'permisos' || tab === 'formatos') ? 'none' : 'inline-flex';
       }
       const pBar = document.getElementById('cdPaginacionTodo');
       if (pBar) {
@@ -2837,7 +2989,18 @@
         todoPagination.page = 1;
       }
 
-      if (tab === 'descuentonomina') {
+      if (tab === 'formatos') {
+        if (filtersCard) filtersCard.style.display = 'none';
+        if (tableCard) tableCard.style.display = 'none';
+        if (permisosContainer) permisosContainer.style.display = 'none';
+        if (logysignContainer) logysignContainer.style.display = 'none';
+        if (regWrapper) regWrapper.style.display = 'none';
+        if (opWrapper) opWrapper.style.display = 'none';
+        btnCargar.style.display = 'none';
+        btnValidar.style.display = 'none';
+        btnNuevaFirma.style.display = 'none';
+        btnNuevoTipoDoc.style.display = 'none';
+      } else if (tab === 'descuentonomina') {
         if (filtersCard) filtersCard.style.display = 'none';
         if (tableCard) tableCard.style.display = 'none';
         if (permisosContainer) permisosContainer.style.display = 'none';
@@ -2977,6 +3140,8 @@
 
       if (tab === 'permisos') {
         cargarPermisosPanel();
+      } else if (tab === 'formatos') {
+        cargarFormatos();
       } else if (tab !== 'logysign' && tab !== 'descuentonomina') {
         filtrar();
       }
@@ -4205,6 +4370,399 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+    // ── Pestaña Formatos (Maestro_Plantillas) ───────────────────────────────
+    // El servidor decide qué se puede editar (Config_Parametros CloudDocs / Formatos) y valida al guardar.
+    let formatosLista = [];
+    let formatosPermisos = null;
+    let formatoActual = null;      // formato abierto en el modal (con segmentos y contenido_html)
+    let formatoTextos = {};        // indice → texto editado
+    // Mismo corte de etiquetas que src/services/formatosPlantillas.js (los índices deben coincidir)
+    const FMT_RE_TOKEN = /(<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<title\b[\s\S]*?<\/title\s*>|<[^>]*>)/gi;
+
+    async function cargarFormatos() {
+      iniciarTablaFormatos();
+      const tbody = document.getElementById('fmt-tbody');
+      tbody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
+      try {
+        const res = await fetch(`/cloud-docs/api/formatos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudieron cargar los formatos');
+        formatosLista = data.formatos || [];
+        formatosPermisos = data.permisos || {};
+        const aviso = document.getElementById('fmt-aviso-permisos');
+        aviso.textContent = formatosPermisos.puedeEditar
+          ? 'Toca un formato para cambiar sus textos, código, versión o fecha. Cada cambio queda en el historial con una copia de lo anterior.'
+          : 'Toca un formato para verlo. Tu rol puede consultarlos pero no editarlos.';
+        renderFormatos();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger);">${esc(err.message)}</td></tr>`;
+      }
+    }
+
+    function fmtNormalizar(t) {
+      return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    }
+
+    function fmtFechaCorta(v) {
+      if (!v) return '—';
+      const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v);
+    }
+
+    function renderFormatos() {
+      const tbody = document.getElementById('fmt-tbody');
+      const q = fmtNormalizar(document.getElementById('fmt-buscar').value);
+      const estado = document.getElementById('fmt-filtro-activo').value;
+      const filas = formatosLista.filter(f => {
+        if (estado !== '' && String(Number(f.activo)) !== estado) return false;
+        if (!q) return true;
+        return fmtNormalizar([f.nombre, f.nombre_proceso, f.observaciones, f.documento, f.codigo_formato, f.tabla_datos].join(' ')).includes(q);
+      });
+      ordenarFormatos(filas);
+      pintarOrdenFormatos();
+      actualizarBadgeRegistrosCD(filas.length);
+      if (!filas.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);">No hay formatos con ese filtro.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = filas.map(f => `
+        <tr tabindex="0" onclick="abrirFormato(${Number(f.id_plantilla)})" onkeydown="if (event.key === 'Enter') abrirFormato(${Number(f.id_plantilla)})">
+          <td title="${esc(f.nombre || f.nombre_proceso)}"><b>${esc(f.nombre || f.nombre_proceso)}</b><span class="fmt-sub">${esc(f.nombre_proceso)}${f.observaciones && f.observaciones !== f.nombre ? ' · ' + esc(f.observaciones) : ''}</span></td>
+          <td>${esc(f.codigo_formato || '—')}</td>
+          <td>${esc(f.version_formato || '—')}</td>
+          <td>${fmtFechaCorta(f.fecha_version)}</td>
+          <td class="fmt-col-opc"><span class="fmt-pill ${Number(f.activo) ? 'si' : 'no'}">${Number(f.activo) ? 'Activo' : 'Inactivo'}</span></td>
+          <td class="fmt-col-opc">${esc(String(f.ultima_actualizacion || '').replace('T', ' ').slice(0, 16)) || '—'}</td>
+        </tr>`).join('');
+    }
+
+    // Orden por columna (clic en el encabezado; otro clic invierte el orden)
+    let formatosOrden = { campo: 'nombre', dir: 1 };
+
+    function ordenarFormatos(filas) {
+      const { campo, dir } = formatosOrden;
+      const valorOrden = f => {
+        const v = f[campo];
+        if (campo === 'activo') return Number(v) || 0;
+        if (campo === 'version_formato') {
+          const n = parseFloat(String(v || '').replace(/[^\d.]/g, ''));
+          return Number.isFinite(n) ? n : -1;
+        }
+        if (campo === 'nombre') return fmtNormalizar(f.nombre || f.nombre_proceso);
+        return v == null ? '' : fmtNormalizar(v);
+      };
+      filas.sort((a, b) => {
+        const va = valorOrden(a), vb = valorOrden(b);
+        // Vacíos siempre al final
+        const vaVacio = va === '' || va === -1, vbVacio = vb === '' || vb === -1;
+        if (vaVacio !== vbVacio) return vaVacio ? 1 : -1;
+        if (va < vb) return -dir;
+        if (va > vb) return dir;
+        return 0;
+      });
+    }
+
+    function pintarOrdenFormatos() {
+      document.querySelectorAll('#fmt-thead-fila th[data-orden]').forEach(th => {
+        const activa = th.dataset.orden === formatosOrden.campo;
+        th.classList.toggle('ordenada', activa);
+        const icono = th.querySelector('.fmt-sort');
+        if (icono) icono.textContent = activa ? (formatosOrden.dir === 1 ? '▲' : '▼') : '↕';
+      });
+    }
+
+    // Ancho de columnas: se arrastra el borde derecho del encabezado (ratón o dedo). Se recuerda en este navegador.
+    const FMT_ANCHOS_KEY = 'clouddocs_formatos_anchos';
+    function iniciarTablaFormatos() {
+      const fila = document.getElementById('fmt-thead-fila');
+      if (!fila || fila.dataset.listo) return;
+      fila.dataset.listo = '1';
+      try {
+        const guardados = JSON.parse(localStorage.getItem(FMT_ANCHOS_KEY) || '{}');
+        fila.querySelectorAll('th[data-col]').forEach(th => {
+          const w = Number(guardados[th.dataset.col]);
+          if (w >= 50) th.style.width = `${w}px`;
+        });
+      } catch (_) { /* sin almacenamiento local */ }
+
+      fila.querySelectorAll('th[data-orden]').forEach(th => {
+        th.addEventListener('click', () => {
+          if (th.dataset.redimensionando) return;
+          const campo = th.dataset.orden;
+          formatosOrden = formatosOrden.campo === campo ? { campo, dir: -formatosOrden.dir } : { campo, dir: 1 };
+          renderFormatos();
+        });
+      });
+
+      fila.querySelectorAll('.fmt-resizer').forEach(r => {
+        r.addEventListener('click', ev => ev.stopPropagation());
+        r.addEventListener('pointerdown', ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const th = r.parentElement;
+          const x0 = ev.clientX;
+          const w0 = th.offsetWidth;
+          r.classList.add('activo');
+          th.dataset.redimensionando = '1';
+          try { r.setPointerCapture(ev.pointerId); } catch (_) { /* navegador sin captura */ }
+          const mover = e2 => { th.style.width = `${Math.max(50, w0 + e2.clientX - x0)}px`; };
+          const soltar = () => {
+            r.classList.remove('activo');
+            r.removeEventListener('pointermove', mover);
+            r.removeEventListener('pointerup', soltar);
+            r.removeEventListener('pointercancel', soltar);
+            // El clic que sigue a soltar no debe ordenar la columna
+            setTimeout(() => { delete th.dataset.redimensionando; }, 0);
+            try {
+              const anchos = {};
+              fila.querySelectorAll('th[data-col]').forEach(t => { anchos[t.dataset.col] = t.offsetWidth; });
+              localStorage.setItem(FMT_ANCHOS_KEY, JSON.stringify(anchos));
+            } catch (_) { /* sin almacenamiento local */ }
+          };
+          r.addEventListener('pointermove', mover);
+          r.addEventListener('pointerup', soltar);
+          r.addEventListener('pointercancel', soltar);
+        });
+      });
+    }
+
+    async function abrirFormato(id) {
+      showLoader('Cargando formato...');
+      try {
+        const res = await fetch(`/cloud-docs/api/formatos/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo abrir el formato');
+        formatoActual = data.formato;
+        formatosPermisos = data.permisos || formatosPermisos || {};
+        formatoTextos = {};
+        pintarFormato(data.historial || []);
+        verPanelFormato('datos');
+        openModal('modal-formato');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function pintarFormato(historial) {
+      const f = formatoActual;
+      const perm = formatosPermisos || {};
+      const campos = perm.campos || [];
+      const puede = c => !!perm.puedeEditar && campos.includes(c);
+      document.getElementById('fmt-modal-titulo').textContent = f.nombre || `Formato ${f.nombre_proceso}`;
+
+      const setCampo = (id, valor, campo) => {
+        const el = document.getElementById(id);
+        el.value = valor == null ? '' : valor;
+        el.disabled = !puede(campo);
+      };
+      setCampo('fmt-codigo', f.codigo_formato, 'codigo_formato');
+      setCampo('fmt-version', f.version_formato, 'version_formato');
+      setCampo('fmt-fecha', f.fecha_version, 'fecha_version');
+      setCampo('fmt-observaciones', f.observaciones, 'observaciones');
+      setCampo('fmt-activo', String(Number(f.activo) ? 1 : 0), 'activo');
+      document.getElementById('fmt-btn-subir-version').style.display = puede('version_formato') ? '' : 'none';
+      document.getElementById('fmt-info-tecnica').textContent =
+        `Plantilla #${f.id_plantilla} (${f.nombre_proceso})${f.documento ? ' · documento ' + f.documento : ''} · revisión interna ${f.version} · última actualización ${String(f.ultima_actualizacion || '').replace('T', ' ').slice(0, 16) || '—'}`;
+
+      // Textos
+      const cont = document.getElementById('fmt-segmentos');
+      const editableTexto = puede('texto');
+      cont.innerHTML = (f.segmentos || []).map(seg => `
+        <div class="fmt-seg" id="fmt-seg-${seg.indice}" data-buscar="${esc(fmtNormalizar(seg.texto))}">
+          <textarea rows="${Math.min(8, Math.max(1, Math.ceil(seg.texto.length / 90)))}" data-indice="${seg.indice}" ${editableTexto ? '' : 'readonly'}
+            oninput="cambiarTextoFormato(${seg.indice}, this.value)">${esc(seg.texto)}</textarea>
+          ${seg.variables.length ? `<div class="fmt-vars">${seg.variables.map(v => `<span>${esc(v)}</span>`).join('')}</div>` : ''}
+        </div>`).join('') || '<p class="fmt-aviso">Esta plantilla no tiene textos editables.</p>';
+      document.getElementById('fmt-buscar-texto').value = '';
+
+      // Código HTML
+      const tabHtml = document.getElementById('fmt-tab-html');
+      tabHtml.style.display = perm.puedeEditarHtml ? '' : 'none';
+      document.getElementById('fmt-html').value = perm.puedeEditarHtml ? f.contenido_html : '';
+
+      // Historial
+      document.getElementById('fmt-historial').innerHTML = historial.length
+        ? historial.map(h => `
+          <div class="fmt-hist">
+            <b>${esc(String(h.fecha || '').replace('T', ' ').slice(0, 16))}</b> · ${esc(h.usuario || '')} (${esc(h.rol || '')})
+            ${h.motivo ? `<div><i>Motivo:</i> ${esc(h.motivo)}</div>` : ''}
+            <div style="color:var(--text-muted);">${esc(h.cambios || '')}</div>
+          </div>`).join('')
+        : '<p class="fmt-aviso">Sin cambios registrados desde esta pestaña.</p>';
+
+      // Pie: motivo y guardar solo para quien puede editar
+      const footerEdit = !!perm.puedeEditar;
+      const motivo = document.getElementById('fmt-motivo');
+      motivo.value = '';
+      motivo.style.display = footerEdit ? '' : 'none';
+      motivo.placeholder = perm.exigirMotivo ? 'Motivo del cambio (obligatorio)' : 'Motivo del cambio (opcional)';
+      document.getElementById('fmt-btn-guardar').style.display = footerEdit ? '' : 'none';
+      marcarCambioFormato();
+    }
+
+    function verPanelFormato(panel) {
+      document.querySelectorAll('#fmt-modal-tabs button').forEach(b => b.classList.toggle('active', b.dataset.panel === panel));
+      document.querySelectorAll('#modal-formato .fmt-panel').forEach(p => p.classList.toggle('active', p.id === `fmt-panel-${panel}`));
+      if (panel === 'vista') pintarVistaPreviaFormato();
+    }
+
+    function cambiarTextoFormato(indice, valor) {
+      const seg = (formatoActual.segmentos || []).find(s => s.indice === indice);
+      if (!seg) return;
+      if (valor.replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '') === seg.texto) delete formatoTextos[indice];
+      else formatoTextos[indice] = valor;
+      const caja = document.getElementById(`fmt-seg-${indice}`);
+      if (caja) caja.classList.toggle('cambiado', Object.prototype.hasOwnProperty.call(formatoTextos, indice));
+      marcarCambioFormato();
+    }
+
+    function filtrarSegmentosFormato() {
+      const q = fmtNormalizar(document.getElementById('fmt-buscar-texto').value);
+      document.querySelectorAll('#fmt-segmentos .fmt-seg').forEach(div => {
+        const texto = fmtNormalizar(div.querySelector('textarea').value);
+        div.style.display = !q || texto.includes(q) || (div.dataset.buscar || '').includes(q) ? '' : 'none';
+      });
+    }
+
+    function fmtHtmlEditado() {
+      const perm = formatosPermisos || {};
+      if (!perm.puedeEditarHtml || !formatoActual) return null;
+      const v = document.getElementById('fmt-html').value;
+      return v !== formatoActual.contenido_html ? v : null;
+    }
+
+    function fmtCambiosDatos() {
+      const f = formatoActual;
+      const d = {};
+      const comparar = (id, campo, original) => {
+        const el = document.getElementById(id);
+        if (el.disabled) return;
+        const v = el.value.trim();
+        if (v !== String(original == null ? '' : original)) d[campo] = v;
+      };
+      comparar('fmt-codigo', 'codigo_formato', f.codigo_formato);
+      comparar('fmt-version', 'version_formato', f.version_formato);
+      comparar('fmt-fecha', 'fecha_version', f.fecha_version);
+      comparar('fmt-observaciones', 'observaciones', f.observaciones);
+      comparar('fmt-activo', 'activo', Number(f.activo) ? 1 : 0);
+      return d;
+    }
+
+    function marcarCambioFormato() {
+      if (!formatoActual) return;
+      const hay = Object.keys(formatoTextos).length > 0 || fmtHtmlEditado() !== null || Object.keys(fmtCambiosDatos()).length > 0;
+      document.getElementById('fmt-btn-guardar').disabled = !hay;
+    }
+
+    function subirVersionFormato() {
+      const el = document.getElementById('fmt-version');
+      const s = el.value.trim();
+      const m = s.match(/^(.*?)(\d+)$/);
+      el.value = m ? m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0') : (s || '1');
+      const fecha = document.getElementById('fmt-fecha');
+      if (!fecha.disabled) fecha.value = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      marcarCambioFormato();
+    }
+
+    function fmtCodificar(t) {
+      return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/ /g, '&nbsp;');
+    }
+
+    // HTML con los cambios sin guardar (solo para la vista previa; el servidor vuelve a aplicarlos y los valida)
+    function fmtHtmlConCambios() {
+      const html = fmtHtmlEditado();
+      if (html !== null) return html;
+      const tokens = String(formatoActual.contenido_html || '').split(FMT_RE_TOKEN);
+      Object.keys(formatoTextos).forEach(k => {
+        const i = Number(k);
+        const raw = tokens[i];
+        if (raw == null) return;
+        const inicio = raw.match(/^[ \t\n\r\f]*/)[0];
+        const fin = raw.match(/[ \t\n\r\f]*$/)[0];
+        tokens[i] = inicio + fmtCodificar(formatoTextos[k].replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')) + fin;
+      });
+      return tokens.join('');
+    }
+
+    function pintarVistaPreviaFormato() {
+      if (!formatoActual) return;
+      const codigo = document.getElementById('fmt-codigo').value.trim();
+      const version = document.getElementById('fmt-version').value.trim();
+      const fecha = fmtFechaCorta(document.getElementById('fmt-fecha').value);
+      const html = fmtHtmlConCambios()
+        .replace(/\{\{\s*codigo_formato\s*\}\}/g, fmtCodificar(codigo))
+        .replace(/\{\{\s*version_formato\s*\}\}/g, fmtCodificar(version))
+        .replace(/\{\{\s*fecha_formato\s*\}\}/g, fecha === '—' ? '' : fecha);
+      document.getElementById('fmt-preview').srcdoc = html;
+    }
+
+    function cerrarFormato() {
+      const hay = !document.getElementById('fmt-btn-guardar').disabled && formatosPermisos && formatosPermisos.puedeEditar;
+      if (hay && !confirm('Tienes cambios sin guardar. ¿Cerrar de todas formas?')) return;
+      closeModal('modal-formato');
+      formatoActual = null;
+      formatoTextos = {};
+    }
+
+    async function guardarFormato(forzarVariables = false) {
+      if (!formatoActual) return;
+      const perm = formatosPermisos || {};
+      const motivo = document.getElementById('fmt-motivo').value.trim();
+      if (perm.exigirMotivo && !motivo) {
+        showToast('Escribe el motivo del cambio.', 'error');
+        document.getElementById('fmt-motivo').focus();
+        return;
+      }
+      const cuerpo = {
+        usuario: CONFIG.usuarioId,
+        version: formatoActual.version,
+        motivo,
+        ...fmtCambiosDatos()
+      };
+      const html = fmtHtmlEditado();
+      if (html !== null) {
+        cuerpo.contenido_html = html;
+        if (Object.keys(formatoTextos).length && !confirm('Cambiaste el código HTML: los cambios de la pestaña Textos no se aplican. ¿Continuar?')) return;
+      } else if (Object.keys(formatoTextos).length) {
+        cuerpo.textos = Object.keys(formatoTextos).map(k => ({ indice: Number(k), texto: formatoTextos[k] }));
+      }
+      if (forzarVariables) cuerpo.forzarVariables = true;
+
+      const btn = document.getElementById('fmt-btn-guardar');
+      btn.disabled = true;
+      showLoader('Guardando formato...');
+      try {
+        const res = await fetch(`/cloud-docs/api/formatos/${formatoActual.id_plantilla}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cuerpo)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.faltanVariables && !forzarVariables) {
+            hideLoader();
+            if (confirm(`${data.error}\n\n¿Guardar de todas formas?`)) return guardarFormato(true);
+            btn.disabled = false;
+            return;
+          }
+          throw new Error(data.error || 'No se pudo guardar');
+        }
+        showToast(data.sinCambios ? 'No había cambios para guardar.' : 'Formato guardado.');
+        const id = formatoActual.id_plantilla;
+        formatoActual = null;
+        closeModal('modal-formato');
+        await cargarFormatos();
+        if (!data.sinCambios) abrirFormato(id);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      } finally {
+        hideLoader();
+      }
     }
 
     // --- Modal "Nuevo Tipo de Documento" (pestaña Tipos de Documento, solo Sistema/Archivo) ---
