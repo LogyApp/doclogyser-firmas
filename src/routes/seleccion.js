@@ -482,12 +482,21 @@ router.get('/admin/:uuid', async (req, res) => {
 
 
   try {
-    const [[aspiranteRows], [cargados], [todasRequisiciones], docsSel] = await Promise.all([
+    const [
+      [aspiranteRows],
+      [cargados],
+      [todasRequisiciones],
+      docsSel,
+      procesosAnteriores
+    ] = await Promise.all([
       pool.execute(
-        `SELECT primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, 
-                identificacion, estado_proceso, IdRequisicion, pdf_public_url,
-                telefono, correo_electronico 
-         FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`, 
+        `SELECT a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido, 
+                a.identificacion, a.estado_proceso, a.IdRequisicion, a.pdf_public_url,
+                a.telefono, a.correo_electronico,
+                r.\`Requisición\`, r.\`Operación\`, r.\`Cargo Requerido\`, r.\`Fecha Requisición\`, r.\`Regional\`, r.\`Estado\` AS req_estado, r.\`N° Personas Requeridas\`
+         FROM Dynamic_hv_aspirante a
+         LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+         WHERE a.id_aspirante = ? LIMIT 1`, 
         [uuid]
       ),
       pool.execute('SELECT id_config_doc, estado, gcs_path, observaciones, fuente FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
@@ -497,7 +506,8 @@ router.get('/admin/:uuid', async (req, res) => {
         WHERE UPPER(TRIM(Estado)) = 'EN PROCESO'
         ORDER BY \`Fecha Requisición\` DESC, IdRequisicion DESC
       `),
-      obtenerDocsSeleccion()
+      obtenerDocsSeleccion(),
+      obtenerProcesosAnteriores(uuid)
     ]);
 
     if (aspiranteRows.length === 0) return res.status(404).send("Aspirante no encontrado");
@@ -508,34 +518,39 @@ router.get('/admin/:uuid', async (req, res) => {
                             .filter(n => n && n.trim() !== "").join(" ");
 
     let requisicionInfo = '';
-    let regionalSugerida = '';
-    let operacionSugerida = '';
+    const regionalSugerida = (a['Regional'] || '').toString().trim();
+    const operacionSugerida = (a['Operación'] || '').toString().trim();
 
     if (a.IdRequisicion) {
-      const [reqRows] = await pool.execute(
-        'SELECT IdRequisicion, `Requisición`, `Operación`, `Cargo Requerido`, `Fecha Requisición`, `Regional`, `Estado`, `N° Personas Requeridas` FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
-        [a.IdRequisicion]
-      );
+      const f = a['Fecha Requisición'];
+      const fecStr = f instanceof Date ? f.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : f;
 
-      if (reqRows.length > 0) {
-        const r = reqRows[0];
-        regionalSugerida = (r['Regional'] || '').toString().trim();
-        operacionSugerida = (r['Operación'] || '').toString().trim();
-        const f = r['Fecha Requisición'];
-        const fecStr = f instanceof Date ? f.toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : f;
+      requisicionInfo = [a['Requisición'], a['Operación'], a['Cargo Requerido'], fecStr]
+                        .filter(x => x).map(x => String(x).trim()).join(' | ');
 
-        requisicionInfo = [r['Requisición'], r['Operación'], r['Cargo Requerido'], fecStr]
-                          .filter(x => x).map(x => String(x).trim()).join(' | ');
-
-        const yaEnLista = todasRequisiciones.some(req => String(req.IdRequisicion) === String(a.IdRequisicion));
-        if (!yaEnLista) {
-          todasRequisiciones.unshift(r);
-        }
+      const yaEnLista = todasRequisiciones.some(req => String(req.IdRequisicion) === String(a.IdRequisicion));
+      if (!yaEnLista && a['Requisición']) {
+        todasRequisiciones.unshift({
+          IdRequisicion: a.IdRequisicion,
+          'Requisición': a['Requisición'],
+          'Operación': a['Operación'],
+          'Cargo Requerido': a['Cargo Requerido'],
+          'Fecha Requisición': a['Fecha Requisición'],
+          'Regional': a['Regional'],
+          'Estado': a.req_estado || 'EN PROCESO',
+          'N° Personas Requeridas': a['N° Personas Requeridas']
+        });
       }
     }
 
-    // Panel Admin: nombres oficiales de Config_Doc_Trabajador
-    const docsFirmar = await obtenerDocsFirmaParaOperacion(operacionSugerida);
+    // Panel Admin: nombres oficiales de Config_Doc_Trabajador y permisos de usuario en paralelo
+    const [docsFirmar, puedeDesbloquear, puedeReingreso] = await Promise.all([
+      obtenerDocsFirmaParaOperacion(operacionSugerida),
+      String(a.estado_proceso || '').trim().toLowerCase() === 'bloqueado'
+        ? puedeDesbloquearAspirante(usuario) : Promise.resolve(false),
+      a.estado_proceso === 'contratado'
+        ? puedeIniciarReingreso(usuario) : Promise.resolve(false)
+    ]);
 
     const mapaDocs = {};
     cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path, rutaPropia: rutaHvAspirante(c.observaciones), fuente: c.fuente }; });
@@ -551,10 +566,9 @@ router.get('/admin/:uuid', async (req, res) => {
         regionalSugerida,
         operacionSugerida,
         estadoProceso: a.estado_proceso,
-        puedeDesbloquear: String(a.estado_proceso || '').trim().toLowerCase() === 'bloqueado'
-          ? await puedeDesbloquearAspirante(usuario) : false,
-        puedeReingreso: a.estado_proceso === 'contratado' ? await puedeIniciarReingreso(usuario) : false,
-        procesosAnteriores: await obtenerProcesosAnteriores(uuid),
+        puedeDesbloquear,
+        puedeReingreso,
+        procesosAnteriores,
         telefono: a.telefono || '',
         correoElectronico: a.correo_electronico || ''
       },
@@ -3202,6 +3216,8 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
         if (window.self !== window.top) document.documentElement.classList.add('emb');
       })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Inter', sans-serif; }

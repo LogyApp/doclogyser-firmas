@@ -1222,6 +1222,10 @@
       border: 0;
       border-radius: var(--radius-sm);
       background: transparent;
+      transition: opacity 0.2s ease-in-out;
+    }
+    @keyframes thSpinAdmin {
+      to { transform: rotate(360deg); }
     }
     .asp-avatar {
       width: 32px;
@@ -2269,6 +2273,11 @@
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
           <h2 id="aspAdminTitulo" style="font-size:1.1rem; font-weight:700; color:var(--text); margin:0;">Panel Admin del Aspirante</h2>
           <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem; font-weight:600;" onclick="cerrarAdminAspirante()">⬅️ Volver al listado</button>
+        </div>
+        <div id="aspAdminLoader" style="display:none; padding:60px 20px; text-align:center; background:var(--card-bg, #fff); border-radius:var(--radius-sm, 10px); border:1px solid var(--border, #e2e8f0); margin-bottom:16px;">
+          <div style="width:38px; height:38px; border:3.5px solid rgba(37,99,235,0.18); border-top-color:#2563eb; border-radius:50%; animation:thSpinAdmin 0.75s linear infinite; margin:0 auto 16px;"></div>
+          <div id="aspAdminLoaderTxt" style="font-size:0.95rem; font-weight:700; color:var(--text, #1e293b);">Cargando panel del aspirante...</div>
+          <div style="font-size:0.82rem; color:var(--text-muted, #64748b); margin-top:6px;">Consultando documentos, requisiciones y firmas</div>
         </div>
         <iframe id="frameAdminAspirante" class="asp-admin-frame" title="Panel Admin del aspirante"></iframe>
       </div>
@@ -4205,16 +4214,11 @@
         window.iniciarNotificacionesEntrevistas();
       }
 
-      // 2. Activar pestaña configurada
+      // 2. Activar pestaña configurada (switchTab ya inicializa la sección correspondiente)
       switchTab(CONFIG.activeTab || 'Requisiciones');
 
-      // 3. Inicializar según pestaña activa
-      if (CONFIG.activeTab === 'Integridad') {
-        cargarHistorialAuditoria();
-      } else if (CONFIG.activeTab === 'Requisiciones') {
-        inicializarRequisiciones();
-      } else if (CONFIG.activeTab === 'Aspirantes') {
-        inicializarAspirantes();
+      // 3. Deep-linking de Aspirante si viene en la URL (?asp=...&subtab=Admin)
+      if (CONFIG.activeTab === 'Aspirantes') {
         const urlAsp = new URLSearchParams(window.location.search);
         const aspDeep = (urlAsp.get('asp') || '').trim();
         if (aspDeep) {
@@ -5104,6 +5108,7 @@
 
     // ── REQUISICIONES DE PERSONAL ───────────────────────────────────────────
     let _requisiciones = [];
+    let _reqLimiteRender = 100;
     let _reqCatalogos = null;
     let _reqFiltros = {
       q: '',
@@ -5598,6 +5603,7 @@
         }
 
         _requisiciones = data.requisiciones || [];
+        _reqLimiteRender = 100;
         const k = data.kpis || {};
         const facetas = data.facetas || {};
 
@@ -5638,6 +5644,11 @@
       }
     }
 
+    function cargarMasRequisicionesRender() {
+      _reqLimiteRender += 100;
+      renderizarTablaRequisiciones();
+    }
+
     function renderizarTablaRequisiciones() {
       const tbody = document.getElementById('tbodyRequisiciones');
       if (!tbody) return;
@@ -5652,7 +5663,8 @@
       const listaResp = _reqCatalogos?.responsablesSeleccion || [];
       const tiempoLim = parseInt(_reqCatalogos?.permisos?.tiempoLimiteRequisicion) || 8;
 
-      tbody.innerHTML = _requisiciones.map(r => {
+      const visibles = _requisiciones.slice(0, _reqLimiteRender);
+      let htmlReq = visibles.map(r => {
         const codigo = esc(r['Requisición'] || ('#' + r.IdRequisicion));
         const badgeClase = getEstadoBadgeClass(r.Estado);
         const fechaFormatted = esc(r.fechaRequisicion || r['Fecha Requisición'] || '-');
@@ -5752,6 +5764,20 @@
           </tr>
         `;
       }).join('');
+
+      if (_requisiciones.length > _reqLimiteRender) {
+        htmlReq += `
+          <tr id="trCargarMasReq">
+            <td colspan="10" style="text-align:center; padding:16px; background:var(--bg-elevated);">
+              <button type="button" class="btn btn-outline" onclick="cargarMasRequisicionesRender()" style="font-weight:700; padding:8px 20px; font-size:0.84rem; cursor:pointer;">
+                📥 Mostrar más requisiciones (mostrando ${_reqLimiteRender} de ${_requisiciones.length})
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+
+      tbody.innerHTML = htmlReq;
     }
 
     async function cambiarResponsableInline(idReq, nuevoResponsable) {
@@ -7192,6 +7218,7 @@
     // ── GESTIÓN DE ASPIRANTES & HOJAS DE VIDA ────────────────
     // ══════════════════════════════════════════════════════════
     let _aspirantes = [];
+    let _aspLimiteRender = 100;
     let _aspFiltros = {
       q: '',
       estado: 'TODOS',
@@ -7699,6 +7726,7 @@
         }
 
         _aspirantes = data.aspirantes || [];
+        _aspLimiteRender = 100;
         const k = data.kpis || {};
         const facetas = data.facetas || {};
 
@@ -7823,7 +7851,7 @@
           </td>
           <td>
             <div style="display:flex; align-items:center; gap:10px;">
-              <img src="${foto}" alt="Foto" class="asp-avatar" onerror="this.src=TALENTHUB_FOTO_DEFAULT">
+              <img src="${foto}" alt="Foto" class="asp-avatar" loading="lazy" decoding="async" onerror="this.onerror=null; this.src=TALENTHUB_FOTO_DEFAULT;">
               <div style="min-width:0;">
                 <div style="font-weight:700; font-size:0.84rem; color:var(--text); text-transform:uppercase; line-height:1.2;">
                   ${nombreCompleto}
@@ -7881,6 +7909,11 @@
       window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
     }
 
+    function cargarMasAspirantesRender() {
+      _aspLimiteRender += 100;
+      renderizarTablaAspirantes();
+    }
+
     function renderizarTablaAspirantes() {
       const tbody = document.getElementById('tbodyAspirantes');
       if (!tbody) return;
@@ -7892,7 +7925,20 @@
 
       const agrupador = _aspAgrupamiento.columna;
       if (!agrupador) {
-        tbody.innerHTML = _aspirantes.map(a => renderFilaAspirante(a, false)).join('');
+        const visibles = _aspirantes.slice(0, _aspLimiteRender);
+        let html = visibles.map(a => renderFilaAspirante(a, false)).join('');
+        if (_aspirantes.length > _aspLimiteRender) {
+          html += `
+            <tr id="trCargarMasAsp">
+              <td colspan="9" style="text-align:center; padding:16px; background:var(--bg-elevated);">
+                <button type="button" class="btn btn-outline" onclick="cargarMasAspirantesRender()" style="font-weight:700; padding:8px 20px; font-size:0.84rem; cursor:pointer;">
+                  📥 Mostrar más aspirantes (mostrando ${_aspLimiteRender} de ${_aspirantes.length})
+                </button>
+              </td>
+            </tr>
+          `;
+        }
+        tbody.innerHTML = html;
         return;
       }
 
@@ -8101,8 +8147,9 @@
     // Cambia la página del iframe sin crear entradas nuevas en el historial
     function cargarFrameAdmin(url) {
       const frame = document.getElementById('frameAdminAspirante');
+      if (!frame) return;
       try {
-        if (frame.contentWindow) {
+        if (frame.contentWindow && frame.src && frame.src !== 'about:blank') {
           frame.contentWindow.location.replace(url);
           return;
         }
@@ -8113,11 +8160,50 @@
     function abrirAdminAspirante(aspId, opciones = {}) {
       if (!aspId) return;
       if (CONFIG.activeTab !== 'Aspirantes') switchTab('Aspirantes');
-      document.getElementById('aspAdminTitulo').textContent = '⚙️ Panel Admin del Aspirante';
-      _adminNavsIframe = -1;   // el primer "load" es el cargue inicial
-      cargarFrameAdmin(`/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+
+      // Buscar datos locales del aspirante para feedback visual inmediato
+      const aspObj = (_aspirantes || []).find(x => String(x.id_aspirante) === String(aspId));
+      const nombreMostrar = aspObj ? (aspObj.nombre_completo || aspObj.identificacion) : '';
+      document.getElementById('aspAdminTitulo').textContent = nombreMostrar
+        ? `⚙️ Panel Admin — ${nombreMostrar}`
+        : '⚙️ Panel Admin del Aspirante';
+
+      // Mostrar contenedor primero antes de interactuar con el iframe
       document.getElementById('aspVistaListado').style.display = 'none';
       document.getElementById('aspVistaAdmin').style.display = 'block';
+
+      // Mostrar loader elegante y atenuar iframe hasta que termine de cargar
+      const loader = document.getElementById('aspAdminLoader');
+      const loaderTxt = document.getElementById('aspAdminLoaderTxt');
+      const frame = document.getElementById('frameAdminAspirante');
+
+      if (loader) {
+        loader.style.display = 'block';
+        if (loaderTxt) {
+          loaderTxt.textContent = nombreMostrar
+            ? `Cargando panel de ${nombreMostrar}...`
+            : 'Cargando panel del aspirante...';
+        }
+      }
+      if (frame) {
+        frame.style.opacity = '0';
+        frame.style.pointerEvents = 'none';
+
+        const onFrameLoaded = () => {
+          try {
+            if (frame.contentWindow && frame.contentWindow.location.href === 'about:blank') return;
+          } catch (e) {}
+          if (loader) loader.style.display = 'none';
+          frame.style.opacity = '1';
+          frame.style.pointerEvents = 'auto';
+        };
+
+        frame.onload = onFrameLoaded;
+      }
+
+      _adminNavsIframe = -1;   // el primer "load" es el cargue inicial
+      cargarFrameAdmin(`/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+
       if (!opciones.sinHistorial) {
         const urlAdmin = `${urlListadoAspirantes()}&subtab=Admin&asp=${encodeURIComponent(aspId)}`;
         const estado = { aspAdmin: String(aspId) };
@@ -8136,7 +8222,14 @@
     function ocultarVistaAdminAspirante() {
       const vista = document.getElementById('aspVistaAdmin');
       if (!vista || vista.style.display === 'none') return;
-      cargarFrameAdmin('about:blank');
+      const loader = document.getElementById('aspAdminLoader');
+      const frame = document.getElementById('frameAdminAspirante');
+      if (loader) loader.style.display = 'none';
+      if (frame) {
+        frame.onload = null;
+        frame.style.opacity = '0';
+        cargarFrameAdmin('about:blank');
+      }
       vista.style.display = 'none';
       document.getElementById('aspVistaListado').style.display = 'block';
       cargarAspirantes();
@@ -8787,6 +8880,7 @@
     let _socioEstadoVista = 'Activo'; // 'Activo' (verde, por defecto) | 'Retirado' (rojo)
     let _socioOpcionActiva = 'colaboradores'; // Por defecto Colaboradores
     let _socioRegistros = [];
+    let _socioLimiteRender = 100;
     let _socioPuedeEditarActual = false;
     let _socioSortCol = 'fecha_ingreso';
     let _socioSortDir = 'desc';
@@ -9254,6 +9348,7 @@
         }
 
         _socioRegistros = data.registros || [];
+        _socioLimiteRender = 100;
         _socioPuedeEditarActual = !!data.puedeEditar;
 
         poblarSelectoresFacetasSocio(data.counts || {});
@@ -9557,6 +9652,11 @@
       }
     }
 
+    function cargarMasSocioRender() {
+      _socioLimiteRender += 100;
+      renderFilasTablaSocio();
+    }
+
     function renderFilasTablaSocio() {
       const tbody = document.getElementById('tbodySociodemografica');
       const badgeTotal = document.getElementById('socioTotalBadge');
@@ -9600,11 +9700,26 @@
       const idSelActual = _socioDetalleConsolidado?.identificacion || _socioRegistroEditando?.identificacion || '';
       const panelAbierto = document.getElementById('socioDetailCard')?.classList.contains('open');
 
-      tbody.innerHTML = lista.map((row, idx) => {
+      const visibles = lista.slice(0, _socioLimiteRender);
+      let htmlFilas = visibles.map((row, idx) => {
         const celdas = cols.map(c => `<td>${renderCeldaSocio(row, c)}</td>`).join('');
         const isSel = panelAbierto && idSelActual && String(row.identificacion) === String(idSelActual);
         return `<tr class="${isSel ? 'socio-row-selected' : ''}" data-socio-idx="${idx}" style="cursor:pointer;" onclick="abrirModalEditarSocioPorIndice(${idx})" title="Clic para abrir el detalle del trabajador">${celdas}</tr>`;
       }).join('');
+
+      if (lista.length > _socioLimiteRender) {
+        htmlFilas += `
+          <tr id="trCargarMasSocio">
+            <td colspan="${cols.length}" style="text-align:center; padding:16px; background:var(--bg-elevated);">
+              <button type="button" class="btn btn-outline" onclick="cargarMasSocioRender()" style="font-weight:700; padding:8px 20px; font-size:0.84rem; cursor:pointer;">
+                📥 Mostrar más colaboradores (mostrando ${_socioLimiteRender} de ${lista.length})
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+
+      tbody.innerHTML = htmlFilas;
 
       // Guardar referencia ordenada para abrir por índice
       window._socioListaOrdenadaActual = lista;

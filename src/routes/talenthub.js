@@ -1287,12 +1287,15 @@ router.get('/api/requisiciones', async (req, res) => {
         `SELECT a.IdRequisicion, DATE_FORMAT(v.max_ingreso, '%Y-%m-%d') AS fecha_ingreso
          FROM \`Dynamic_hv_aspirante\` a
          LEFT JOIN (
-           SELECT \`Identificación\` AS id_vinc, MAX(\`Fecha de Ingreso\`) AS max_ingreso
-           FROM \`Maestro_Vinculación\`
-           GROUP BY \`Identificación\`
-         ) v ON CAST(v.id_vinc AS CHAR) = CAST(a.identificacion AS CHAR)
+           SELECT mv.\`Identificación\` AS id_vinc, MAX(mv.\`Fecha de Ingreso\`) AS max_ingreso
+           FROM \`Maestro_Vinculación\` mv
+           WHERE mv.\`Identificación\` IN (
+             SELECT CAST(identificacion AS UNSIGNED) FROM \`Dynamic_hv_aspirante\` WHERE IdRequisicion IN (${ids.map(() => '?').join(',')})
+           )
+           GROUP BY mv.\`Identificación\`
+         ) v ON v.id_vinc = CAST(a.identificacion AS UNSIGNED)
          WHERE a.IdRequisicion IN (${ids.map(() => '?').join(',')})`,
-        ids
+        [...ids, ...ids]
       );
       aspRows.forEach(a => {
         if (!aspirantesPorReq.has(a.IdRequisicion)) aspirantesPorReq.set(a.IdRequisicion, []);
