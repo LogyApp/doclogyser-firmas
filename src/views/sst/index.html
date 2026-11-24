@@ -2626,7 +2626,7 @@
       <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">☰</button>
       <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
     </div>
-    <div class="mobile-title"><span id="mobileHeaderTitle">SST — Evaluación SST</span></div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">SST — Documentación Inicial</span></div>
     <div class="mobile-header-right">
       <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
         <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
@@ -2664,8 +2664,18 @@
 
     <!-- Lista de Navegación (Pestañas en Orden AppSheet) -->
     <ul class="nav-list">
-      <!-- 1. Evaluación SST -->
-      <li class="nav-item active" data-tab="evaluacion" onclick="switchTab('evaluacion')">
+      <!-- 1. Documentación Inicial (pestaña por defecto): subpestañas ARO (/js/sst-aro.js), EVIN (/js/sst-evin.js) e INGE (/js/sst-inge.js) -->
+      <li class="nav-item active" data-tab="docinicial" onclick="switchTab('docinicial')">
+        <div class="nav-icon" title="Documentación Inicial">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8v-2zm0 4h8v2H8v-2zm0-8h3v2H8V8z"/>
+          </svg>
+        </div>
+        <span>Documentación Inicial</span>
+      </li>
+
+      <!-- Evaluación SST: desactivada desde 2026-11-24 (sin roles en Maestro_Menu; la reemplazó EVIN) -->
+      <li class="nav-item" data-tab="evaluacion" onclick="switchTab('evaluacion')">
         <div class="nav-icon" title="Evaluación SST">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
@@ -2692,16 +2702,6 @@
           </svg>
         </div>
         <span>Prueba de Consumo</span>
-      </li>
-
-      <!-- 3b. Documentación Inicial: subpestañas ARO (/js/sst-aro.js), EVIN (/js/sst-evin.js) e INGE (/js/sst-inge.js) -->
-      <li class="nav-item" data-tab="docinicial" onclick="switchTab('docinicial')">
-        <div class="nav-icon" title="Documentación Inicial">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8v-2zm0 4h8v2H8v-2zm0-8h3v2H8V8z"/>
-          </svg>
-        </div>
-        <span>Documentación Inicial</span>
       </li>
 
       <!-- 4. Participación -->
@@ -2766,7 +2766,7 @@
     <!-- ──────────────────────────────────────────────────────────
          PESTAÑA 1: EVALUACIÓN SST
     ────────────────────────────────────────────────────────── -->
-    <section class="tab-pane" id="pane-evaluacion">
+    <section class="tab-pane" id="pane-evaluacion" style="display: none;">
       <div class="tab-header">
         <div class="tab-header-left">
           <h1 class="tab-title">
@@ -3251,9 +3251,9 @@
          ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js · INGE: /js/sst-inge.js -->
     <section class="tab-pane" id="pane-docinicial" style="display: none;">
       <div class="subtabs-bar" role="tablist" aria-label="Documentación Inicial">
-        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-aro" data-subtab-docinicial="aro" role="tab" onclick="switchDocInicialSubtab('aro')">ARO</button>
-        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-evin" data-subtab-docinicial="evin" role="tab" onclick="switchDocInicialSubtab('evin')">EVIN</button>
-        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-inge" data-subtab-docinicial="inge" role="tab" onclick="switchDocInicialSubtab('inge')">INGE</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-aro" data-subtab-docinicial="aro" role="tab" onclick="switchDocInicialSubtab('aro')">Análisis de Riesgo</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-evin" data-subtab-docinicial="evin" role="tab" onclick="switchDocInicialSubtab('evin')">Evaluación de Inducción</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-inge" data-subtab-docinicial="inge" role="tab" onclick="switchDocInicialSubtab('inge')">Comprobante de Inducción</button>
       </div>
       <div id="pane-aro" role="tabpanel" style="display: none;"></div>
       <div id="pane-evin" role="tabpanel" style="display: none;"></div>
@@ -4910,7 +4910,7 @@
 
   <!-- Lógica Integral de la Interfaz SST -->
   <script>
-    let currentTab = 'evaluacion';
+    let currentTab = 'docinicial';
     let subtabGestionMedica = 'casosmedicos';
     let dataStore = {
       ev: [],
@@ -4986,10 +4986,19 @@
     }
 
     // Documentación Inicial: una subpestaña por Sección de Maestro_Menu; la pestaña se ve si tiene alguna
+    // Nombre visible de una sección: Maestro_Menu.Etiqueta (CONFIG.etiquetasSeccion), o el que se indique
+    function etiquetaSeccionSst(seccion, defecto) {
+      const etiquetas = CONFIG.etiquetasSeccion || {};
+      const buscada = normalizarTextoSeccionSst(seccion);
+      const clave = Object.keys(etiquetas).find(k => normalizarTextoSeccionSst(k) === buscada);
+      return (clave && etiquetas[clave]) || defecto || seccion;
+    }
+    window.etiquetaSeccionSst = etiquetaSeccionSst; // la usan sst-aro.js, sst-evin.js y sst-inge.js
+
     const SUBTABS_DOC_INICIAL = [
-      { id: 'aro', seccion: 'ARO', titulo: 'ARO', buscar: 'buscarAroSst' },
-      { id: 'evin', seccion: 'EVIN', titulo: 'EVIN', buscar: 'buscarEvinSst' },
-      { id: 'inge', seccion: 'INGE', titulo: 'INGE', buscar: 'buscarIngeSst' }
+      { id: 'aro', seccion: 'ARO', titulo: etiquetaSeccionSst('ARO', 'Análisis de Riesgo'), buscar: 'buscarAroSst' },
+      { id: 'evin', seccion: 'EVIN', titulo: etiquetaSeccionSst('EVIN', 'Evaluación de Inducción'), buscar: 'buscarEvinSst' },
+      { id: 'inge', seccion: 'INGE', titulo: etiquetaSeccionSst('INGE', 'Comprobante de Inducción'), buscar: 'buscarIngeSst' }
     ];
     let subtabDocInicial = null;
 
@@ -5005,7 +5014,7 @@
     }
 
     function obtenerPrimeraPestanaPermitidaSst() {
-      const orden = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'docinicial', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones', 'ats'];
+      const orden = ['docinicial', 'evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones', 'ats'];
       return orden.find(t => tieneAccesoTabSst(t)) || null;
     }
 
@@ -5364,7 +5373,7 @@
       const identificacionParam = urlParams.get('identificacion') || urlParams.get('cedula');
 
       // Mapeo flexible de pestañas y alias
-      let targetTab = 'evaluacion';
+      let targetTab = 'docinicial';
       let targetSubtab = null;
 
       if (['evaluacion', 'evaluacionsst', 'evaluaciones', 'ev'].includes(rawTab)) {
@@ -5393,7 +5402,7 @@
       }
 
       if (!tieneAccesoTabSst(targetTab)) {
-        targetTab = obtenerPrimeraPestanaPermitidaSst() || 'evaluacion';
+        targetTab = obtenerPrimeraPestanaPermitidaSst() || 'docinicial';
       }
 
       if (targetTab === 'gestionmedica') {
@@ -5471,7 +5480,7 @@
       isHandlingPopstate = true;
       try {
         const p = new URLSearchParams(window.location.search);
-        const t = p.get('tab') || 'evaluacion';
+        const t = p.get('tab') || 'docinicial';
         const st = p.get('subtab');
         const ident = p.get('identificacion') || p.get('cedula');
         const id = p.get('id') || p.get('idevaluacion') || p.get('idcapacitacion') || p.get('idprueba') || p.get('idasistencia') || p.get('idcompromiso');
@@ -6437,6 +6446,7 @@
         const pane = document.getElementById(`pane-${s.id}`);
         const visible = permitidas.includes(s);
         if (btn) {
+          btn.textContent = s.titulo;
           btn.style.display = visible ? '' : 'none';
           btn.classList.toggle('active', s === actual);
           btn.setAttribute('aria-selected', String(s === actual));
@@ -11706,8 +11716,8 @@
   <script src="/js/boton-sync.js?v=20261122a" defer></script>
   <script src="/js/modal-back.js" defer></script>
   <script src="/js/sst-docinicial.js?v=20261122a"></script>
-  <script src="/js/sst-aro.js?v=20261124a"></script>
-  <script src="/js/sst-evin.js?v=20261124a"></script>
-  <script src="/js/sst-inge.js?v=20261124a"></script>
+  <script src="/js/sst-aro.js?v=20261124b"></script>
+  <script src="/js/sst-evin.js?v=20261124b"></script>
+  <script src="/js/sst-inge.js?v=20261124b"></script>
 </body>
 </html>

@@ -150,6 +150,8 @@ async function computarAccesoSst(usuarioId, seccionRequested = null) {
     dispositivo: usuario.Dispositivo || '',
     operacion: usuario['Operación'] || '',
     secciones: allowedSecciones,
+    // Nombre visible de cada sección (Maestro_Menu.Etiqueta), p. ej. ARO → "Análisis de Riesgo"
+    etiquetasSeccion: Object.fromEntries(menuRows.map(r => [r.seccion, r.etiqueta])),
     seccionAcceso,
     alcancePorSeccion,
     sinFiltro: principal.sinFiltro,

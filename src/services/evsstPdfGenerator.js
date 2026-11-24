@@ -190,14 +190,16 @@ async function armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, p9Selections 
   const isAprobado = ev.resultado === 'APROBADO';
   const puntaje = ev.puntaje !== null && ev.puntaje !== undefined ? ev.puntaje : 0;
   const fechaFmt = formatFechaCO(ev.fecha);
+  // ev.soporteCorreo: texto de la anotación cuando la evaluación se soporta por correo (sin respuestas ni firma)
+  const soporte = ev.soporteCorreo ? `<span class="firma-nota">${esc(ev.soporteCorreo)}</span>` : '';
 
-  const resultadoHtml = isAprobado
+  const resultadoHtml = soporte || (isAprobado
     ? '<span class="badge-aprobado">APROBADO</span>'
-    : '<span class="badge-no-aprobado">NO APROBADO</span>';
+    : '<span class="badge-no-aprobado">NO APROBADO</span>');
 
   const firmaTrabajadorHtml = ev.firma_trabajador
     ? firmaConFecha(`<img src="${esc(ev.firma_trabajador)}" class="sig-img" alt="Firma">`, ev.fecha_firma)
-    : '<span class="firma-nota">No firmó dentro del plazo de 48 horas</span>';
+    : (soporte || '<span class="firma-nota">No firmó dentro del plazo de 48 horas</span>');
 
   const datos = {
     logo_src: LOGO_BASE64,
@@ -208,7 +210,7 @@ async function armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, p9Selections 
     fecha: esc(fechaFmt || '—'),
     tipo_evaluacion: esc(ev.tipo || 'Inducción'),
     subtipo_detalle: isInduccion ? 'Ingreso / Inducción SST' : 'Actualización / Reinducción SST',
-    puntaje: esc(puntaje),
+    puntaje: soporte ? '—' : esc(puntaje),
     resultado_html: resultadoHtml,
     nombre_trabajador: esc(limpiarNombre(vin && vin.Trabajador)) || '—',
     identificacion: esc(ev.identificacion) || '—',
@@ -258,7 +260,7 @@ async function renderPDF(ev, vin, evaluadorNombre) {
   if (ev.firma_trabajador) {
     firmaHtml = firmaConFecha(`<img src="${ev.firma_trabajador}" style="max-height: 80px; max-width: 250px; display: block; margin: 4px auto;" />`, ev.fecha_firma);
   } else {
-    firmaHtml = `<div class="no-firmo">No firmó dentro del plazo de 48 horas</div>`;
+    firmaHtml = `<div class="no-firmo">${ev.soporteCorreo ? esc(ev.soporteCorreo) : 'No firmó dentro del plazo de 48 horas'}</div>`;
   }
 
   const html = `<!DOCTYPE html>

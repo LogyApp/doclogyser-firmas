@@ -56,7 +56,7 @@
     $('pane-aro').innerHTML = `
       <div class="tab-header">
         <div class="tab-header-left">
-          <h1 class="tab-title"><span>🦺 ARO — Análisis de Riesgo por Oficio</span><span class="badge badge-info" id="aro-total">0 Registros</span></h1>
+          <h1 class="tab-title"><span>🦺 ${window.etiquetaSeccionSst ? window.etiquetaSeccionSst('ARO', 'Análisis de Riesgo') : 'Análisis de Riesgo'}</span><span class="badge badge-info" id="aro-total">0 Registros</span></h1>
           <p class="tab-subtitle">SST-FM-054 · Descargue y cargue de mercancía: notificación y firma del trabajador</p>
         </div>
         <div class="tab-actions">

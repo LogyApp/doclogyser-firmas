@@ -69,7 +69,7 @@
     $('pane-evin').innerHTML = `
       <div class="tab-header">
         <div class="tab-header-left">
-          <h1 class="tab-title"><span>📝 EVIN — Evaluación de Inducción</span><span class="badge badge-info" id="evin-total">0 Registros</span><span class="badge badge-danger" id="evin-accion" style="display:none;cursor:pointer" title="Ver las que requieren acción" onclick="evinVerAccion()"></span></h1>
+          <h1 class="tab-title"><span>📝 ${window.etiquetaSeccionSst ? window.etiquetaSeccionSst('EVIN', 'Evaluación de Inducción') : 'Evaluación de Inducción'}</span><span class="badge badge-info" id="evin-total">0 Registros</span><span class="badge badge-danger" id="evin-accion" style="display:none;cursor:pointer" title="Ver las que requieren acción" onclick="evinVerAccion()"></span></h1>
           <p class="tab-subtitle">SST-F-049 · El trabajador califica la inducción, responde las preguntas y firma</p>
         </div>
         <div class="tab-actions">

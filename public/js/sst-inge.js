@@ -60,7 +60,7 @@
     $('pane-inge').innerHTML = `
       <div class="tab-header">
         <div class="tab-header-left">
-          <h1 class="tab-title"><span>✅ INGE — Inducción General</span><span class="badge badge-info" id="inge-total">0 Registros</span><span class="badge badge-warning" id="inge-accion" style="display:none;cursor:pointer" title="Ver los que tienen temas en NO" onclick="ingeVerNovedad()"></span></h1>
+          <h1 class="tab-title"><span>✅ ${window.etiquetaSeccionSst ? window.etiquetaSeccionSst('INGE', 'Comprobante de Inducción') : 'Comprobante de Inducción'}</span><span class="badge badge-info" id="inge-total">0 Registros</span><span class="badge badge-warning" id="inge-accion" style="display:none;cursor:pointer" title="Ver los que tienen temas en NO" onclick="ingeVerNovedad()"></span></h1>
           <p class="tab-subtitle">SST-F-050 · El trabajador marca los temas que recibió en la inducción y firma</p>
         </div>
         <div class="tab-actions">

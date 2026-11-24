@@ -228,10 +228,11 @@ if (tareasDesactivadas) {
   // verificarCPCExpirados();
   // setInterval(verificarCPCExpirados, 5 * 60 * 1000);
 
-  // Generador automático de EVSST (Evaluación SST) cuando el token expira sin firma
-  const { verificarEVSSTExpirados } = require('./src/services/evsstExpiryNotifier');
-  verificarEVSSTExpirados(); // verificación inicial al arrancar
-  setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
+  // Generador automático de EVSST (Evaluación SST) desactivado desde 2026-11-24: la pestaña se retiró
+  // (el proceso quedó cubierto por EVIN) y ya no se crean evaluaciones nuevas
+  // const { verificarEVSSTExpirados } = require('./src/services/evsstExpiryNotifier');
+  // verificarEVSSTExpirados();
+  // setInterval(verificarEVSSTExpirados, 5 * 60 * 1000);
 
   // Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:35 AM Colombia)
   const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
