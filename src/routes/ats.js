@@ -142,7 +142,7 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
       return res.status(400).json({ error: 'Regional y Operación requeridos' });
     }
 
-    const acceso = await computarAccesoSst(usuario || req.query.usuario, 'ATS').catch(() => null);
+    const acceso = await computarAccesoSst(usuario, 'ATS');
     const puedeRetirados = acceso ? await puedeProcesarRetiradosSst(acceso.rol) : false;
     const condEstado = puedeRetirados ? "v.Estado IN ('Activo', 'Retirado')" : "v.Estado = 'Activo'";
 
@@ -166,7 +166,7 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[ats] GET /api/trabajadores-por-operacion error:', err);
-    res.status(500).json([]);
+    res.status(500).json({ error: 'No se pudieron consultar los trabajadores de la operación.' });
   }
 });
 

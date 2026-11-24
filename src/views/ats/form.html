@@ -362,7 +362,7 @@
       <div class="grid-2">
         <div class="field">
           <label class="lbl">Regional de Trabajadores</label>
-          <select id="sel-trab-regional" onchange="cargarTrabajadoresChecklist()">
+          <select id="sel-trab-regional" onchange="onRegionalTrabajadoresChange()">
             <option value="">Seleccione Regional...</option>
           </select>
         </div>
@@ -491,6 +491,7 @@
   let opsPorRegional = {};
   let trabajadoresSeleccionados = []; // { id_vinculacion, identificacion, nombre_trabajador, cargo, operacion, celular, email }
   let listaTrabajadoresActiva = [];
+  let consultaTrabajadoresActual = 0;
   let evidenciasCargadas = []; // { url_evidencia, base64, nombre_archivo, contentType }
 
   // ── INICIALIZACIÓN ──
@@ -642,6 +643,7 @@
     try {
       const res = await fetch(`/ats/api/usuario-alcance?id=${encodeURIComponent(usuarioActual)}`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo consultar el alcance del usuario');
       opsPorRegional = data.opsPorRegional || {};
       if (data.nombre) {
         document.getElementById('ats-sst-nombre').value = data.nombre;
@@ -658,7 +660,8 @@
         selTrabReg.appendChild(new Option(reg, reg));
       });
     } catch (e) {
-      console.warn('[ats] No se pudo cargar alcance del usuario:', e);
+      console.error('[ats] No se pudo cargar alcance del usuario:', e);
+      showToast(e.message || 'No se pudo cargar el alcance del usuario', 'error');
     }
   }
 
@@ -669,23 +672,29 @@
     const ops = opsPorRegional[reg] || [];
     ops.forEach(op => selOp.appendChild(new Option(op, op)));
 
-    // Sincronizar automáticamente con el selector de trabajadores si no se ha elegido
-    if (!document.getElementById('sel-trab-regional').value) {
-      document.getElementById('sel-trab-regional').value = reg;
-      const selTrabOp = document.getElementById('sel-trab-operacion');
-      selTrabOp.innerHTML = '<option value="">Seleccione Operación...</option>';
-      ops.forEach(op => selTrabOp.appendChild(new Option(op, op)));
-    }
+    document.getElementById('sel-trab-regional').value = reg;
+    onRegionalTrabajadoresChange();
+  }
+
+  function onRegionalTrabajadoresChange() {
+    const reg = document.getElementById('sel-trab-regional').value;
+    const selTrabOp = document.getElementById('sel-trab-operacion');
+    selTrabOp.innerHTML = '<option value="">Seleccione Operación...</option>';
+    (opsPorRegional[reg] || []).forEach(op => selTrabOp.appendChild(new Option(op, op)));
+    cargarTrabajadoresChecklist();
   }
 
   async function onOperacionChange() {
     const reg = document.getElementById('ats-regional').value;
     const op = document.getElementById('ats-operacion').value;
-    if (!op) return;
-
     // Sincronizar con trabajadores
+    if (document.getElementById('sel-trab-regional').value !== reg) {
+      document.getElementById('sel-trab-regional').value = reg;
+      onRegionalTrabajadoresChange();
+    }
     document.getElementById('sel-trab-operacion').value = op;
     await cargarTrabajadoresChecklist();
+    if (!op) return;
 
     // Consultar coordinador sugerido
     try {
@@ -703,29 +712,43 @@
     const op = document.getElementById('sel-trab-operacion').value;
     const wrap = document.getElementById('wrap-checklist');
     const body = document.getElementById('body-checklist-trab');
+    const consulta = ++consultaTrabajadoresActual;
+    listaTrabajadoresActiva = [];
+    document.getElementById('chk-todos-trab').checked = false;
+    document.getElementById('input-buscar-trabajador').value = '';
+    wrap.style.display = 'none';
+    body.innerHTML = '';
 
     if (!reg || !op) {
-      wrap.style.display = 'none';
+      hideLoading();
       return;
     }
 
     showLoading('Consultando trabajadores en Maestro_Vinculación...');
     try {
-      const res = await fetch(`/ats/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}&usuario=${encodeURIComponent(CONFIG?.usuarioId || CONFIG?.usuario || "")}`);
-      listaTrabajadoresActiva = await res.json();
+      const res = await fetch(`/ats/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}&usuario=${encodeURIComponent(usuarioActual)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudieron consultar los trabajadores');
+      if (!Array.isArray(data)) throw new Error('La respuesta de trabajadores no es válida');
+      if (consulta !== consultaTrabajadoresActual) return;
+      listaTrabajadoresActiva = data;
       wrap.style.display = 'block';
       renderizarChecklistTrabajadores(listaTrabajadoresActiva);
     } catch (e) {
-      showToast('Error consultando trabajadores', 'error');
+      if (consulta !== consultaTrabajadoresActual) return;
+      console.error('[ats] Error consultando trabajadores:', e);
+      wrap.style.display = 'none';
+      body.innerHTML = '';
+      showToast(e.message || 'Error consultando trabajadores', 'error');
     } finally {
-      hideLoading();
+      if (consulta === consultaTrabajadoresActual) hideLoading();
     }
   }
 
   function renderizarChecklistTrabajadores(items) {
     const body = document.getElementById('body-checklist-trab');
     if (!items.length) {
-      body.innerHTML = '<div style="padding:16px; font-size:.82rem; color:#64748b; text-align:center;">No se encontraron trabajadores activos en esta operación.</div>';
+      body.innerHTML = '<div style="padding:16px; font-size:.82rem; color:#64748b; text-align:center;">No se encontraron trabajadores para esta selección.</div>';
       return;
     }
 
@@ -792,7 +815,8 @@
           cargo: t.cargo,
           operacion: t.operacion,
           celular: t.celular || '',
-          email: t.email || ''
+          email: t.email || '',
+          estado: t.estado || 'Activo'
         });
       } else if (!checked && idx >= 0) {
         trabajadoresSeleccionados = trabajadoresSeleccionados.filter(x => String(x.identificacion).trim() !== String(t.identificacion).trim());
@@ -1051,9 +1075,12 @@
         cargo: t.cargo,
         operacion: t.operacion,
         celular: t.celular,
-        email: t.email
+        email: t.email,
+        estado: t.estado
       }));
       actualizarChipsTrabajadores();
+      document.getElementById('sel-trab-operacion').value = data.operacion;
+      await cargarTrabajadoresChecklist();
 
       // Evidencias
       evidenciasCargadas = (data.evidencias || []).map(e => ({
