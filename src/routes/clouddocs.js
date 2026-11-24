@@ -14,6 +14,7 @@ const {
 } = require('../services/clouddocsRequests');
 
 const { accesoSeccion } = require('../services/maestroMenu');
+const formatos = require('../services/formatosPlantillas');
 const {
   obtenerRolesPermitidosFirmas,
   verificarPermisoFirmas,
@@ -36,7 +37,30 @@ router.get('/', async (req, res) => {
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) {
-      return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
+      // Roles sin acceso base a Cloud Docs pero con la pestaña Formatos (Maestro_Menu clouddocs /
+      // Formatos, ej. Calidad): entran solo a esa pestaña. Las demás APIs del módulo siguen
+      // respondiendo 403 para ellos porque usan computarAccesoCloudDocs.
+      const accesoFmt = await formatos.accesoFormatos(usuario).catch(() => null);
+      if (!accesoFmt) {
+        return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
+      }
+      const htmlFmt = fs.readFileSync(HTML_INDEX_PATH, 'utf8');
+      const configFmt = JSON.stringify({
+        usuarioId: accesoFmt.usuarioId,
+        usuarioNombre: accesoFmt.usuarioNombre,
+        rol: accesoFmt.rol,
+        soloFormatos: true,
+        secciones: ['Formatos'],
+        seccionAcceso: { Formatos: 1 },
+        opsPorRegional: {},
+        regionalesFiltro: [],
+        operacionesFiltro: [],
+        permisos: { doc_activo: [], doc_retirado: [], doc_general: [] },
+        puedeVerSociodemografica: false,
+        rolesFirmasActivos: [],
+        rolesFirmasRetirados: []
+      }).replace(/<\/script>/gi, '<\\/script>');
+      return res.send(htmlFmt.replace('__CONFIG__', configFmt));
     }
 
     const html = fs.readFileSync(HTML_INDEX_PATH, 'utf8');
@@ -1813,6 +1837,60 @@ router.post('/api/gestionar-solicitud', async (req, res) => {
   } catch (err) {
     console.error('[cloud-docs] Error managing request:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Formatos (Maestro_Plantillas) ───────────────────────────────────────────
+// Ver: Maestro_Menu clouddocs / Formatos. Editar y qué campos: Config_Parametros CloudDocs / Formatos
+// (ver src/services/formatosPlantillas.js).
+function responderErrorFormatos(res, err, ruta) {
+  const status = err && err.status ? err.status : 500;
+  if (status >= 500) console.error(`[cloud-docs] ${ruta} error:`, err);
+  res.status(status).json({ error: err.message || 'Error interno', faltanVariables: err.faltanVariables || undefined });
+}
+
+function permisosFormatos(acc) {
+  return {
+    puedeEditar: acc.puedeEditar,
+    campos: acc.campos,
+    puedeEditarHtml: acc.puedeEditarHtml,
+    exigirMotivo: acc.exigirMotivo,
+    subirVersion: acc.subirVersion,
+  };
+}
+
+router.get('/api/formatos', async (req, res) => {
+  try {
+    const acc = await formatos.accesoFormatos(req.query.usuario);
+    if (!acc) return res.status(403).json({ error: 'No autorizado' });
+    const lista = await formatos.listarFormatos(acc);
+    res.json({ permisos: permisosFormatos(acc), formatos: lista });
+  } catch (err) {
+    responderErrorFormatos(res, err, 'GET /api/formatos');
+  }
+});
+
+router.get('/api/formatos/:id', async (req, res) => {
+  try {
+    const acc = await formatos.accesoFormatos(req.query.usuario);
+    if (!acc) return res.status(403).json({ error: 'No autorizado' });
+    const formato = await formatos.obtenerFormato(acc, Number(req.params.id));
+    if (!formato) return res.status(404).json({ error: 'Formato no encontrado' });
+    const historial = await formatos.historialFormato(formato.id_plantilla).catch(() => []);
+    res.json({ permisos: permisosFormatos(acc), formato, historial });
+  } catch (err) {
+    responderErrorFormatos(res, err, 'GET /api/formatos/:id');
+  }
+});
+
+router.put('/api/formatos/:id', async (req, res) => {
+  try {
+    const acc = await formatos.accesoFormatos(req.query.usuario || (req.body && req.body.usuario));
+    if (!acc) return res.status(403).json({ error: 'No autorizado' });
+    const r = await formatos.guardarFormato(acc, Number(req.params.id), req.body || {});
+    res.json(r);
+  } catch (err) {
+    responderErrorFormatos(res, err, 'PUT /api/formatos/:id');
   }
 });
 
