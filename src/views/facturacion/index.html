@@ -23,6 +23,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
+  <script src="/js/servicio-anulacion.js?v=20261124a"></script>
 
   <style>
     /* :root propio eliminado — ahora theme-tokens.css es la unica fuente de
@@ -9535,7 +9536,7 @@
         servicioDetalleActual = { idServicio, idRecibo: s.IdRecibo, consecutivoRecibo: s.consecutivoRecibo, operacion: s.operacion, datos: s };
         // Estado: mientras no esté en verde se puede pasar a verde desde aquí (solo a verde)
         document.getElementById('btn-servicio-a-verde').style.display = (s.Estado !== 'Green' && PERMISOS_RECIBOS.crear) ? 'inline-flex' : 'none';
-        // Anular: servicio aún no anulado (Forma de Pago 0) y rol con permiso (en amarillo o en cualquier estado)
+        // Anular: incluye amarillos con Forma de Pago 0; el rol debe tener permiso.
         document.getElementById('btn-anular-servicio-detalle').style.display = servicioAnulable({ estado: s.Estado, formaDePago: s['Forma De Pago'] }) ? 'inline-flex' : 'none';
         document.getElementById('det-total-pago-header').textContent = '$ ' + formatMiles(s.totalPago);
         document.getElementById('det-total-pago-box').textContent = '$ ' + formatMiles(s.totalPago);
@@ -9867,8 +9868,7 @@
     let anularMasivoIds = null; // null = anular el servicio del detalle
 
     function servicioAnulable({ estado, formaDePago }) {
-      const yaAnulado = formaDePago !== null && formaDePago !== undefined && formaDePago !== '' && Number(formaDePago) === 0;
-      if (yaAnulado) return false;
+      if (servicioYaAnulado(estado, formaDePago)) return false;
       return !!PERMISOS_RECIBOS.anularServicios
         || (!!PERMISOS_RECIBOS.anularServiciosAmarillo && String(estado || '').toLowerCase() === 'yellow');
     }
@@ -13490,7 +13490,16 @@
         `📌 *Total Pago:* *${totalTexto}*\n` +
         `- *Fecha:* ${fechaTexto}\n` +
         `- *Recibo:* ${recibo}\n` +
-        '*Estado:* *PENDIENTE* 🚫';
+        '*Estado:* *PENDIENTE* 🚫' +
+        textoAdicionalWhatsAppPendiente(operacion);
+    }
+
+    // Texto de la operación que va al final del mensaje pendiente (Config_Parametros facturacion /
+    // WhatsApp, 'Texto adicional del WhatsApp del recibo pendiente · <Operación>'); sin tildes ni mayúsculas
+    function textoAdicionalWhatsAppPendiente(operacion) {
+      const norm = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+      const clave = Object.keys(CONFIG.textosWhatsAppPendiente || {}).find(op => norm(op) === norm(operacion));
+      return clave ? '\n\n' + CONFIG.textosWhatsAppPendiente[clave] : '';
     }
 
     // Teléfono para wa.me: solo dígitos y con el indicativo 57 si viene el celular de 10 dígitos

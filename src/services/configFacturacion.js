@@ -333,7 +333,35 @@ async function obtenerOpsDesgloseResumen() {
   return { area: lista(area), bodega: await obtenerOpsFiltroBodega() };
 }
 
+// ── Mensajes de WhatsApp del recibo (Seccion = 'WhatsApp') ──────────────────
+// Texto que se agrega al final del mensaje del recibo pendiente (amarillo, RECAUDO) de una
+// operación. La llave única (Modulo, Seccion, Concepto) obliga a una fila por operación, así que
+// la operación va en el Concepto: 'Texto adicional del WhatsApp del recibo pendiente · <Operación>'.
+// Sin filas, el mensaje queda igual para todas.
+const SECCION_WHATSAPP = 'WhatsApp';
+const PREFIJO_WA_PENDIENTE = 'Texto adicional del WhatsApp del recibo pendiente · ';
+
+// { 'Operación': 'texto', ... }
+async function obtenerTextosWhatsAppPendiente() {
+  const textos = {};
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Concepto`, `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` LIKE ?',
+      [MODULO, SECCION_WHATSAPP, `${PREFIJO_WA_PENDIENTE}%`]
+    );
+    rows.forEach(r => {
+      const operacion = String(r.Concepto).slice(PREFIJO_WA_PENDIENTE.length).trim();
+      const texto = String(r.Parametro == null ? '' : r.Parametro).trim();
+      if (operacion && texto) textos[operacion] = texto;
+    });
+  } catch (err) {
+    console.error('[configFacturacion] No se pudieron leer los textos de WhatsApp:', err.message);
+  }
+  return textos;
+}
+
 module.exports = {
+  obtenerTextosWhatsAppPendiente,
   obtenerAreaUsuarioServicio,
   obtenerOpsFiltroBodega,
   obtenerOpsDesgloseResumen,

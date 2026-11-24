@@ -5,9 +5,10 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto, obtenerTextosWhatsAppPendiente } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig } = require('../services/documentRegistry');
+const { servicioYaAnulado } = require('../../public/js/servicio-anulacion');
 
 const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
@@ -159,7 +160,7 @@ router.get('/', async (req, res) => {
     const [
       cfgServiciosMasivo, quincenaActual, permisosRecibos, topeValorBaseServicio,
       puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, ajustesServicios,
-      opsFiltroBodega, opsDesgloseResumen
+      opsFiltroBodega, opsDesgloseResumen, textosWhatsAppPendiente
     ] = await Promise.all([
       obtenerConfigServiciosMasivo(base.rol),
       leerQuincenaActual(),
@@ -171,7 +172,8 @@ router.get('/', async (req, res) => {
       puedeEditarRetenciones(base.rol),
       accesoAjustes ? configServicios.permisosAjustesServicios(base.rol) : null,
       obtenerOpsFiltroBodega(),
-      accesoResumen ? obtenerOpsDesgloseResumen() : null
+      accesoResumen ? obtenerOpsDesgloseResumen() : null,
+      obtenerTextosWhatsAppPendiente()
     ]);
 
     const config = JSON.stringify({
@@ -193,6 +195,8 @@ router.get('/', async (req, res) => {
       topeValorBaseServicio,
       // Operaciones donde la pestaña Servicios habilita el filtro Bodega (Config_Parametros)
       opsFiltroBodega,
+      // Texto adicional del WhatsApp del recibo pendiente por operación (Config_Parametros facturacion / WhatsApp)
+      textosWhatsAppPendiente,
       puedeGestionarClientesCredito: puedeGestionarCredito,
       clientesMaestros: {
         puedeDepurar,
@@ -6711,7 +6715,7 @@ async function anularServicios({ usuario, acceso, todos, ids, observaciones }) {
     const s = porId.get(id);
     let motivo = null;
     if (!s) motivo = 'Servicio no encontrado.';
-    else if (s.formaDePago !== null && Number(s.formaDePago) === 0) motivo = 'Ya está anulado.';
+    else if (servicioYaAnulado(s.Estado, s.formaDePago)) motivo = 'Ya está anulado.';
     else if (String(s.validado || '').toUpperCase() === 'SI') motivo = 'La transferencia ya fue validada por Contabilidad.';
     else if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(s.operacion)) motivo = 'No tiene acceso a la operación de este servicio.';
     else if (!todos && String(s.Estado || '').toLowerCase() !== 'yellow') motivo = 'Su rol solo puede anular servicios en amarillo.';
