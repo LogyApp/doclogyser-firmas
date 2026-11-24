@@ -1248,6 +1248,7 @@ async function listarAsistencias({
   fechaFin = '',
   novedad = '',
   busqueda = '',
+  ticket = '',
   pagina = 1,
   limite = 50
 }) {
@@ -1309,12 +1310,19 @@ async function listarAsistencias({
     params.push(qLike, qLike);
   }
 
+  // Registros del Registro rápido: Observaciones = "Ticket <n>" o "Ticket <n> - nota"
+  if (ticket && String(ticket).trim()) {
+    const t = `Ticket ${String(ticket).trim()}`;
+    whereClauses.push('(da.Observaciones = ? OR da.Observaciones LIKE ?)');
+    params.push(t, `${t.replace(/[\\%_]/g, '\\$&')} - %`);
+  }
+
   const whereSql = whereClauses.join(' AND ');
 
   // Conteo total
   const [cRows] = await pool.execute(
-    `SELECT COUNT(*) AS total 
-     FROM Dynamic_Asistencia da 
+    `SELECT COUNT(*) AS total
+     FROM Dynamic_Asistencia da
      LEFT JOIN Maestro_Operaciones mo ON da.Origen = mo.OPERACIÓN 
      LEFT JOIN \`Maestro_Segmentación\` ms ON da.Cédula = ms.Identificación
      WHERE ${whereSql}`,

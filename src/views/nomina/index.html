@@ -2282,6 +2282,11 @@
         <div class="barra-descarga">
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
             <div class="contador-resultados" id="asisContador">Cargando registros...</div>
+            <!-- Filtro por ticket (Registro rápido): ignora los demás filtros mientras está activo -->
+            <span id="asisChipTicket" style="display:none; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:.8rem; font-weight:600; background:rgba(27,42,94,0.1); border:1px solid rgba(27,42,94,0.3);">
+              <span id="asisChipTicketTexto"></span>
+              <button type="button" onclick="quitarFiltroTicketAsistencia()" title="Quitar filtro" style="border:none; background:none; cursor:pointer; color:inherit; font-size:.9rem; padding:0;">&#10005;</button>
+            </span>
             <div id="asisBarraAccionesLote" style="display:none; align-items:center; gap:8px;">
               <span id="asisContadorLote" style="font-size:.82rem; font-weight:600; color:var(--text);">0 seleccionados</span>
               <button type="button" class="btn-reset" onclick="eliminarAsistenciasSeleccionadas()" style="background:#ef4444; color:#fff; border:1px solid #dc2626; padding:4px 10px; border-radius:6px; font-size:.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
@@ -2668,15 +2673,15 @@
     <div class="modal-ficha-body" style="padding: 20px; overflow-y: auto; flex: 1;">
       <div id="rrError" style="display:none; padding:10px 14px; margin-bottom:14px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#dc2626; border-radius:6px; font-size:.85rem; white-space:pre-line;"></div>
       <div class="ficha-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-        <div class="filtro-field">
+        <div class="filtro-field" style="grid-column: 1 / -1;">
           <label>Ticket *</label>
           <input type="text" id="rrTicket" maxlength="50" placeholder="Ej: ffd8ddbc" autocomplete="off" onchange="rrBuscarTicket()">
         </div>
-        <div class="filtro-field">
-          <label>Cédula *</label>
-          <input type="text" id="rrCedula" inputmode="numeric" maxlength="12" placeholder="Número de cédula" autocomplete="off" oninput="rrProgramarColaborador()">
-        </div>
         <div id="rrTicketInfo" style="grid-column:1/-1; display:none; font-size:.8rem; padding:8px 12px; border-radius:6px; background:var(--bg-elevated); border:1px solid var(--border);"></div>
+        <div class="filtro-field" style="grid-column: 1 / -1;">
+          <label>Cédulas * <span style="font-weight:400; color:var(--text-muted)">(una o varias, separadas por coma, espacio o línea; máx. 30)</span></label>
+          <textarea id="rrCedula" rows="2" inputmode="numeric" placeholder="Ej: 1129492930, 1045678901" autocomplete="off" oninput="rrProgramarColaborador()" style="resize:vertical;"></textarea>
+        </div>
         <div class="filtro-field" style="grid-column: 1 / -1;">
           <label>Novedad / Evento *</label>
           <select id="rrNovedad" onchange="rrOnNovedadChange()"><option value="">Cargando...</option></select>
@@ -2703,6 +2708,22 @@
         <div class="filtro-field" style="grid-column: 1 / -1;">
           <label>Nota adicional <span style="font-weight:400; color:var(--text-muted)">(se guarda en Observaciones junto al ticket)</span></label>
           <input type="text" id="rrNota" maxlength="200" placeholder="Ej: solicitado por el coordinador">
+        </div>
+        <!-- Solo si el ticket existe y el rol puede resolver tickets -->
+        <div id="rrWrapRespuesta" style="grid-column:1/-1; display:none; padding:10px 12px; border-radius:6px; border:1px dashed var(--border);">
+          <div class="filtro-field">
+            <label>Responder el ticket al guardar</label>
+            <select id="rrEstadoTicket" onchange="rrOnEstadoTicketChange()">
+              <option value="">No responder</option>
+              <option value="Resuelto">Sí, y marcarlo Resuelto (se envía el enlace para calificar)</option>
+              <option value="En Proceso">Sí, y dejarlo En Proceso</option>
+              <option value="Pendiente">Sí, y dejarlo Pendiente</option>
+            </select>
+          </div>
+          <div class="filtro-field" id="rrWrapRespuestaTexto" style="display:none; margin-top:8px;">
+            <label>Mensaje para quien puso el ticket <span style="font-weight:400; color:var(--text-muted)">(si lo deja vacío se envía el resumen de lo registrado)</span></label>
+            <textarea id="rrRespuestaTexto" rows="3" maxlength="2000" style="resize:vertical;"></textarea>
+          </div>
         </div>
       </div>
       <p style="font-size:.74rem; color:var(--text-muted); margin:12px 0 0;">
@@ -10699,7 +10720,7 @@
 <script src="/js/app-launcher-profile.js?v=20261120e" defer></script>
 <script src="/js/ticket-boton.js?v=20261121b" defer></script>
 <script src="/js/boton-sync.js" defer></script>
-<script src="/js/nomina-asistencia.js?v=20261124a"></script>
+<script src="/js/nomina-asistencia.js?v=20261124b"></script>
 <script src="/js/nomina-control-quincena.js?v=20261118a"></script>
 <script src="/js/nomina-informes-disciplinarios.js?v=20261120a"></script>
 <script src="/js/modal-back.js" defer></script>

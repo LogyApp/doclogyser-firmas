@@ -433,8 +433,8 @@ router.get('/api/mis-tickets', async (req, res) => {
 //  - ambito=gestion: Configuración › Tickets. Todos los tickets de todos los módulos, solo para los
 //    roles que resuelven (y con la pestaña configuracion / Tickets en Maestro_Menu).
 //  - Sin ambito: Directorio › Tickets. Cada usuario ve solo los tickets que puso.
-// Filtros: desde, hasta (fecha de registro), estado, modulo, regional, operacion, solicitante, q.
-// Cada faceta (estado, módulo, regional, operación) cuenta con los demás filtros aplicados,
+// Filtros: desde, hasta (fecha de registro), estado, modulo, regional, operacion, solicitante, calificacion, q.
+// Cada faceta (estado, módulo, regional, operación, calificación) cuenta con los demás filtros aplicados,
 // para que las opciones muestren cuántos tickets quedarían al escogerlas.
 router.get('/api/listado', async (req, res) => {
   try {
@@ -478,9 +478,14 @@ router.get('/api/listado', async (req, res) => {
       modulo: String(req.query.modulo || ''),
       regional: String(req.query.regional || ''),
       operacion: String(req.query.operacion || ''),
-      solicitante: verTodos ? String(req.query.solicitante || '') : ''
+      solicitante: verTodos ? String(req.query.solicitante || '') : '',
+      calificacion: String(req.query.calificacion || '')
     };
-    const valor = (t, campo) => (campo === 'regional' ? (t.regional || 'SIN REGIONAL') : (t[campo] || ''));
+    const valor = (t, campo) => {
+      if (campo === 'regional') return t.regional || 'SIN REGIONAL';
+      if (campo === 'calificacion') return calificacion.etiquetaCalificacion(t);
+      return t[campo] || '';
+    };
     const cumple = (t, excepto) => Object.keys(filtros).every(c => c === excepto || !filtros[c] || valor(t, c) === filtros[c]);
     const faceta = (campo) => {
       const conteo = {};
@@ -501,7 +506,8 @@ router.get('/api/listado', async (req, res) => {
       total: rows.length,
       facetas: {
         estado: faceta('estado'), modulo: faceta('modulo'), regional: faceta('regional'), operacion: faceta('operacion'),
-        solicitante: verTodos ? faceta('solicitante') : []
+        solicitante: verTodos ? faceta('solicitante') : [],
+        calificacion: calificacion.ordenarFacetaCalificacion(faceta('calificacion'))
       },
       tickets: rows
     });

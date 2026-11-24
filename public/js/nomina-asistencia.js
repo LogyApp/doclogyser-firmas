@@ -1165,6 +1165,7 @@ function onAsistenciaRegionalChange() {
 
 async function onAsistenciaFiltroChange() {
   _asisState.pagina = 1;
+  ponerFiltroTicketAsistencia(''); // al usar los filtros normales se quita el del ticket
   await cargarMetricasAsistencia();
   await fetchAsistenciaData();
 }
@@ -1230,19 +1231,22 @@ async function fetchAsistenciaData() {
   const novedad = document.getElementById('asisFilterNovedad')?.value || '';
   const q = (document.getElementById('asisFilterBuscar')?.value || '').toLowerCase().trim();
 
-  const qs = new URLSearchParams({
-    usuario,
-    anio,
-    quincena,
-    dia,
-    regional,
-    operacion,
-    area,
-    novedad,
-    busqueda: q,
-    pagina: _asisState.pagina,
-    limite: _asisState.limite
-  });
+  // Con filtro de ticket solo se buscan los registros de ese ticket, de cualquier fecha
+  const qs = _asisState.filtroTicket
+    ? new URLSearchParams({ usuario, anio: 'todos', ticket: _asisState.filtroTicket, pagina: _asisState.pagina, limite: _asisState.limite })
+    : new URLSearchParams({
+      usuario,
+      anio,
+      quincena,
+      dia,
+      regional,
+      operacion,
+      area,
+      novedad,
+      busqueda: q,
+      pagina: _asisState.pagina,
+      limite: _asisState.limite
+    });
 
   try {
     const r = await fetch(`/nomina/api/asistencia/registros?${qs.toString()}`);
@@ -2887,9 +2891,39 @@ function rrMostrarError(msg) {
   box.style.display = msg ? 'block' : 'none';
 }
 
+// Filtro de la tabla por ticket (Observaciones "Ticket <n>..."); '' lo quita
+function ponerFiltroTicketAsistencia(ticket) {
+  _asisState.filtroTicket = String(ticket || '').trim();
+  const chip = document.getElementById('asisChipTicket');
+  if (!chip) return;
+  chip.style.display = _asisState.filtroTicket ? 'inline-flex' : 'none';
+  document.getElementById('asisChipTicketTexto').textContent = `Ticket ${_asisState.filtroTicket}`;
+}
+
+async function verRegistrosTicketAsistencia(ticket) {
+  ponerFiltroTicketAsistencia(ticket);
+  _asisState.pagina = 1;
+  await fetchAsistenciaData();
+}
+
+async function quitarFiltroTicketAsistencia() {
+  await onAsistenciaFiltroChange();
+}
+
+function rrVerRegistrosTicket() {
+  const ticket = document.getElementById('rrTicket').value.trim();
+  if (!ticket) return;
+  cerrarModalRegistroRapido();
+  verRegistrosTicketAsistencia(ticket);
+}
+
+function rrOnEstadoTicketChange() {
+  document.getElementById('rrWrapRespuestaTexto').style.display = document.getElementById('rrEstadoTicket').value ? 'block' : 'none';
+}
+
 async function abrirModalRegistroRapido() {
-  ['rrTicket', 'rrCedula', 'rrDesde', 'rrHasta', 'rrHoraEntrada', 'rrHoraSalida', 'rrNota'].forEach(id => { document.getElementById(id).value = ''; });
-  ['rrTicketInfo', 'rrColaborador'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  ['rrTicket', 'rrCedula', 'rrDesde', 'rrHasta', 'rrHoraEntrada', 'rrHoraSalida', 'rrNota', 'rrEstadoTicket', 'rrRespuestaTexto'].forEach(id => { document.getElementById(id).value = ''; });
+  ['rrTicketInfo', 'rrColaborador', 'rrWrapRespuesta', 'rrWrapRespuestaTexto'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   rrMostrarError('');
   document.getElementById('modalRegistroRapidoOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -2922,22 +2956,29 @@ function rrOnNovedadChange() {
 async function rrBuscarTicket() {
   const ticket = document.getElementById('rrTicket').value.trim();
   const info = document.getElementById('rrTicketInfo');
+  const wrapResp = document.getElementById('rrWrapRespuesta');
+  wrapResp.style.display = 'none';
+  document.getElementById('rrEstadoTicket').value = '';
+  rrOnEstadoTicketChange();
   if (!ticket) { info.style.display = 'none'; return; }
+  const linkVer = '<div style="margin-top:6px"><a href="#" onclick="rrVerRegistrosTicket(); return false;">Ver registros ya guardados con este ticket</a></div>';
   try {
-    const { ticket: t } = await rrFetch(`/ticket?ticket=${encodeURIComponent(ticket)}`);
+    const { ticket: t, puedeResponder } = await rrFetch(`/ticket?ticket=${encodeURIComponent(ticket)}`);
     if (!t) {
-      info.innerHTML = '<span style="color:var(--text-muted)">No se encontró ese ticket en Tickets; se guardará igual como referencia.</span>';
+      info.innerHTML = '<span style="color:var(--text-muted)">No se encontró ese ticket en Tickets; se guardará igual como referencia.</span>' + linkVer;
     } else {
       info.innerHTML = `<strong>${esc(t.motivo || t.modulo || 'Ticket')}</strong> · ${esc(t.estado || '')} · ${esc(t.solicitante || '')} · ${esc(t.operacion || '')} · ${esc(t.fecha || '')}`
         + (t.descripcion ? `<div style="margin-top:4px; color:var(--text-muted); white-space:pre-line;">${esc(t.descripcion)}</div>` : '');
-      // Si el ticket trae cédulas y aún no se escribió ninguna, se toma la primera
-      const cedulas = String(t.identificaciones || '').match(/\d{5,12}/g) || [];
+      // Si el ticket trae cédulas y aún no se escribió ninguna, se toman todas
+      const cedulas = [...new Set(String(t.identificaciones || '').match(/\d{5,12}/g) || [])];
       const inpCed = document.getElementById('rrCedula');
       if (cedulas.length && !inpCed.value.trim()) {
-        inpCed.value = cedulas[0];
+        inpCed.value = cedulas.join(', ');
         rrProgramarColaborador();
       }
-      if (cedulas.length > 1) info.innerHTML += `<div style="margin-top:4px">Cédulas del ticket: ${cedulas.map(esc).join(', ')}</div>`;
+      if (cedulas.length) info.innerHTML += `<div style="margin-top:4px">Cédulas del ticket: ${cedulas.map(esc).join(', ')}</div>`;
+      info.innerHTML += linkVer;
+      if (puedeResponder) wrapResp.style.display = 'block';
     }
     info.style.display = 'block';
   } catch (err) {
@@ -2953,24 +2994,24 @@ function rrProgramarColaborador() {
 
 // Muestra a quién y en qué operación/área quedará el registro antes de guardar
 async function rrConsultarColaborador() {
-  const cedula = document.getElementById('rrCedula').value.trim();
+  const cedulas = [...new Set(document.getElementById('rrCedula').value.split(/[^\d]+/).filter(c => /^\d{3,12}$/.test(c)))];
   const desde = document.getElementById('rrDesde').value;
   const hasta = document.getElementById('rrHasta').value || desde;
   const box = document.getElementById('rrColaborador');
-  if (!/^\d{3,12}$/.test(cedula) || !desde) { box.style.display = 'none'; return; }
+  if (!cedulas.length || !desde) { box.style.display = 'none'; return; }
   const consulta = ++_rr.consulta;
   try {
-    const { colaborador: c } = await rrFetch(`/colaborador?identificacion=${cedula}&desde=${desde}&hasta=${hasta}`);
+    const { colaboradores } = await rrFetch(`/colaborador?identificaciones=${cedulas.join(',')}&desde=${desde}&hasta=${hasta}`);
     if (consulta !== _rr.consulta) return;
-    if (!c.existe) {
-      box.innerHTML = '<span style="color:#dc2626">Esa cédula no está en Maestro_Vinculación.</span>';
-    } else {
-      const fmt = d => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+    const fmt = d => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+    box.innerHTML = colaboradores.map(c => {
+      if (!c.existe) return `<div><strong>${esc(c.identificacion)}</strong>: <span style="color:#dc2626">no está en Maestro_Vinculación.</span></div>`;
       const tramos = c.tramos.map(t => `<li>${t.desde === t.hasta ? fmt(t.desde) : `${fmt(t.desde)} al ${fmt(t.hasta)}`}: <strong>${esc(t.operacion)}</strong> · Área ${esc(t.areaNombre || t.area || '—')}${t.cargo ? ` · ${esc(t.cargo)}` : ''}</li>`).join('');
-      box.innerHTML = `<strong>${esc(c.nombre || '')}</strong> (${esc(c.estado || '')})`
-        + (tramos ? `<ul style="margin:6px 0 0 18px; padding:0;">${tramos}</ul>` : '')
-        + (c.sinVinculacion.length ? `<div style="color:#dc2626; margin-top:4px;">Sin vinculación: ${c.sinVinculacion.map(fmt).join(', ')} (esos días no se registran)</div>` : '');
-    }
+      return `<div><strong>${esc(c.nombre || '')}</strong> · ${esc(c.identificacion)} (${esc(c.estado || '')})`
+        + (tramos ? `<ul style="margin:4px 0 0 18px; padding:0;">${tramos}</ul>` : '')
+        + (c.sinVinculacion.length ? `<div style="color:#dc2626; margin-top:2px;">Sin vinculación: ${c.sinVinculacion.map(fmt).join(', ')} (esos días no se registran)</div>` : '')
+        + '</div>';
+    }).join('<hr style="border:none; border-top:1px solid var(--border); margin:8px 0;">');
     box.style.display = 'block';
   } catch (err) {
     if (consulta !== _rr.consulta) return;
@@ -2985,16 +3026,19 @@ async function guardarRegistroRapido() {
   const payload = {
     usuario: getUsuarioAsistencia(),
     ticket: document.getElementById('rrTicket').value.trim(),
-    identificacion: document.getElementById('rrCedula').value.trim(),
+    identificaciones: document.getElementById('rrCedula').value.trim(),
     novedad: document.getElementById('rrNovedad').value,
     desde: document.getElementById('rrDesde').value,
     hasta: document.getElementById('rrHasta').value || document.getElementById('rrDesde').value,
     horaEntrada: document.getElementById('rrHoraEntrada').value,
     horaSalida: document.getElementById('rrHoraSalida').value,
-    nota: document.getElementById('rrNota').value.trim()
+    nota: document.getElementById('rrNota').value.trim(),
+    respuesta: document.getElementById('rrWrapRespuesta').style.display !== 'none' && document.getElementById('rrEstadoTicket').value
+      ? { estado: document.getElementById('rrEstadoTicket').value, texto: document.getElementById('rrRespuestaTexto').value.trim() }
+      : null
   };
   if (!payload.ticket) return rrMostrarError('Indique el ticket.');
-  if (!payload.identificacion) return rrMostrarError('Indique la cédula.');
+  if (!payload.identificaciones) return rrMostrarError('Indique al menos una cédula.');
   if (!payload.desde) return rrMostrarError('Escoja el día.');
 
   btn.disabled = true;
@@ -3006,15 +3050,23 @@ async function guardarRegistroRapido() {
       body: JSON.stringify(payload)
     });
     const rango = x => (x.dias ? x.dias.join(', ') : (x.desde === x.hasta ? x.desde : `${x.desde} al ${x.hasta}`));
-    const ok = data.guardados.map(g => `✓ ${rango(g)} · ${g.operacion}${g.avisos.length ? `\n   ${g.avisos.join('\n   ')}` : ''}`);
-    const mal = data.errores.map(e => `✗ ${rango(e)}${e.operacion ? ` · ${e.operacion}` : ''}: ${e.error}`);
-    if (!data.guardados.length) {
-      rrMostrarError(`No se guardó nada:\n${mal.join('\n')}`);
+    const resumen = data.colaboradores.map(c => {
+      const ok = c.guardados.map(g => `  ✓ ${rango(g)} · ${g.operacion}${g.avisos.length ? `\n     ${g.avisos.join('\n     ')}` : ''}`);
+      const mal = c.errores.map(e => `  ✗ ${e.desde || e.dias ? `${rango(e)}${e.operacion ? ` · ${e.operacion}` : ''}: ` : ''}${e.error}`);
+      return [`${c.nombre || c.identificacion} (${c.identificacion})`, ...ok, ...mal].join('\n');
+    }).join('\n\n');
+    if (!data.colaboradores.some(c => c.guardados.length)) {
+      rrMostrarError(`No se guardó nada:\n${resumen}`);
       return;
     }
-    alert(`${data.novedad} · ${data.colaborador.nombre || data.colaborador.identificacion}\n\n${ok.join('\n')}${mal.length ? `\n\nNo guardados:\n${mal.join('\n')}` : ''}`);
+    const avisoTicket = data.estadoTicket
+      ? (data.ticketRespondido ? `\n\nTicket ${data.ticket} respondido y en estado ${data.estadoTicket}.` : `\n\nNo se pudo responder el ticket ${data.ticket}; hágalo desde Tickets.`)
+      : '';
+    alert(`${data.novedad}\n\n${resumen}${avisoTicket}`);
     cerrarModalRegistroRapido();
-    await onAsistenciaFiltroChange();
+    // Se muestran los registros del ticket recién guardados
+    await cargarMetricasAsistencia();
+    await verRegistrosTicketAsistencia(data.ticket);
   } catch (err) {
     rrMostrarError(err.message);
   } finally {

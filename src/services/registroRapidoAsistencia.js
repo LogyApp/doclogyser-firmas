@@ -7,15 +7,19 @@ const {
   registrarNovedadPorRango,
   registrarNovedadDia
 } = require('./asistenciaService');
+const calificacion = require('./calificacionTickets');
 
 // ── Registro rápido de asistencia y novedades (antes se hacía con un INSERT manual) ──
-// Una cédula + una novedad + un día o rango, para resolver tickets. La operación y el área de
+// Una o varias cédulas + una novedad + un día o rango, para resolver tickets. La operación y el área de
 // cada día salen de la vinculación vigente ese día (con traslados y reingresos, igual que la
 // plantilla), y se guarda con las mismas funciones de "Ingresar Evento": cabecera en
 // Dynamic_Registro_Asistencia, reglas de plantilla, reemplazo de rellenos automáticos.
 // Quién puede usarlo: Config_Parametros nomina / Asistencia / Roles_Registro_Rapido (por defecto Sistema).
+// Opcionalmente responde el ticket con el resumen (solo "Roles que pueden resolver tickets").
 
 const MAX_DIAS = 31;
+const MAX_CEDULAS = 30;
+const ESTADOS_TICKET = ['Resuelto', 'En Proceso', 'Pendiente']; // los de "Gestionar ticket", sin Rechazado
 const NOVEDADES_EXCLUIDAS = ['Apoyo a Otra Operación']; // necesita la operación apoyada: se registra con "Ingresar Evento"
 
 function normalizar(valor) {
@@ -40,6 +44,29 @@ async function catalogoRegistroRapido(rol) {
   return rows
     .filter(r => !NOVEDADES_EXCLUIDAS.includes(r.novedad) && (veSistema || r.evento !== 'Sistema'))
     .map(r => ({ ...r, esRango: !!r.esRango, usaHorario: r.evento === 'Asistencia' }));
+}
+
+/** Cédulas escritas separadas por coma, espacio o línea (sin repetir). */
+function parsearCedulas(texto) {
+  return [...new Set(String(texto || '').split(/[^\d]+/).filter(c => /^\d{3,12}$/.test(c)))];
+}
+
+/**
+ * Mismo parámetro del módulo de Tickets: Config_Parametros configuracion / Tickets /
+ * "Roles que pueden resolver tickets" (por defecto Sistema).
+ */
+async function puedeResolverTickets(rol) {
+  let lista = 'Sistema';
+  try {
+    const [r] = await pool.execute(
+      'SELECT Parametro FROM Config_Parametros WHERE Modulo = ? AND Seccion = ? AND Concepto = ? LIMIT 1',
+      ['configuracion', 'Tickets', 'Roles que pueden resolver tickets']
+    );
+    if (r.length) lista = r[0].Parametro == null ? '' : String(r[0].Parametro);
+  } catch (err) {
+    console.error('[registroRapidoAsistencia] No se pudo leer Roles que pueden resolver tickets, se usa Sistema:', err.message);
+  }
+  return !!normalizar(rol) && lista.split(',').map(normalizar).includes(normalizar(rol));
 }
 
 /** Datos del ticket en Dynamic_Tickets (null si no existe). */
@@ -110,18 +137,7 @@ function errorValidacion(msg) {
  * Guarda la asistencia o novedad. Cada tramo (o día, si la novedad es de un solo día) se guarda
  * en su propia transacción; se devuelve qué quedó guardado y qué no, con el motivo.
  */
-async function registrarRapido({ identificacion, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota, usuario, rol }) {
-  if (!/^\d{3,12}$/.test(String(identificacion || '').trim())) throw errorValidacion('Escriba una cédula válida.');
-  if (!P.FECHA_RE.test(desde || '')) throw errorValidacion('Escoja el día.');
-  hasta = P.FECHA_RE.test(hasta || '') ? hasta : desde;
-  if (hasta < desde) throw errorValidacion('La fecha final debe ser igual o posterior a la inicial.');
-  if (P.diasEntre(desde, hasta).length > MAX_DIAS) throw errorValidacion(`Máximo ${MAX_DIAS} días por registro.`);
-  if (!String(ticket || '').trim()) throw errorValidacion('Indique el ticket con el que se solicita el registro.');
-
-  const item = (await catalogoRegistroRapido(rol)).find(n => n.novedad === novedad);
-  if (!item) throw errorValidacion('Escoja una novedad de la lista.');
-  if (item.usaHorario && (!horaEntrada || !horaSalida)) throw errorValidacion('Indique la hora de llegada y de salida.');
-
+async function registrarColaborador({ identificacion, item, desde, hasta, horaEntrada, horaSalida, ticket, nota, usuario, rol }) {
   const colab = await resolverColaborador(identificacion, desde, hasta);
   if (!colab.existe) throw errorValidacion(`La cédula ${identificacion} no está en Maestro_Vinculación.`);
   if (!colab.tramos.length) throw errorValidacion(`${colab.nombre || identificacion} no estaba vinculado en esas fechas.`);
@@ -177,7 +193,90 @@ async function registrarRapido({ identificacion, novedad, desde, hasta, horaEntr
   }
 
   console.log(`[registroRapidoAsistencia] ${usuario} · ${colab.identificacion} · ${item.novedad} · ${desde}..${hasta} · ${observaciones}: ${guardados.length} guardado(s), ${errores.length} con error`);
-  return { colaborador: { identificacion: colab.identificacion, nombre: colab.nombre }, novedad: item.novedad, guardados, errores };
+  return { identificacion: colab.identificacion, nombre: colab.nombre, guardados, errores };
 }
 
-module.exports = { puedeRegistroRapido, catalogoRegistroRapido, buscarTicket, resolverColaborador, registrarRapido };
+/** Resumen para quien puso el ticket: qué quedó registrado y qué no. */
+function textoRespuestaTicket(novedad, colaboradores) {
+  const fmt = d => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+  const rango = x => (x.dias ? x.dias.map(fmt).join(', ') : (x.desde === x.hasta ? fmt(x.desde) : `${fmt(x.desde)} al ${fmt(x.hasta)}`));
+  const quien = c => `${c.nombre || c.identificacion} (${c.identificacion})`;
+  const ok = [];
+  const mal = [];
+  colaboradores.forEach(c => {
+    c.guardados.forEach(g => ok.push(`- ${quien(c)}: ${rango(g)} · ${g.operacion}`));
+    c.errores.forEach(e => mal.push(`- ${quien(c)}${e.desde || e.dias ? `: ${rango(e)}` : ''} · ${e.error}`));
+  });
+  return [`Se registró "${novedad}" en Asistencia y Novedades:`, ...ok, ...(mal.length ? ['No se registró:', ...mal] : [])].join('\n');
+}
+
+/**
+ * Agrega la respuesta al ticket (debajo de la que ya tenía) y cambia el estado, igual que
+ * "Gestionar ticket": Resuelto deja fecha de finalización y envía el enlace para calificar.
+ */
+async function responderTicket({ ticket, estado, texto, baseUrl }) {
+  const finaliza = estado === 'Resuelto';
+  const [r] = await pool.execute(
+    `UPDATE Dynamic_Tickets
+        SET Estado = ?, Observaciones = CONCAT_WS('\n\n', NULLIF(TRIM(Observaciones), ''), ?),
+            fecha_finalizacion = ${finaliza ? 'NOW()' : 'NULL'}
+      WHERE Ticket = ?`,
+    [estado, texto, ticket]
+  );
+  if (r.affectedRows && finaliza) await calificacion.prepararCalificacionTicket(ticket, baseUrl);
+  return r.affectedRows > 0;
+}
+
+/**
+ * Registra la novedad para una o varias cédulas (máx. MAX_CEDULAS); si una falla, las demás siguen.
+ * Con respuesta.estado, al final responde el ticket con el mensaje escrito o, si está vacío, el resumen.
+ */
+async function registrarRapido({ identificaciones, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota, respuesta, baseUrl, usuario, rol }) {
+  const cedulas = parsearCedulas(Array.isArray(identificaciones) ? identificaciones.join(',') : identificaciones);
+  if (!cedulas.length) throw errorValidacion('Escriba al menos una cédula válida.');
+  if (cedulas.length > MAX_CEDULAS) throw errorValidacion(`Máximo ${MAX_CEDULAS} cédulas por registro.`);
+  if (!P.FECHA_RE.test(desde || '')) throw errorValidacion('Escoja el día.');
+  hasta = P.FECHA_RE.test(hasta || '') ? hasta : desde;
+  if (hasta < desde) throw errorValidacion('La fecha final debe ser igual o posterior a la inicial.');
+  if (P.diasEntre(desde, hasta).length > MAX_DIAS) throw errorValidacion(`Máximo ${MAX_DIAS} días por registro.`);
+  ticket = String(ticket || '').trim();
+  if (!ticket) throw errorValidacion('Indique el ticket con el que se solicita el registro.');
+
+  const item = (await catalogoRegistroRapido(rol)).find(n => n.novedad === novedad);
+  if (!item) throw errorValidacion('Escoja una novedad de la lista.');
+  if (item.usaHorario && (!horaEntrada || !horaSalida)) throw errorValidacion('Indique la hora de llegada y de salida.');
+
+  const estadoTicket = respuesta && respuesta.estado ? String(respuesta.estado) : '';
+  if (estadoTicket) {
+    if (!ESTADOS_TICKET.includes(estadoTicket)) throw errorValidacion('Estado del ticket inválido.');
+    if (!(await puedeResolverTickets(rol))) throw errorValidacion('Su rol no puede responder tickets.');
+    if (!(await buscarTicket(ticket))) throw errorValidacion(`El ticket ${ticket} no existe; no se puede responder.`);
+  }
+
+  const colaboradores = [];
+  for (const identificacion of cedulas) {
+    try {
+      colaboradores.push(await registrarColaborador({ identificacion, item, desde, hasta, horaEntrada, horaSalida, ticket, nota, usuario, rol }));
+    } catch (err) {
+      if (!err.validacion) console.error('[registroRapidoAsistencia]', err);
+      colaboradores.push({ identificacion: Number(identificacion), nombre: null, guardados: [], errores: [{ error: err.message }] });
+    }
+  }
+
+  // El ticket solo se responde si quedó algo guardado
+  let ticketRespondido = false;
+  if (estadoTicket && colaboradores.some(c => c.guardados.length)) {
+    const texto = String(respuesta.texto || '').trim() || textoRespuestaTicket(item.novedad, colaboradores);
+    try {
+      ticketRespondido = await responderTicket({ ticket, estado: estadoTicket, texto, baseUrl });
+    } catch (err) {
+      console.error(`[registroRapidoAsistencia] No se pudo responder el ticket ${ticket}:`, err);
+    }
+  }
+  return { novedad: item.novedad, ticket, colaboradores, ticketRespondido, estadoTicket };
+}
+
+module.exports = {
+  MAX_CEDULAS, parsearCedulas, puedeRegistroRapido, puedeResolverTickets, catalogoRegistroRapido,
+  buscarTicket, resolverColaborador, registrarRapido
+};

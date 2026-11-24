@@ -2978,7 +2978,7 @@ router.get('/api/asistencia/metricas', verificarAccesoAsistenciaAPI, async (req,
 // 4. Listar registros de asistencia y novedades
 router.get('/api/asistencia/registros', verificarAccesoAsistenciaAPI, async (req, res) => {
   try {
-    const { anio, quincena, dia, regional, operacion, area, fechaInicio, fechaFin, novedad, busqueda, pagina, limite } = req.query;
+    const { anio, quincena, dia, regional, operacion, area, fechaInicio, fechaFin, novedad, busqueda, ticket, pagina, limite } = req.query;
     const acceso = req.accesoAsistencia;
 
     // Validación de seguridad de operación
@@ -2998,6 +2998,7 @@ router.get('/api/asistencia/registros', verificarAccesoAsistenciaAPI, async (req
       fechaFin: fechaFin || '',
       novedad: novedad || '',
       busqueda: busqueda || '',
+      ticket: ticket || '',
       pagina: pagina || 1,
       limite: limite || 50
     });
@@ -3204,7 +3205,9 @@ router.get('/api/asistencia/registro-rapido/catalogo', verificarAccesoAsistencia
 
 router.get('/api/asistencia/registro-rapido/ticket', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
   try {
-    res.json({ ok: true, ticket: await RegistroRapido.buscarTicket(req.query.ticket) });
+    const ticket = await RegistroRapido.buscarTicket(req.query.ticket);
+    const puedeResponder = !!ticket && await RegistroRapido.puedeResolverTickets(req.usuarioRol);
+    res.json({ ok: true, ticket, puedeResponder });
   } catch (err) {
     console.error('[GET /api/asistencia/registro-rapido/ticket]', err);
     res.status(500).json({ ok: false, error: err.message });
@@ -3213,14 +3216,21 @@ router.get('/api/asistencia/registro-rapido/ticket', verificarAccesoAsistenciaAP
 
 router.get('/api/asistencia/registro-rapido/colaborador', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
   try {
-    const { identificacion, desde } = req.query;
+    // identificaciones: una o varias cédulas separadas por coma
+    const { desde } = req.query;
     const P = require('../services/plantillaAsistencia');
-    if (!/^\d{3,12}$/.test(String(identificacion || '').trim()) || !P.FECHA_RE.test(desde || '')) {
+    const cedulas = RegistroRapido.parsearCedulas(req.query.identificaciones);
+    if (!cedulas.length || !P.FECHA_RE.test(desde || '')) {
       return res.status(400).json({ ok: false, error: 'Cédula o fecha inválida' });
+    }
+    if (cedulas.length > RegistroRapido.MAX_CEDULAS) {
+      return res.status(400).json({ ok: false, error: `Máximo ${RegistroRapido.MAX_CEDULAS} cédulas` });
     }
     const hasta = P.FECHA_RE.test(req.query.hasta || '') && req.query.hasta >= desde ? req.query.hasta : desde;
     if (P.diasEntre(desde, hasta).length > 31) return res.status(400).json({ ok: false, error: 'Máximo 31 días' });
-    res.json({ ok: true, colaborador: await RegistroRapido.resolverColaborador(identificacion, desde, hasta) });
+    const colaboradores = [];
+    for (const cedula of cedulas) colaboradores.push(await RegistroRapido.resolverColaborador(cedula, desde, hasta));
+    res.json({ ok: true, colaboradores });
   } catch (err) {
     console.error('[GET /api/asistencia/registro-rapido/colaborador]', err);
     res.status(500).json({ ok: false, error: err.message });
@@ -3229,9 +3239,10 @@ router.get('/api/asistencia/registro-rapido/colaborador', verificarAccesoAsisten
 
 router.post('/api/asistencia/registro-rapido', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
   try {
-    const { identificacion, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota } = req.body;
+    const { identificaciones, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota, respuesta } = req.body;
     const resultado = await RegistroRapido.registrarRapido({
-      identificacion, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota,
+      identificaciones, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota, respuesta,
+      baseUrl: process.env.BASE_URL || `${req.protocol}://${req.get('host')}`,
       usuario: req.usuarioId, rol: req.usuarioRol
     });
     res.json({ ok: true, ...resultado });

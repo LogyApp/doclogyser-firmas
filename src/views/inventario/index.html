@@ -6156,6 +6156,12 @@
               <option value="">Todas las operaciones</option>
             </select>
           </div>
+          <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Calificación</label>
+            <select id="tk-filtro-calificacion-inv" onchange="onTicketFilterChangeInv()" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--bg-elevated); color: var(--text);">
+              <option value="">Todas las calificaciones</option>
+            </select>
+          </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
@@ -6174,11 +6180,16 @@
         </span>
       </div>
 
-      <div style="overflow-x: auto;">
+      <!-- Alto máximo (como en Facturación y Directorio) para que la barra horizontal quede a la vista -->
+      <style>
+        #tabla-tickets-inv thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elevated); }
+      </style>
+      <div style="overflow: auto; max-height: 68vh;">
         <table class="tabla-parametros" id="tabla-tickets-inv" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
           <thead>
             <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border);">
               <th style="padding: 10px 14px; font-weight: 700; width: 110px; cursor: pointer;" onclick="ordenarTicketsInv('estado')">Estado <span id="tkSortInv_estado"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 120px; cursor: pointer;" onclick="ordenarTicketsInv('satisfaccion')">Calificación <span id="tkSortInv_satisfaccion"></span></th>
               <th style="padding: 10px 14px; font-weight: 700; width: 110px; cursor: pointer;" onclick="ordenarTicketsInv('ticket')">Ticket <span id="tkSortInv_ticket"></span></th>
               <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('operacion')">Operación <span id="tkSortInv_operacion"></span></th>
               <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('fecha_registro')">Fecha Registro <span id="tkSortInv_fecha_registro">▼</span></th>
@@ -6187,11 +6198,13 @@
               <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('solicitante')">Solicitante <span id="tkSortInv_solicitante"></span></th>
               <th style="padding: 10px 14px; font-weight: 700; min-width: 220px;">Respuesta (Observaciones)</th>
               <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('fecha_finalizacion')">Fecha Finalización <span id="tkSortInv_fecha_finalizacion"></span></th>
+              <th style="padding: 10px 14px; font-weight: 700; min-width: 220px;">Comentario</th>
+              <th style="padding: 10px 14px; font-weight: 700; width: 140px; cursor: pointer;" onclick="ordenarTicketsInv('fecha_calificacion')">Fecha Calificación <span id="tkSortInv_fecha_calificacion"></span></th>
             </tr>
           </thead>
           <tbody id="tbodyTicketsInventario">
             <tr>
-              <td colspan="9" style="text-align: center; padding: 32px; color: var(--text-muted);">
+              <td colspan="12" style="text-align: center; padding: 32px; color: var(--text-muted);">
                 Cargando tickets de Inventario...
               </td>
             </tr>
@@ -21946,7 +21959,7 @@
       }
 
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 32px;"><span class="rep-live-dot" style="margin-right:8px;"></span>Consultando tickets de Inventario...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 32px;"><span class="rep-live-dot" style="margin-right:8px;"></span>Consultando tickets de Inventario...</td></tr>';
       }
 
       try {
@@ -21955,6 +21968,7 @@
           estado: activeEstadoTicketInv,
           regional: document.getElementById('tk-filtro-regional-inv')?.value || '',
           operacion: document.getElementById('tk-filtro-operacion-inv')?.value || '',
+          calificacion: document.getElementById('tk-filtro-calificacion-inv')?.value || '',
           q: document.getElementById('tk-filtro-q-inv')?.value || '',
           sortCol: sortTicketsStateInv.col,
           sortDir: sortTicketsStateInv.order,
@@ -21971,7 +21985,7 @@
         renderTicketsInventarioTable();
       } catch (err) {
         console.error('[cargarTicketsInventario]', err);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar tickets: ${esc(err.message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar tickets: ${esc(err.message)}</td></tr>`;
         if (lblContador) lblContador.textContent = '';
       }
     }
@@ -21986,11 +22000,11 @@
       }
 
       if (!allTicketsInv.length) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 32px;">No se encontraron tickets con los filtros aplicados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 32px;">No se encontraron tickets con los filtros aplicados.</td></tr>';
         return;
       }
 
-      ['estado', 'ticket', 'operacion', 'fecha_registro', 'motivo', 'solicitante', 'fecha_finalizacion'].forEach(c => {
+      ['estado', 'ticket', 'operacion', 'fecha_registro', 'motivo', 'solicitante', 'fecha_finalizacion', 'satisfaccion', 'fecha_calificacion'].forEach(c => {
         const span = document.getElementById('tkSortInv_' + c);
         if (span) {
           span.textContent = (sortTicketsStateInv.col === c) ? (sortTicketsStateInv.order === 'asc' ? '▲' : '▼') : '';
@@ -22008,6 +22022,7 @@
                 ${esc(t.estado || '-')}
               </span>
             </td>
+            <td style="white-space: nowrap;">${calificacionTicketInvHtml(t)}</td>
             <td style="font-weight: 700; color: var(--accent, var(--primary)); font-family: monospace;">
               ${esc(t.ticket)}
             </td>
@@ -22034,9 +22049,24 @@
             <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
               ${t.fechaFinalizacion ? formatFechaBogota(t.fechaFinalizacion) : '-'}
             </td>
+            <td style="max-width: 260px; font-size: 0.82rem; line-height: 1.35;" title="${esc(t.sugerencia || '')}">
+              <div style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                ${esc(t.sugerencia || '-')}
+              </div>
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
+              ${t.fechaCalificacion ? formatFechaBogota(t.fechaCalificacion) : '-'}
+            </td>
           </tr>
         `;
       }).join('');
+    }
+
+    // Calificación de quien puso el ticket (1 a 5): estrellas, o "Por calificar" si ya se cerró y no ha calificado
+    function calificacionTicketInvHtml(t) {
+      const n = Number(t.satisfaccion);
+      if (n >= 1 && n <= 5) return `<span style="color:#f59e0b; letter-spacing:1px;" title="${n} de 5">${'★'.repeat(n)}<span style="color:var(--border)">${'★'.repeat(5 - n)}</span></span>`;
+      return Number(t.porCalificar) ? '<span style="color:var(--text-muted); font-size:.8rem;">Por calificar</span>' : '-';
     }
 
     async function cargarMetricasTicketsInventario() {
@@ -22046,6 +22076,7 @@
           estado: activeEstadoTicketInv,
           regional: document.getElementById('tk-filtro-regional-inv')?.value || '',
           operacion: document.getElementById('tk-filtro-operacion-inv')?.value || '',
+          calificacion: document.getElementById('tk-filtro-calificacion-inv')?.value || '',
           q: document.getElementById('tk-filtro-q-inv')?.value || ''
         });
 
@@ -22118,12 +22149,25 @@
         });
         opSel.innerHTML = opOpts;
       }
+
+      // Calificación con conteo (cuenta con los demás filtros aplicados); la escogida se conserva aunque quede en 0
+      const calSel = document.getElementById('tk-filtro-calificacion-inv');
+      if (calSel) {
+        const curCal = calSel.value;
+        const califs = (metricasTicketsInv.calificaciones || []).slice();
+        if (curCal && !califs.some(c => c.valor === curCal)) califs.unshift({ valor: curCal, n: 0 });
+        const totalCal = califs.reduce((a, c) => a + c.n, 0);
+        const etiquetaCal = v => { const n = parseInt(v, 10); return n >= 1 && n <= 5 ? `${'★'.repeat(n)}${'☆'.repeat(5 - n)} ${v}` : v; };
+        calSel.innerHTML = `<option value="">Todas las calificaciones (${formatMiles(totalCal)})</option>` +
+          califs.map(c => `<option value="${esc(c.valor)}" ${curCal === c.valor ? 'selected' : ''}>${esc(etiquetaCal(c.valor))} (${formatMiles(c.n)})</option>`).join('');
+      }
     }
 
     function seleccionarEstadoTicketInv(estado) {
       activeEstadoTicketInv = estado;
       renderEstadoTicketButtonsInv();
       cargarTicketsInventario();
+      cargarMetricasTicketsInventario(); // el conteo de calificaciones depende del estado
     }
 
     function toggleFiltrosTicketsInv() {
@@ -22138,10 +22182,12 @@
     function actualizarBadgeFiltrosTicketsInv() {
       const reg = document.getElementById('tk-filtro-regional-inv')?.value || '';
       const op = document.getElementById('tk-filtro-operacion-inv')?.value || '';
+      const cal = document.getElementById('tk-filtro-calificacion-inv')?.value || '';
       const q = document.getElementById('tk-filtro-q-inv')?.value || '';
       let count = 0;
       if (reg) count++;
       if (op) count++;
+      if (cal) count++;
       if (q.trim()) count++;
       const badge = document.getElementById('tkFiltrosBadgeInv');
       if (badge) badge.textContent = count;
@@ -22175,6 +22221,8 @@
       if (qInp) qInp.value = '';
       if (regSel) regSel.value = '';
       if (opSel) opSel.value = '';
+      const calSel = document.getElementById('tk-filtro-calificacion-inv');
+      if (calSel) calSel.value = '';
       actualizarBadgeFiltrosTicketsInv();
       cargarTicketsInventario();
       cargarMetricasTicketsInventario();

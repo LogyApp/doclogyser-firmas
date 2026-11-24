@@ -1327,6 +1327,7 @@
             <div class="filtro-field"><label>Regional</label><select id="tkRegional" onchange="cambiarFiltroTicket('regional', this.value)"><option value="">Todas las regionales</option></select></div>
             <div class="filtro-field"><label>Operación</label><select id="tkOperacion" onchange="cambiarFiltroTicket('operacion', this.value)"><option value="">Todas las operaciones</option></select></div>
             <div class="filtro-field" id="tkCampoSolicitante" style="display: none;"><label>Solicitante</label><select id="tkSolicitante" onchange="cambiarFiltroTicket('solicitante', this.value)"><option value="">Todos los solicitantes</option></select></div>
+            <div class="filtro-field"><label>Calificación</label><select id="tkCalificacion" onchange="cambiarFiltroTicket('calificacion', this.value)"><option value="">Todas las calificaciones</option></select></div>
           </div>
           <div class="filtros-pie">
             <div class="filtros-rangos">
@@ -1344,6 +1345,7 @@
             <tr>
               <th style="width: 52px; text-align: center;" title="Editar (quien lo puso, En Proceso o Pendiente) o Gestionar (quien resuelve tickets del módulo)">✏️</th>
               <th style="width: 120px;" data-sort="estado">Estado<span class="sort-indicator"></span></th>
+              <th style="width: 120px;" data-sort="satisfaccion">Calificación<span class="sort-indicator"></span></th>
               <th style="width: 110px;" data-sort="ticket">Ticket<span class="sort-indicator"></span></th>
               <th style="width: 145px;" data-sort="fechaRegistro">Fecha Registro<span class="sort-indicator"></span></th>
               <th style="width: 120px;" data-sort="modulo">Módulo<span class="sort-indicator"></span></th>
@@ -1354,6 +1356,8 @@
               <th style="width: 170px;" data-sort="solicitante">Solicitante<span class="sort-indicator"></span></th>
               <th style="width: 220px;" data-sort="observaciones">Respuesta<span class="sort-indicator"></span></th>
               <th style="width: 145px;" data-sort="fechaFinalizacion">Fecha Finalización<span class="sort-indicator"></span></th>
+              <th style="width: 220px;" data-sort="sugerencia">Comentario<span class="sort-indicator"></span></th>
+              <th style="width: 145px;" data-sort="fechaCalificacion">Fecha Calificación<span class="sort-indicator"></span></th>
             </tr>
           </thead>
           <tbody id="tkBody"></tbody>
@@ -1776,7 +1780,7 @@
     const tkState = {
       cargado: false, datos: null, temporizador: null,
       anio: '', mes: 0, q: 0,   // quincena escogida (mes 0 = todas las quincenas del año)
-      filtros: { estado: '', modulo: '', regional: '', operacion: '', solicitante: '' },
+      filtros: { estado: '', modulo: '', regional: '', operacion: '', solicitante: '', calificacion: '' },
       orden: { col: 'fechaRegistro', dir: 'desc' }
     };
     const TK_ESTADOS = [
@@ -1785,6 +1789,12 @@
       { key: 'Resuelto', label: '🟢 Resuelto' },
       { key: 'Rechazado', label: '🔴 Rechazado' }
     ];
+    // Calificación de quien puso el ticket (1 a 5): estrellas, o "Por calificar" si ya se cerró y no ha calificado
+    function tkCalificacionHtml(t) {
+      const n = Number(t.satisfaccion);
+      if (n >= 1 && n <= 5) return `<span style="color:#f59e0b; letter-spacing:1px;" title="${n} de 5">${'★'.repeat(n)}<span style="color:var(--border)">${'★'.repeat(5 - n)}</span></span>`;
+      return t.porCalificar ? '<span style="color:var(--text-muted); font-size:.8rem;">Por calificar</span>' : '—';
+    }
     function tkEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function tkColores(estado) {
       switch (String(estado || '').trim().toLowerCase()) {
@@ -1893,7 +1903,7 @@
       cargarTickets();
     }
     function limpiarFiltrosTickets() {
-      tkState.filtros = { estado: '', modulo: '', regional: '', operacion: '', solicitante: '' };
+      tkState.filtros = { estado: '', modulo: '', regional: '', operacion: '', solicitante: '', calificacion: '' };
       document.getElementById('tkBuscar').value = '';
       document.getElementById('tkMios').checked = false;
       tkIrAQuincenaActual();
@@ -1926,13 +1936,18 @@
       }
     }
     // Opciones de un filtro con su conteo; la opción escogida se conserva aunque quede en 0
-    function llenarSelectConConteo(id, facetas, valor, textoTodos) {
+    function llenarSelectConConteo(id, facetas, valor, textoTodos, etiqueta = v => v) {
       const sel = document.getElementById(id);
       const opciones = (facetas || []).slice();
       if (valor && !opciones.some(f => f.valor === valor)) opciones.unshift({ valor, n: 0 });
       const total = opciones.reduce((a, f) => a + f.n, 0);
       sel.innerHTML = `<option value="">${textoTodos} (${total.toLocaleString('es-CO')})</option>` +
-        opciones.map(f => `<option value="${tkEsc(f.valor)}"${f.valor === valor ? ' selected' : ''}>${tkEsc(f.valor)} (${f.n.toLocaleString('es-CO')})</option>`).join('');
+        opciones.map(f => `<option value="${tkEsc(f.valor)}"${f.valor === valor ? ' selected' : ''}>${tkEsc(etiqueta(f.valor))} (${f.n.toLocaleString('es-CO')})</option>`).join('');
+    }
+    // "4 estrellas" → "★★★★☆ 4 estrellas"
+    function tkEtiquetaCalificacion(v) {
+      const n = parseInt(v, 10);
+      return n >= 1 && n <= 5 ? `${'★'.repeat(n)}${'☆'.repeat(5 - n)} ${v}` : v;
     }
     function ordenarTickets(lista) {
       const { col, dir } = tkState.orden;
@@ -1960,6 +1975,7 @@
       llenarSelectConConteo('tkRegional', d.facetas.regional, f.regional, 'Todas las regionales');
       llenarSelectConConteo('tkOperacion', d.facetas.operacion, f.operacion, 'Todas las operaciones');
       if (verSolicitantes) llenarSelectConConteo('tkSolicitante', d.facetas.solicitante, f.solicitante, 'Todos los solicitantes');
+      llenarSelectConConteo('tkCalificacion', d.facetas.calificacion, f.calificacion, 'Todas las calificaciones', tkEtiquetaCalificacion);
 
       // Chips de estado con conteo (cuentan con los demás filtros aplicados)
       const conteo = {};
@@ -1990,13 +2006,14 @@
       const body = document.getElementById('tkBody');
       tkState.vista = ordenarTickets(d.tickets);
       if (!tkState.vista.length) {
-        body.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
+        body.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
         return;
       }
       body.innerHTML = tkState.vista.map((t, i) => `
         <tr onclick="verTicket(${i})" title="Clic para ver el detalle">
           <td style="text-align:center; padding-left:4px; padding-right:4px; text-overflow:clip;">${t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Editar ticket" aria-label="Editar ticket" onclick="event.stopPropagation(); editarTicket(${i})">✏️</button>` : ''}${t.puedeResolver && !t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Gestionar ticket" aria-label="Gestionar ticket" onclick="event.stopPropagation(); gestionarTicket(${i})">🛠️</button>` : ''}</td>
           <td>${tkBadge(t.estado)}</td>
+          <td>${tkCalificacionHtml(t)}</td>
           <td style="font-weight:700;">${tkEsc(t.ticket)}</td>
           <td>${tkEsc(t.fechaRegistro)}</td>
           <td>${tkEsc(t.modulo)}</td>
@@ -2007,6 +2024,8 @@
           <td title="${tkEsc(t.solicitante || '')}">${tkEsc(t.solicitante || '—')}</td>
           <td title="${tkEsc(t.observaciones || '')}">${tkEsc(t.observaciones || '—')}</td>
           <td>${tkEsc(t.fechaFinalizacion || '—')}</td>
+          <td title="${tkEsc(t.sugerencia || '')}">${tkEsc(t.sugerencia || '—')}</td>
+          <td>${tkEsc(t.fechaCalificacion || '—')}</td>
         </tr>`).join('');
     }
     function abrirModalTicket(titulo, html) {

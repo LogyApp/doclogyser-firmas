@@ -130,8 +130,35 @@ async function guardarCalificacion(donde, { satisfaccion, sugerencia }) {
   return r.affectedRows > 0;
 }
 
+// ── Filtro "Calificación" de las tablas de Tickets (Directorio/Configuración, Facturación, Inventario) ──
+// Cada ticket queda en una opción: "5 estrellas" … "1 estrella", "Por calificar" (cerrado, sin calificar)
+// o "Sin calificación" (aún abierto, o cerrado antes de existir la calificación).
+const POR_CALIFICAR = 'Por calificar';
+const SIN_CALIFICACION = 'Sin calificación';
+const ORDEN_CALIFICACION = ['5 estrellas', '4 estrellas', '3 estrellas', '2 estrellas', '1 estrella', POR_CALIFICAR, SIN_CALIFICACION];
+
+function etiquetaCalificacion(t) {
+  const n = Number(t.satisfaccion);
+  if (Number.isInteger(n) && n >= 1 && n <= 5) return `${n} ${n === 1 ? 'estrella' : 'estrellas'}`;
+  return Number(t.porCalificar) ? POR_CALIFICAR : SIN_CALIFICACION;
+}
+
+// La misma etiqueta en SQL (alias t = Dynamic_Tickets), para contar con GROUP BY
+const SQL_ETIQUETA_CALIFICACION = `CASE
+  WHEN t.satisfaccion BETWEEN 1 AND 5 THEN CONCAT(t.satisfaccion, IF(t.satisfaccion = 1, ' estrella', ' estrellas'))
+  WHEN ${SQL_POR_CALIFICAR} THEN '${POR_CALIFICAR}'
+  ELSE '${SIN_CALIFICACION}' END`;
+
+// Opciones de 5 a 1 estrella, luego Por calificar y Sin calificación (no por conteo)
+function ordenarFacetaCalificacion(faceta) {
+  return faceta.slice().sort((a, b) => ORDEN_CALIFICACION.indexOf(a.valor) - ORDEN_CALIFICACION.indexOf(b.valor));
+}
+
 module.exports = {
   SQL_POR_CALIFICAR,
+  SQL_ETIQUETA_CALIFICACION,
+  etiquetaCalificacion,
+  ordenarFacetaCalificacion,
   MAX_SUGERENCIA,
   prepararCalificacionTicket,
   validarCalificacion,

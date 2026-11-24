@@ -20,7 +20,7 @@ const configServicios = require('../services/configServicios');
 const periodoServicios = require('../services/periodoServicios');
 const { buscarTarifa } = require('../services/tarifasServicio');
 const { avisarFotoTransferenciaPendiente } = require('../services/avisoFotoTransferencia');
-const { prepararCalificacionTicket } = require('../services/calificacionTickets');
+const { prepararCalificacionTicket, SQL_POR_CALIFICAR, SQL_ETIQUETA_CALIFICACION, ordenarFacetaCalificacion } = require('../services/calificacionTickets');
 const columnasServicios = require('../services/columnasServicios');
 const columnasRecibos = require('../services/columnasRecibos');
 const vistaTablaUsuario = require('../services/vistaTablaUsuario');
@@ -6852,6 +6852,7 @@ router.get('/api/tickets', async (req, res) => {
       estado,
       regional,
       operacion,
+      calificacion,
       q,
       sortCol,
       sortDir,
@@ -6890,6 +6891,12 @@ router.get('/api/tickets', async (req, res) => {
       params.push(operacion);
     }
 
+    // Calificación: "5 estrellas" … "1 estrella", "Por calificar", "Sin calificación"
+    if (calificacion) {
+      whereClauses.push(`(${SQL_ETIQUETA_CALIFICACION}) = ?`);
+      params.push(calificacion);
+    }
+
     // Búsqueda libre: Ticket, IdRecibo, Usuario (solicitante)
     if (q && q.trim()) {
       const qLike = `%${q.trim()}%`;
@@ -6911,7 +6918,9 @@ router.get('/api/tickets', async (req, res) => {
       motivo: 't.motivo',
       idrecibo: 't.idrecibo',
       solicitante: 't.solicitante',
-      fecha_finalizacion: 't.fecha_finalizacion'
+      fecha_finalizacion: 't.fecha_finalizacion',
+      satisfaccion: 't.satisfaccion',
+      fecha_calificacion: 't.fecha_calificacion'
     };
 
     const orderCol = sortMap[sortCol] || 't.fecha_registro';
@@ -6936,6 +6945,8 @@ router.get('/api/tickets', async (req, res) => {
         t.fecha_finalizacion as fechaFinalizacion,
         t.satisfaccion as satisfaccion,
         t.sugerencia as sugerencia,
+        t.fecha_calificacion as fechaCalificacion,
+        ${SQL_POR_CALIFICAR} as porCalificar,
         mo.REGIONAL as regional
       FROM Dynamic_Tickets t
       LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
@@ -6960,14 +6971,14 @@ router.get('/api/tickets/metricas', async (req, res) => {
     const acceso = await computarAccesoFacturacion(usuario, 'Tickets');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const { regional, operacion, q, estado } = req.query;
+    const { regional, operacion, q, estado, calificacion } = req.query;
 
     const commonWhere = [`t.modulo = 'Servicios'`];
     const commonParams = [];
 
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) {
-        return res.json({ estados: [], regionalesOps: [] });
+        return res.json({ estados: [], regionalesOps: [], calificaciones: [] });
       }
       commonWhere.push(`t.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
       commonParams.push(...acceso.operacionesFiltro);
@@ -6987,35 +6998,53 @@ router.get('/api/tickets/metricas', async (req, res) => {
       commonParams.push(qLike, qLike, qLike);
     }
 
+    // Filtros de Estado y Calificación: cada conteo aplica el otro, no el suyo
+    const estadoFiltro = (typeof estado === 'undefined' || estado === null || estado === '') ? 'En Proceso' : estado;
+    const condEstado = estadoFiltro !== 'todos' ? { sql: 't.Estado = ?', param: estadoFiltro } : null;
+    const condCalif = calificacion ? { sql: `(${SQL_ETIQUETA_CALIFICACION}) = ?`, param: calificacion } : null;
+    const armarWhere = (conds) => {
+      const c = conds.filter(Boolean);
+      return {
+        sql: `WHERE ${[...commonWhere, ...c.map(x => x.sql)].join(' AND ')}`,
+        params: [...commonParams, ...c.map(x => x.param)]
+      };
+    };
+
     // 1. Conteo por Estado (no filtra por Estado para mostrar panorama del filtro principal)
-    const whereSqlEstado = commonWhere.length ? `WHERE ${commonWhere.join(' AND ')}` : '';
+    const wEstado = armarWhere([condCalif]);
     const [estadoRows] = await pool.query(`
       SELECT t.Estado as estado, COUNT(*) as totalCount
       FROM Dynamic_Tickets t
       LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
-      ${whereSqlEstado}
+      ${wEstado.sql}
       GROUP BY t.Estado
-    `, commonParams);
+    `, wEstado.params);
 
-    // 2. Conteo por Regional / Operación (incluye el Estado seleccionado)
-    const dropdownWhere = [...commonWhere];
-    const dropdownParams = [...commonParams];
-    const estadoFiltro = (typeof estado === 'undefined' || estado === null || estado === '') ? 'En Proceso' : estado;
-    if (estadoFiltro !== 'todos') {
-      dropdownWhere.push('t.Estado = ?');
-      dropdownParams.push(estadoFiltro);
-    }
-    const whereSqlDropdowns = dropdownWhere.length ? `WHERE ${dropdownWhere.join(' AND ')}` : '';
-
+    // 2. Conteo por Regional / Operación (incluye el Estado y la Calificación seleccionados)
+    const wDropdowns = armarWhere([condEstado, condCalif]);
     const [opsRows] = await pool.query(`
       SELECT COALESCE(mo.REGIONAL, 'SIN REGIONAL') as regional, t.\`Operación\` as operacion, COUNT(*) as totalCount
       FROM Dynamic_Tickets t
       LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
-      ${whereSqlDropdowns}
+      ${wDropdowns.sql}
       GROUP BY mo.REGIONAL, t.\`Operación\`
-    `, dropdownParams);
+    `, wDropdowns.params);
 
-    res.json({ estados: estadoRows, regionalesOps: opsRows });
+    // 3. Conteo por Calificación (incluye el Estado seleccionado)
+    const wCalif = armarWhere([condEstado]);
+    const [califRows] = await pool.query(`
+      SELECT ${SQL_ETIQUETA_CALIFICACION} as valor, COUNT(*) as n
+      FROM Dynamic_Tickets t
+      LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = t.\`Operación\`
+      ${wCalif.sql}
+      GROUP BY valor
+    `, wCalif.params);
+
+    res.json({
+      estados: estadoRows,
+      regionalesOps: opsRows,
+      calificaciones: ordenarFacetaCalificacion(califRows.map(r => ({ valor: r.valor, n: Number(r.n) })))
+    });
   } catch (err) {
     console.error('[facturacion] GET /api/tickets/metricas:', err);
     res.status(500).json({ error: err.message });
