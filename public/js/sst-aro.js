@@ -145,6 +145,7 @@
           + (p.editarFirmado ? iconoSst('regenerar', '#0284c7', 'Regenerar PDF', { onclick: `aroRegenerar('${id}', this)` }) : '')
           + (p.eliminarFirmado ? iconoSst('eliminar', '#b91c1c', 'Eliminar ARO firmado', { onclick: `aroEliminar('${id}', true)` }) : '')
         : iconoSst('enlace', '#6366f1', 'Copiar enlace de firma', { onclick: `aroCopiar('${esc(a.urlFirma)}')` })
+          + (p.crear ? iconoSst('contacto', '#64748b', 'Actualizar contacto del trabajador', { onclick: `abrirContactoEnlaceSst('aro', '${id}')` }) : '')
           + (a.celular ? iconoSst('whatsapp', '#25d366', 'Enviar por WhatsApp', { href: enlaceWhatsApp(a.celular, a.trabajador, a.urlFirma) }) : '')
           + (p.crear && p.correoHabilitado && a.tieneEmail ? iconoSst('correo', '#0ea5e9', 'Enviar enlace por correo', { onclick: `aroCorreo('${id}', this)` }) : '')
           + iconoSst('firmar', '#d97706', 'Firmar aquí (abre el formato en este equipo)', { href: a.urlFirma })

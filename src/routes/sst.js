@@ -4,6 +4,7 @@ const path = require('path');
 const { computarAccesoSst } = require('../services/accesoSst');
 const { permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
 const { permisosParticipacion } = require('../services/configParticipacion');
+const { gestionarContacto } = require('../services/contactoEnlaceSst');
 const {
   obtenerConfigInspeccionesSST,
   obtenerLimitesInspeccion,
@@ -30,6 +31,20 @@ const {
 const router = express.Router();
 const HTML_INDEX_PATH = path.join(__dirname, '../views/sst/index.html');
 const SECCION_INSPECCIONES_SST = 'Inspecciones_vehiculos';
+
+async function contactoEnlace(req, res) {
+  try {
+    const datos = req.method === 'PUT' ? req.body : null;
+    const resultado = await gestionarContacto(req.params.tipo, req.params.id, req.query.usuario || (req.body || {}).usuario, datos);
+    if (resultado.error) return res.status(resultado.status).json({ error: resultado.error });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[sst] Error al gestionar contacto para enlace:', err);
+    res.status(500).json({ error: 'No se pudo gestionar el contacto del trabajador.' });
+  }
+}
+router.get('/api/contacto-enlace/:tipo/:id', contactoEnlace);
+router.put('/api/contacto-enlace/:tipo/:id', contactoEnlace);
 
 // El acceso de los roles al módulo SST y a cada una de sus pestañas funciona
 // exclusivamente con lo registrado en Maestro_Menu (Modulo 'sst'; igual que Nómina).

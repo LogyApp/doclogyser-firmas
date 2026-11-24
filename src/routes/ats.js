@@ -126,6 +126,7 @@ router.get('/api/registro/:id', async (req, res) => {
       coordinador: esFirmante(acceso, detalle.coordinador_operacion_id, detalle.coordinador_operacion_nombre),
       sst: esFirmante(acceso, detalle.responsable_sst_id, detalle.responsable_sst_nombre),
     };
+    detalle.puedeEditarContacto = !!acceso.atsConfig.puedeRegistrar;
     res.json(detalle);
   } catch (err) {
     console.error('[ats] GET /api/registro/:id error:', err);

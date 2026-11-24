@@ -181,6 +181,7 @@
           + (p.editarFirmado ? iconoSst('regenerar', '#0284c7', 'Regenerar PDF', { onclick: `evinRegenerar('${id}', this)` }) : '')
           + (p.eliminarFirmado ? iconoSst('eliminar', '#b91c1c', 'Eliminar evaluación respondida', { onclick: `evinEliminar('${id}', true)` }) : '')
         : iconoSst('enlace', '#6366f1', 'Copiar enlace de la evaluación', { onclick: `evinCopiar('${esc(a.urlFirma)}')` })
+          + (p.crear ? iconoSst('contacto', '#64748b', 'Actualizar contacto del trabajador', { onclick: `abrirContactoEnlaceSst('evin', '${id}')` }) : '')
           + (a.celular ? iconoSst('whatsapp', '#25d366', 'Enviar por WhatsApp', { href: enlaceWhatsApp(a.celular, a.trabajador, a.urlFirma) }) : '')
           + (p.crear && p.correoHabilitado && a.tieneEmail ? iconoSst('correo', '#0ea5e9', 'Enviar enlace por correo', { onclick: `evinCorreo('${id}', this)` }) : '')
           + iconoSst('firmar', '#d97706', 'Responder aquí (abre la evaluación en este equipo)', { href: a.urlFirma })

@@ -406,6 +406,7 @@ router.get('/api/evaluaciones', async (req, res) => {
     const query = `
       SELECT ev.id_evaluacion, ev.fecha, ev.identificacion, ev.usuario, ev.tipo, ev.url_doc, 
              ev.token_firma, ev.token_expira, ev.puntaje, ev.resultado, ev.fecha_registro,
+             IF(ev.firma_trabajador IS NOT NULL AND ev.firma_trabajador <> '', 1, NULL) AS firma_trabajador,
              vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,
              usu.Nombre AS nombre_evaluador

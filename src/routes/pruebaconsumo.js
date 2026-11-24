@@ -511,13 +511,14 @@ router.get('/api/pruebas', async (req, res) => {
         a.ciudad,
         a.cliente,
         a.url_doc,
+        IF(a.firma_trabajador IS NOT NULL AND a.firma_trabajador <> '', 1, NULL) AS firma_trabajador,
         a.usuario,
         a.fecha_registro,
         a.token_firma,
         COALESCE(v.Regional, a.regional) AS regional,
         COALESCE(v.\`Operación\`, a.operacion) AS operacion,
         u.Nombre AS nombre_creador,
-        seg.Celular AS celular_trabajador
+        seg.Celular AS celular_trabajador, seg.Email AS email_trabajador
        FROM Dynamic_pruebaconsumo a
        LEFT JOIN (
          SELECT t1.Identificación, t1.Regional, t1.\`Operación\`

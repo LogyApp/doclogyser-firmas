@@ -604,7 +604,7 @@ router.get('/api/compromisos', async (req, res) => {
         a.url_doc,
         a.usuario,
         a.fecha_registro,
-        seg.Celular AS celular_trabajador
+        seg.Celular AS celular_trabajador, seg.Email AS email_trabajador
        FROM Dynamic_compromisosst a
        LEFT JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
        LEFT JOIN \`Maestro_Segmentación\` seg ON a.identificaciontrabajador = seg.Identificación
@@ -629,7 +629,7 @@ router.get('/api/compromiso/:id', async (req, res) => {
     const { usuario } = req.query;
 
     const [[c]] = await pool.execute(
-      `SELECT a.*, u.Nombre AS nombre_creador, seg.Celular AS celular_trabajador
+      `SELECT a.*, u.Nombre AS nombre_creador, seg.Celular AS celular_trabajador, seg.Email AS email_trabajador
        FROM Dynamic_compromisosst a
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        LEFT JOIN Maestro_Segmentación seg ON a.identificaciontrabajador = seg.Identificación

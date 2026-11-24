@@ -341,6 +341,55 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
+router.put('/api/capacitacion/:id/contacto', async (req, res) => {
+  try {
+    const { usuario, email, celular } = req.body;
+    if (!usuario || typeof email !== 'string' || typeof celular !== 'string') {
+      return res.status(400).json({ error: 'Usuario, correo y celular son requeridos.' });
+    }
+
+    const acceso = await computarAccesoCAPSST(usuario);
+    if (!acceso || !(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para actualizar el contacto.' });
+    }
+
+    const resultado = await pool.withTransaction(async conn => {
+      const [rows] = await conn.execute(
+        `SELECT c.identificacion, c.url_doc, c.firma_trabajador,
+                (SELECT v.\`Operación\` FROM Maestro_Vinculación v
+                 WHERE v.Identificación = c.identificacion
+                 ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS operacion
+         FROM Maestro_capacitacionsst c WHERE c.id_capacitacion = ? FOR UPDATE`,
+        [req.params.id]
+      );
+      if (!rows.length) return { status: 404, error: 'Capacitación no encontrada.' };
+      const cap = rows[0];
+      if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(cap.operacion)) {
+        return { status: 403, error: 'No tienes acceso a esta capacitación.' };
+      }
+      if (cap.url_doc || cap.firma_trabajador) {
+        return { status: 409, error: 'La capacitación ya está cerrada; no se puede actualizar el contacto.' };
+      }
+
+      const correoActualizado = email.trim();
+      const celularActualizado = celular.trim();
+      await conn.execute(
+        `INSERT INTO Maestro_Segmentación (Identificación, Email, Celular)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE Email = VALUES(Email), Celular = VALUES(Celular)`,
+        [cap.identificacion, correoActualizado || null, celularActualizado || null]
+      );
+      return { ok: true, email: correoActualizado, celular: celularActualizado };
+    });
+
+    if (resultado.error) return res.status(resultado.status).json({ error: resultado.error });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[capacitacionsst] PUT /api/capacitacion/:id/contacto:', err);
+    res.status(500).json({ error: 'No se pudo actualizar el contacto.' });
+  }
+});
+
 // ═════ API: GET /api/conteos-filtros ═════
 router.get('/api/conteos-filtros', async (req, res) => {
   try {
@@ -492,6 +541,7 @@ router.get('/api/capacitaciones', async (req, res) => {
     const query = `
       SELECT c.id_capacitacion, c.fecha, c.identificacion, c.usuario, c.tema, c.url_doc, 
              c.token_firma, c.token_expira, c.puntaje, c.resultado, c.fecha_registro,
+             IF(c.firma_trabajador IS NOT NULL AND c.firma_trabajador <> '', 1, NULL) AS firma_trabajador,
              vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,
              usu.Nombre AS nombre_evaluador

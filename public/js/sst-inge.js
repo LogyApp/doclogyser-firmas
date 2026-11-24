@@ -171,6 +171,7 @@
           + (p.editarFirmado ? iconoSst('regenerar', '#0284c7', 'Regenerar PDF', { onclick: `ingeRegenerar('${id}', this)` }) : '')
           + (p.eliminarFirmado ? iconoSst('eliminar', '#b91c1c', 'Eliminar comprobante firmado', { onclick: `ingeEliminar('${id}', true)` }) : '')
         : iconoSst('enlace', '#6366f1', 'Copiar enlace del comprobante', { onclick: `ingeCopiar('${esc(a.urlFirma)}')` })
+          + (p.crear ? iconoSst('contacto', '#64748b', 'Actualizar contacto del trabajador', { onclick: `abrirContactoEnlaceSst('inge', '${id}')` }) : '')
           + (a.celular ? iconoSst('whatsapp', '#25d366', 'Enviar por WhatsApp', { href: enlaceWhatsApp(a.celular, a.trabajador, a.urlFirma) }) : '')
           + (p.crear && p.correoHabilitado && a.tieneEmail ? iconoSst('correo', '#0ea5e9', 'Enviar enlace por correo', { onclick: `ingeCorreo('${id}', this)` }) : '')
           + iconoSst('firmar', '#d97706', 'Firmar aquí (abre el comprobante en este equipo)', { href: a.urlFirma })

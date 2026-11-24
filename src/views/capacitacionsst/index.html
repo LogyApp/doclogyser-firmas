@@ -789,7 +789,8 @@
 
         if (!data.url_doc && esCreadorOSistema) {
           // Cargar datos de contacto primero para poder construir el enlace de WhatsApp
-          document.getElementById('opciones-contacto').style.display = 'block';
+          const puedeEditarContacto = !data.firma_trabajador && CONFIG.permisosSst && CONFIG.permisosSst.cap && CONFIG.permisosSst.cap.crear;
+          document.getElementById('opciones-contacto').style.display = puedeEditarContacto ? 'block' : 'none';
           const rContact = await fetch(`/capacitacionsst/api/contacto/${data.identificacion}`);
           const contact = await rContact.json();
           document.getElementById('contacto-email').value = contact.Email || '';
@@ -905,20 +906,17 @@
       
       showLoading('Actualizando contacto...');
       try {
-        // Obtener identificación del registro actual
-        const rDet = await fetch(`/capacitacionsst/api/capacitacion/${selectedCapacitacionId}`);
-        const det = await rDet.json();
-
-        const r = await fetch('/capacitacionsst/api/actualizar-contacto', {
-          method: 'POST',
+        const id = selectedCapacitacionId;
+        const r = await fetch(`/capacitacionsst/api/capacitacion/${encodeURIComponent(id)}/contacto`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identificacion: det.identificacion, email, celular })
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, email, celular })
         });
         const res = await r.json();
-        if (res.ok) {
+        if (r.ok && res.ok) {
           showToast('Datos de contacto actualizados');
           // Actualizar dinámicamente el botón de WhatsApp con el nuevo celular
-          const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${det.id_capacitacion}`;
+          const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${id}`;
           const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${urlFirmaLink}`);
           const cleanCel = celular ? celular.replace(/\D/g, '') : '';
           let phoneParam = '';
@@ -932,8 +930,10 @@
           if (btnWa) {
             btnWa.href = waUrl;
           }
+          await cargarCapacitaciones();
         } else {
           showToast(res.error || 'Error al actualizar contacto', 'error');
+          if (r.status === 409) await cargarDetalle();
         }
       } catch (e) {
         console.error(e);
