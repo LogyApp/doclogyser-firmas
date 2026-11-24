@@ -5252,8 +5252,8 @@
       } else {
         optsHtml += logysignAccionesHtml(item);
       }
-      if (item.estado !== 'FIRMADO') {
-        optsHtml += `<button class="btn btn-cancel" style="margin-top:8px;" onclick="eliminarRegistroLogysign('${item.id}')">✕ Eliminar Registro</button>`;
+      if (item.puede_eliminar) {
+        optsHtml += `<button class="btn btn-cancel" style="margin-top:8px;" onclick="eliminarRegistroLogysign('${item.id}', '${item.estado}')">✕ Eliminar Registro</button>`;
       }
       document.getElementById('logysign-opciones-control').innerHTML = optsHtml;
 
@@ -5291,8 +5291,11 @@
       }
     }
 
-    async function eliminarRegistroLogysign(id) {
-      if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es irreversible.')) return;
+    async function eliminarRegistroLogysign(id, estado) {
+      const aviso = estado === 'FIRMADO'
+        ? 'Este documento YA ESTÁ FIRMADO. Se borrará el PDF firmado y el original de la nube, y el registro en la base de datos (incluido el documento del trabajador).\n\n¿Desea eliminarlo? Esta acción es irreversible.'
+        : '¿Está seguro de que desea eliminar este registro? Esta acción es irreversible.';
+      if (!confirm(aviso)) return;
       showLoader('Eliminando registro...');
       try {
         const res = await fetch(`/registrologysign/api/eliminar/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, { method: 'DELETE' });

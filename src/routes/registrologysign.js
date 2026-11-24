@@ -9,6 +9,57 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
 const { obtenerCcEmails } = require('../services/logysignScheduler');
 
+// ── Config_Parametros (Modulo = 'CloudDocs', Seccion = 'LogySign') ──────────
+// Roles que pueden eliminar registros ya FIRMADOS (borra PDF firmado, PDF original
+// y la fila en Maestro_docTrabajador). Si la fila no existe, solo Sistema.
+const CONCEPTO_ELIMINAR_FIRMADOS = 'Roles que pueden eliminar registros firmados';
+const DEFAULT_ELIMINAR_FIRMADOS = 'Sistema';
+
+function normalizarTexto(valor) {
+  return String(valor || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+}
+
+async function puedeEliminarFirmados(rol) {
+  let lista = DEFAULT_ELIMINAR_FIRMADOS;
+  try {
+    const [rows] = await pool.execute(
+      "SELECT Parametro FROM Config_Parametros WHERE Modulo = 'CloudDocs' AND Seccion = 'LogySign' AND Concepto = ? LIMIT 1",
+      [CONCEPTO_ELIMINAR_FIRMADOS]
+    );
+    if (rows.length) lista = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[registrologysign] No se pudo leer el parámetro de eliminación, se usa el valor por defecto:', err.message);
+  }
+  const rolNorm = normalizarTexto(rol);
+  return !!rolNorm && lista.split(',').map(normalizarTexto).includes(rolNorm);
+}
+
+// Borra un archivo de GCS a partir de su URL pública, salvo que otro registro de
+// Maestro_docTrabajador o Dynamic_Logysign lo siga usando.
+async function borrarArchivoGcs(url, { excluirDocId, excluirLogysignId }) {
+  const gcsPrefix = 'https://storage.googleapis.com/';
+  if (!url || !url.startsWith(gcsPrefix)) return;
+  const [refDoc] = await pool.query(
+    'SELECT id FROM Maestro_docTrabajador WHERE (Url = ? OR Doc = ?) AND id <> ? LIMIT 1',
+    [url, url, excluirDocId || '']
+  );
+  const [refLog] = await pool.query(
+    'SELECT id FROM Dynamic_Logysign WHERE original_pdf_url = ? AND id <> ? LIMIT 1',
+    [url, excluirLogysignId || '']
+  );
+  if (refDoc.length || refLog.length) {
+    console.log(`[registrologysign] Archivo ${url} no se borra: otro registro lo sigue usando.`);
+    return;
+  }
+  const partes = url.substring(gcsPrefix.length).split('/');
+  const file = storage.bucket(partes[0]).file(decodeURIComponent(partes.slice(1).join('/')));
+  const [existe] = await file.exists();
+  if (existe) {
+    await file.delete();
+    console.log(`[registrologysign] Archivo borrado de GCS: gs://${partes[0]}/${partes.slice(1).join('/')}`);
+  }
+}
+
 // Servir la vista principal de registros
 router.get('/', async (req, res) => {
   try {
@@ -111,6 +162,10 @@ router.get('/api/registros', async (req, res) => {
     }
 
     const [rows] = await pool.execute(query, params);
+    // puede_eliminar: los no firmados los elimina cualquiera; los FIRMADOS solo los
+    // roles de Config_Parametros (CloudDocs / LogySign).
+    const eliminaFirmados = await puedeEliminarFirmados(rol);
+    rows.forEach(r => { r.puede_eliminar = r.estado !== 'FIRMADO' || eliminaFirmados; });
     res.json(rows);
   } catch (err) {
     console.error('[registrologysign] Error fetching records:', err);
@@ -391,7 +446,10 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
-// API: Eliminar registro (Permitido para usuarios si no está firmado)
+// API: Eliminar registro. Los no firmados los puede eliminar cualquier usuario; los
+// FIRMADOS solo los roles de Config_Parametros (CloudDocs / LogySign, por defecto Sistema).
+// Borra todo rastro: PDF firmado y PDF original en el bucket, la fila de
+// Maestro_docTrabajador (logysign-<id>) y la de Dynamic_Logysign.
 router.delete('/api/eliminar/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -401,32 +459,54 @@ router.delete('/api/eliminar/:id', async (req, res) => {
     }
 
     const [uRows] = await pool.execute(
-      'SELECT ID FROM Maestro_Usuarios WHERE ID = ?',
+      'SELECT ID, Rol FROM Maestro_Usuarios WHERE ID = ?',
       [usuario]
     );
     if (!uRows.length) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    // Verificar si el registro ya fue firmado
     const [logRows] = await pool.execute(
-      'SELECT estado FROM Dynamic_Logysign WHERE id = ?',
+      'SELECT estado, original_pdf_url FROM Dynamic_Logysign WHERE id = ?',
       [id]
     );
     if (!logRows.length) {
       return res.status(404).json({ error: 'El registro no existe' });
     }
+    const registro = logRows[0];
 
-    if (logRows[0].estado === 'FIRMADO') {
-      return res.status(400).json({ error: 'No se puede eliminar un registro que ya fue firmado' });
+    if (registro.estado === 'FIRMADO' && !(await puedeEliminarFirmados(uRows[0].Rol))) {
+      return res.status(403).json({ error: 'Solo el rol autorizado puede eliminar un registro que ya fue firmado' });
     }
 
-    // Eliminar
-    await pool.execute(
-      'DELETE FROM Dynamic_Logysign WHERE id = ?',
-      [id]
+    const docId = `logysign-${id}`;
+    const [docRows] = await pool.execute(
+      'SELECT Doc, Url FROM Maestro_docTrabajador WHERE id = ?',
+      [docId]
     );
 
+    // 1. Archivos del bucket primero: si alguno falla no se toca la base y se puede reintentar.
+    const urls = new Set([registro.original_pdf_url]);
+    docRows.forEach(d => { urls.add(d.Doc); urls.add(d.Url); });
+    for (const url of urls) {
+      await borrarArchivoGcs(url, { excluirDocId: docId, excluirLogysignId: id });
+    }
+
+    // 2. Filas en la base de datos
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.execute('DELETE FROM Maestro_docTrabajador WHERE id = ?', [docId]);
+      await conn.execute('DELETE FROM Dynamic_Logysign WHERE id = ?', [id]);
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+
+    console.log(`[registrologysign] Registro ${id} (${registro.estado}) eliminado por ${usuario}`);
     res.json({ ok: true });
   } catch (err) {
     console.error('[registrologysign] Error deleting record:', err);

@@ -1421,10 +1421,10 @@
         `;
       }
 
-      // Delete action: Available for users if not signed (estado !== 'FIRMADO')
-      if (item.estado !== 'FIRMADO') {
+      // Eliminar: no firmados cualquiera; firmados solo los roles de Config_Parametros (puede_eliminar viene del servidor)
+      if (item.puede_eliminar) {
         optsHtml += `
-          <button class="btn" onclick="eliminarRegistro('${item.id}')" style="width: 100%; margin-top: 8px; background: #dc2626; border-color: #dc2626; color: #fff;">✕ Eliminar Registro</button>
+          <button class="btn" onclick="eliminarRegistro('${item.id}', '${item.estado}')"style="width: 100%; margin-top: 8px; background: #dc2626; border-color: #dc2626; color: #fff;">✕ Eliminar Registro</button>
         `;
       }
 
@@ -1490,8 +1490,11 @@
     }
 
     // Eliminar registro
-    async function eliminarRegistro(id) {
-      if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es irreversible.')) return;
+    async function eliminarRegistro(id, estado) {
+      const aviso = estado === 'FIRMADO'
+        ? 'Este documento YA ESTÁ FIRMADO. Se borrará el PDF firmado y el original de la nube, y el registro en la base de datos (incluido el documento del trabajador).\n\n¿Desea eliminarlo? Esta acción es irreversible.'
+        : '¿Está seguro de que desea eliminar este registro? Esta acción es irreversible.';
+      if (!confirm(aviso)) return;
       
       showLoading('Eliminando registro...');
       try {
