@@ -1077,7 +1077,7 @@
     .fmt-toolbar input { flex:1; min-width:200px; }
     .fmt-aviso { font-size:.82rem; color:var(--text-muted); margin:0 0 12px 0; }
     .fmt-tabla { width:max-content; min-width:100%; border-collapse:collapse; font-size:.86rem; table-layout:fixed; }
-    .fmt-tabla th { position:relative; text-align:left; padding:10px 14px 10px 10px; background:var(--bg-elevated); color:var(--text-muted); font-weight:700; border-bottom:1.5px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; user-select:none; }
+    .fmt-tabla th { position:sticky; top:0; z-index:10; text-align:left; padding:10px 14px 10px 10px; background:var(--bg-elevated); color:var(--text-muted); font-weight:700; border-bottom:1.5px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; user-select:none; }
     .fmt-tabla th[data-orden] { cursor:pointer; }
     .fmt-tabla th[data-orden]:hover { color:var(--text); }
     .fmt-tabla th .fmt-sort { margin-left:4px; opacity:.45; font-size:.75rem; }
@@ -1086,7 +1086,9 @@
     .fmt-resizer { position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; touch-action:none; z-index:2; }
     .fmt-resizer::after { content:''; position:absolute; top:25%; right:3px; height:50%; width:2px; background:var(--border); border-radius:2px; }
     .fmt-resizer:hover::after, .fmt-resizer.activo::after { background:var(--accent); }
-    .fmt-tabla tr:hover td { background:var(--bg-elevated); }
+    .fmt-tabla tbody tr { cursor:pointer; }
+    .fmt-tabla tbody tr:hover td, .fmt-tabla tbody tr:focus-visible td { background:var(--accent-soft, var(--bg-elevated)); }
+    .fmt-tabla tbody tr:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
     .fmt-sub { display:block; font-size:.76rem; color:var(--text-muted); }
     .fmt-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:.74rem; font-weight:700; }
     .fmt-pill.si { background:var(--success-soft, #dcfce7); color:var(--success, #16a34a); }
@@ -1419,10 +1421,9 @@
               <th data-orden="fecha_version" data-col="fecha" style="width:115px;">Fecha<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
               <th data-orden="activo" data-col="estado" class="fmt-col-opc" style="width:100px;">Estado<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
               <th data-orden="ultima_actualizacion" data-col="actualizado" class="fmt-col-opc" style="width:150px;">Actualizado<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
-              <th data-col="accion" style="width:100px;"></th>
             </tr>
           </thead>
-          <tbody id="fmt-tbody"><tr><td colspan="7">Cargando...</td></tr></tbody>
+          <tbody id="fmt-tbody"><tr><td colspan="6">Cargando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -4383,7 +4384,7 @@
     async function cargarFormatos() {
       iniciarTablaFormatos();
       const tbody = document.getElementById('fmt-tbody');
-      tbody.innerHTML = '<tr><td colspan="7">Cargando...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6">Cargando...</td></tr>';
       try {
         const res = await fetch(`/cloud-docs/api/formatos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const data = await res.json();
@@ -4392,11 +4393,11 @@
         formatosPermisos = data.permisos || {};
         const aviso = document.getElementById('fmt-aviso-permisos');
         aviso.textContent = formatosPermisos.puedeEditar
-          ? 'Abre un formato para cambiar sus textos, código, versión o fecha. Cada cambio queda en el historial con una copia de lo anterior.'
-          : 'Tu rol puede consultar los formatos pero no editarlos.';
+          ? 'Toca un formato para cambiar sus textos, código, versión o fecha. Cada cambio queda en el historial con una copia de lo anterior.'
+          : 'Toca un formato para verlo. Tu rol puede consultarlos pero no editarlos.';
         renderFormatos();
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);">${esc(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger);">${esc(err.message)}</td></tr>`;
       }
     }
 
@@ -4423,19 +4424,17 @@
       pintarOrdenFormatos();
       actualizarBadgeRegistrosCD(filas.length);
       if (!filas.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);">No hay formatos con ese filtro.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);">No hay formatos con ese filtro.</td></tr>';
         return;
       }
-      const etiquetaBoton = formatosPermisos && formatosPermisos.puedeEditar ? 'Editar' : 'Ver';
       tbody.innerHTML = filas.map(f => `
-        <tr>
+        <tr tabindex="0" onclick="abrirFormato(${Number(f.id_plantilla)})" onkeydown="if (event.key === 'Enter') abrirFormato(${Number(f.id_plantilla)})">
           <td title="${esc(f.nombre || f.nombre_proceso)}"><b>${esc(f.nombre || f.nombre_proceso)}</b><span class="fmt-sub">${esc(f.nombre_proceso)}${f.observaciones && f.observaciones !== f.nombre ? ' · ' + esc(f.observaciones) : ''}</span></td>
           <td>${esc(f.codigo_formato || '—')}</td>
           <td>${esc(f.version_formato || '—')}</td>
           <td>${fmtFechaCorta(f.fecha_version)}</td>
           <td class="fmt-col-opc"><span class="fmt-pill ${Number(f.activo) ? 'si' : 'no'}">${Number(f.activo) ? 'Activo' : 'Inactivo'}</span></td>
           <td class="fmt-col-opc">${esc(String(f.ultima_actualizacion || '').replace('T', ' ').slice(0, 16)) || '—'}</td>
-          <td><button type="button" class="btn btn-submit" style="padding:6px 14px; font-size:.82rem;" onclick="abrirFormato(${Number(f.id_plantilla)})">${etiquetaBoton}</button></td>
         </tr>`).join('');
     }
 
