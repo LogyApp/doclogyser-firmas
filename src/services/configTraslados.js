@@ -130,6 +130,11 @@ function rangoFechaTraslado(params, hoy, rol) {
 // "Roles que pueden registrar traslados fuera de la quincena actual". Devuelve un error o null.
 function validarFechaTraslado(params, fecha, hoy, rol) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return 'La fecha del traslado no es válida.';
+  const anio = parseInt(fecha.slice(0, 4), 10);
+  const anioHoy = parseInt(hoy.slice(0, 4), 10);
+  if (Math.abs(anio - anioHoy) > 1 || fecha < '2024-01-01') {
+    return `El año de la fecha del traslado (${anio}) no es válido o está fuera del rango permitido.`;
+  }
   if (estaEnParametro(params, P.FUERA_QUINCENA, rol)) return null;
   const q = quincenaDe(hoy);
   if (fecha < q.inicio || fecha > q.fin) {
