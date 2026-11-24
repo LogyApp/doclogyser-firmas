@@ -221,28 +221,89 @@ function hoyBogota() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+// ── Nombre del formato ──────────────────────────────────────────────────────
+// 1) Documento de Config_Doc_Trabajador si la plantilla está enlazada (id_config_doc) y es la única
+//    plantilla de ese documento (ej. los 4 formatos de "Formatos Italcol" comparten Id: se usa su título).
+// 2) <title> del diseño, sin la marca final (" — LOG&SER", " - LOG&SER").
+// 3) Primer texto del documento (el encabezado del diseño).
+// 4) nombre_proceso.
+function tituloDelDiseno(html) {
+  const m = String(html || '').match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
+  if (m) {
+    const t = decodificar(m[1].replace(/\s+/g, ' ').trim());
+    const limpio = t ? t.replace(/\s+[—–-]\s*LOG\s*&\s*SER.*$/i, '').trim() : '';
+    if (limpio) return limpio;
+  }
+  const seg = segmentosEditables(html)[0];
+  return seg ? seg.texto.replace(/\s+/g, ' ').trim() : '';
+}
+
+function primeraMayuscula(t) {
+  const s = String(t || '');
+  // Títulos escritos todo en mayúsculas en el diseño: se dejan en tipo oración para leerlos mejor
+  if (s && s === s.toUpperCase() && /\p{L}/u.test(s)) {
+    const minus = s.toLocaleLowerCase('es-CO');
+    return minus.charAt(0).toLocaleUpperCase('es-CO') + minus.slice(1);
+  }
+  return s;
+}
+
+function nombreFormato(p, usosPorDocumento) {
+  if (p.documento && p.id_config_doc != null && (usosPorDocumento[p.id_config_doc] || 0) <= 1) {
+    return { nombre: String(p.documento).trim(), origen: 'Config_Doc_Trabajador' };
+  }
+  const t = tituloDelDiseno(p.contenido_html);
+  if (t) return { nombre: primeraMayuscula(t).slice(0, 150), origen: 'diseño' };
+  return { nombre: p.nombre_proceso, origen: 'proceso' };
+}
+
+async function usosPorDocumento() {
+  const [rows] = await pool.execute(
+    'SELECT id_config_doc, COUNT(*) AS n FROM Maestro_Plantillas WHERE id_config_doc IS NOT NULL GROUP BY id_config_doc'
+  );
+  const mapa = {};
+  rows.forEach((r) => { mapa[r.id_config_doc] = Number(r.n); });
+  return mapa;
+}
+
 // ── Consultas ───────────────────────────────────────────────────────────────
 
 async function listarFormatos(acceso) {
   const [rows] = await pool.execute(
     `SELECT p.id_plantilla, p.nombre_proceso, p.id_config_doc, p.observaciones, p.codigo_formato, p.version_formato,
             p.fecha_version, p.tabla_datos, p.requiere_firma_trabajador, p.activo, p.version, p.ultima_actualizacion,
-            d.Documento AS documento
+            p.contenido_html, d.Documento AS documento
        FROM Maestro_Plantillas p
        LEFT JOIN Config_Doc_Trabajador d ON d.Id = p.id_config_doc
       ORDER BY p.nombre_proceso`
   );
+  const usos = {};
+  rows.forEach((r) => { if (r.id_config_doc != null) usos[r.id_config_doc] = (usos[r.id_config_doc] || 0) + 1; });
   return rows
     .filter((r) => !contiene(acceso.ocultos.join(','), r.nombre_proceso))
-    .map((r) => ({ ...r, fecha_version: fechaIso(r.fecha_version) }));
+    .map((r) => {
+      const { contenido_html, ...resto } = r;
+      const n = nombreFormato(r, usos);
+      return { ...resto, nombre: n.nombre, nombre_origen: n.origen, fecha_version: fechaIso(r.fecha_version) };
+    });
 }
 
 async function obtenerFormato(acceso, id) {
-  const [rows] = await pool.execute('SELECT * FROM Maestro_Plantillas WHERE id_plantilla = ?', [id]);
+  const [rows] = await pool.execute(
+    `SELECT p.*, d.Documento AS documento
+       FROM Maestro_Plantillas p
+       LEFT JOIN Config_Doc_Trabajador d ON d.Id = p.id_config_doc
+      WHERE p.id_plantilla = ?`,
+    [id]
+  );
   if (!rows.length || contiene(acceso.ocultos.join(','), rows[0].nombre_proceso)) return null;
   const p = rows[0];
+  const n = nombreFormato(p, await usosPorDocumento());
   return {
     id_plantilla: p.id_plantilla,
+    nombre: n.nombre,
+    nombre_origen: n.origen,
+    documento: p.documento,
     nombre_proceso: p.nombre_proceso,
     observaciones: p.observaciones,
     codigo_formato: p.codigo_formato,
@@ -422,6 +483,7 @@ module.exports = {
   segmentosEditables,
   aplicarTextos,
   siguienteVersion,
+  tituloDelDiseno,
   DEFAULTS,
   P,
 };

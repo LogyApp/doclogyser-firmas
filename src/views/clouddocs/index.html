@@ -1076,9 +1076,16 @@
     .fmt-toolbar input, .fmt-toolbar select { padding:8px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--card-bg); color:var(--text); font-size:.88rem; }
     .fmt-toolbar input { flex:1; min-width:200px; }
     .fmt-aviso { font-size:.82rem; color:var(--text-muted); margin:0 0 12px 0; }
-    .fmt-tabla { width:100%; border-collapse:collapse; font-size:.86rem; }
-    .fmt-tabla th { text-align:left; padding:10px; background:var(--bg-elevated); color:var(--text-muted); font-weight:700; border-bottom:1.5px solid var(--border); white-space:nowrap; }
-    .fmt-tabla td { padding:10px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text); }
+    .fmt-tabla { width:max-content; min-width:100%; border-collapse:collapse; font-size:.86rem; table-layout:fixed; }
+    .fmt-tabla th { position:relative; text-align:left; padding:10px 14px 10px 10px; background:var(--bg-elevated); color:var(--text-muted); font-weight:700; border-bottom:1.5px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; user-select:none; }
+    .fmt-tabla th[data-orden] { cursor:pointer; }
+    .fmt-tabla th[data-orden]:hover { color:var(--text); }
+    .fmt-tabla th .fmt-sort { margin-left:4px; opacity:.45; font-size:.75rem; }
+    .fmt-tabla th.ordenada .fmt-sort { opacity:1; color:var(--accent); }
+    .fmt-tabla td { padding:10px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text); overflow:hidden; text-overflow:ellipsis; word-break:break-word; }
+    .fmt-resizer { position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; touch-action:none; z-index:2; }
+    .fmt-resizer::after { content:''; position:absolute; top:25%; right:3px; height:50%; width:2px; background:var(--border); border-radius:2px; }
+    .fmt-resizer:hover::after, .fmt-resizer.activo::after { background:var(--accent); }
     .fmt-tabla tr:hover td { background:var(--bg-elevated); }
     .fmt-sub { display:block; font-size:.76rem; color:var(--text-muted); }
     .fmt-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:.74rem; font-weight:700; }
@@ -1405,14 +1412,14 @@
       <div class="table-container">
         <table class="fmt-tabla">
           <thead>
-            <tr>
-              <th>Formato</th>
-              <th>Código</th>
-              <th>Versión</th>
-              <th>Fecha</th>
-              <th class="fmt-col-opc">Estado</th>
-              <th class="fmt-col-opc">Actualizado</th>
-              <th></th>
+            <tr id="fmt-thead-fila">
+              <th data-orden="nombre" data-col="nombre" style="width:340px;">Formato<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="codigo_formato" data-col="codigo" style="width:130px;">Código<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="version_formato" data-col="version" style="width:95px;">Versión<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="fecha_version" data-col="fecha" style="width:115px;">Fecha<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="activo" data-col="estado" class="fmt-col-opc" style="width:100px;">Estado<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-orden="ultima_actualizacion" data-col="actualizado" class="fmt-col-opc" style="width:150px;">Actualizado<span class="fmt-sort">↕</span><div class="fmt-resizer"></div></th>
+              <th data-col="accion" style="width:100px;"></th>
             </tr>
           </thead>
           <tbody id="fmt-tbody"><tr><td colspan="7">Cargando...</td></tr></tbody>
@@ -4374,6 +4381,7 @@
     const FMT_RE_TOKEN = /(<!--[\s\S]*?-->|<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<title\b[\s\S]*?<\/title\s*>|<[^>]*>)/gi;
 
     async function cargarFormatos() {
+      iniciarTablaFormatos();
       const tbody = document.getElementById('fmt-tbody');
       tbody.innerHTML = '<tr><td colspan="7">Cargando...</td></tr>';
       try {
@@ -4409,8 +4417,10 @@
       const filas = formatosLista.filter(f => {
         if (estado !== '' && String(Number(f.activo)) !== estado) return false;
         if (!q) return true;
-        return fmtNormalizar([f.nombre_proceso, f.observaciones, f.documento, f.codigo_formato, f.tabla_datos].join(' ')).includes(q);
+        return fmtNormalizar([f.nombre, f.nombre_proceso, f.observaciones, f.documento, f.codigo_formato, f.tabla_datos].join(' ')).includes(q);
       });
+      ordenarFormatos(filas);
+      pintarOrdenFormatos();
       actualizarBadgeRegistrosCD(filas.length);
       if (!filas.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);">No hay formatos con ese filtro.</td></tr>';
@@ -4419,7 +4429,7 @@
       const etiquetaBoton = formatosPermisos && formatosPermisos.puedeEditar ? 'Editar' : 'Ver';
       tbody.innerHTML = filas.map(f => `
         <tr>
-          <td><b>${esc(f.nombre_proceso)}</b><span class="fmt-sub">${esc(f.observaciones || f.documento || f.tabla_datos || '')}</span></td>
+          <td title="${esc(f.nombre || f.nombre_proceso)}"><b>${esc(f.nombre || f.nombre_proceso)}</b><span class="fmt-sub">${esc(f.nombre_proceso)}${f.observaciones && f.observaciones !== f.nombre ? ' · ' + esc(f.observaciones) : ''}</span></td>
           <td>${esc(f.codigo_formato || '—')}</td>
           <td>${esc(f.version_formato || '—')}</td>
           <td>${fmtFechaCorta(f.fecha_version)}</td>
@@ -4427,6 +4437,96 @@
           <td class="fmt-col-opc">${esc(String(f.ultima_actualizacion || '').replace('T', ' ').slice(0, 16)) || '—'}</td>
           <td><button type="button" class="btn btn-submit" style="padding:6px 14px; font-size:.82rem;" onclick="abrirFormato(${Number(f.id_plantilla)})">${etiquetaBoton}</button></td>
         </tr>`).join('');
+    }
+
+    // Orden por columna (clic en el encabezado; otro clic invierte el orden)
+    let formatosOrden = { campo: 'nombre', dir: 1 };
+
+    function ordenarFormatos(filas) {
+      const { campo, dir } = formatosOrden;
+      const valorOrden = f => {
+        const v = f[campo];
+        if (campo === 'activo') return Number(v) || 0;
+        if (campo === 'version_formato') {
+          const n = parseFloat(String(v || '').replace(/[^\d.]/g, ''));
+          return Number.isFinite(n) ? n : -1;
+        }
+        if (campo === 'nombre') return fmtNormalizar(f.nombre || f.nombre_proceso);
+        return v == null ? '' : fmtNormalizar(v);
+      };
+      filas.sort((a, b) => {
+        const va = valorOrden(a), vb = valorOrden(b);
+        // Vacíos siempre al final
+        const vaVacio = va === '' || va === -1, vbVacio = vb === '' || vb === -1;
+        if (vaVacio !== vbVacio) return vaVacio ? 1 : -1;
+        if (va < vb) return -dir;
+        if (va > vb) return dir;
+        return 0;
+      });
+    }
+
+    function pintarOrdenFormatos() {
+      document.querySelectorAll('#fmt-thead-fila th[data-orden]').forEach(th => {
+        const activa = th.dataset.orden === formatosOrden.campo;
+        th.classList.toggle('ordenada', activa);
+        const icono = th.querySelector('.fmt-sort');
+        if (icono) icono.textContent = activa ? (formatosOrden.dir === 1 ? '▲' : '▼') : '↕';
+      });
+    }
+
+    // Ancho de columnas: se arrastra el borde derecho del encabezado (ratón o dedo). Se recuerda en este navegador.
+    const FMT_ANCHOS_KEY = 'clouddocs_formatos_anchos';
+    function iniciarTablaFormatos() {
+      const fila = document.getElementById('fmt-thead-fila');
+      if (!fila || fila.dataset.listo) return;
+      fila.dataset.listo = '1';
+      try {
+        const guardados = JSON.parse(localStorage.getItem(FMT_ANCHOS_KEY) || '{}');
+        fila.querySelectorAll('th[data-col]').forEach(th => {
+          const w = Number(guardados[th.dataset.col]);
+          if (w >= 50) th.style.width = `${w}px`;
+        });
+      } catch (_) { /* sin almacenamiento local */ }
+
+      fila.querySelectorAll('th[data-orden]').forEach(th => {
+        th.addEventListener('click', () => {
+          if (th.dataset.redimensionando) return;
+          const campo = th.dataset.orden;
+          formatosOrden = formatosOrden.campo === campo ? { campo, dir: -formatosOrden.dir } : { campo, dir: 1 };
+          renderFormatos();
+        });
+      });
+
+      fila.querySelectorAll('.fmt-resizer').forEach(r => {
+        r.addEventListener('click', ev => ev.stopPropagation());
+        r.addEventListener('pointerdown', ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const th = r.parentElement;
+          const x0 = ev.clientX;
+          const w0 = th.offsetWidth;
+          r.classList.add('activo');
+          th.dataset.redimensionando = '1';
+          try { r.setPointerCapture(ev.pointerId); } catch (_) { /* navegador sin captura */ }
+          const mover = e2 => { th.style.width = `${Math.max(50, w0 + e2.clientX - x0)}px`; };
+          const soltar = () => {
+            r.classList.remove('activo');
+            r.removeEventListener('pointermove', mover);
+            r.removeEventListener('pointerup', soltar);
+            r.removeEventListener('pointercancel', soltar);
+            // El clic que sigue a soltar no debe ordenar la columna
+            setTimeout(() => { delete th.dataset.redimensionando; }, 0);
+            try {
+              const anchos = {};
+              fila.querySelectorAll('th[data-col]').forEach(t => { anchos[t.dataset.col] = t.offsetWidth; });
+              localStorage.setItem(FMT_ANCHOS_KEY, JSON.stringify(anchos));
+            } catch (_) { /* sin almacenamiento local */ }
+          };
+          r.addEventListener('pointermove', mover);
+          r.addEventListener('pointerup', soltar);
+          r.addEventListener('pointercancel', soltar);
+        });
+      });
     }
 
     async function abrirFormato(id) {
@@ -4453,7 +4553,7 @@
       const perm = formatosPermisos || {};
       const campos = perm.campos || [];
       const puede = c => !!perm.puedeEditar && campos.includes(c);
-      document.getElementById('fmt-modal-titulo').textContent = `Formato ${f.nombre_proceso}`;
+      document.getElementById('fmt-modal-titulo').textContent = f.nombre || `Formato ${f.nombre_proceso}`;
 
       const setCampo = (id, valor, campo) => {
         const el = document.getElementById(id);
@@ -4467,7 +4567,7 @@
       setCampo('fmt-activo', String(Number(f.activo) ? 1 : 0), 'activo');
       document.getElementById('fmt-btn-subir-version').style.display = puede('version_formato') ? '' : 'none';
       document.getElementById('fmt-info-tecnica').textContent =
-        `Plantilla #${f.id_plantilla} · revisión interna ${f.version} · última actualización ${String(f.ultima_actualizacion || '').replace('T', ' ').slice(0, 16) || '—'}`;
+        `Plantilla #${f.id_plantilla} (${f.nombre_proceso})${f.documento ? ' · documento ' + f.documento : ''} · revisión interna ${f.version} · última actualización ${String(f.ultima_actualizacion || '').replace('T', ' ').slice(0, 16) || '—'}`;
 
       // Textos
       const cont = document.getElementById('fmt-segmentos');
