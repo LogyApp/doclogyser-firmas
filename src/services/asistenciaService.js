@@ -214,6 +214,8 @@ async function obtenerParametrosAsistencia() {
     ],
     rolesExencionCargosAsistencia: ['Sistema', 'Nomina'],
     rolesApoyoCualquierOperacion: ['Sistema', 'Nomina'],
+    // Botón "Registro rápido" (registroRapidoAsistencia.js)
+    rolesRegistroRapido: ['Sistema'],
     // Prefijo Novedad de Config_Asistencia que no piden adjunto (Ausentismo Pendiente Incapacidad, Incapacidad Reconocida AFP)
     prefijosNovedadSinAdjunto: ['API', 'AFP']
   };
@@ -256,6 +258,9 @@ async function obtenerParametrosAsistencia() {
     }
     if (r.Concepto === 'Roles_Apoyo_Cualquier_Operacion') {
       config.rolesApoyoCualquierOperacion = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (r.Concepto === 'Roles_Registro_Rapido') {
+      config.rolesRegistroRapido = (r.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
     }
   }
   return config;

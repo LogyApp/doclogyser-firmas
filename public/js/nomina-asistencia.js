@@ -124,6 +124,8 @@ function renderBadgeNovedad(novedad, colorHex) {
 
 async function initAsistenciaNomina() {
   const cfg = obtenerConfigAsistencia();
+  const btnRegistroRapido = document.getElementById('asisBtnRegistroRapido');
+  if (btnRegistroRapido) btnRegistroRapido.style.display = cfg.puedeRegistroRapido ? '' : 'none';
 
   let ops = (cfg.operacionesFiltro || []).slice();
   const opsPorReg = cfg.opsPorRegional || {};
@@ -1576,12 +1578,15 @@ function renderTablaAsistencias(registros) {
       tiempoTexto = r.tiempoLaborado ? `<strong>${esc(r.tiempoLaborado)}</strong>` : '-';
     }
 
-    let obsTexto = '-';
+    // Diagnóstico y Observaciones (p. ej. el ticket del registro rápido) se muestran juntos
+    const obsPartes = [];
     if (r.codDiagnostico || r.diagnostico) {
-      obsTexto = `<div style="font-size:.78rem; font-weight:600; color:var(--text);">${esc(r.codDiagnostico || '')} ${esc(r.diagnostico || '')}</div>`;
-    } else if (r.observaciones) {
-      obsTexto = `<div style="font-size:.78rem; color:var(--text-muted);">${esc(r.observaciones)}</div>`;
+      obsPartes.push(`<div style="font-size:.78rem; font-weight:600; color:var(--text);">${esc(r.codDiagnostico || '')} ${esc(r.diagnostico || '')}</div>`);
     }
+    if (r.observaciones) {
+      obsPartes.push(`<div style="font-size:.78rem; color:var(--text-muted);">${esc(r.observaciones)}</div>`);
+    }
+    const obsTexto = obsPartes.length ? obsPartes.join('') : '-';
 
     const soportes = [];
     if (r.urlSoporte) {
@@ -2858,6 +2863,165 @@ document.addEventListener('click', e => {
     dropEdit.style.display = 'none';
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// REGISTRO RÁPIDO (cédula + novedad + día/rango, ticket en Observaciones)
+// Solo Roles_Registro_Rapido; el servidor resuelve operación/área de cada día y valida.
+// ══════════════════════════════════════════════════════════════════════════
+
+const _rr = { catalogo: [], timer: null, consulta: 0 };
+
+function rrFetch(ruta, opciones = {}) {
+  const sep = ruta.includes('?') ? '&' : '?';
+  return fetch(`/nomina/api/asistencia/registro-rapido${ruta}${sep}usuario=${encodeURIComponent(getUsuarioAsistencia())}`, opciones)
+    .then(async r => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.ok) throw new Error(data.error || 'Error de conexión');
+      return data;
+    });
+}
+
+function rrMostrarError(msg) {
+  const box = document.getElementById('rrError');
+  box.textContent = msg || '';
+  box.style.display = msg ? 'block' : 'none';
+}
+
+async function abrirModalRegistroRapido() {
+  ['rrTicket', 'rrCedula', 'rrDesde', 'rrHasta', 'rrHoraEntrada', 'rrHoraSalida', 'rrNota'].forEach(id => { document.getElementById(id).value = ''; });
+  ['rrTicketInfo', 'rrColaborador'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  rrMostrarError('');
+  document.getElementById('modalRegistroRapidoOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (!_rr.catalogo.length) {
+    try {
+      _rr.catalogo = (await rrFetch('/catalogo')).novedades;
+    } catch (err) {
+      rrMostrarError(`No se pudo cargar la lista de novedades: ${err.message}`);
+    }
+  }
+  const grupos = {};
+  _rr.catalogo.forEach(n => { (grupos[n.evento] = grupos[n.evento] || []).push(n); });
+  document.getElementById('rrNovedad').innerHTML = Object.entries(grupos).map(([evento, lista]) =>
+    `<optgroup label="${esc(evento)}">${lista.map(n => `<option value="${esc(n.novedad)}"${n.novedad === 'Asistencia' ? ' selected' : ''}>${esc(n.novedad)} (${esc(n.prefijo || '')})</option>`).join('')}</optgroup>`
+  ).join('');
+  rrOnNovedadChange();
+  document.getElementById('rrTicket').focus();
+}
+
+function cerrarModalRegistroRapido() {
+  document.getElementById('modalRegistroRapidoOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function rrOnNovedadChange() {
+  const item = _rr.catalogo.find(n => n.novedad === document.getElementById('rrNovedad').value);
+  document.getElementById('rrWrapHorario').style.display = item && item.usaHorario ? 'contents' : 'none';
+}
+
+async function rrBuscarTicket() {
+  const ticket = document.getElementById('rrTicket').value.trim();
+  const info = document.getElementById('rrTicketInfo');
+  if (!ticket) { info.style.display = 'none'; return; }
+  try {
+    const { ticket: t } = await rrFetch(`/ticket?ticket=${encodeURIComponent(ticket)}`);
+    if (!t) {
+      info.innerHTML = '<span style="color:var(--text-muted)">No se encontró ese ticket en Tickets; se guardará igual como referencia.</span>';
+    } else {
+      info.innerHTML = `<strong>${esc(t.motivo || t.modulo || 'Ticket')}</strong> · ${esc(t.estado || '')} · ${esc(t.solicitante || '')} · ${esc(t.operacion || '')} · ${esc(t.fecha || '')}`
+        + (t.descripcion ? `<div style="margin-top:4px; color:var(--text-muted); white-space:pre-line;">${esc(t.descripcion)}</div>` : '');
+      // Si el ticket trae cédulas y aún no se escribió ninguna, se toma la primera
+      const cedulas = String(t.identificaciones || '').match(/\d{5,12}/g) || [];
+      const inpCed = document.getElementById('rrCedula');
+      if (cedulas.length && !inpCed.value.trim()) {
+        inpCed.value = cedulas[0];
+        rrProgramarColaborador();
+      }
+      if (cedulas.length > 1) info.innerHTML += `<div style="margin-top:4px">Cédulas del ticket: ${cedulas.map(esc).join(', ')}</div>`;
+    }
+    info.style.display = 'block';
+  } catch (err) {
+    info.innerHTML = `<span style="color:#dc2626">${esc(err.message)}</span>`;
+    info.style.display = 'block';
+  }
+}
+
+function rrProgramarColaborador() {
+  clearTimeout(_rr.timer);
+  _rr.timer = setTimeout(rrConsultarColaborador, 400);
+}
+
+// Muestra a quién y en qué operación/área quedará el registro antes de guardar
+async function rrConsultarColaborador() {
+  const cedula = document.getElementById('rrCedula').value.trim();
+  const desde = document.getElementById('rrDesde').value;
+  const hasta = document.getElementById('rrHasta').value || desde;
+  const box = document.getElementById('rrColaborador');
+  if (!/^\d{3,12}$/.test(cedula) || !desde) { box.style.display = 'none'; return; }
+  const consulta = ++_rr.consulta;
+  try {
+    const { colaborador: c } = await rrFetch(`/colaborador?identificacion=${cedula}&desde=${desde}&hasta=${hasta}`);
+    if (consulta !== _rr.consulta) return;
+    if (!c.existe) {
+      box.innerHTML = '<span style="color:#dc2626">Esa cédula no está en Maestro_Vinculación.</span>';
+    } else {
+      const fmt = d => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+      const tramos = c.tramos.map(t => `<li>${t.desde === t.hasta ? fmt(t.desde) : `${fmt(t.desde)} al ${fmt(t.hasta)}`}: <strong>${esc(t.operacion)}</strong> · Área ${esc(t.areaNombre || t.area || '—')}${t.cargo ? ` · ${esc(t.cargo)}` : ''}</li>`).join('');
+      box.innerHTML = `<strong>${esc(c.nombre || '')}</strong> (${esc(c.estado || '')})`
+        + (tramos ? `<ul style="margin:6px 0 0 18px; padding:0;">${tramos}</ul>` : '')
+        + (c.sinVinculacion.length ? `<div style="color:#dc2626; margin-top:4px;">Sin vinculación: ${c.sinVinculacion.map(fmt).join(', ')} (esos días no se registran)</div>` : '');
+    }
+    box.style.display = 'block';
+  } catch (err) {
+    if (consulta !== _rr.consulta) return;
+    box.innerHTML = `<span style="color:#dc2626">${esc(err.message)}</span>`;
+    box.style.display = 'block';
+  }
+}
+
+async function guardarRegistroRapido() {
+  const btn = document.getElementById('rrBtnGuardar');
+  rrMostrarError('');
+  const payload = {
+    usuario: getUsuarioAsistencia(),
+    ticket: document.getElementById('rrTicket').value.trim(),
+    identificacion: document.getElementById('rrCedula').value.trim(),
+    novedad: document.getElementById('rrNovedad').value,
+    desde: document.getElementById('rrDesde').value,
+    hasta: document.getElementById('rrHasta').value || document.getElementById('rrDesde').value,
+    horaEntrada: document.getElementById('rrHoraEntrada').value,
+    horaSalida: document.getElementById('rrHoraSalida').value,
+    nota: document.getElementById('rrNota').value.trim()
+  };
+  if (!payload.ticket) return rrMostrarError('Indique el ticket.');
+  if (!payload.identificacion) return rrMostrarError('Indique la cédula.');
+  if (!payload.desde) return rrMostrarError('Escoja el día.');
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try {
+    const data = await rrFetch('', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const rango = x => (x.dias ? x.dias.join(', ') : (x.desde === x.hasta ? x.desde : `${x.desde} al ${x.hasta}`));
+    const ok = data.guardados.map(g => `✓ ${rango(g)} · ${g.operacion}${g.avisos.length ? `\n   ${g.avisos.join('\n   ')}` : ''}`);
+    const mal = data.errores.map(e => `✗ ${rango(e)}${e.operacion ? ` · ${e.operacion}` : ''}: ${e.error}`);
+    if (!data.guardados.length) {
+      rrMostrarError(`No se guardó nada:\n${mal.join('\n')}`);
+      return;
+    }
+    alert(`${data.novedad} · ${data.colaborador.nombre || data.colaborador.identificacion}\n\n${ok.join('\n')}${mal.length ? `\n\nNo guardados:\n${mal.join('\n')}` : ''}`);
+    cerrarModalRegistroRapido();
+    await onAsistenciaFiltroChange();
+  } catch (err) {
+    rrMostrarError(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar';
+  }
+}
 
 // Inicialización automática cuando la pestaña se activa
 window.addEventListener('DOMContentLoaded', () => {

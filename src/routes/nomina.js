@@ -25,6 +25,7 @@ const {
   obtenerMetricasAsistencia,
   obtenerQuincenaFecha,
 } = require('../services/asistenciaService');
+const RegistroRapido = require('../services/registroRapidoAsistencia');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const { obtenerCondicionesRetiro, obtenerCondicionRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido, MOTIVO_NO_TOMO_CARGO } = require('../services/configRetiro');
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
@@ -455,6 +456,7 @@ router.get('/', async (req, res) => {
           puedeVerNovedadesSistema: paramsAsistencia?.rolesVerNovedadesSistema?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeExcluirCargos: paramsAsistencia?.rolesExencionCargosAsistencia?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
           puedeApoyoCualquierOperacion: paramsAsistencia?.rolesApoyoCualquierOperacion?.map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()) || false,
+          puedeRegistroRapido: (paramsAsistencia?.rolesRegistroRapido || ['Sistema']).map(r => r.toLowerCase().trim()).includes(((accesoAsistencia.rol || base.rol) || '').toLowerCase().trim()),
           ...(paramsAsistencia || {}),
         } : null,
       },
@@ -3173,6 +3175,68 @@ router.post('/api/asistencia/novedad', uploadAsistencia.fields([
     res.json({ ok: true, ...resultado });
   } catch (err) {
     if (!err.validacion) console.error('[POST /api/asistencia/novedad]', err);
+    res.status(err.validacion ? 400 : 500).json({ ok: false, error: err.message });
+  }
+});
+
+// 5b. Registro rápido (registroRapidoAsistencia.js): una cédula + novedad + día/rango con el ticket
+// en Observaciones. Solo Roles_Registro_Rapido (Config_Parametros nomina/Asistencia, por defecto Sistema).
+async function verificarRegistroRapido(req, res, next) {
+  try {
+    if (!(await RegistroRapido.puedeRegistroRapido(req.usuarioRol))) {
+      return res.status(403).json({ ok: false, error: 'Su rol no tiene permiso para el registro rápido' });
+    }
+    next();
+  } catch (err) {
+    console.error('[verificarRegistroRapido]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+router.get('/api/asistencia/registro-rapido/catalogo', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
+  try {
+    res.json({ ok: true, novedades: await RegistroRapido.catalogoRegistroRapido(req.usuarioRol) });
+  } catch (err) {
+    console.error('[GET /api/asistencia/registro-rapido/catalogo]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/asistencia/registro-rapido/ticket', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
+  try {
+    res.json({ ok: true, ticket: await RegistroRapido.buscarTicket(req.query.ticket) });
+  } catch (err) {
+    console.error('[GET /api/asistencia/registro-rapido/ticket]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/asistencia/registro-rapido/colaborador', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
+  try {
+    const { identificacion, desde } = req.query;
+    const P = require('../services/plantillaAsistencia');
+    if (!/^\d{3,12}$/.test(String(identificacion || '').trim()) || !P.FECHA_RE.test(desde || '')) {
+      return res.status(400).json({ ok: false, error: 'Cédula o fecha inválida' });
+    }
+    const hasta = P.FECHA_RE.test(req.query.hasta || '') && req.query.hasta >= desde ? req.query.hasta : desde;
+    if (P.diasEntre(desde, hasta).length > 31) return res.status(400).json({ ok: false, error: 'Máximo 31 días' });
+    res.json({ ok: true, colaborador: await RegistroRapido.resolverColaborador(identificacion, desde, hasta) });
+  } catch (err) {
+    console.error('[GET /api/asistencia/registro-rapido/colaborador]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/asistencia/registro-rapido', verificarAccesoAsistenciaAPI, verificarRegistroRapido, async (req, res) => {
+  try {
+    const { identificacion, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota } = req.body;
+    const resultado = await RegistroRapido.registrarRapido({
+      identificacion, novedad, desde, hasta, horaEntrada, horaSalida, ticket, nota,
+      usuario: req.usuarioId, rol: req.usuarioRol
+    });
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    if (!err.validacion) console.error('[POST /api/asistencia/registro-rapido]', err);
     res.status(err.validacion ? 400 : 500).json({ ok: false, error: err.message });
   }
 });
