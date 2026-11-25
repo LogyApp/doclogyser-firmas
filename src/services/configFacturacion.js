@@ -213,11 +213,13 @@ const PC = {
   ROLES_DEPURAR:     'Roles que pueden depurar maestros de Clientes',
   ROLES_GESTIONAR:   'Roles que pueden editar y agregar en maestros de Clientes',
   ROLES_RETENCIONES: 'Roles que pueden editar retenciones de Clientes',
+  ROLES_ELIMINAR_CLIENTES: 'Roles que pueden eliminar y corregir Nit de Clientes',
 };
 const DEFAULTS_CLIENTES = {
   [PC.ROLES_DEPURAR]:     'Sistema',
   [PC.ROLES_GESTIONAR]:   'Auxiliar, AuxiliarR, Coordinador, CoordinadorR, Facturación, Sistema',
   [PC.ROLES_RETENCIONES]: 'Facturación, Sistema',
+  [PC.ROLES_ELIMINAR_CLIENTES]: 'Sistema, Facturación',
 };
 
 async function puedeDepurarMaestros(rol) {
@@ -244,6 +246,21 @@ async function puedeGestionarMaestros(rol) {
     if (rows.length) texto = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
   } catch (err) {
     console.error('[configFacturacion] No se pudo leer el permiso de gestionar maestros, usando default:', err.message);
+  }
+  return enLista(texto, rol);
+}
+
+// Eliminar un cliente (reemplazando su Nit en recibos y placas) y corregir su Nit.
+async function puedeEliminarClientes(rol) {
+  let texto = DEFAULTS_CLIENTES[PC.ROLES_ELIMINAR_CLIENTES];
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      [MODULO, SECCION_CLIENTES, PC.ROLES_ELIMINAR_CLIENTES]
+    );
+    if (rows.length) texto = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[configFacturacion] No se pudo leer el permiso de eliminar clientes, usando default:', err.message);
   }
   return enLista(texto, rol);
 }
@@ -376,6 +393,7 @@ module.exports = {
   puedeDepurarMaestros,
   puedeGestionarMaestros,
   puedeEditarRetenciones,
+  puedeEliminarClientes,
   PARAMETROS_FACTURACION_CLIENTES: PC,
   normalizarTexto,
   PARAMETROS_FACTURACION_SERVICIOS: P,

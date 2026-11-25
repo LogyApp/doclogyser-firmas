@@ -2447,18 +2447,6 @@
                 </select>
               </div>
               <div class="filtro-field">
-                <label>Depto / Estado</label>
-                <select id="mcli-filtro-depto" onchange="onMaestroClientesFilterChange()">
-                  <option value="">Todos los departamentos</option>
-                </select>
-              </div>
-              <div class="filtro-field">
-                <label>Ciudad</label>
-                <select id="mcli-filtro-ciudad" onchange="onMaestroClientesFilterChange()">
-                  <option value="">Todas las ciudades</option>
-                </select>
-              </div>
-              <div class="filtro-field">
                 <label>Retenciones</label>
                 <select id="mcli-filtro-retencion" onchange="onMaestroClientesFilterChange()">
                   <option value="">Todas</option>
@@ -2490,6 +2478,7 @@
                 <th style="width: 110px;" data-sort="solicitarActualizacion">Actualización<span id="mcliSort-solicitarActualizacion" class="sort-indicator"></span></th>
                 <th style="width: 130px;" data-sort="codigo">Código / NIT<span id="mcliSort-codigo" class="sort-indicator"></span></th>
                 <th style="width: 260px;" data-sort="razonSocial">Razón Social<span id="mcliSort-razonSocial" class="sort-indicator"></span></th>
+                <th style="width: 130px; text-align: center;" data-sort="totalServicios">Servicios<span id="mcliSort-totalServicios" class="sort-indicator"></span></th>
                 <th style="width: 130px;" data-sort="telefono">Teléfono<span id="mcliSort-telefono" class="sort-indicator"></span></th>
                 <th style="width: 210px;" data-sort="correoFE">Correo F.E.<span id="mcliSort-correoFE" class="sort-indicator"></span></th>
                 <th style="width: 140px;" data-sort="condicionPago">Condición Pago<span id="mcliSort-condicionPago" class="sort-indicator"></span></th>
@@ -2506,7 +2495,7 @@
               </tr>
             </thead>
             <tbody id="tabla-maestro-clientes-body">
-              <tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
+              <tr><td colspan="17" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
             </tbody>
           </table>
         </div>
@@ -3677,11 +3666,65 @@
             <input type="file" id="mcli-edit-documento" accept=".jpg,.jpeg,.png,.pdf" style="width: 100%; padding: 8px; border: 1.5px dashed var(--border); border-radius: 8px; font-size: 0.82rem; background: var(--bg-surface);">
           </div>
           <div id="mcli-edit-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;"></div>
-          <div class="modal-footer" style="display:flex; justify-content:flex-end; gap: 8px; padding-top: 10px;">
-            <button type="button" class="btn-reset" onclick="cerrarModalEditarMaestroCliente()">Cancelar</button>
-            <button type="submit" class="btn-primary" id="btn-submit-edit-cliente">💾 Guardar Cambios</button>
+          <div class="modal-footer" style="display:flex; justify-content:space-between; flex-wrap: wrap; gap: 8px; padding-top: 10px;">
+            <div id="mcli-edit-acciones-nit" style="display: none; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn-secondary" style="color: #dc2626; border-color: rgba(239,68,68,0.35); font-weight: 600;" onclick="abrirModalNitCliente('eliminar')">🗑️ Eliminar Cliente</button>
+              <button type="button" class="btn-secondary" style="border-color: rgba(245,158,11,0.45); color: #b45309; font-weight: 600;" onclick="abrirModalNitCliente('corregir')">🔢 Corregir Nit</button>
+            </div>
+            <div style="display: flex; gap: 8px; margin-left: auto;">
+              <button type="button" class="btn-reset" onclick="cerrarModalEditarMaestroCliente()">Cancelar</button>
+              <button type="submit" class="btn-primary" id="btn-submit-edit-cliente">💾 Guardar Cambios</button>
+            </div>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3B-5: ELIMINAR CLIENTE / CORREGIR NIT (Maestro_Clientes, Dynamic_Recibos, Maestro_Placas)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-nit-cliente-overlay">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <span id="mnit-titulo">🗑️ Eliminar Cliente</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalNitCliente()">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+        <div style="font-weight: 700; margin-bottom: 4px;" id="mnit-cliente">—</div>
+        <div id="mnit-impacto" style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 14px;">Cargando registros relacionados...</div>
+
+        <!-- Eliminar: opciones de reemplazo -->
+        <div id="mnit-wrap-reemplazo" style="display: none; margin-bottom: 14px;">
+          <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Reemplazar el Nit en recibos y placas por</label>
+          <label style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px; cursor: pointer;">
+            <input type="radio" name="mnit-opcion" value="cf" checked onchange="onOpcionReemplazoNit()"> Consumidor Final (222222222222)
+          </label>
+          <label style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px; cursor: pointer;">
+            <input type="radio" name="mnit-opcion" value="otro" onchange="onOpcionReemplazoNit()"> Otro cliente
+          </label>
+          <div id="mnit-wrap-otro" style="display: none; position: relative;">
+            <input type="text" id="mnit-buscar" autocomplete="off" placeholder="Buscar por Nit o Razón social..." oninput="buscarClienteReemplazoNit(this.value)"
+                   style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: var(--text);">
+            <div id="mnit-resultados" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 4px; display: none;"></div>
+            <div id="mnit-escogido" style="font-size: 0.85rem; font-weight: 700; color: var(--accent); margin-top: 6px;"></div>
+          </div>
+        </div>
+
+        <!-- Corregir: Nit correcto -->
+        <div id="mnit-wrap-corregir" style="display: none; margin-bottom: 14px;">
+          <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Nit correcto *</label>
+          <input type="text" id="mnit-nuevo" inputmode="numeric" maxlength="15" placeholder="Solo números" oninput="this.value = this.value.replace(/\D/g, '')"
+                 style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: var(--text); font-family: monospace; font-weight: 700;">
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Se cambia en el cliente, sus recibos (Dynamic_Recibos), sus placas (Maestro_Placas) y Clientes Crédito.</div>
+        </div>
+
+        <div id="mnit-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;"></div>
+        <div id="mnit-resumen" style="display: none; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.35); border-radius: 8px; padding: 12px 14px; font-size: 0.86rem;"></div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap: 8px;">
+        <button type="button" class="btn-reset" style="margin-top:0" id="mnit-btn-cancelar" onclick="cerrarModalNitCliente()">Cancelar</button>
+        <button type="button" class="btn-primary" id="mnit-btn-ejecutar" style="background: #dc2626; border-color: #dc2626;" onclick="ejecutarNitCliente()" disabled>Eliminar</button>
       </div>
     </div>
   </div>
@@ -4934,6 +4977,7 @@
     const PUEDE_DEPURAR_MAESTROS = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeDepurar);
     const PUEDE_GESTIONAR_MAESTROS = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeGestionar);
     const PUEDE_EDITAR_RETENCIONES = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeEditarRetenciones);
+    const PUEDE_ELIMINAR_CLIENTES = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeEliminarClientes);
     let placasCargadas = false;
     let sortPlacasState = { col: 'fechaRegistro', order: 'desc' };
     let activeChipPlacas = '';
@@ -5530,10 +5574,6 @@
           if (badgeSub) badgeSub.textContent = allMaestroClientes.length.toLocaleString('es-CO');
           const btnAdd = document.getElementById('btn-agregar-cliente');
           if (btnAdd) btnAdd.style.display = PUEDE_GESTIONAR_MAESTROS ? 'inline-flex' : 'none';
-          poblarSelectUnico('mcli-filtro-condicion', allMaestroClientes.map(c => (c.condicionPago || '').toUpperCase()), 'Todas las condiciones');
-          poblarSelectUnico('mcli-filtro-depto', allMaestroClientes.map(c => c.deptoEstado), 'Todos los departamentos');
-          poblarSelectUnico('mcli-filtro-ciudad', allMaestroClientes.map(c => c.ciudad), 'Todas las ciudades');
-          poblarSelectUnico('mcli-filtro-usuario', allMaestroClientes.map(c => c.usuario), 'Todos los usuarios');
           sortAndRenderMaestroClientes();
           makeTableResizable(document.getElementById('tabla-maestro-clientes'));
         } else {
@@ -5541,12 +5581,12 @@
           const msg = resp.status === 404
             ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
             : 'Error al cargar clientes. Por favor recarga la página.';
-          if (tbody) tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="17" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
       } catch (e) {
         console.error('Error cargando Maestro_Clientes:', e);
         const tbody = document.getElementById('tabla-maestro-clientes-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
       }
     }
 
@@ -5570,8 +5610,6 @@
       document.getElementById('mcli-filtro-q').value = '';
       document.getElementById('mcli-filtro-actualizacion').value = '';
       document.getElementById('mcli-filtro-condicion').value = '';
-      document.getElementById('mcli-filtro-depto').value = '';
-      document.getElementById('mcli-filtro-ciudad').value = '';
       document.getElementById('mcli-filtro-retencion').value = '';
       document.getElementById('mcli-filtro-usuario').value = '';
       seleccionarChipMaestroClientes('');
@@ -5589,7 +5627,7 @@
         allMaestroClientes.sort((a, b) => {
           let va = a[col] ?? '';
           let vb = b[col] ?? '';
-          if (col === 'codigo') {
+          if (col === 'codigo' || col === 'totalServicios') {
             va = Number(va) || 0;
             vb = Number(vb) || 0;
             return order === 'asc' ? va - vb : vb - va;
@@ -5601,7 +5639,7 @@
           return 0;
         });
       }
-      ['solicitarActualizacion','codigo','razonSocial','telefono','correoFE','condicionPago','deptoEstado','ciudad','direccion1','rtica','rtiva','rtservic','fechaUltimaVenta','usuario','fechaRegistro','observaciones'].forEach(k => {
+      ['solicitarActualizacion','codigo','razonSocial','totalServicios','telefono','correoFE','condicionPago','deptoEstado','ciudad','direccion1','rtica','rtiva','rtservic','fechaUltimaVenta','usuario','fechaRegistro','observaciones'].forEach(k => {
         const span = document.getElementById('mcliSort-' + k);
         if (!span) return;
         span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
@@ -5610,60 +5648,120 @@
       renderMaestroClientesTable();
     }
 
+    // Opciones de un filtro con su conteo; la opción escogida se conserva aunque quede en 0
+    function llenarSelectConConteoCli(selectId, opciones, textoTodos, fijas = false) {
+      const sel = document.getElementById(selectId);
+      if (!sel) return;
+      const actual = sel.value;
+      let lista = fijas ? opciones : opciones.filter(o => o.n > 0);
+      if (actual && !lista.some(o => o.valor === actual)) lista = [{ valor: actual, texto: actual, n: 0 }, ...lista];
+      sel.innerHTML = `<option value="">${textoTodos}</option>` + lista.map(o =>
+        `<option value="${esc(o.valor)}"${o.valor === actual ? ' selected' : ''}>${esc(o.texto)} (${o.n.toLocaleString('es-CO')})</option>`).join('');
+    }
+
+    // Retención en V; sin "cual" = alguna de las tres
+    function tieneRetencionCli(c, cual) {
+      const v = k => (c[k] || '').trim().toUpperCase() === 'V';
+      if (cual === 'RTICA') return v('rtica');
+      if (cual === 'RTIVA') return v('rtiva');
+      if (cual === 'RTSERVIC') return v('rtservic');
+      return v('rtica') || v('rtiva') || v('rtservic');
+    }
+
+    function pasaChipMaestroCliente(c, chip) {
+      if (!chip) return true;
+      const condUpper = (c.condicionPago || '').trim().toUpperCase();
+      if (chip === 'CONTADO') return condUpper === 'CONTADO';
+      if (chip === 'CREDITO') return condUpper.includes('CREDITO') || condUpper.includes('CRÉDITO');
+      if (chip === 'NUEVO') return (c.solicitarActualizacion || '').trim().toUpperCase() === 'NUEVO';
+      if (chip === 'RETENCIONES') return tieneRetencionCli(c);
+      return true;
+    }
+
+    // ¿El cliente cumple los filtros? "excluir" omite uno de ellos (para contar las opciones de ese filtro)
+    function pasaFiltrosMaestroCliente(c, f, excluir) {
+      if (excluir !== 'act') {
+        const actVal = (c.solicitarActualizacion || '').trim().toUpperCase();
+        if (f.act === 'NUEVO' && actVal !== 'NUEVO') return false;
+        if (f.act === 'SIN_SOLICITUD' && actVal !== '') return false;
+      }
+      if (excluir !== 'cond' && f.cond && (c.condicionPago || '').trim().toUpperCase() !== f.cond) return false;
+      if (excluir !== 'usr' && f.usr && (c.usuario || '').trim() !== f.usr) return false;
+      if (excluir !== 'ret' && f.ret) {
+        if (f.ret === 'NINGUNA' ? tieneRetencionCli(c) : !tieneRetencionCli(c, f.ret)) return false;
+      }
+      if (f.palabrasQ.length) {
+        if (c._busqueda === undefined) {
+          c._busqueda = normalizarBusqueda([
+            c.codigo, c.razonSocial, c.telefono, c.correoFE, c.ciudad, c.deptoEstado, c.direccion1, c.usuario, c.observaciones,
+          ].filter(v => v != null && v !== '').join(' '));
+        }
+        if (!f.palabrasQ.every(w => c._busqueda.includes(w))) return false;
+      }
+      return true;
+    }
+
+    // Conteo de cada opción con los demás filtros (y el chip) aplicados
+    function actualizarConteosFiltrosMaestroClientes(f) {
+      const chip = activeChipMaestroClientes;
+      const base = excluir => allMaestroClientes.filter(c => pasaChipMaestroCliente(c, chip) && pasaFiltrosMaestroCliente(c, f, excluir));
+      const contarPor = (lista, clave) => {
+        const m = new Map();
+        lista.forEach(c => { const v = clave(c); if (v) m.set(v, (m.get(v) || 0) + 1); });
+        return Array.from(m, ([valor, n]) => ({ valor, texto: valor, n })).sort((a, b) => a.valor.localeCompare(b.valor, 'es'));
+      };
+      const total = lista => lista.length.toLocaleString('es-CO');
+
+      const lAct = base('act');
+      llenarSelectConConteoCli('mcli-filtro-actualizacion', [
+        { valor: 'NUEVO', texto: 'NUEVO', n: lAct.filter(c => (c.solicitarActualizacion || '').trim().toUpperCase() === 'NUEVO').length },
+        { valor: 'SIN_SOLICITUD', texto: 'Sin solicitud', n: lAct.filter(c => (c.solicitarActualizacion || '').trim() === '').length },
+      ], `Todos (${total(lAct)})`, true);
+
+      const lCond = base('cond');
+      llenarSelectConConteoCli('mcli-filtro-condicion', contarPor(lCond, c => (c.condicionPago || '').trim().toUpperCase()),
+        `Todas las condiciones (${total(lCond)})`);
+
+      const lRet = base('ret');
+      llenarSelectConConteoCli('mcli-filtro-retencion', [
+        { valor: 'CON_ALGUNA', texto: 'Con alguna retención (V)', n: lRet.filter(c => tieneRetencionCli(c)).length },
+        { valor: 'RTICA', texto: 'Con RTICA (V)', n: lRet.filter(c => tieneRetencionCli(c, 'RTICA')).length },
+        { valor: 'RTIVA', texto: 'Con RTIVA (V)', n: lRet.filter(c => tieneRetencionCli(c, 'RTIVA')).length },
+        { valor: 'RTSERVIC', texto: 'Con RTSERVIC (V)', n: lRet.filter(c => tieneRetencionCli(c, 'RTSERVIC')).length },
+        { valor: 'NINGUNA', texto: 'Sin retenciones', n: lRet.filter(c => !tieneRetencionCli(c)).length },
+      ], `Todas (${total(lRet)})`, true);
+
+      const lUsr = base('usr');
+      llenarSelectConConteoCli('mcli-filtro-usuario', contarPor(lUsr, c => (c.usuario || '').trim()),
+        `Todos los usuarios (${total(lUsr)})`);
+    }
+
     function renderMaestroClientesTable() {
       // Búsqueda sin distinguir mayúsculas ni tildes; varias palabras deben aparecer todas (en cualquier campo)
       const q = normalizarBusqueda(document.getElementById('mcli-filtro-q')?.value);
-      const palabrasQ = q.split(/\s+/).filter(Boolean);
-      const fAct = document.getElementById('mcli-filtro-actualizacion')?.value || '';
-      const fCond = (document.getElementById('mcli-filtro-condicion')?.value || '').toUpperCase();
-      const fDepto = document.getElementById('mcli-filtro-depto')?.value || '';
-      const fCiudad = document.getElementById('mcli-filtro-ciudad')?.value || '';
-      const fRet = document.getElementById('mcli-filtro-retencion')?.value || '';
-      const fUsr = document.getElementById('mcli-filtro-usuario')?.value || '';
+      const f = {
+        palabrasQ: q.split(/\s+/).filter(Boolean),
+        act: document.getElementById('mcli-filtro-actualizacion')?.value || '',
+        cond: (document.getElementById('mcli-filtro-condicion')?.value || '').toUpperCase(),
+        ret: document.getElementById('mcli-filtro-retencion')?.value || '',
+        usr: document.getElementById('mcli-filtro-usuario')?.value || '',
+      };
 
       let countActive = 0;
       if (activeChipMaestroClientes) countActive++;
       if (q) countActive++;
-      if (fAct) countActive++;
-      if (fCond) countActive++;
-      if (fDepto) countActive++;
-      if (fCiudad) countActive++;
-      if (fRet) countActive++;
-      if (fUsr) countActive++;
+      if (f.act) countActive++;
+      if (f.cond) countActive++;
+      if (f.ret) countActive++;
+      if (f.usr) countActive++;
       const badge = document.getElementById('mcliFiltrosBadge');
       if (badge) {
         badge.textContent = countActive;
         badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
       }
 
-      const baseFiltered = allMaestroClientes.filter(c => {
-        const actVal = (c.solicitarActualizacion || '').trim().toUpperCase();
-        const condUpper = (c.condicionPago || '').trim().toUpperCase();
-        const tieneRtica = (c.rtica || '').trim().toUpperCase() === 'V';
-        const tieneRtiva = (c.rtiva || '').trim().toUpperCase() === 'V';
-        const tieneRtserv = (c.rtservic || '').trim().toUpperCase() === 'V';
-
-        if (fAct === 'NUEVO' && actVal !== 'NUEVO') return false;
-        if (fAct === 'SIN_SOLICITUD' && actVal !== '') return false;
-        if (fCond && condUpper !== fCond) return false;
-        if (fDepto && (c.deptoEstado || '').trim() !== fDepto) return false;
-        if (fCiudad && (c.ciudad || '').trim() !== fCiudad) return false;
-        if (fUsr && (c.usuario || '').trim() !== fUsr) return false;
-
-        if (fRet === 'CON_ALGUNA' && !(tieneRtica || tieneRtiva || tieneRtserv)) return false;
-        if (fRet === 'RTICA' && !tieneRtica) return false;
-        if (fRet === 'RTIVA' && !tieneRtiva) return false;
-        if (fRet === 'RTSERVIC' && !tieneRtserv) return false;
-        if (fRet === 'NINGUNA' && (tieneRtica || tieneRtiva || tieneRtserv)) return false;
-
-        if (palabrasQ.length) {
-          const texto = normalizarBusqueda([
-            c.codigo, c.razonSocial, c.telefono, c.correoFE, c.ciudad, c.deptoEstado, c.direccion1, c.usuario, c.observaciones,
-          ].filter(v => v != null && v !== '').join(' '));
-          if (!palabrasQ.every(w => texto.includes(w))) return false;
-        }
-        return true;
-      });
+      actualizarConteosFiltrosMaestroClientes(f);
+      const baseFiltered = allMaestroClientes.filter(c => pasaFiltrosMaestroCliente(c, f));
 
       let cntContado = 0, cntCredito = 0, cntNuevo = 0, cntRet = 0;
       baseFiltered.forEach(c => {
@@ -5685,23 +5783,13 @@
       if (elNuev) elNuev.textContent = `${cntNuevo.toLocaleString('es-CO')} registros`;
       if (elRet) elRet.textContent = `${cntRet.toLocaleString('es-CO')} registros`;
 
-      const filtered = baseFiltered.filter(c => {
-        if (!activeChipMaestroClientes) return true;
-        const condUpper = (c.condicionPago || '').trim().toUpperCase();
-        if (activeChipMaestroClientes === 'CONTADO') return condUpper === 'CONTADO';
-        if (activeChipMaestroClientes === 'CREDITO') return condUpper.includes('CREDITO') || condUpper.includes('CRÉDITO');
-        if (activeChipMaestroClientes === 'NUEVO') return (c.solicitarActualizacion || '').trim().toUpperCase() === 'NUEVO';
-        if (activeChipMaestroClientes === 'RETENCIONES') {
-          return (c.rtica || '').toUpperCase() === 'V' || (c.rtiva || '').toUpperCase() === 'V' || (c.rtservic || '').toUpperCase() === 'V';
-        }
-        return true;
-      });
+      const filtered = baseFiltered.filter(c => pasaChipMaestroCliente(c, activeChipMaestroClientes));
 
       const tbody = document.getElementById('tabla-maestro-clientes-body');
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron clientes con los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron clientes con los filtros seleccionados.</td></tr>';
       } else {
         const visibles = filtered.slice(0, limitMaestroClientes);
         const frag = document.createDocumentFragment();
@@ -5714,15 +5802,20 @@
             ? '<span class="badge badge-desbloq" style="font-weight:700;">V</span>'
             : '<span style="color:var(--text-muted)">—</span>';
           // Clic en la fila: edita los campos a los que el rol tiene acceso
-          if (PUEDE_GESTIONAR_MAESTROS) {
+          if (PUEDE_GESTIONAR_MAESTROS || PUEDE_ELIMINAR_CLIENTES) {
             tr.style.cursor = 'pointer';
             tr.title = 'Clic para editar el cliente';
             tr.addEventListener('click', () => abrirModalEditarMaestroCliente(c.codigo));
           }
+          const cntServ = Number(c.totalServicios) || 0;
+          const badgeServicios = cntServ > 0
+            ? `<button type="button" class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700; border: none; cursor: pointer; padding: 4px 10px; border-radius: 12px;" title="Ver los ${cntServ} servicios relacionados" onclick="event.stopPropagation(); verServiciosCliente('${esc(c.codigo)}')">📊 ${cntServ.toLocaleString('es-CO')} serv.</button>`
+            : `<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">0 serv.</span>`;
           tr.innerHTML = `
             <td>${actBadge}</td>
             <td class="dato-destacado" style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
             <td style="font-weight: 600;">${esc(c.razonSocial) || '—'}</td>
+            <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(c.telefono) || '—'}</td>
             <td style="font-size: 0.8rem;">${esc(c.correoFE) || '—'}</td>
             <td><span class="badge badge-servicios">${esc(c.condicionPago) || '—'}</span></td>
@@ -5907,6 +6000,9 @@
 
       const errEl = document.getElementById('mcli-edit-error');
       if (errEl) errEl.style.display = 'none';
+      const accionesNit = document.getElementById('mcli-edit-acciones-nit');
+      if (accionesNit) accionesNit.style.display = PUEDE_ELIMINAR_CLIENTES && Number(c.codigo) !== 222222222222 ? 'flex' : 'none';
+      document.getElementById('btn-submit-edit-cliente').style.display = PUEDE_GESTIONAR_MAESTROS ? '' : 'none';
 
       const overlay = document.getElementById('modal-editar-maestro-cliente-overlay');
       overlay.classList.add('open');
@@ -5914,6 +6010,205 @@
         overlay._backEntry = registrarModalBack(() => cerrarModalEditarMaestroCliente());
       }
       setTimeout(() => document.getElementById('mcli-edit-razonsocial')?.focus(), 100);
+    }
+
+    // ── Eliminar Cliente / Corregir Nit ─────────────────────────
+    const NIT_CONSUMIDOR_FINAL = '222222222222';
+    let mnitModo = 'eliminar', mnitCodigo = null, mnitImpacto = null, mnitReemplazo = null, mnitBuscarTimer = null, mnitTerminado = false;
+
+    async function abrirModalNitCliente(modo) {
+      mnitModo = modo;
+      mnitCodigo = document.getElementById('mcli-edit-codigo').value;
+      mnitImpacto = null;
+      mnitReemplazo = null;
+      mnitTerminado = false;
+      const c = allMaestroClientes.find(x => String(x.codigo) === String(mnitCodigo));
+      document.getElementById('mnit-titulo').textContent = modo === 'eliminar' ? '🗑️ Eliminar Cliente' : '🔢 Corregir Nit';
+      document.getElementById('mnit-cliente').textContent = `${mnitCodigo} - ${(c && c.razonSocial) || ''}`;
+      document.getElementById('mnit-impacto').textContent = 'Cargando registros relacionados...';
+      document.getElementById('mnit-wrap-reemplazo').style.display = 'none';
+      document.getElementById('mnit-wrap-corregir').style.display = modo === 'corregir' ? 'block' : 'none';
+      document.getElementById('mnit-nuevo').value = '';
+      document.querySelector('input[name="mnit-opcion"][value="cf"]').checked = true;
+      document.getElementById('mnit-buscar').value = '';
+      document.getElementById('mnit-resultados').style.display = 'none';
+      document.getElementById('mnit-escogido').textContent = '';
+      onOpcionReemplazoNit();
+      document.getElementById('mnit-error').style.display = 'none';
+      document.getElementById('mnit-resumen').style.display = 'none';
+      document.getElementById('mnit-btn-cancelar').textContent = 'Cancelar';
+      const btn = document.getElementById('mnit-btn-ejecutar');
+      btn.style.display = '';
+      btn.disabled = true;
+      btn.textContent = modo === 'eliminar' ? 'Eliminar' : 'Corregir Nit';
+      btn.style.background = modo === 'eliminar' ? '#dc2626' : '';
+      btn.style.borderColor = modo === 'eliminar' ? '#dc2626' : '';
+
+      const overlay = document.getElementById('modal-nit-cliente-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalNitCliente());
+      }
+
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-clientes/${encodeURIComponent(mnitCodigo)}/impacto?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'No se pudo consultar el cliente.');
+        mnitImpacto = data;
+        const n = v => Number(v || 0).toLocaleString('es-CO');
+        const lineas = [
+          `<b>${n(data.recibos)}</b> recibos (Dynamic_Recibos) con <b>${n(data.servicios)}</b> servicios`,
+          `<b>${n(data.placas)}</b> placas (Maestro_Placas)`,
+        ];
+        if (data.clientePorPlaca) lineas.push(`<b>${n(data.clientePorPlaca)}</b> recibos con este Nit en "Cliente por Placa"`);
+        if (data.clientesCredito.length) lineas.push(`Clientes Crédito: <b>${data.clientesCredito.map(x => esc(x.clienteAFacturar)).join(', ')}</b>`);
+        document.getElementById('mnit-impacto').innerHTML = 'Registros relacionados:<br>• ' + lineas.join('<br>• ');
+
+        if (modo === 'eliminar') {
+          if (data.clientesCredito.length) {
+            mostrarErrorNit('No se puede eliminar: el cliente está asignado en Clientes Crédito. Cambie primero el Nit allí.');
+            return;
+          }
+          const requiere = data.recibos > 0 || data.placas > 0 || data.clientePorPlaca > 0;
+          document.getElementById('mnit-wrap-reemplazo').style.display = requiere ? 'block' : 'none';
+          if (!requiere) {
+            document.getElementById('mnit-impacto').innerHTML += '<br><br><span style="color: var(--text);">No tiene recibos ni placas relacionados: se puede eliminar directamente.</span>';
+          }
+        }
+        btn.disabled = false;
+      } catch (e) {
+        mostrarErrorNit(e.message);
+      }
+    }
+
+    function mostrarErrorNit(msg) {
+      const el = document.getElementById('mnit-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function cerrarModalNitCliente() {
+      const overlay = document.getElementById('modal-nit-cliente-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+    }
+
+    function onOpcionReemplazoNit() {
+      const otro = document.querySelector('input[name="mnit-opcion"]:checked')?.value === 'otro';
+      document.getElementById('mnit-wrap-otro').style.display = otro ? 'block' : 'none';
+      if (otro) setTimeout(() => document.getElementById('mnit-buscar').focus(), 50);
+    }
+
+    function buscarClienteReemplazoNit(q) {
+      mnitReemplazo = null;
+      document.getElementById('mnit-escogido').textContent = '';
+      clearTimeout(mnitBuscarTimer);
+      const cont = document.getElementById('mnit-resultados');
+      if (String(q || '').trim().length < 2) { cont.style.display = 'none'; return; }
+      mnitBuscarTimer = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/maestro-placas/buscar-clientes?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q.trim())}`);
+          const lista = (resp.ok ? await resp.json() : []).filter(x => String(x.codigo) !== String(mnitCodigo));
+          cont.innerHTML = lista.length
+            ? lista.map(x => `<div class="mnit-opcion" data-codigo="${esc(x.codigo)}" style="padding: 7px 10px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;"><b>${esc(x.codigo)}</b> - ${esc(x.razonSocial)}</div>`).join('')
+            : '<div style="padding: 8px 10px; color: var(--text-muted); font-size: 0.85rem;">Sin resultados</div>';
+          cont.querySelectorAll('.mnit-opcion').forEach(el => el.addEventListener('click', () => {
+            const x = lista.find(o => String(o.codigo) === el.dataset.codigo);
+            mnitReemplazo = { codigo: String(x.codigo), razonSocial: x.razonSocial || '' };
+            document.getElementById('mnit-escogido').textContent = `✔ ${mnitReemplazo.codigo} - ${mnitReemplazo.razonSocial}`;
+            document.getElementById('mnit-buscar').value = `${mnitReemplazo.codigo} - ${mnitReemplazo.razonSocial}`;
+            cont.style.display = 'none';
+          }));
+          cont.style.display = 'block';
+        } catch (e) {
+          cont.style.display = 'none';
+        }
+      }, 250);
+    }
+
+    async function ejecutarNitCliente() {
+      if (mnitTerminado) return cerrarModalNitCliente();
+      document.getElementById('mnit-error').style.display = 'none';
+      const c = allMaestroClientes.find(x => String(x.codigo) === String(mnitCodigo));
+      const nombre = `${mnitCodigo} - ${(c && c.razonSocial) || ''}`;
+      let url, body, confirmacion;
+
+      if (mnitModo === 'eliminar') {
+        const requiere = mnitImpacto && (mnitImpacto.recibos > 0 || mnitImpacto.placas > 0 || mnitImpacto.clientePorPlaca > 0);
+        let reemplazo = null, textoReemplazo = '';
+        if (requiere) {
+          const otro = document.querySelector('input[name="mnit-opcion"]:checked')?.value === 'otro';
+          if (otro && !mnitReemplazo) return mostrarErrorNit('Busque y escoja el cliente de reemplazo.');
+          reemplazo = otro ? mnitReemplazo.codigo : NIT_CONSUMIDOR_FINAL;
+          textoReemplazo = otro ? `${mnitReemplazo.codigo} - ${mnitReemplazo.razonSocial}` : `${NIT_CONSUMIDOR_FINAL} - CONSUMIDOR FINAL`;
+        }
+        confirmacion = requiere
+          ? `¿Eliminar el cliente ${nombre}?\n\nSus ${mnitImpacto.recibos} recibos (${mnitImpacto.servicios} servicios) y ${mnitImpacto.placas} placas quedarán con el cliente:\n${textoReemplazo}\n\nEsta acción no se puede deshacer.`
+          : `¿Eliminar el cliente ${nombre}?\n\nEsta acción no se puede deshacer.`;
+        url = `/facturacion/api/maestro-clientes/${encodeURIComponent(mnitCodigo)}/eliminar`;
+        body = { reemplazo };
+      } else {
+        const nuevo = document.getElementById('mnit-nuevo').value.trim();
+        if (!/^\d{1,15}$/.test(nuevo) || Number(nuevo) <= 0) return mostrarErrorNit('Digite el Nit correcto (solo números).');
+        if (nuevo === String(mnitCodigo)) return mostrarErrorNit('El Nit correcto es igual al actual.');
+        if (allMaestroClientes.some(x => String(x.codigo) === nuevo)) {
+          return mostrarErrorNit(`Ya existe el cliente ${nuevo}. Para pasar los recibos a ese cliente use "Eliminar Cliente" y escójalo como reemplazo.`);
+        }
+        confirmacion = `¿Cambiar el Nit ${mnitCodigo} por ${nuevo}?\n\nCliente: ${(c && c.razonSocial) || ''}\nSe actualizarán ${mnitImpacto ? mnitImpacto.recibos : 0} recibos y ${mnitImpacto ? mnitImpacto.placas : 0} placas.`;
+        url = `/facturacion/api/maestro-clientes/${encodeURIComponent(mnitCodigo)}/corregir-nit`;
+        body = { nuevoNit: nuevo };
+      }
+
+      if (!confirm(confirmacion)) return;
+      const btn = document.getElementById('mnit-btn-ejecutar');
+      const textoBtn = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Procesando...';
+      try {
+        const resp = await fetch(`${url}?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok) throw new Error(data.error || 'No se pudo completar la operación.');
+        mostrarResumenNit(data.resumen);
+        cerrarModalEditarMaestroCliente();
+        cargarMaestroClientes();
+      } catch (e) {
+        mostrarErrorNit(e.message);
+        btn.disabled = false;
+        btn.textContent = textoBtn;
+      }
+    }
+
+    function mostrarResumenNit(r) {
+      const n = v => Number(v || 0).toLocaleString('es-CO');
+      const li = [];
+      if (r.accion === 'eliminar') {
+        li.push(`Cliente eliminado: <b>${esc(r.cliente.codigo)} - ${esc(r.cliente.razonSocial)}</b>`);
+        if (r.reemplazo) li.push(`Reemplazado por: <b>${esc(r.reemplazo.codigo)} - ${esc(r.reemplazo.razonSocial)}</b>`);
+      } else {
+        li.push(`Nit corregido: <b>${esc(r.cliente.codigo)}</b> → <b>${esc(r.nuevoNit)}</b> (${esc(r.cliente.razonSocial)})`);
+      }
+      li.push(`Recibos actualizados (Dynamic_Recibos): <b>${n(r.recibos)}</b> con <b>${n(r.serviciosAfectados)}</b> servicios`);
+      if (r.clientePorPlaca) li.push(`Recibos con "Cliente por Placa" actualizado: <b>${n(r.clientePorPlaca)}</b>`);
+      li.push(`Placas actualizadas (Maestro_Placas): <b>${n(r.placas)}</b>`);
+      if (r.placasUnificadas && r.placasUnificadas.length) {
+        li.push(`Placas que ya existían con el Nit destino y se unificaron: <b>${r.placasUnificadas.map(esc).join(', ')}</b> (${n(r.serviciosPlaca)} servicios pasados a esa placa)`);
+      }
+      if (r.accion === 'corregir') li.push(`Clientes Crédito actualizados: <b>${n(r.clientesCredito)}</b>`);
+      const el = document.getElementById('mnit-resumen');
+      el.innerHTML = '<div style="font-weight: 800; color: #059669; margin-bottom: 6px;">✅ Cambio realizado</div>• ' + li.join('<br>• ');
+      el.style.display = 'block';
+      document.getElementById('mnit-wrap-reemplazo').style.display = 'none';
+      document.getElementById('mnit-wrap-corregir').style.display = 'none';
+      document.getElementById('mnit-btn-cancelar').textContent = 'Cerrar';
+      document.getElementById('mnit-btn-ejecutar').style.display = 'none';
+      mnitTerminado = true;
     }
 
     function cerrarModalEditarMaestroCliente() {
@@ -7174,12 +7469,19 @@
     }
 
     // ── 4. Visualizar Servicios Asociados ─────────────────────
-    async function verServiciosAsociados(tipo, id, nombre) {
-      const d = catDef(tipo);
+    // Cliente (Maestro_Clientes): servicios de los recibos cuyo Nit es el Código del cliente
+    function verServiciosCliente(codigo) {
+      const c = allMaestroClientes.find(x => String(x.codigo) === String(codigo));
+      verServiciosAsociados('cliente', codigo, (c && c.razonSocial) || 'Cliente', Number(c && c.totalServicios) || 0);
+    }
+
+    async function verServiciosAsociados(tipo, id, nombre, totalConocido = 0) {
+      const base = tipo === 'cliente' ? '/facturacion/api/maestro-clientes' : catDef(tipo).base;
       document.getElementById('mserv-modal-titulo').textContent = {
         transportadora: '📋 Servicios Asociados a la Transportadora',
         proveedor: '📋 Servicios Asociados al Proveedor',
         placa: '📋 Servicios Asociados a la Placa',
+        cliente: '📋 Servicios Asociados al Cliente',
       }[tipo];
 
       document.getElementById('mserv-subtitulo-entidad').textContent = `${nombre} (ID: ${id})`;
@@ -7196,10 +7498,13 @@
       }
 
       try {
-        const resp = await fetch(`${d.base}/${encodeURIComponent(id)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const resp = await fetch(`${base}/${encodeURIComponent(id)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`);
         const data = resp.ok ? await resp.json() : [];
 
-        document.getElementById('mserv-total-cnt').textContent = `${data.length.toLocaleString('es-CO')} servicios`;
+        // La consulta trae como máximo los 500 más recientes; si hay más, se indica el total
+        document.getElementById('mserv-total-cnt').textContent = totalConocido > data.length
+          ? `Últimos ${data.length.toLocaleString('es-CO')} de ${totalConocido.toLocaleString('es-CO')} servicios`
+          : `${data.length.toLocaleString('es-CO')} servicios`;
         const totalPesos = data.reduce((acc, s) => acc + (Number(s.subtotal) || 0), 0);
         document.getElementById('mserv-total-monto').textContent = `$ ${totalPesos.toLocaleString('es-CO')}`;
 

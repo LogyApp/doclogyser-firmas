@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto, obtenerTextosWhatsAppPendiente } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, puedeEliminarClientes, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto, obtenerTextosWhatsAppPendiente } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig } = require('../services/documentRegistry');
 const { servicioYaAnulado } = require('../../public/js/servicio-anulacion');
@@ -159,7 +159,7 @@ router.get('/', async (req, res) => {
     // Parámetros de Config_Parametros y quincena actual, leídos en paralelo
     const [
       cfgServiciosMasivo, quincenaActual, permisosRecibos, topeValorBaseServicio,
-      puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, ajustesServicios,
+      puedeGestionarCredito, puedeDepurar, puedeGestionar, puedeEditarRet, puedeEliminarCli, ajustesServicios,
       opsFiltroBodega, opsDesgloseResumen, textosWhatsAppPendiente
     ] = await Promise.all([
       obtenerConfigServiciosMasivo(base.rol),
@@ -170,6 +170,7 @@ router.get('/', async (req, res) => {
       puedeDepurarMaestros(base.rol),
       puedeGestionarMaestros(base.rol),
       puedeEditarRetenciones(base.rol),
+      puedeEliminarClientes(base.rol),
       accesoAjustes ? configServicios.permisosAjustesServicios(base.rol) : null,
       obtenerOpsFiltroBodega(),
       accesoResumen ? obtenerOpsDesgloseResumen() : null,
@@ -201,7 +202,8 @@ router.get('/', async (req, res) => {
       clientesMaestros: {
         puedeDepurar,
         puedeGestionar,
-        puedeEditarRetenciones: puedeEditarRet
+        puedeEditarRetenciones: puedeEditarRet,
+        puedeEliminarClientes: puedeEliminarCli
       }, // Config_Parametros (facturacion / Clientes)
       tabs: {
         servicios: resumenAcceso(accesoServicios),
@@ -503,7 +505,7 @@ router.get('/api/maestro-clientes', async (req, res) => {
     const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const [rows] = await pool.query(`
+    const [[rows], [counts]] = await Promise.all([pool.query(`
       SELECT
         \`Solicitar Actualización\` AS solicitarActualizacion,
         \`Código\` AS codigo,
@@ -525,11 +527,286 @@ router.get('/api/maestro-clientes', async (req, res) => {
         \`Observaciones\` AS observaciones
       FROM Maestro_Clientes
       ORDER BY \`Fecha Registro\` DESC, \`Razón social\` ASC
-    `);
-    res.json(rows);
+    `),
+      // Conteo de servicios por cliente: Nit del recibo (Dynamic_Recibos) al que pertenece cada servicio
+      pool.query(`
+        SELECT r.Nit AS nit, COUNT(*) AS cnt
+        FROM Dynamic_Servicios s
+        JOIN Dynamic_Recibos r ON r.IdRecibo = s.IdRecibo
+        WHERE r.Nit IS NOT NULL
+        GROUP BY r.Nit
+      `)
+    ]);
+    const countMap = new Map(counts.map(c => [String(c.nit), Number(c.cnt) || 0]));
+    res.json(rows.map(r => ({ ...r, totalServicios: countMap.get(String(r.codigo)) || 0 })));
   } catch (err) {
     console.error('[facturacion] GET /api/maestro-clientes:', err);
     res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-clientes/:codigo/servicios (servicios de recibos con Nit = ese cliente) ──
+router.get('/api/maestro-clientes/:codigo/servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!(await accesoMaestrosClientes(usuario))) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        s.IdServicio AS idServicio,
+        s.IdRecibo AS idRecibo,
+        r.\`Consecutivo Recibo\` AS consecutivoRecibo,
+        DATE_FORMAT(s.\`Hora Inicio\`, '%Y-%m-%d %H:%i') AS fechaServicio,
+        r.\`Operación\` AS operacion,
+        ar.AREA AS area,
+        ca.Actividad AS actividad,
+        mp.Placa AS placa,
+        s.Vehiculo AS vehiculo,
+        s.Cantidad AS cantidad,
+        s.Unidad AS unidad,
+        s.\`Valor Unitario\` AS valorUnitario,
+        ROUND(COALESCE(s.Cantidad, 0) * COALESCE(s.\`Valor Unitario\`, 0)) AS subtotal,
+        COALESCE(r.\`Cliente a Facturar\`, mc.\`Razón social\`) AS cliente,
+        r.Nit AS nit,
+        s.\`Forma De Pago\` AS formaDePago,
+        s.Estado AS estado,
+        s.Usuario AS usuario,
+        DATE_FORMAT(s.Fecha, '%Y-%m-%d %H:%i:%s') AS fechaRegistro
+      FROM Dynamic_Recibos r
+      JOIN Dynamic_Servicios s ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Config_Area ar ON s.Area = ar.ID
+      LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID
+      LEFT JOIN Maestro_Placas mp ON s.PL1 = mp.ID
+      LEFT JOIN Maestro_Clientes mc ON r.Nit = mc.\`Código\`
+      WHERE r.Nit = ?
+      ORDER BY s.\`Hora Inicio\` DESC, s.IdServicio DESC
+      LIMIT 500
+    `, [req.params.codigo]);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-clientes/:codigo/servicios:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Eliminar cliente y Corregir Nit (Config_Parametros facturacion / Clientes) ──
+// Dynamic_Recibos.Nit tiene FK a Maestro_Clientes.Código con ON DELETE SET NULL: antes de
+// borrar un cliente se pasa su Nit al reemplazo para que ningún recibo quede sin Nit.
+// Maestro_Placas tiene UNIQUE (Placa, Nit): si la placa ya existe con el Nit destino, se
+// unifica (sus servicios pasan a esa placa con PL1 y la placa repetida se borra).
+// ══════════════════════════════════════════════════════════════════════════════
+const NIT_CONSUMIDOR_FINAL = 222222222222;
+const MAX_INT_CLIENTES_CREDITO = 2147483647; // Maestro_Clientes_Credito.Nit es INT
+
+function parseNitCliente(valor) {
+  const texto = String(valor == null ? '' : valor).trim();
+  if (!/^\d{1,15}$/.test(texto)) return null;
+  const n = Number(texto);
+  return n > 0 ? n : null;
+}
+
+async function accesoEliminarClientes(usuario) {
+  const acceso = await accesoMaestrosClientes(usuario);
+  if (!acceso) return null;
+  return (await puedeEliminarClientes(acceso.rol)) ? acceso : null;
+}
+
+async function impactoNitCliente(conn, nit) {
+  const [[[r]], [[s]], [[p]], [[cp]], [credito]] = await Promise.all([
+    conn.query('SELECT COUNT(*) AS n FROM Dynamic_Recibos WHERE Nit = ?', [nit]),
+    conn.query('SELECT COUNT(*) AS n FROM Dynamic_Recibos r JOIN Dynamic_Servicios s ON s.IdRecibo = r.IdRecibo WHERE r.Nit = ?', [nit]),
+    conn.query('SELECT COUNT(*) AS n FROM Maestro_Placas WHERE Nit = ?', [nit]),
+    conn.query('SELECT COUNT(*) AS n FROM Dynamic_Recibos WHERE `Cliente por Placa` = ?', [String(nit)]),
+    conn.query('SELECT ID AS id, `Cliente a Facturar` AS clienteAFacturar FROM Maestro_Clientes_Credito WHERE Nit = ?', [nit]),
+  ]);
+  return {
+    recibos: Number(r.n) || 0,
+    servicios: Number(s.n) || 0,
+    placas: Number(p.n) || 0,
+    clientePorPlaca: Number(cp.n) || 0,
+    clientesCredito: credito,
+  };
+}
+
+// Pasa recibos, "Cliente por Placa" y placas del Nit viejo al nuevo (el cliente nuevo ya existe).
+async function moverNitCliente(conn, viejo, nuevo) {
+  const [choques] = await conn.query(
+    `SELECT v.ID AS idViejo, n.ID AS idNuevo, v.Placa AS placa
+       FROM Maestro_Placas v
+       JOIN Maestro_Placas n ON n.Placa = v.Placa AND n.Nit = ?
+      WHERE v.Nit = ?`,
+    [nuevo, viejo]
+  );
+  let serviciosPlaca = 0;
+  for (const c of choques) {
+    const [u] = await conn.query('UPDATE Dynamic_Servicios SET PL1 = ? WHERE PL1 = ?', [c.idNuevo, c.idViejo]);
+    serviciosPlaca += u.affectedRows;
+    await conn.query('DELETE FROM Maestro_Placas WHERE ID = ?', [c.idViejo]);
+  }
+  const [up] = await conn.query('UPDATE Maestro_Placas SET Nit = ? WHERE Nit = ?', [nuevo, viejo]);
+  const [ur] = await conn.query('UPDATE Dynamic_Recibos SET Nit = ? WHERE Nit = ?', [nuevo, viejo]);
+  const [ucp] = await conn.query('UPDATE Dynamic_Recibos SET `Cliente por Placa` = ? WHERE `Cliente por Placa` = ?', [String(nuevo), String(viejo)]);
+  return {
+    recibos: ur.affectedRows,
+    clientePorPlaca: ucp.affectedRows,
+    placas: up.affectedRows,
+    placasUnificadas: choques.map(c => c.placa),
+    serviciosPlaca,
+  };
+}
+
+// ── GET /api/maestro-clientes/:codigo/impacto (qué cambia al eliminar o corregir) ──
+router.get('/api/maestro-clientes/:codigo/impacto', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!(await accesoEliminarClientes(usuario))) return res.status(403).json({ error: 'No autorizado para eliminar o corregir clientes.' });
+    const codigo = parseNitCliente(req.params.codigo);
+    if (!codigo) return res.status(400).json({ error: 'Código no válido.' });
+
+    const [cli] = await pool.query('SELECT `Código` AS codigo, `Razón social` AS razonSocial FROM Maestro_Clientes WHERE `Código` = ?', [codigo]);
+    if (!cli.length) return res.status(404).json({ error: 'El cliente no existe.' });
+    res.json({ cliente: cli[0], ...(await impactoNitCliente(pool, codigo)) });
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-clientes/:codigo/impacto:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-clientes/:codigo/eliminar { reemplazo } ──
+// Sin recibos ni placas se borra directo; si tiene, exige el Nit de reemplazo (Consumidor Final u otro).
+router.post('/api/maestro-clientes/:codigo/eliminar', async (req, res) => {
+  const { usuario } = req.query;
+  if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+  const acceso = await accesoEliminarClientes(usuario).catch(() => null);
+  if (!acceso) return res.status(403).json({ error: 'No autorizado para eliminar clientes.' });
+  const codigo = parseNitCliente(req.params.codigo);
+  if (!codigo) return res.status(400).json({ error: 'Código no válido.' });
+  if (codigo === NIT_CONSUMIDOR_FINAL) return res.status(400).json({ error: 'El cliente Consumidor Final no se puede eliminar.' });
+  const reemplazo = req.body.reemplazo == null || req.body.reemplazo === '' ? null : parseNitCliente(req.body.reemplazo);
+  if (req.body.reemplazo && !reemplazo) return res.status(400).json({ error: 'El Nit de reemplazo no es válido.' });
+  if (reemplazo === codigo) return res.status(400).json({ error: 'El cliente de reemplazo debe ser distinto al que se elimina.' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [cli] = await conn.query('SELECT * FROM Maestro_Clientes WHERE `Código` = ? FOR UPDATE', [codigo]);
+    if (!cli.length) { await conn.rollback(); return res.status(404).json({ error: 'El cliente ya no existe.' }); }
+
+    const impacto = await impactoNitCliente(conn, codigo);
+    if (impacto.clientesCredito.length) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: `El cliente está asignado en Clientes Crédito (${impacto.clientesCredito.map(c => c.clienteAFacturar).join(', ')}). Cambie primero el Nit allí.`,
+      });
+    }
+
+    const requiereReemplazo = impacto.recibos > 0 || impacto.placas > 0 || impacto.clientePorPlaca > 0;
+    let movido = null;
+    let clienteReemplazo = null;
+    if (requiereReemplazo) {
+      if (!reemplazo) {
+        await conn.rollback();
+        return res.status(409).json({ error: 'El cliente tiene recibos o placas relacionados: escoja con qué cliente reemplazarlo.', impacto });
+      }
+      const [rep] = await conn.query('SELECT `Código` AS codigo, `Razón social` AS razonSocial FROM Maestro_Clientes WHERE `Código` = ? FOR UPDATE', [reemplazo]);
+      if (!rep.length) { await conn.rollback(); return res.status(400).json({ error: `El cliente de reemplazo ${reemplazo} no existe en Maestro_Clientes.` }); }
+      clienteReemplazo = rep[0];
+      movido = await moverNitCliente(conn, codigo, reemplazo);
+    }
+
+    await conn.query('DELETE FROM Maestro_Clientes WHERE `Código` = ?', [codigo]);
+    await conn.commit();
+
+    const resumen = {
+      accion: 'eliminar',
+      cliente: { codigo, razonSocial: cli[0]['Razón social'] },
+      reemplazo: clienteReemplazo,
+      serviciosAfectados: requiereReemplazo ? impacto.servicios : 0,
+      ...(movido || { recibos: 0, clientePorPlaca: 0, placas: 0, placasUnificadas: [], serviciosPlaca: 0 }),
+    };
+    console.log(`[facturacion] Cliente eliminado por ${acceso.usuarioId || usuario}:`, JSON.stringify({ ...resumen, registro: cli[0] }));
+    res.json({ ok: true, resumen });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error('[facturacion] POST /api/maestro-clientes/:codigo/eliminar:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-clientes/:codigo/corregir-nit { nuevoNit } ──
+// Crea el cliente con el Nit correcto (copia de todos sus datos), pasa recibos, placas y clientes
+// crédito a ese Nit y borra el registro con el Nit errado. El Nit nuevo no debe existir.
+router.post('/api/maestro-clientes/:codigo/corregir-nit', async (req, res) => {
+  const { usuario } = req.query;
+  if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+  const acceso = await accesoEliminarClientes(usuario).catch(() => null);
+  if (!acceso) return res.status(403).json({ error: 'No autorizado para corregir el Nit de clientes.' });
+  const codigo = parseNitCliente(req.params.codigo);
+  if (!codigo) return res.status(400).json({ error: 'Código no válido.' });
+  if (codigo === NIT_CONSUMIDOR_FINAL) return res.status(400).json({ error: 'El Nit de Consumidor Final no se puede corregir.' });
+  const nuevo = parseNitCliente(req.body.nuevoNit);
+  if (!nuevo) return res.status(400).json({ error: 'El Nit correcto debe tener solo números (máximo 15 dígitos).' });
+  if (nuevo === codigo) return res.status(400).json({ error: 'El Nit correcto es igual al actual.' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [cli] = await conn.query('SELECT * FROM Maestro_Clientes WHERE `Código` = ? FOR UPDATE', [codigo]);
+    if (!cli.length) { await conn.rollback(); return res.status(404).json({ error: 'El cliente ya no existe.' }); }
+    const [existe] = await conn.query('SELECT `Código` AS codigo, `Razón social` AS razonSocial FROM Maestro_Clientes WHERE `Código` = ? FOR UPDATE', [nuevo]);
+    if (existe.length) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: `Ya existe el cliente ${nuevo} - ${existe[0].razonSocial || ''}. Para pasar los recibos a ese cliente use "Eliminar Cliente" y escójalo como reemplazo.`,
+      });
+    }
+
+    const impacto = await impactoNitCliente(conn, codigo);
+    if (impacto.clientesCredito.length && nuevo > MAX_INT_CLIENTES_CREDITO) {
+      await conn.rollback();
+      return res.status(400).json({ error: `El cliente está en Clientes Crédito y allí el Nit admite máximo ${MAX_INT_CLIENTES_CREDITO}.` });
+    }
+
+    // Copia del cliente con el Nit correcto (todas las columnas; Buscar Cliente = "Nit ** Razón social")
+    const [cols] = await conn.query('SHOW COLUMNS FROM Maestro_Clientes');
+    const nombres = cols.map(c => c.Field);
+    const valores = nombres.map(n => {
+      if (n === 'Código') return '?';
+      if (n === 'Buscar Cliente') return "CONCAT(?, ' ** ', COALESCE(`Razón social`, ''))";
+      return `\`${n}\``;
+    });
+    await conn.query(
+      `INSERT INTO Maestro_Clientes (${nombres.map(n => `\`${n}\``).join(', ')})
+       SELECT ${valores.join(', ')} FROM Maestro_Clientes WHERE \`Código\` = ?`,
+      [nuevo, String(nuevo), codigo]
+    );
+
+    const movido = await moverNitCliente(conn, codigo, nuevo);
+    const [uc] = await conn.query('UPDATE Maestro_Clientes_Credito SET Nit = ? WHERE Nit = ?', [nuevo, codigo]);
+    await conn.query('DELETE FROM Maestro_Clientes WHERE `Código` = ?', [codigo]);
+    await conn.commit();
+
+    const resumen = {
+      accion: 'corregir',
+      cliente: { codigo, razonSocial: cli[0]['Razón social'] },
+      nuevoNit: nuevo,
+      serviciosAfectados: impacto.servicios,
+      clientesCredito: uc.affectedRows,
+      ...movido,
+    };
+    console.log(`[facturacion] Nit de cliente corregido por ${acceso.usuarioId || usuario}:`, JSON.stringify(resumen));
+    res.json({ ok: true, resumen });
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error('[facturacion] POST /api/maestro-clientes/:codigo/corregir-nit:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 
