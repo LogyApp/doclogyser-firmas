@@ -22,6 +22,7 @@ const firmaUnica = require('../services/firmaUnica');
 const { programarRelleno } = require('../services/rellenoAsistencia');
 const { generarHtmlFirmaUnica } = require('../services/vistaFirmaUnica');
 const docSstPortal = require('../services/docSstPortal');
+const { obtenerSalarioPredeterminado, validarSalario } = require('../services/salarioContratacion');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -1667,9 +1668,26 @@ router.get('/api/operaciones/:regional', async (req, res) => {
 // Contratación y Finalización
 // ══════════════════════════════════════════════════════════════
 
+router.get('/api/salario-contratacion/:id', async (req, res) => {
+  try {
+    const salario = await obtenerSalarioPredeterminado(pool, req.params.id);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ salario });
+  } catch (error) {
+    console.error('[seleccion] Error consultando salario de contratación:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/finalizar-contratacion', async (req, res) => {
-  const { id_aspirante, regional, operacion, fecha_ingreso, confirmar_rechazados } = req.body;
+  const { id_aspirante, regional, operacion, fecha_ingreso, confirmar_rechazados, salario } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
+  let salarioValidado;
+  try {
+    salarioValidado = validarSalario(salario);
+  } catch (error) {
+    return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent(error.message)}`);
+  }
 
   // Documentos rechazados: no se finaliza sin la confirmación del aviso (y no se trasladan)
   try {
@@ -1813,9 +1831,9 @@ router.post('/finalizar-contratacion', async (req, res) => {
     const idVinculacionNueva = crypto.randomUUID();
     await connection.query(`
         INSERT INTO Maestro_Vinculación 
-        (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Estado, Condicion, \`Fecha Actualización\`, Usuario, usuarioactualiza)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo', 'En Proceso', ${horaBogotaSQL}, ?, ?)
-    `, [idVinculacionNueva, nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, nombreUsuario, nombreUsuario]);
+        (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Salario, Estado, Condicion, \`Fecha Actualización\`, Usuario, usuarioactualiza)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Activo', 'En Proceso', ${horaBogotaSQL}, ?, ?)
+    `, [idVinculacionNueva, nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, salarioValidado, nombreUsuario, nombreUsuario]);
 
     // 6. Maestro_Examenes
     await connection.query(`
@@ -3635,6 +3653,10 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
             <label class="block text-xs font-bold text-slate-500 uppercase mb-1 tracking-widest">Fecha de Ingreso</label>
             <input type="date" name="fecha_ingreso" required class="w-full border-2 border-slate-100 rounded-xl p-3 focus:border-blue-500 outline-none font-bold text-slate-700 bg-slate-50">
           </div>
+          <div class="mb-6">
+            <label for="salarioContratacion" class="block text-xs font-bold text-slate-500 uppercase mb-1 tracking-widest">Salario Base ($)</label>
+            <input type="number" id="salarioContratacion" name="salario" min="0" max="2147483647" step="1" class="w-full border-2 border-slate-100 rounded-xl p-3 focus:border-blue-500 outline-none font-bold text-slate-700 bg-slate-50">
+          </div>
           <div class="flex space-x-3">
             <button type="button" onclick="document.getElementById('modalContratacion').classList.add('hidden')" class="flex-1 text-slate-400 font-bold hover:text-slate-600">CANCELAR</button>
             <button type="submit" id="btnConfirmar" class="flex-1 bg-blue-600 text-white py-4 rounded-xl font-black uppercase shadow-lg hover:bg-blue-700 transition-all">
@@ -3807,7 +3829,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
         document.body.appendChild(f); f.submit();
       }
 
-      function prepararEnvio(idRequisicion) {
+      async function prepararEnvio(idRequisicion) {
         if (!idRequisicion || idRequisicion === 'null' || idRequisicion === '') {
           alert('ERROR: Esta hoja de vida no está vinculada a ninguna requisición activa.');
           return;
@@ -3821,7 +3843,16 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
           document.getElementById('confirmarRechazados').value = '1';
         }
         if(confirm('¿Confirmas que deseas enviar los datos a la Sociodemográfica? Esta acción bloqueará ediciones posteriores.')) {
-          document.getElementById('modalContratacion').classList.remove('hidden');
+          try {
+            const respuesta = await fetch('/seleccion/api/salario-contratacion/' + encodeURIComponent(${JSON.stringify(uuid)}), { cache: 'no-store' });
+            const datos = await respuesta.json();
+            if (!respuesta.ok) throw new Error(datos.error || 'No se pudo consultar el salario.');
+            document.getElementById('salarioContratacion').value = datos.salario == null ? '' : datos.salario;
+            document.getElementById('modalContratacion').classList.remove('hidden');
+          } catch (error) {
+            console.error('Error consultando salario de contratación:', error);
+            alert('No se pudo preparar el envío: ' + error.message);
+          }
         }
       }
 
