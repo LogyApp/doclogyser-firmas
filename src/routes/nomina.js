@@ -37,6 +37,7 @@ const { hoyBogota } = require('../services/trasladoVinculacion');
 const { programarRellenoVinculacion, sincronizarRelleno } = require('../services/rellenoAsistencia');
 const { obtenerControlQuincena } = require('../services/controlQuincena');
 const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
+const { obtenerIndicadoresOperaciones, obtenerEvolucionMensual, obtenerParametrosReportes } = require('../services/reportesNominaService');
 const {
   buscarTrabajadorCesantias,
   buscarColaboradoresCesantias,
@@ -340,6 +341,8 @@ router.get('/', async (req, res) => {
     const paramsAsistencia = accesoAsistencia ? await obtenerParametrosAsistencia() : null;
     // Informes Disciplinarios (public/js/nomina-informes-disciplinarios.js, API en src/routes/informesDisciplinarios.js)
     const accesoInformes = await computarAccesoNomina(usuario, 'InformesDisciplinarios');
+    // Reportes e Indicadores de Operaciones (Rotación, Oportunidad de aviso, Deserción temprana)
+    const accesoReportes = await computarAccesoNomina(usuario, 'Reportes');
 
     if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia && !accesoQuincenaExcel && !accesoInformes) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
@@ -433,6 +436,7 @@ router.get('/', async (req, res) => {
         } : null,
         quincenaexcel: accesoQuincenaExcel ? { sinFiltro: accesoQuincenaExcel.sinFiltro } : null,
         informesdisciplinarios: accesoInformes ? { habilitado: true } : null,
+        reportes: (accesoReportes || accesoRetiro || accesoActivo) ? { sinFiltro: !!(accesoReportes?.sinFiltro || accesoRetiro?.sinFiltro || accesoActivo?.sinFiltro) } : null,
         asistencia: accesoAsistencia ? {
           sinFiltro: accesoAsistencia.sinFiltro,
           operacionesFiltro: accesoAsistencia.operacionesFiltro || [],
@@ -466,6 +470,74 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('[nomina GET /]', err);
     res.status(500).send(paginaError('Error interno del servidor'));
+  }
+});
+
+// ── GET /api/reportes/indicadores-operaciones ────────────────────────────
+// Indicadores de rotación, tiempo de aviso, deserción temprana (<60d) y motivos
+router.get('/api/reportes/indicadores-operaciones', async (req, res) => {
+  try {
+    const { usuario, fechaDesde, fechaHasta } = req.query;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'usuario requerido' });
+
+    let acceso = await computarAccesoNomina(usuario, 'Reportes');
+    if (!acceso) {
+      acceso = (await computarAccesoNomina(usuario, 'Retiro')) || (await computarAccesoNomina(usuario, 'Activo'));
+    }
+    if (!acceso) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
+
+    const hoy = new Date();
+    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toLocaleDateString('en-CA');
+    const desde = fechaDesde || primerDiaMes;
+    const hasta = fechaHasta || hoy.toLocaleDateString('en-CA');
+
+    const data = await obtenerIndicadoresOperaciones({
+      fechaDesde: desde,
+      fechaHasta: hasta,
+      acceso
+    });
+
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('[nomina/api/reportes/indicadores-operaciones] Error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /api/reportes/evolucion-mensual ───────────────────────────────────
+// Evolución mensual (1-12) de planta, ingresos, retiros y retiros <60d
+router.get('/api/reportes/evolucion-mensual', async (req, res) => {
+  try {
+    const { usuario, anio, regional, operacion } = req.query;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'usuario requerido' });
+
+    let acceso = await computarAccesoNomina(usuario, 'Reportes');
+    if (!acceso) {
+      acceso = (await computarAccesoNomina(usuario, 'Retiro')) || (await computarAccesoNomina(usuario, 'Activo'));
+    }
+    if (!acceso) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
+
+    const paramsConfig = await obtenerParametrosReportes();
+    const rolesHistoricoStr = paramsConfig.Roles_Historico_Mes || 'Nomina,Directorth,Juridica,subgerente,Sistema';
+    const rolesAutorizados = new Set(
+      rolesHistoricoStr.split(',').map(r => r.trim().toLowerCase()).filter(Boolean)
+    );
+    const rolUsuario = String(acceso.rol || '').trim().toLowerCase();
+    if (!acceso.sinFiltro && !rolesAutorizados.has(rolUsuario)) {
+      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver la evolución histórica mensual' });
+    }
+
+    const data = await obtenerEvolucionMensual({
+      anio: parseInt(anio, 10) || new Date().getFullYear(),
+      regional: regional || null,
+      operacion: operacion || null,
+      acceso
+    });
+
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('[nomina/api/reportes/evolucion-mensual] Error:', err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
