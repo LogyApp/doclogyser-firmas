@@ -23,9 +23,10 @@ const CAMPOS = {
   Servicio: [
     { columna: 'Area', etiqueta: 'Área', tipo: 'lista', catalogo: 'area', bodyKey: 'area' },
     { columna: 'Actividad', etiqueta: 'Actividad', tipo: 'lista', catalogo: 'actividad', bodyKey: 'actividad' },
-    { columna: 'Transportadora', etiqueta: 'Transportadora', tipo: 'busqueda', bodyKey: 'transportadora' },
+    // defectoBusqueda: admite valor por defecto (ID del maestro), escogido con un buscador
+    { columna: 'Transportadora', etiqueta: 'Transportadora', tipo: 'busqueda', catalogo: 'transportadora', defectoBusqueda: true, bodyKey: 'transportadora' },
     { columna: 'Vehiculo', etiqueta: 'Vehículo', tipo: 'lista', catalogo: 'vehiculo', bodyKey: 'vehiculo' },
-    { columna: 'Proveedor', etiqueta: 'Proveedor', tipo: 'busqueda', bodyKey: 'proveedor' },
+    { columna: 'Proveedor', etiqueta: 'Proveedor', tipo: 'busqueda', catalogo: 'proveedor', defectoBusqueda: true, bodyKey: 'proveedor' },
     { columna: 'PL1', etiqueta: 'Placa', tipo: 'busqueda', bodyKey: 'pl1' },
     { columna: 'Remolque', etiqueta: 'Remolque', tipo: 'texto', bodyKey: 'remolque' },
     { columna: 'Unidad', etiqueta: 'Unidad', tipo: 'lista', catalogo: 'unidad', bodyKey: 'unidad' },
@@ -135,7 +136,7 @@ async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {
       obligatorio: !soloVerde && Number(f.obligatorio) === 1 && aplica,
       habilitados: (campo.tipo === 'lista' || esLista) ? lista(f.datos_habilitados) : [],
       lista: esLista,
-      defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(f.valor_defecto || '').trim() : '',
+      defecto: aplica && (campo.tipo === 'lista' || campo.tipo === 'texto' || campo.defectoBusqueda) ? String(f.valor_defecto || '').trim() : '',
       paraRol,
       orden: f.orden == null ? null : Number(f.orden), // posición en el formulario (1 = primero)
       numerico: !!campo.tipoDato && normalizar(f.tipo_dato) === 'numero', // Etapa y Muelle: solo números
@@ -144,6 +145,14 @@ async function resolverConfig({ seccion, operacion, modalidad, rol, contexto = {
       bodyKey: campo.bodyKey,
     };
   });
+  // Transportadora y Proveedor por defecto: el formulario muestra el nombre, no el ID
+  for (const [columna, c] of Object.entries(config)) {
+    const campo = campoDe(seccion, columna);
+    if (campo.defectoBusqueda && c.defecto) {
+      const [o] = await opcionesCatalogo(campo.catalogo, '', { id: c.defecto }).catch(() => []);
+      c.defectoTexto = o ? o.texto : c.defecto;
+    }
+  }
   return config;
 }
 
@@ -196,12 +205,30 @@ function visibleEnConfig(config, columna) {
 }
 
 // Opciones de un catálogo para la pestaña Ajustes Servicios: [{ valor, texto }]
-async function opcionesCatalogo(catalogo, operacion) {
+// Transportadora y Proveedor son maestros grandes: se buscan por texto (q) o por ID (id), máximo 50.
+async function opcionesCatalogo(catalogo, operacion, { q = '', id = '' } = {}) {
   const op = String(operacion || '').trim();
+  const maestros = {
+    transportadora: { tabla: 'Maestro_Transportadora', columna: 'Transportadora' },
+    proveedor: { tabla: 'Maestro_Proveedor', columna: 'Proveedor' },
+  };
+  if (maestros[catalogo]) {
+    const { tabla, columna } = maestros[catalogo];
+    const texto = String(q || '').trim();
+    const [r] = id
+      ? await pool.execute(`SELECT ID AS valor, \`${columna}\` AS texto FROM ${tabla} WHERE ID = ? LIMIT 1`, [String(id)])
+      : await pool.execute(
+        `SELECT ID AS valor, \`${columna}\` AS texto FROM ${tabla} WHERE \`${columna}\` COLLATE utf8mb4_unicode_ci LIKE ?
+          ORDER BY (\`${columna}\` COLLATE utf8mb4_unicode_ci LIKE ?) DESC, \`${columna}\` ASC LIMIT 50`,
+        [`%${texto}%`, `${texto}%`]
+      );
+    return r.map((x) => ({ valor: String(x.valor), texto: String(x.texto || '') }));
+  }
   switch (catalogo) {
     case 'area': {
+      // Solo las áreas operativas (las mismas que muestra el formulario de servicio)
       const [r] = await pool.execute(
-        `SELECT ID AS valor, AREA AS texto FROM Config_Area ${op ? 'WHERE `OPERACIÓN` = ?' : ''} ORDER BY AREA`,
+        `SELECT ID AS valor, AREA AS texto FROM Config_Area WHERE OPERATIVO = 'V' ${op ? 'AND `OPERACIÓN` = ?' : ''} ORDER BY AREA`,
         op ? [op] : []
       );
       return r.map((x) => ({ valor: String(x.valor), texto: `${x.valor} · ${x.texto}` }));

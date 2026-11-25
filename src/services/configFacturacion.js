@@ -272,7 +272,7 @@ async function obtenerAreaUsuarioServicio(usuarioId, operacion) {
   try {
     const [rows] = await pool.execute(
       `SELECT ca.ID AS id FROM Maestro_Usuarios mu
-         JOIN Config_Area ca ON CAST(ca.ID AS CHAR) = TRIM(mu.Area) AND ca.\`OPERACIÓN\` = ?
+         JOIN Config_Area ca ON CAST(ca.ID AS CHAR) = TRIM(mu.Area) AND ca.\`OPERACIÓN\` = ? AND ca.OPERATIVO = 'V'
        WHERE mu.ID = ? LIMIT 1`,
       [operacion, usuarioId]
     );
@@ -292,7 +292,7 @@ async function obtenerAreasUsuarioServicio(usuarioId) {
     try {
       const [rows] = await pool.query(
         `SELECT ca.\`OPERACIÓN\` AS operacion, ca.ID AS id FROM Maestro_Usuarios mu
-           JOIN Config_Area ca ON CAST(ca.ID AS CHAR) = TRIM(mu.Area)
+           JOIN Config_Area ca ON CAST(ca.ID AS CHAR) = TRIM(mu.Area) AND ca.OPERATIVO = 'V'
          WHERE mu.ID = ?`,
         [usuarioId]
       );

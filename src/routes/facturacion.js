@@ -3972,6 +3972,8 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         });
         if (tarifa) valorUnitario = tarifa.valor;
       }
+      const errorCantidadValor = errorCantidadValorServicio(cantidad, valorUnitario);
+      if (errorCantidadValor) return res.status(400).json({ error: `Fila ${numFila}: ${errorCantidadValor}` });
       if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
         return res.status(400).json({
           error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $${topeValorBase.toLocaleString('es-CO')}.`
@@ -5895,6 +5897,34 @@ router.delete('/api/recibos/:idRecibo', async (req, res) => {
   }
 });
 
+// ── DELETE /api/recibos/:idRecibo/vacio (Descartar recibo nuevo sin servicios) ──
+// Al crear un recibo, si ninguno de sus servicios se pudo guardar, el formulario lo descarta.
+// Solo quien lo creó y solo si no tiene servicios; su consecutivo vuelve a quedar disponible
+// (trigger ad_recibos_free_consec).
+router.delete('/api/recibos/:idRecibo/vacio', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const { idRecibo } = req.params;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Recibos')
+                || await computarAccesoFacturacion(usuario, 'Servicios');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [result] = await pool.execute(
+      `DELETE FROM Dynamic_Recibos
+        WHERE IdRecibo = ? AND Usuario = ?
+          AND NOT EXISTS (SELECT 1 FROM Dynamic_Servicios s WHERE s.IdRecibo = Dynamic_Recibos.IdRecibo)`,
+      [idRecibo, acceso.usuarioId || usuario]
+    );
+    if (!result.affectedRows) return res.status(409).json({ error: 'El recibo no se puede descartar (tiene servicios o no lo creó este usuario).' });
+    res.json({ ok: true, idRecibo });
+  } catch (err) {
+    console.error('[facturacion] DELETE /api/recibos/:idRecibo/vacio:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ── CRUD DE SERVICIOS (Dynamic_Servicios) ─────────────────────────────────────
 // Solo se agregan/editan desde el Recibo al que corresponden.
@@ -5989,6 +6019,14 @@ async function calcularHorasServicio({ horaInicioRaw, duracion, horaFinalRaw }) 
 // Estado solo puede pasar a 'Green' si Cantidad, Valor Unitario y Forma De Pago tienen valor,
 // y si Forma De Pago = 2 (Transferencia) además se exige Foto Transferencia, salvo al editar con
 // un rol de 'Roles que pueden pasar a verde un servicio por Transferencia sin Foto de Transferencia'.
+// Cantidad y Valor Unitario siempre llevan valor mayor que cero (no depende de Ajustes Servicios):
+// para dejar un servicio en 0 está el botón ⛔ Anular. Devuelve el mensaje de error o null.
+function errorCantidadValorServicio(cantidad, valorUnitario) {
+  if (!(Number(cantidad) > 0)) return 'La Cantidad es obligatoria y debe ser mayor que cero. Para dejar un servicio en 0 use el botón ⛔ Anular.';
+  if (!(Number(valorUnitario) > 0)) return 'El Valor Unitario es obligatorio y debe ser mayor que cero. Para dejar un servicio en 0 use el botón ⛔ Anular.';
+  return null;
+}
+
 function puedeMarcarGreen({ cantidad, valorUnitario, formaDePago, fotoTransferenciaUrl, sinFotoTransferencia = false }) {
   if (cantidad === null || cantidad === undefined) return false;
   if (valorUnitario === null || valorUnitario === undefined) return false;
@@ -6327,6 +6365,8 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
 
     const cantidad = (body.cantidad !== undefined && body.cantidad !== '') ? Math.round(parseFloat(body.cantidad) * 1000) / 1000 : null;
     const valorUnitario = (body.valorUnitario !== undefined && body.valorUnitario !== '') ? Math.round(parseFloat(body.valorUnitario) * 1000) / 1000 : null;
+    const errorCantidadValor = errorCantidadValorServicio(cantidad, valorUnitario);
+    if (errorCantidadValor) return res.status(400).json({ error: errorCantidadValor });
     const topeValorBase = await obtenerTopeValorBaseServicio();
     if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
       return res.status(400).json({ error: `El Valor Base (Cantidad x Valor Unitario) no puede superar $${topeValorBase.toLocaleString('es-CO')}.` });
@@ -6516,6 +6556,13 @@ router.put('/api/servicios/:idServicio', uploadServicio.fields([
     const valorUnitario = (typeof body.valorUnitario !== 'undefined')
       ? ((body.valorUnitario !== '') ? Math.round(parseFloat(body.valorUnitario) * 1000) / 1000 : null)
       : existente['Valor Unitario'];
+    // Un servicio anulado (rojo) conserva su 0; uno validado que solo edita otros campos no se frena
+    const revisarCantidadValor = existente.Estado !== 'Red'
+      && (!soloEditablesValidado || typeof body.cantidad !== 'undefined' || typeof body.valorUnitario !== 'undefined');
+    if (revisarCantidadValor) {
+      const errorCantidadValor = errorCantidadValorServicio(cantidad, valorUnitario);
+      if (errorCantidadValor) return res.status(400).json({ error: errorCantidadValor });
+    }
     const topeValorBase = await obtenerTopeValorBaseServicio();
     if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > topeValorBase) {
       return res.status(400).json({ error: `El Valor Base (Cantidad x Valor Unitario) no puede superar $${topeValorBase.toLocaleString('es-CO')}.` });
@@ -7183,7 +7230,7 @@ function leerAjusteServicio(body) {
   if (habilitados && !operacion && ['area', 'actividad'].includes(campo.catalogo)) {
     return { error: 'Área y Actividad dependen de la Operación: para limitar sus datos escoja una Operación.' };
   }
-  const defecto = (campo.tipo === 'lista' || campo.tipo === 'texto') ? String(body.valor_defecto || '').trim() : '';
+  const defecto = (campo.tipo === 'lista' || campo.tipo === 'texto' || campo.defectoBusqueda) ? String(body.valor_defecto || '').trim() : '';
   if (defecto && habilitados && !configServicios.lista(habilitados).some((h) => configServicios.normalizar(h) === configServicios.normalizar(defecto))) {
     return { error: 'El valor por defecto debe estar entre los datos habilitados.' };
   }
@@ -7243,7 +7290,8 @@ router.get('/api/ajustes-servicios/opciones', async (req, res) => {
     const { seccion, columna, operacion } = req.query;
     if (seccion && columna) {
       const campo = configServicios.campoDe(seccion, columna);
-      const opciones = campo && campo.tipo === 'lista' ? await configServicios.opcionesCatalogo(campo.catalogo, operacion) : [];
+      const opciones = campo && (campo.tipo === 'lista' || campo.defectoBusqueda)
+        ? await configServicios.opcionesCatalogo(campo.catalogo, operacion, { q: req.query.q, id: req.query.id }) : [];
       return res.json({ opciones });
     }
     const [ops] = await pool.query("SELECT `OPERACIÓN` AS operacion FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
@@ -7264,6 +7312,12 @@ async function guardarAjusteServicio(req, res, id) {
     if (!acceso) return;
     const { fila, error } = leerAjusteServicio(req.body || {});
     if (error) return res.status(400).json({ error });
+    // Transportadora y Proveedor por defecto: el ID debe existir en su maestro
+    const campoAjuste = configServicios.campoDe(fila.seccion, fila.columna_origen);
+    if (campoAjuste.defectoBusqueda && fila.valor_defecto
+      && !(await configServicios.opcionesCatalogo(campoAjuste.catalogo, '', { id: fila.valor_defecto })).length) {
+      return res.status(400).json({ error: `El valor por defecto no existe en el maestro de ${campoAjuste.etiqueta}.` });
+    }
     // La fila de todas las operaciones queda con operacion NULL y la llave única no la compara:
     // el repetido se revisa aquí
     const [repetida] = await pool.execute(

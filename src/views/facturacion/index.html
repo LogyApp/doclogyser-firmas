@@ -4187,6 +4187,8 @@
           <label>Valor por defecto</label>
           <select id="aj-defecto-select" style="display:none;"></select>
           <input type="text" id="aj-defecto-texto" maxlength="255" placeholder="Valor que llega escrito al crear">
+          <input type="text" id="aj-defecto-busqueda" list="aj-defecto-busqueda-lista" autocomplete="off" style="display:none;" placeholder="Escriba para buscar y escoja de la lista (vacío = sin valor por defecto)" oninput="buscarDefectoAjuste()">
+          <datalist id="aj-defecto-busqueda-lista"></datalist>
         </div>
         <div class="form-group" id="aj-tipo-dato-wrap" style="display:none;">
           <label>Tipo de dato</label>
@@ -11220,7 +11222,7 @@
               <button type="button" onclick="event.stopPropagation(); quitarServicioPendienteRecibo(${i})" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Quitar">🗑️</button>
             </span>
           </div>`).join('')
-        : '<div style="color:var(--text-muted); font-size:0.82rem;">Sin servicios. Puede agregarlos ahora o después de crear el recibo.</div>';
+        : '<div style="color:var(--text-muted); font-size:0.82rem;">Sin servicios. Agregue al menos uno para crear el recibo.</div>';
       nota.textContent = hay
         ? 'Se guardarán junto con el recibo al presionar Crear Recibo. Toque un servicio para corregirlo. Para cambiar Regional, Operación o Modalidad, quite primero los servicios.'
         : '';
@@ -11621,6 +11623,9 @@
         if (!clienteAFacturar) return alert('Debe seleccionar el Cliente a Facturar.');
         payload.clienteAFacturar = clienteAFacturar;
         payload.categoria = document.getElementById('mr-categoria').value || null;
+        if (modalRecibo.modo === 'crear' && !mrServiciosPendientes.length) {
+          return alert('Para crear un recibo CREDITO agregue primero al menos un servicio.');
+        }
       } else {
         // Teléfono y Email solo aplican para RECAUDO.
         payload.telefono = document.getElementById('mr-telefono').value;
@@ -11668,6 +11673,13 @@
               } catch (e) {
                 fallidos.push(`${i + 1}. ${s.resumen.descripcion}: error de conexión`);
               }
+            }
+            // Ningún servicio se guardó: se descarta el recibo (su consecutivo queda disponible) y el
+            // formulario sigue abierto con los servicios para corregirlos
+            if (fallidos.length === mrServiciosPendientes.length) {
+              await fetch(`/facturacion/api/recibos/${encodeURIComponent(data.idRecibo)}/vacio?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'DELETE' }).catch(() => {});
+              alert('No se creó el recibo porque ningún servicio se pudo guardar. Corríjalos e intente de nuevo:\n\n' + fallidos.join('\n'));
+              return;
             }
             mrServiciosPendientes = [];
             if (fallidos.length) {
@@ -11947,7 +11959,8 @@
       // operación), los datos marcados ya no aplican
       const porOp = ['area', 'actividad'].includes(campo.catalogo);
       const clave = `${seccion}|${columna}|${porOp ? operacion : ''}`;
-      if (typeof defectoInicial !== 'string' && onAjusteCampoChange.clave !== clave) ajHabSel.clear();
+      const cambioCampo = typeof defectoInicial !== 'string' && onAjusteCampoChange.clave !== clave;
+      if (cambioCampo) ajHabSel.clear();
       onAjusteCampoChange.clave = clave;
 
       const esModalidad = seccion === 'Recibo' && columna === 'Modalidad';
@@ -11959,9 +11972,26 @@
       // Foto Transferencia: aparece según la Forma de Pago; aquí solo se ajusta "Editable en verde"
       document.getElementById('aj-visible-obligatorio-wrap').style.display = campo.soloEditableValidado ? 'none' : 'grid';
       habWrap.style.display = campo.tipo === 'lista' ? '' : 'none';
-      defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto') ? '' : 'none';
+      defWrap.style.display = (campo.tipo === 'lista' || campo.tipo === 'texto' || campo.defectoBusqueda) ? '' : 'none';
       defSel.style.display = campo.tipo === 'lista' ? '' : 'none';
       defTxt.style.display = campo.tipo === 'texto' ? '' : 'none';
+      // Transportadora y Proveedor: maestros grandes, el valor por defecto se escoge con un buscador
+      const defBus = document.getElementById('aj-defecto-busqueda');
+      defBus.style.display = campo.defectoBusqueda ? '' : 'none';
+      if (typeof defectoInicial === 'string' || cambioCampo) {
+        ajDefBusqueda = { id: campo.defectoBusqueda && typeof defectoInicial === 'string' ? defectoInicial : '', texto: '' };
+        ajDefOpciones = [];
+        defBus.value = '';
+        document.getElementById('aj-defecto-busqueda-lista').innerHTML = '';
+        if (ajDefBusqueda.id) {
+          const id = ajDefBusqueda.id;
+          fetch(ajUrl('/opciones', { seccion, columna, id })).then(r => r.ok ? r.json() : {}).then(d => {
+            if (ajDefBusqueda.id !== id) return; // se cambió de campo mientras cargaba
+            ajDefBusqueda.texto = ((d.opciones || [])[0] || {}).texto || `${id} (no existe)`;
+            defBus.value = ajDefBusqueda.texto;
+          }).catch(() => {});
+        }
+      }
       // Etapa y Muelle: opciones de la lista y su valor por defecto
       if (campo.tipoDato) setTipoDatoAjuste(ajTipoDato);
       else document.getElementById('aj-opciones-wrap').style.display = 'none';
@@ -12003,6 +12033,33 @@
       pintarHabilitadosAjuste();
     }
 
+    // Valor por defecto de Transportadora y Proveedor: se busca por nombre y se guarda el ID
+    let ajDefBusqueda = { id: '', texto: '' }; // el que ya tenía guardado el ajuste
+    let ajDefOpciones = [];                    // resultados de la última búsqueda [{ valor, texto }]
+    let ajDefTimer = null;
+    function buscarDefectoAjuste() {
+      clearTimeout(ajDefTimer);
+      ajDefTimer = setTimeout(async () => {
+        const seccion = document.getElementById('aj-seccion').value;
+        const columna = document.getElementById('aj-columna').value;
+        const q = document.getElementById('aj-defecto-busqueda').value.trim();
+        try {
+          const r = await fetch(ajUrl('/opciones', { seccion, columna, q }));
+          ajDefOpciones = r.ok ? (await r.json()).opciones || [] : [];
+        } catch (e) { ajDefOpciones = []; }
+        document.getElementById('aj-defecto-busqueda-lista').innerHTML =
+          ajDefOpciones.map(o => `<option value="${esc(o.texto)}"></option>`).join('');
+      }, 250);
+    }
+    // ID del valor escogido; '' = sin valor por defecto; null = lo escrito no es de la lista
+    function idDefectoBusquedaAjuste() {
+      const texto = document.getElementById('aj-defecto-busqueda').value.trim();
+      if (!texto) return '';
+      const o = ajDefOpciones.find(o => o.texto === texto);
+      if (o) return o.valor;
+      return texto === ajDefBusqueda.texto ? ajDefBusqueda.id : null;
+    }
+
     async function guardarAjuste() {
       const seccion = document.getElementById('aj-seccion').value;
       const columna = document.getElementById('aj-columna').value;
@@ -12011,6 +12068,8 @@
       const habilitados = ajCatalogo.filter(o => ajHabSel.has(o.valor)).map(o => o.valor);
       const esListaPropia = !!campo.tipoDato && ajTipoDato === 'Lista';
       if (esListaPropia && !opcionesListaAjuste().length) return alert('Escriba al menos una opción para la lista (una por línea).');
+      const defectoBusqueda = campo.defectoBusqueda ? idDefectoBusquedaAjuste() : '';
+      if (defectoBusqueda === null) return alert(`Escoja el valor por defecto de ${campo.etiqueta} de la lista que aparece al escribir, o déjelo vacío.`);
       const payload = {
         seccion,
         columna_origen: columna,
@@ -12022,7 +12081,8 @@
         editable_validado: ajBool.editable,
         datos_habilitados: campo.tipo === 'lista' ? habilitados.join(', ') : esListaPropia ? opcionesListaAjuste().join(', ') : '',
         valor_defecto: (campo.tipo === 'lista' || esListaPropia) ? document.getElementById('aj-defecto-select').value
-          : campo.tipo === 'texto' ? document.getElementById('aj-defecto-texto').value : '',
+          : campo.tipo === 'texto' ? document.getElementById('aj-defecto-texto').value
+          : campo.defectoBusqueda ? defectoBusqueda : '',
         tipo_dato: campo.tipoDato ? ajTipoDato : '',
         rol: [...ajRolesSel].join(', '),
         condicion_campo: document.getElementById('aj-condicion-campo').value,
@@ -12232,6 +12292,19 @@
           document.getElementById(id).style.display = (!c.habilitados.length || c.habilitados.includes(valor) || msGrupoDtjoActual === valor) ? '' : 'none';
         });
         if (crear && !msDuplicando && c.defecto) setGrupoDtjoServicio(c.defecto);
+      }
+
+      // Transportadora y Proveedor por defecto (ID del maestro y su nombre)
+      if (crear && !msDuplicando) {
+        const t = a.Transportadora, p = a.Proveedor;
+        if (t && t.defecto && !msTransportadoraId) {
+          msTransportadoraId = t.defecto;
+          document.getElementById('ms-transportadora-input').value = t.defectoTexto || t.defecto;
+        }
+        if (p && p.defecto && !msProveedorSeleccionados.length) {
+          msProveedorSeleccionados.push({ id: p.defecto, proveedor: p.defectoTexto || p.defecto });
+          renderProveedorChips();
+        }
       }
 
       pintarUnidadServicio(); // botones o lista según cuántas unidades quedaron
@@ -13265,11 +13338,34 @@
       `).join('');
     }
 
+    // Un toque doble no guarda el servicio dos veces: mientras uno se guarda, los demás se ignoran
     async function guardarServicio() {
+      if (guardarServicio.enCurso) return;
+      guardarServicio.enCurso = true;
+      try {
+        await guardarServicioFormulario();
+      } finally {
+        guardarServicio.enCurso = false;
+      }
+    }
+
+    async function guardarServicioFormulario() {
       if (!modalServicio.idRecibo && modalServicio.modo !== 'pendiente') return;
 
       const faltantes = faltantesAjustesServicio();
       if (faltantes.length) return alert('Complete los campos obligatorios de esta operación:\n\n• ' + faltantes.join('\n• '));
+
+      // Cantidad y Valor Unitario siempre mayores que cero (para dejarlo en 0 está ⛔ Anular). No aplica a
+      // un servicio anulado ni a los campos bloqueados por estar validado.
+      const anulado = modalServicio.modo === 'editar' && msServicioExistente?.Estado === 'Red';
+      const cantidadEl = document.getElementById('ms-cantidad');
+      const valorUnitarioEl = document.getElementById('ms-valor-unitario');
+      if (!anulado && !cantidadEl.disabled && !(parseFloat(cantidadEl.value) > 0)) {
+        return alert('La Cantidad es obligatoria y debe ser mayor que cero. Para dejar un servicio en 0 use el botón ⛔ Anular.');
+      }
+      if (!anulado && !valorUnitarioEl.disabled && !(parseFloat(valorUnitarioEl.value) > 0)) {
+        return alert('El Valor Unitario es obligatorio y debe ser mayor que cero. Para dejar un servicio en 0 use el botón ⛔ Anular.');
+      }
 
       const formaDePago = (msContexto.modalidad === 'CREDITO') ? 3 : msFormaPagoActual;
 

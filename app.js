@@ -238,6 +238,10 @@ if (tareasDesactivadas) {
   const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
   iniciarProgramadorFormaPago();
 
+  // Borrado diario de recibos sin servicios creados antes de hoy (2:00 AM Colombia; Config_Parametros facturacion / Recibos)
+  const { iniciarProgramadorRecibosVacios } = require('./src/services/recibosVaciosCleaner');
+  iniciarProgramadorRecibosVacios();
+
   // Resumen diario de Casos Médicos en alerta (7:25 AM Colombia; Config_Parametros sst / Casos Medicos)
   const { iniciarProgramadorAlertasCasos } = require('./src/services/casosMedicosAlertas');
   iniciarProgramadorAlertasCasos();
