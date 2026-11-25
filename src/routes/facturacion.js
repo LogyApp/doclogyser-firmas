@@ -274,12 +274,78 @@ router.get('/api/clientes-credito', async (req, res) => {
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const [rows] = await pool.execute(
-      "SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre, Usuario as usuario, Fecha_Registro as fechaRegistro FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC"
-    );
-    res.json(rows);
+    const [[rows], [counts]] = await Promise.all([
+      pool.execute(
+        "SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre, Usuario as usuario, Fecha_Registro as fechaRegistro FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC"
+      ),
+      // Conteo de servicios: los recibos CREDITO se identifican por "Cliente a Facturar" (varios
+      // clientes crédito comparten Nit, p. ej. las PEPSICO, y los recibos crédito casi no llevan Nit)
+      pool.query(`
+        SELECT r.\`Cliente a Facturar\` AS clienteAFacturar, COUNT(*) AS cnt
+        FROM Dynamic_Servicios s
+        JOIN Dynamic_Recibos r ON r.IdRecibo = s.IdRecibo
+        WHERE r.\`Cliente a Facturar\` IS NOT NULL AND r.\`Cliente a Facturar\` <> ''
+        GROUP BY r.\`Cliente a Facturar\`
+      `)
+    ]);
+    const claveCliente = v => normalizarTexto(v);
+    const countMap = new Map();
+    counts.forEach(c => {
+      const k = claveCliente(c.clienteAFacturar);
+      countMap.set(k, (countMap.get(k) || 0) + (Number(c.cnt) || 0));
+    });
+    res.json(rows.map(r => ({ ...r, totalServicios: countMap.get(claveCliente(r.clienteAFacturar)) || 0 })));
   } catch (err) {
     console.error('[facturacion] GET /api/clientes-credito:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/clientes-credito/:id/servicios (servicios de recibos con ese Cliente a Facturar) ──
+router.get('/api/clientes-credito/:id/servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito')) || (await accesoMaestrosClientes(usuario));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [cc] = await pool.query('SELECT `Cliente a Facturar` AS clienteAFacturar FROM Maestro_Clientes_Credito WHERE ID = ?', [req.params.id]);
+    if (!cc.length || !String(cc[0].clienteAFacturar || '').trim()) return res.json([]);
+
+    const [rows] = await pool.query(`
+      SELECT
+        s.IdServicio AS idServicio,
+        s.IdRecibo AS idRecibo,
+        r.\`Consecutivo Recibo\` AS consecutivoRecibo,
+        DATE_FORMAT(s.\`Hora Inicio\`, '%Y-%m-%d %H:%i') AS fechaServicio,
+        r.\`Operación\` AS operacion,
+        ar.AREA AS area,
+        ca.Actividad AS actividad,
+        mp.Placa AS placa,
+        s.Vehiculo AS vehiculo,
+        s.Cantidad AS cantidad,
+        s.Unidad AS unidad,
+        s.\`Valor Unitario\` AS valorUnitario,
+        ROUND(COALESCE(s.Cantidad, 0) * COALESCE(s.\`Valor Unitario\`, 0)) AS subtotal,
+        COALESCE(r.\`Cliente a Facturar\`, mc.\`Razón social\`) AS cliente,
+        r.Nit AS nit,
+        s.\`Forma De Pago\` AS formaDePago,
+        s.Estado AS estado,
+        s.Usuario AS usuario,
+        DATE_FORMAT(s.Fecha, '%Y-%m-%d %H:%i:%s') AS fechaRegistro
+      FROM Dynamic_Recibos r
+      JOIN Dynamic_Servicios s ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Config_Area ar ON s.Area = ar.ID
+      LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID
+      LEFT JOIN Maestro_Placas mp ON s.PL1 = mp.ID
+      LEFT JOIN Maestro_Clientes mc ON r.Nit = mc.\`Código\`
+      WHERE r.\`Cliente a Facturar\` = ?
+      ORDER BY s.\`Hora Inicio\` DESC, s.IdServicio DESC
+      LIMIT 500
+    `, [cc[0].clienteAFacturar]);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/clientes-credito/:id/servicios:', err);
     res.status(500).json([]);
   }
 });

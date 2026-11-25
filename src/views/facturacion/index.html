@@ -2562,12 +2562,13 @@
                 <th style="width: 260px;" data-sort="clienteAFacturar">Cliente a Facturar<span id="cliSort-clienteAFacturar" class="sort-indicator"></span></th>
                 <th style="width: 130px;" data-sort="nit">NIT<span id="cliSort-nit" class="sort-indicator"></span></th>
                 <th style="width: 280px;" data-sort="nombre">Nombre / Razón Social<span id="cliSort-nombre" class="sort-indicator"></span></th>
+                <th style="width: 140px; text-align: center;" data-sort="totalServicios">Servicios<span id="cliSort-totalServicios" class="sort-indicator"></span></th>
                 <th style="width: 140px;" data-sort="usuario">Usuario<span id="cliSort-usuario" class="sort-indicator"></span></th>
                 <th style="width: 160px;" data-sort="fechaRegistro">Fecha Registro<span id="cliSort-fechaRegistro" class="sort-indicator"></span></th>
               </tr>
             </thead>
             <tbody id="tabla-clientes-body">
-              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
             </tbody>
           </table>
         </div>
@@ -7475,13 +7476,21 @@
       verServiciosAsociados('cliente', codigo, (c && c.razonSocial) || 'Cliente', Number(c && c.totalServicios) || 0);
     }
 
+    // Cliente Crédito: servicios de los recibos con ese "Cliente a Facturar"
+    function verServiciosClienteCredito(id) {
+      const c = allClientes.find(x => String(x.id) === String(id));
+      const nombre = c ? (c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || 'Cliente crédito') : 'Cliente crédito';
+      verServiciosAsociados('credito', id, nombre, Number(c && c.totalServicios) || 0);
+    }
+
     async function verServiciosAsociados(tipo, id, nombre, totalConocido = 0) {
-      const base = tipo === 'cliente' ? '/facturacion/api/maestro-clientes' : catDef(tipo).base;
+      const base = { cliente: '/facturacion/api/maestro-clientes', credito: '/facturacion/api/clientes-credito' }[tipo] || catDef(tipo).base;
       document.getElementById('mserv-modal-titulo').textContent = {
         transportadora: '📋 Servicios Asociados a la Transportadora',
         proveedor: '📋 Servicios Asociados al Proveedor',
         placa: '📋 Servicios Asociados a la Placa',
         cliente: '📋 Servicios Asociados al Cliente',
+        credito: '📋 Servicios Asociados al Cliente Crédito',
       }[tipo];
 
       document.getElementById('mserv-subtitulo-entidad').textContent = `${nombre} (ID: ${id})`;
@@ -8432,7 +8441,7 @@
         allClientes.sort((a, b) => {
           let va = a[col] ?? (col === 'clienteAFacturar' ? (a.clienteFacturar || a['Cliente a Facturar'] || '') : '');
           let vb = b[col] ?? (col === 'clienteAFacturar' ? (b.clienteFacturar || b['Cliente a Facturar'] || '') : '');
-          if (col === 'bloqueo' || col === 'nit') {
+          if (col === 'bloqueo' || col === 'nit' || col === 'totalServicios') {
             va = Number(va) || 0;
             vb = Number(vb) || 0;
             return order === 'asc' ? va - vb : vb - va;
@@ -8445,7 +8454,7 @@
         });
       }
 
-      ['bloqueo','clienteAFacturar','nit','nombre','usuario','fechaRegistro'].forEach(k => {
+      ['bloqueo','clienteAFacturar','nit','nombre','totalServicios','usuario','fechaRegistro'].forEach(k => {
         const span = document.getElementById('cliSort-' + k);
         if (!span) return;
         span.textContent = sortClientesState.col === k ? (sortClientesState.order === 'asc' ? ' ▲' : ' ▼') : '';
@@ -8507,7 +8516,7 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron clientes crédito con los criterios de búsqueda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron clientes crédito con los criterios de búsqueda.</td></tr>';
         return;
       }
 
@@ -8531,6 +8540,10 @@
         const usrNom = c.usuario || 'Sistema';
         const fReg = c.fechaRegistro ? c.fechaRegistro.replace('T', ' ').slice(0, 19) : '—';
         const disabledAttr = puedeGestionar ? '' : 'disabled title="Solo los roles Facturación y Sistema pueden modificar el bloqueo"';
+        const cntServ = Number(c.totalServicios) || 0;
+        const badgeServicios = cntServ > 0
+          ? `<button type="button" class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700; border: none; cursor: pointer; padding: 4px 10px; border-radius: 12px;" title="Ver los ${cntServ} servicios relacionados" onclick="event.stopPropagation(); verServiciosClienteCredito('${esc(c.id)}')">📊 ${cntServ.toLocaleString('es-CO')} serv.</button>`
+          : `<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">0 serv.</span>`;
 
         tr.innerHTML = `
           <td style="text-align: center;">
@@ -8542,6 +8555,7 @@
           <td class="dato-destacado" style="font-weight: 600; color: var(--accent);">${esc(cFNom)}</td>
           <td style="font-family: monospace; font-size: 0.85rem;">${esc(c.nit) || '—'}</td>
           <td>${esc(c.nombre)}</td>
+          <td style="text-align: center;">${badgeServicios}</td>
           <td style="font-size: 0.85rem; color: var(--text-muted);">${esc(usrNom)}</td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(fReg)}</td>
         `;
