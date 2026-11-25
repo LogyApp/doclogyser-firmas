@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { computarAccesoSst } = require('../services/accesoSst');
-const { permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
+const { permisosSstDelRol, puedeProcesarRetiradosSst, nombrePestanaDocInicial } = require('../services/configSst');
 const { permisosParticipacion } = require('../services/configParticipacion');
 const { gestionarContacto } = require('../services/contactoEnlaceSst');
 const {
@@ -326,6 +326,7 @@ router.get(['/', '/:tab'], async (req, res) => {
       permisosSst: await permisosSstDelRol(acceso.rol), // crear/eliminar/plantillas (Config_Parametros, sst)
       permisosParticipacion: await permisosParticipacion(acceso.rol), // Config_Parametros sst / Participación
       puedeProcesarRetirados: await puedeProcesarRetiradosSst(acceso.rol),
+      nombreDocInicial: await nombrePestanaDocInicial(), // Config_Parametros sst / General
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));

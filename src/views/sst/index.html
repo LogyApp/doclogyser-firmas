@@ -2626,7 +2626,7 @@
       <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">☰</button>
       <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
     </div>
-    <div class="mobile-title"><span id="mobileHeaderTitle">SST — Documentación Inicial</span></div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">SST — Documentos de Inducción</span></div>
     <div class="mobile-header-right">
       <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
         <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
@@ -2664,14 +2664,15 @@
 
     <!-- Lista de Navegación (Pestañas en Orden AppSheet) -->
     <ul class="nav-list">
-      <!-- 1. Documentación Inicial (pestaña por defecto): subpestañas ARO (/js/sst-aro.js), EVIN (/js/sst-evin.js) e INGE (/js/sst-inge.js) -->
+      <!-- 1. Documentos de Inducción (pestaña por defecto; data-tab "docinicial"). Nombre: Config_Parametros sst / General.
+           Subpestañas: ARO, EVIN, INGE, Prueba de Consumo y Compromiso SST (SUBTABS_DOC_INICIAL) -->
       <li class="nav-item active" data-tab="docinicial" onclick="switchTab('docinicial')">
-        <div class="nav-icon" title="Documentación Inicial">
+        <div class="nav-icon" title="Documentos de Inducción" id="nav-icon-docinicial">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8v-2zm0 4h8v2H8v-2zm0-8h3v2H8V8z"/>
           </svg>
         </div>
-        <span>Documentación Inicial</span>
+        <span id="nav-nombre-docinicial">Documentos de Inducción</span>
       </li>
 
       <!-- Evaluación SST: desactivada desde 2026-11-24 (sin roles en Maestro_Menu; la reemplazó EVIN) -->
@@ -2694,15 +2695,7 @@
         <span>Capacitación SST</span>
       </li>
 
-      <!-- 3. Prueba de Consumo -->
-      <li class="nav-item" data-tab="pruebaconsumo" onclick="switchTab('pruebaconsumo')">
-        <div class="nav-icon" title="Prueba de Consumo">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>
-          </svg>
-        </div>
-        <span>Prueba de Consumo</span>
-      </li>
+      <!-- Prueba de Consumo y Compromiso SST: ahora son subpestañas de Documentos de Inducción (SUBTABS_DOC_INICIAL) -->
 
       <!-- 4. Participación -->
       <li class="nav-item" data-tab="participacion" onclick="switchTab('participacion')">
@@ -2712,16 +2705,6 @@
           </svg>
         </div>
         <span>Participación</span>
-      </li>
-
-      <!-- 5. Compromiso SST -->
-      <li class="nav-item" data-tab="compromiso" onclick="switchTab('compromiso')">
-        <div class="nav-icon" title="Compromiso SST">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 6l-3.58 3.59c-.39.39-1.02.39-1.41 0L7.59 8.17 6.17 9.59l2.83 2.83c1.17 1.17 3.07 1.17 4.24 0L16.83 8.83 14 6zm7.71 4.29l-3.59-3.59a1 1 0 0 0-1.41 0L15.3 8.12l2.83 2.83 1.17-1.17a1 1 0 0 0 0-1.41zM10.59 14.59L9.17 16l3.59 3.59c.39.39 1.02.39 1.41 0l3.59-3.59-1.41-1.41-2.88 2.88-2.88-2.88zM2.29 13.71l3.59 3.59a1 1 0 0 0 1.41 0l1.41-1.41-2.83-2.83-2.17 2.17a1 1 0 0 0 0 1.41z"/>
-          </svg>
-        </div>
-        <span>Compromiso SST</span>
       </li>
 
       <!-- 6. Gestión Médica -->
@@ -3247,13 +3230,17 @@
       </div>
     </section>
 
-    <!-- PESTAÑA 3b: DOCUMENTACIÓN INICIAL. Cada subpestaña se ve según Maestro_Menu (sst / ARO, sst / EVIN, sst / INGE).
-         ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js · INGE: /js/sst-inge.js -->
+    <!-- PESTAÑA DOCUMENTOS DE INDUCCIÓN (antes Documentación Inicial). Cada subpestaña se ve según Maestro_Menu
+         (sst / ARO, EVIN, INGE, Prueba de Consumo, Compromiso SST). ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js · INGE: /js/sst-inge.js.
+         Prueba de Consumo y Compromiso SST conservan su propio pane (pane-pruebaconsumo, pane-compromiso); la barra se
+         pasa a ese pane al abrirlas (colocarBarraDocInicial). -->
     <section class="tab-pane" id="pane-docinicial" style="display: none;">
-      <div class="subtabs-bar" role="tablist" aria-label="Documentación Inicial">
+      <div class="subtabs-bar" id="subtabs-docinicial" role="tablist" aria-label="Documentos de Inducción">
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-aro" data-subtab-docinicial="aro" role="tab" onclick="switchDocInicialSubtab('aro')">Análisis de Riesgo</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-evin" data-subtab-docinicial="evin" role="tab" onclick="switchDocInicialSubtab('evin')">Evaluación de Inducción</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-inge" data-subtab-docinicial="inge" role="tab" onclick="switchDocInicialSubtab('inge')">Comprobante de Inducción</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-pruebaconsumo" data-subtab-docinicial="pruebaconsumo" role="tab" onclick="switchDocInicialSubtab('pruebaconsumo')">Prueba de Consumo</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-compromiso" data-subtab-docinicial="compromiso" role="tab" onclick="switchDocInicialSubtab('compromiso')">Compromisos SST</button>
       </div>
       <div id="pane-aro" role="tabpanel" style="display: none;"></div>
       <div id="pane-evin" role="tabpanel" style="display: none;"></div>
@@ -3261,7 +3248,7 @@
       <!-- Campana de Notificaciones de Documentación Inicial (se ubica en el encabezado de la subpestaña visible) -->
       <div style="display: none;" id="notif-bell-holder-doc">
         <div class="notif-bell-container" id="notif-bell-container-doc">
-          <button type="button" class="btn-notif-bell" id="btn-notif-bell-doc" onclick="toggleNotificacionesDropdown('doc')" title="Notificaciones de Documentación Inicial" aria-label="Notificaciones de Documentación Inicial">
+          <button type="button" class="btn-notif-bell" id="btn-notif-bell-doc" onclick="toggleNotificacionesDropdown('doc')" title="Notificaciones de Documentos de Inducción" aria-label="Notificaciones de Documentos de Inducción">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -4985,7 +4972,18 @@
       return secciones.some(sec => normalizarTextoSeccionSst(sec) === buscada);
     }
 
-    // Documentación Inicial: una subpestaña por Sección de Maestro_Menu; la pestaña se ve si tiene alguna
+    // Documentos de Inducción (data-tab "docinicial"): una subpestaña por Sección de Maestro_Menu; la pestaña se ve si
+    // tiene alguna. Su nombre viene de Config_Parametros sst / General (CONFIG.nombreDocInicial).
+    const NOMBRE_DOC_INICIAL = CONFIG.nombreDocInicial || 'Documentos de Inducción';
+    (function aplicarNombreDocInicial() {
+      const nombre = document.getElementById('nav-nombre-docinicial');
+      if (nombre) nombre.textContent = NOMBRE_DOC_INICIAL;
+      const icono = document.getElementById('nav-icon-docinicial');
+      if (icono) icono.title = NOMBRE_DOC_INICIAL;
+      const barra = document.getElementById('subtabs-docinicial');
+      if (barra) barra.setAttribute('aria-label', NOMBRE_DOC_INICIAL);
+    })();
+
     // Nombre visible de una sección: Maestro_Menu.Etiqueta (CONFIG.etiquetasSeccion), o el que se indique
     function etiquetaSeccionSst(seccion, defecto) {
       const etiquetas = CONFIG.etiquetasSeccion || {};
@@ -4998,9 +4996,32 @@
     const SUBTABS_DOC_INICIAL = [
       { id: 'aro', seccion: 'ARO', titulo: etiquetaSeccionSst('ARO', 'Análisis de Riesgo'), buscar: 'buscarAroSst' },
       { id: 'evin', seccion: 'EVIN', titulo: etiquetaSeccionSst('EVIN', 'Evaluación de Inducción'), buscar: 'buscarEvinSst' },
-      { id: 'inge', seccion: 'INGE', titulo: etiquetaSeccionSst('INGE', 'Comprobante de Inducción'), buscar: 'buscarIngeSst' }
+      { id: 'inge', seccion: 'INGE', titulo: etiquetaSeccionSst('INGE', 'Comprobante de Inducción'), buscar: 'buscarIngeSst' },
+      // Con "tab": siguen siendo pestañas por dentro (su pane, datos y URL ?tab=...), solo se muestran como subpestañas
+      { id: 'pruebaconsumo', seccion: 'Prueba de Consumo', titulo: etiquetaSeccionSst('Prueba de Consumo', 'Prueba de Consumo'), tab: 'pruebaconsumo' },
+      { id: 'compromiso', seccion: 'Compromiso SST', titulo: etiquetaSeccionSst('Compromiso SST', 'Compromisos SST'), tab: 'compromiso' }
     ];
     let subtabDocInicial = null;
+    const esSubtabTabDocInicial = (tabId) => SUBTABS_DOC_INICIAL.some(s => s.tab === tabId);
+
+    // Lleva la barra de subpestañas al pane que se está mostrando (docinicial, pruebaconsumo o compromiso)
+    function colocarBarraDocInicial(tabId) {
+      const barra = document.getElementById('subtabs-docinicial');
+      const pane = document.getElementById(`pane-${tabId}`);
+      if (barra && pane && pane.firstElementChild !== barra) pane.insertBefore(barra, pane.firstElementChild);
+    }
+
+    function marcarSubtabsDocInicial(activa) {
+      const permitidas = subtabsDocInicialPermitidas();
+      SUBTABS_DOC_INICIAL.forEach(s => {
+        const btn = document.getElementById(`subtab-btn-docinicial-${s.id}`);
+        if (!btn) return;
+        btn.textContent = s.titulo;
+        btn.style.display = permitidas.includes(s) ? '' : 'none';
+        btn.classList.toggle('active', s.id === activa);
+        btn.setAttribute('aria-selected', String(s.id === activa));
+      });
+    }
 
     function subtabsDocInicialPermitidas() {
       return SUBTABS_DOC_INICIAL.filter(s => tieneAccesoSeccionSst(s.seccion));
@@ -5383,9 +5404,10 @@
         targetSubtab = ['temas', 'tema'].includes(rawSubtab) ? 'temas' : 'evals';
       } else if (['pruebaconsumo', 'prueba', 'consumo', 'pc'].includes(rawTab)) {
         targetTab = 'pruebaconsumo';
-      } else if (['docinicial', 'documentacioninicial', 'aro', 'analisisriesgo', 'evin', 'inge'].includes(rawTab)) {
+      } else if (['docinicial', 'documentacioninicial', 'documentosinduccion', 'aro', 'analisisriesgo', 'evin', 'inge'].includes(rawTab)) {
         targetTab = 'docinicial';
-        targetSubtab = ['aro', 'evin', 'inge'].includes(rawTab) ? rawTab : (['aro', 'evin', 'inge'].includes(rawSubtab) ? rawSubtab : null);
+        const subtabsDoc = SUBTABS_DOC_INICIAL.map(s => s.id);
+        targetSubtab = subtabsDoc.includes(rawTab) ? rawTab : (subtabsDoc.includes(rawSubtab) ? rawSubtab : null);
       } else if (['participacion', 'asistencia', 'part'].includes(rawTab)) {
         targetTab = 'participacion';
       } else if (['compromiso', 'compromisosst', 'csst'].includes(rawTab)) {
@@ -6353,10 +6375,10 @@
     const TITULOS_SST = {
       evaluacion: 'Evaluación SST',
       capacitacion: 'Capacitación',
-      pruebaconsumo: 'Prueba de Consumo',
-      docinicial: 'Documentación Inicial',
+      pruebaconsumo: etiquetaSeccionSst('Prueba de Consumo', 'Prueba de Consumo'),
+      docinicial: NOMBRE_DOC_INICIAL,
       participacion: 'Participación',
-      compromiso: 'Compromisos SST',
+      compromiso: etiquetaSeccionSst('Compromiso SST', 'Compromisos SST'),
       gestionmedica: 'Gestión Médica',
       inspecciones: 'Inspecciones Vehículos',
       ats: 'ATS (Análisis de Trabajo Seguro)'
@@ -6374,9 +6396,12 @@
         tabId = fallback;
       }
       currentTab = tabId;
+      // Prueba de Consumo y Compromiso SST se ven dentro de Documentos de Inducción
+      const enDocInicial = esSubtabTabDocInicial(tabId);
+      const navTab = enDocInicial ? 'docinicial' : tabId;
 
       document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.toggle('active', item.getAttribute('data-tab') === tabId);
+        item.classList.toggle('active', item.getAttribute('data-tab') === navTab);
       });
 
       document.querySelectorAll('.tab-pane').forEach(pane => {
@@ -6384,6 +6409,11 @@
       });
       const activePane = document.getElementById(`pane-${tabId}`);
       if (activePane) activePane.style.display = 'block';
+      if (enDocInicial) {
+        subtabDocInicial = tabId;
+        colocarBarraDocInicial(tabId);
+        marcarSubtabsDocInicial(tabId);
+      }
 
       if (window.innerWidth <= 900) {
         toggleMobileSidebar(false);
@@ -6441,16 +6471,19 @@
       if (!permitidas.length) return;
       const actual = permitidas.find(s => s.id === subtab) || permitidas[0];
       subtabDocInicial = actual.id;
-      SUBTABS_DOC_INICIAL.forEach(s => {
-        const btn = document.getElementById(`subtab-btn-docinicial-${s.id}`);
+      // Prueba de Consumo / Compromiso SST: se abre su pestaña (switchTab les pone la barra y marca la subpestaña)
+      if (actual.tab) {
+        switchTab(actual.tab, options);
+        return;
+      }
+      if (currentTab !== 'docinicial') {
+        switchTab('docinicial', options); // vuelve a llamar esta función con subtabDocInicial ya puesto
+        return;
+      }
+      colocarBarraDocInicial('docinicial');
+      marcarSubtabsDocInicial(actual.id);
+      SUBTABS_DOC_INICIAL.filter(s => !s.tab).forEach(s => {
         const pane = document.getElementById(`pane-${s.id}`);
-        const visible = permitidas.includes(s);
-        if (btn) {
-          btn.textContent = s.titulo;
-          btn.style.display = visible ? '' : 'none';
-          btn.classList.toggle('active', s === actual);
-          btn.setAttribute('aria-selected', String(s === actual));
-        }
         if (pane) pane.style.display = s === actual ? 'block' : 'none';
       });
       sincronizarUrlPestana('docinicial', actual.id, options || {});

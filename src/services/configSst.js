@@ -173,7 +173,18 @@ async function puedeProcesarRetiradosSst(rol) {
   return rolEn(roles, rol);
 }
 
+// Nombre de la pestaña que agrupa ARO, EVIN, INGE, Prueba de Consumo y Compromiso SST (data-tab "docinicial")
+const CONCEPTO_NOMBRE_DOC_INICIAL = 'Nombre de la pestaña Documentos de Inducción';
+const DEFECTO_NOMBRE_DOC_INICIAL = 'Documentos de Inducción';
+
+async function nombrePestanaDocInicial() {
+  const filas = await leerParametros();
+  const fila = filas.find((f) => normalizar(f.Concepto) === normalizar(CONCEPTO_NOMBRE_DOC_INICIAL));
+  return (fila && String(fila.Parametro || '').trim()) || DEFECTO_NOMBRE_DOC_INICIAL;
+}
+
 module.exports = {
+  nombrePestanaDocInicial,
   rolPuedeSst,
   autorizarAccionSst,
   permisosSstDelRol,
