@@ -1581,7 +1581,7 @@ ${encabezadoLogo('#8e44ad')}
           El trabajador <strong>${nombreTrabajador}</strong> (C.C. ${identificacion}) ha firmado digitalmente el <strong>Compromiso de Cumplimiento SST (SST-F-005)</strong>.
         </p>
         <p style="color:#555;margin:0 0 20px;line-height:1.6;font-size:.95rem">
-          Por favor, ingrese al panel de administración de Compromisos SST para realizar su firma como Analista SST y avanzar con el flujo.
+          Por favor, ingrese al panel de administración de Compromisos SST para realizar su firma como responsable y avanzar con el flujo.
         </p>
       </div>
       <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
@@ -1606,7 +1606,7 @@ ${encabezadoLogo('#8e44ad')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado Líder SST,</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
-          Se informa que el trabajador <strong>${nombreTrabajador}</strong> y la Analista SST <strong>${nombreAnalista}</strong> han firmado el <strong>Compromiso de Cumplimiento de las Normas de Seguridad y Salud en el Trabajo</strong> (SST-F-005).
+          Se informa que el trabajador <strong>${nombreTrabajador}</strong> y el responsable <strong>${nombreAnalista}</strong> han firmado el <strong>Compromiso de Cumplimiento de las Normas de Seguridad y Salud en el Trabajo</strong> (SST-F-005).
         </p>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
           El documento PDF ha sido generado exitosamente con las firmas correspondientes, incluyendo su firma digital autorizada. Puede visualizar el documento final en el siguiente enlace:

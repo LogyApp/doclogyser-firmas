@@ -26,6 +26,7 @@ const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const { LOGO_BASE64 } = require('../services/assets');
 const { computarAccesoSst } = require('../services/accesoSst');
 const { rolPuedeSst, permisosSstDelRol, puedeProcesarRetiradosSst } = require('../services/configSst');
+const { urlFirmaRegistrada } = require('../services/firmaUsuario');
 
 const router = express.Router();
 
@@ -235,6 +236,53 @@ async function regenerarPdfCompromiso(c) {
     "UPDATE Maestro_notificaciones SET url_doc = ? WHERE modulo = 'csst' AND referencia_id = ? AND url_doc IS NOT NULL",
     [urlDoc, c.idcsst]
   ).catch(e => console.error('[compromisosst] Error actualizando notificación CSST:', e.message));
+  return urlDoc;
+}
+
+// Cierra el compromiso cuando ya firmó el trabajador: firma del responsable (resp), firma automática del
+// Líder SST, PDF, Maestro_docTrabajador y notificación de la campana. resp: { cc, nombre, cargo, url, valor }
+// (valor va en firma_analista: la imagen dibujada o, con firma registrada, su URL).
+// Lo usan la firma manual del responsable y la firma del trabajador cuando quien creó el registro tiene firma registrada.
+async function completarCompromiso(c, resp) {
+  // Líder SST: nombre del usuario con Rol LiderSst y su firma fija
+  const nombreLiderSst = await nombreLiderSstPorDefecto();
+  const urlFirmaLider = 'https://storage.googleapis.com/firmas-images/1035427104/firmalidersst.png';
+  const firmaLiderBase64 = await obtenerFirmaBase64Reciente('1035427104').catch(() => null) || 'FIRMADO_LIDER_AUTOMATICO';
+
+  const fechaDoc = hoyBogotaStr();
+  const fechaFirma = new Date(); // responsable y Líder SST firman en el mismo momento
+  const urlDoc = await armarPdfCompromiso({
+    ...c,
+    nombre_analista: resp.nombre,
+    cargo_analista: resp.cargo,
+    url_firma_analista: resp.url,
+    url_firma_lidersst: urlFirmaLider,
+    nombre_lidersst: nombreLiderSst,
+    fecha_firma_analista: fechaFirma,
+    fecha_firma_lidersst: fechaFirma,
+    fecha_documento: fechaDoc,
+  });
+
+  await pool.execute(
+    `UPDATE Dynamic_compromisosst
+     SET firma_analista = ?, url_firma_analista = ?, fecha_firma_analista = ?,
+         identificacionanalista = ?, nombre_analista = ?, cargo_analista = ?,
+         firma_lidersst = ?, url_firma_lidersst = ?, fecha_firma_lidersst = ?, nombre_lidersst = ?, url_doc = ?, fecha_documento = ?,
+         token_lidersst = NULL, token_lidersst_expira = NULL
+     WHERE idcsst = ?`,
+    [resp.valor, resp.url, fechaFirma, resp.cc, resp.nombre, resp.cargo,
+      firmaLiderBase64, urlFirmaLider, fechaFirma, nombreLiderSst, urlDoc, fechaDoc, c.idcsst]
+  );
+
+  await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
+
+  pool.execute(
+    `UPDATE Maestro_notificaciones
+     SET resultado = 'COMPLETADO', url_doc = ?, titulo = 'Compromiso SST Completado'
+     WHERE modulo = 'csst' AND referencia_id = ?`,
+    [urlDoc, c.idcsst]
+  ).catch(e => console.error('[compromisosst] Error actualizando notificación CSST:', e.message));
+
   return urlDoc;
 }
 
@@ -1017,18 +1065,35 @@ router.post('/api/firmar-trabajador', async (req, res) => {
     const urlFirmaTrab = await subirFirma(c.identificaciontrabajador, buffer);
 
     await pool.execute(
-      `UPDATE Dynamic_compromisosst 
+      `UPDATE Dynamic_compromisosst
        SET firma_trabajador = ?, url_firma_trabajador = ?, fecha_firma_trabajador = NOW(), token_trabajador = NULL, token_trabajador_expira = NULL
        WHERE idcsst = ?`,
       [firma_base64, urlFirmaTrab, idcsst]
     );
 
-    // Notificar en la campana al usuario que creó el registro para que pueda firmar y generar el PDF
+    // Como en EVIN e INGE: si quien creó el registro tiene firma registrada, esa es la del responsable y el
+    // PDF queda listo con la firma del trabajador. Si no la tiene, queda pendiente de su firma manual.
+    let urlDoc = null;
+    const urlFirmaResp = await urlFirmaRegistrada(c.usuario).catch(() => null);
+    if (urlFirmaResp) {
+      try {
+        const [[firmado]] = await pool.execute('SELECT * FROM Dynamic_compromisosst WHERE idcsst = ?', [idcsst]);
+        urlDoc = await completarCompromiso(firmado, {
+          cc: c.identificacionanalista, nombre: c.nombre_analista, cargo: c.cargo_analista, url: urlFirmaResp, valor: urlFirmaResp,
+        });
+      } catch (err) {
+        // La firma del trabajador ya quedó guardada: el responsable puede firmar a mano como antes
+        console.error(`[compromisosst] No se pudo completar con la firma registrada (${idcsst}):`, err.message);
+      }
+    }
+
+    // Campana de quien creó el registro: completado con el PDF o pendiente de su firma
     crearNotificacionCompromisoSST(pool, {
       idcsst,
       identificacion: c.identificaciontrabajador,
       usuarioCreador: c.usuario,
-      nombre_trabajador: c.nombre_trabajador
+      nombre_trabajador: c.nombre_trabajador,
+      urlDoc
     }).catch(e => console.error('[compromisosst] Error creando notificación en campana:', e.message));
 
     res.json({ ok: true });
@@ -1065,10 +1130,10 @@ router.post('/api/firmar-analista', async (req, res) => {
 
     const c = rows[0];
     if (!c.firma_trabajador) {
-      return res.status(400).json({ error: 'El trabajador debe firmar antes del Analista SST.' });
+      return res.status(400).json({ error: 'El trabajador debe firmar antes del responsable.' });
     }
     if (c.firma_analista) {
-      return res.status(400).json({ error: 'El Analista SST ya ha firmado anteriormente.' });
+      return res.status(400).json({ error: 'El responsable ya ha firmado anteriormente.' });
     }
 
     // Resolver datos del firmante actual (Plan B / Analista)
@@ -1099,69 +1164,10 @@ router.post('/api/firmar-analista', async (req, res) => {
     const finalName = signerName || c.nombre_analista;
     const finalCargo = signerCargo || c.cargo_analista;
 
-    // Subir firma del Analista a GCS
+    // Subir firma del responsable a GCS y cerrar el compromiso (Líder SST, PDF, documento, campana)
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const urlFirmaAna = await subirFirma(finalCC, buffer);
-
-    // 1. Obtener el nombre del Líder SST de la tabla Maestro_Usuarios (Rol = 'LiderSst')
-    const nombreLiderSst = await nombreLiderSstPorDefecto();
-
-    // 2. Obtener firma del Líder SST en base64 y su URL
-    const urlFirmaLider = 'https://storage.googleapis.com/firmas-images/1035427104/firmalidersst.png';
-    const firmaLiderBase64 = await obtenerFirmaBase64Reciente('1035427104').catch(() => null) || 'FIRMADO_LIDER_AUTOMATICO';
-
-    // 3. Generar PDF del compromiso inmediatamente
-    const fechaDoc = hoyBogotaStr();
-    const fechaFirma = new Date(); // la del Líder SST se pone en el mismo momento
-    const urlDoc = await armarPdfCompromiso({
-      ...c,
-      nombre_analista: finalName,
-      cargo_analista: finalCargo,
-      url_firma_analista: urlFirmaAna,
-      url_firma_lidersst: urlFirmaLider,
-      nombre_lidersst: nombreLiderSst,
-      fecha_firma_analista: fechaFirma,
-      fecha_firma_lidersst: fechaFirma,
-      fecha_documento: fechaDoc,
-    });
-
-    // 4. Actualizar registro en la base de datos (con firmas de Analista y Líder, y url_doc)
-    await pool.execute(
-      `UPDATE Dynamic_compromisosst
-       SET firma_analista = ?, url_firma_analista = ?, fecha_firma_analista = ?,
-           identificacionanalista = ?, nombre_analista = ?, cargo_analista = ?,
-           firma_lidersst = ?, url_firma_lidersst = ?, fecha_firma_lidersst = ?, nombre_lidersst = ?, url_doc = ?, fecha_documento = ?,
-           token_lidersst = NULL, token_lidersst_expira = NULL
-       WHERE idcsst = ?`,
-      [
-        firma_base64,
-        urlFirmaAna,
-        fechaFirma,
-        finalCC,
-        finalName,
-        finalCargo,
-        firmaLiderBase64,
-        urlFirmaLider,
-        fechaFirma,
-        nombreLiderSst,
-        urlDoc,
-        fechaDoc,
-        idcsst
-      ]
-    );
-
-    // 5. Registrar en Maestro_docTrabajador (Tipo 72, Prefijo CSST)
-    await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
-
-    // 6. Actualizar notificación en la campana con el PDF final generado
-    pool.execute(
-      `UPDATE Maestro_notificaciones 
-       SET resultado = 'COMPLETADO', url_doc = ?, titulo = 'Compromiso SST Completado' 
-       WHERE modulo = 'csst' AND referencia_id = ?`,
-      [urlDoc, idcsst]
-    ).catch(e => console.error('[compromisosst] Error actualizando notificación CSST:', e.message));
-
-
+    const urlDoc = await completarCompromiso(c, { cc: finalCC, nombre: finalName, cargo: finalCargo, url: urlFirmaAna, valor: firma_base64 });
 
     res.json({ ok: true, urlDoc });
   } catch (err) {
@@ -1262,7 +1268,7 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
 
     const c = rows[0];
     if (!c.firma_analista) {
-      return res.status(400).json({ error: 'El Analista SST debe firmar antes del Líder SST.' });
+      return res.status(400).json({ error: 'El responsable debe firmar antes del Líder SST.' });
     }
     if (c.firma_lidersst) {
       return res.status(400).json({ error: 'El Líder SST ya ha firmado anteriormente.' });

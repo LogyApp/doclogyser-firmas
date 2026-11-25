@@ -207,10 +207,10 @@
     <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
   </div>
 
-  <!-- Modal para que firmen como Analista SST -->
+  <!-- Modal para que firmen como responsable -->
   <div id="modal-firmar-analista" class="loading-overlay" style="display: none; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 9999;">
     <div class="card" style="background: #fff; width: 95%; max-width: 500px; padding: 24px; border-radius: 12px; border-left: 5px solid #8e44ad; position: relative; margin: auto; text-align: center;">
-      <div class="section-title">Firma del Analista SST</div>
+      <div class="section-title">Firma del responsable</div>
       <p style="font-size: .88rem; color: #64748b; margin-bottom: 15px;">Dibuja tu firma a continuación para autorizar el Compromiso SST:</p>
       
       <!-- Sección firma prellenada (si existe) -->
@@ -411,7 +411,7 @@
     let columns = [
       { key: 'fecha', label: 'Fecha de Registro' },
       { key: 'trabajador', label: 'Trabajador' },
-      { key: 'analista', label: 'Analista SST' },
+      { key: 'analista', label: 'Responsable' },
       { key: 'estado', label: 'Estado Firmas' },
       { key: 'notificar', label: 'Notificar' },
       { key: 'pdf', label: 'Documento PDF' },
@@ -812,7 +812,7 @@
         infoBox.innerHTML = `
           <p><strong>Trabajador:</strong> ${data.identificaciontrabajador} ** ${data.nombre_trabajador}</p>
           <p><strong>Cargo:</strong> ${data.cargo_trabajador}</p>
-          <p><strong>Analista SST:</strong> ${data.nombre_analista} (C.C. ${data.identificacionanalista})</p>
+          <p><strong>Responsable:</strong> ${data.nombre_analista} (C.C. ${data.identificacionanalista})</p>
           <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
           <p><strong>Estado Firmas:</strong> ${badgeFirma}</p>
           ${expiraHtml}
@@ -868,7 +868,7 @@
         } else if (data.estado === 'AMARILLO' && (esCreadorOSistema || esPlanBAnalista)) {
           optsHtml += `
             <div class="section-title" style="margin-top: 15px;">Firma del Analista</div>
-            <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como Analista SST</button>
+            <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como responsable</button>
           `;
         }
 
@@ -957,7 +957,7 @@
 
     function abrirModalFirmaAnalista() {
       modalMode = 'analista';
-      document.querySelector('#modal-firmar-analista .section-title').innerText = 'Firma del Analista SST';
+      document.querySelector('#modal-firmar-analista .section-title').innerText = 'Firma del responsable';
       document.querySelector('#modal-firmar-analista p').innerText = 'Dibuja tu firma a continuación para autorizar el Compromiso SST como Analista:';
       
       const prefilledSec = document.getElementById('modal-prefilled-section');

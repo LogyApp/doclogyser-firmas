@@ -215,7 +215,7 @@
     const r = st.responsable;
     $('evin-modal-titulo').textContent = '➕ Generar EVIN';
     $('evin-modal-bd').innerHTML = `
-      <div class="evin-resp ${r.tieneFirma ? '' : 'sin-firma'}">Firma como <strong>Responsable de Inducción</strong>: ${esc(r.nombre || '—')}${r.cargo ? ` · ${esc(r.cargo)}` : ''}
+      <div class="evin-resp ${r.tieneFirma ? '' : 'sin-firma'}">Firma como <strong>Responsable</strong>: ${esc(r.nombre || '—')}${r.cargo ? ` · ${esc(r.cargo)}` : ''}
         ${r.tieneFirma ? '' : '<br>⚠️ No tiene firma registrada: el PDF saldrá sin su firma. Regístrela en su perfil antes de generar.'}</div>
       <div class="filters-grid" style="margin-bottom:10px">
         <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="evin-g-tipo">${st.tipos.map(t => `<option>${esc(t)}</option>`).join('')}</select></div>

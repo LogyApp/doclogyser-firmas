@@ -136,7 +136,7 @@
 
     $('titulo').firstChild.textContent = `Comprobante de ${CONFIG.tipo === 'Reinducción' ? 'Reinducción' : 'Inducción'} General`;
     $('nombre').textContent = CONFIG.nombre;
-    $('datos').innerHTML = [['Cargo', CONFIG.cargo], ['Operación', CONFIG.operacion], ['Tipo', CONFIG.tipo], ['Analista SST', CONFIG.analista]]
+    $('datos').innerHTML = [['Cargo', CONFIG.cargo], ['Operación', CONFIG.operacion], ['Tipo', CONFIG.tipo], ['Responsable', CONFIG.analista]]
       .map(([k, v]) => `<div><span>${esc(k)}</span>${esc(v || '—')}</div>`).join('');
     $('declaracion').innerHTML = F.declaracion.map(p => `<p>${esc(p)}</p>`).join('');
 

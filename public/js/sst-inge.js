@@ -1,7 +1,7 @@
 /* SST › Documentación Inicial › INGE (Comprobante de Inducción General, SST-F-050)
  * Como EVIN: se escogen los trabajadores de una operación y el tipo (Inducción o Reinducción) y se genera el enlace;
  * el trabajador marca SI o NO en los 41 temas, lee la declaración y firma. El PDF queda en su carpeta como documento
- * 32 (solo el último). Firma como Analista SST quien lo registra y la firma del Líder SST sale sola. Avisa cuando el
+ * 32 (solo el último). Firma como Responsable quien lo registra y la firma del Líder SST sale sola. Avisa cuando el
  * trabajador marcó temas en NO. API: src/routes/inge.js. Usa del hub de SST: CONFIG.usuarioId,
  * registrarModalBack() / cerrarModalBack(), iconoSst() y docInicial (sst-docinicial.js).
  */
@@ -206,7 +206,7 @@
     const l = st.lider;
     $('inge-modal-titulo').textContent = '➕ Generar INGE';
     $('inge-modal-bd').innerHTML = `
-      <div class="inge-resp">Firma como <strong>Analista SST</strong>: ${esc(a.nombre || '—')}${a.cargo ? ` · ${esc(a.cargo)}` : ''}
+      <div class="inge-resp">Firma como <strong>Responsable</strong>: ${esc(a.nombre || '—')}${a.cargo ? ` · ${esc(a.cargo)}` : ''}
         ${a.tieneFirma ? '' : '<br><span class="sin-firma">⚠️ No tiene firma registrada: el PDF saldrá sin su firma. Regístrela en su perfil antes de generar.</span>'}
         <br>Firma como <strong>Líder SST</strong> (sale sola al firmar el trabajador): ${esc(l.nombre || '—')}
         ${l.nombre && !l.tieneFirma ? '<br><span class="sin-firma">⚠️ La Líder SST no tiene firma registrada.</span>' : ''}</div>

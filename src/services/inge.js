@@ -249,7 +249,7 @@ async function htmlDocumento(e) {
     firma_analista_html: firma(e.url_firma_analista, e.fecha_creacion, 'Sin firma registrada'),
     firma_lider_html: firma(e.url_firma_lider, e.fecha_firma, firmado ? 'Sin firma registrada' : 'Firma al completar'),
     nombre_analista: esc(e.nombre_analista) || '—',
-    cargo_analista: esc(e.cargo_analista) || 'Analista SST',
+    cargo_analista: esc(e.cargo_analista) || '—',
     nombre_lider: esc(e.nombre_lider) || '—',
     cargo_lider: esc(e.cargo_lider) || 'Líder SST',
   });

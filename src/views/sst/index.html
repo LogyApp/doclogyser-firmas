@@ -3475,7 +3475,7 @@
               <select class="form-control" id="filtro-csst-estado" onchange="filtrarAutomatico('csst')">
                 <option value="">Todos</option>
                 <option value="COMPLETADO">Completados</option>
-                <option value="PEND_ANALISTA">Pendiente Analista SST</option>
+                <option value="PEND_ANALISTA">Pendiente firma del responsable</option>
                 <option value="PEND_LIDER">Pendiente Líder SST</option>
                 <option value="PEND_TRAB">Pendiente Trabajador</option>
               </select>
@@ -3515,7 +3515,7 @@
                     <div class="col-resizer"></div>
                   </th>
                   <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('csst', 'analista')" id="th-csst-analista">
-                    <div class="th-content"><span>Analista SST</span><span class="sort-icon" id="sort-icon-csst-analista">↕</span></div>
+                    <div class="th-content"><span>Responsable</span><span class="sort-icon" id="sort-icon-csst-analista">↕</span></div>
                     <div class="col-resizer"></div>
                   </th>
                   <th style="width: 140px; min-width: 110px;" class="sortable" onclick="toggleSortSst('csst', 'estado')" id="th-csst-estado">
@@ -4525,11 +4525,11 @@
     </div>
   </div>
 
-  <!-- Modal para Firma de Analista SST (Compromiso SST) -->
+  <!-- Modal para Firma del responsable (Compromiso SST) -->
   <div class="modal-overlay" id="modal-firmar-analista-csst" onclick="if(event.target === this) cerrarModalFirmaAnalistaCsst();">
     <div style="background: var(--card-bg); width: 100%; max-width: 500px; padding: 24px; border-radius: 12px; border-top: 5px solid var(--success); position: relative; margin: auto; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
       <button onclick="cerrarModalFirmaAnalistaCsst()" style="position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-muted); line-height: 1;">✕</button>
-      <div style="font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 6px;">Firma del Analista SST</div>
+      <div style="font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 6px;">Firma del responsable</div>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Dibuja tu firma a continuación para autorizar el Compromiso SST como Analista:</p>
 
       <!-- Sección firma prellenada (si existe en GCS) -->
@@ -8612,7 +8612,7 @@
 
             ${puedeFirmarAnalista ? `
               <button type="button" class="btn btn-sm" id="btn-firmar-analista-csst" onclick="abrirModalFirmaAnalistaCsst('${item.idcsst}')" style="background:var(--success); color:var(--text-inverse); font-weight:700; width:100%; padding:9px 12px; margin-bottom:8px; border:none; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow: 0 2px 4px var(--success-soft);">
-                ✍️ Firmar como Analista SST
+                ✍️ Firmar como responsable
               </button>
             ` : ''}
 
@@ -8931,7 +8931,7 @@
         return;
       }
       cerrarModalFirmaAnalistaCsst();
-      showLoading('Guardando firma del Analista SST...');
+      showLoading('Guardando firma del responsable...');
       try {
         const r = await fetch('/compromisosst/api/firmar-analista', {
           method: 'POST',
@@ -11750,7 +11750,7 @@
   <script src="/js/modal-back.js" defer></script>
   <script src="/js/sst-docinicial.js?v=20261122a"></script>
   <script src="/js/sst-aro.js?v=20261124b"></script>
-  <script src="/js/sst-evin.js?v=20261124b"></script>
-  <script src="/js/sst-inge.js?v=20261124b"></script>
+  <script src="/js/sst-evin.js?v=20261124c"></script>
+  <script src="/js/sst-inge.js?v=20261124c"></script>
 </body>
 </html>

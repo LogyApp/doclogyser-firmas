@@ -304,7 +304,8 @@ async function crearNotificacionPruebaConsumoSST(pool, { idprueba, identificacio
  * Crea las notificaciones correspondientes cuando el trabajador firma un Compromiso SST.
  * Notifica al usuario creador del registro (para que firme como Analista) y a los roles SST pertinentes.
  */
-async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, usuarioCreador, nombre_trabajador }) {
+// urlDoc: si el PDF ya quedó generado (firma registrada de quien lo creó), la notificación sale como completada
+async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, usuarioCreador, nombre_trabajador, urlDoc = null }) {
   try {
     // 1. Obtener detalles del colaborador (Nombre, Operación, Regional)
     const [vinRows] = await pool.execute(
@@ -325,8 +326,11 @@ async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, us
     const regional = vinRows.length ? vinRows[0].Regional : null;
 
     const subtipo = 'Normas de SST';
-    const titulo = 'Trabajador Firmó Compromiso SST';
-    const mensaje = `${cleanNombre} firmó el compromiso SST. Pendiente tu firma como Analista para generar el PDF.`;
+    const titulo = urlDoc ? 'Compromiso SST Completado' : 'Trabajador Firmó Compromiso SST';
+    const mensaje = urlDoc
+      ? `${cleanNombre} firmó el compromiso SST. El PDF quedó generado con tu firma registrada.`
+      : `${cleanNombre} firmó el compromiso SST. Pendiente tu firma como responsable para generar el PDF.`;
+    const resultado = urlDoc ? 'COMPLETADO' : 'PENDIENTE_FIRMA';
 
     // 2. Destinatarios: Se notifica al usuario creador del registro
     const recipients = new Set();
@@ -350,7 +354,7 @@ async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, us
         `INSERT INTO Maestro_notificaciones
          (usuario_id, modulo, subtipo, referencia_id, identificacion_trabajador, nombre_trabajador,
           operacion, regional, titulo, mensaje, resultado, puntaje, url_doc, leido, fecha_creacion)
-         VALUES (?, 'csst', ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE_FIRMA', NULL, NULL, 0, NOW())`,
+         VALUES (?, 'csst', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 0, NOW())`,
         [
           userId,
           subtipo,
@@ -360,7 +364,9 @@ async function crearNotificacionCompromisoSST(pool, { idcsst, identificacion, us
           operacion,
           regional,
           titulo,
-          mensaje
+          mensaje,
+          resultado,
+          urlDoc
         ]
       );
     }
