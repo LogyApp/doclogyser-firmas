@@ -6344,7 +6344,7 @@
         const fechaIngresoDisplay = fechaIngresoStr ? esc(fechaIngresoStr) : '—';
         const respAspirante = esc(a.responsable_aspirante || '—');
         const cvLink = a.pdf_public_url
-          ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="font-size:0.85rem; color:var(--text); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
+          ? `<a href="${esc(a.pdf_public_url + (a.pdf_public_url.includes('?') ? '&' : '?') + 'v=' + Date.now())}" target="_blank" style="font-size:0.85rem; color:var(--text); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
           : '—';
 
         // ── DÍAS DEL PROCESO (calculados en el backend: hora de corte, festivos y suspensiones) ──
@@ -7834,7 +7834,7 @@
         <tr onclick="abrirFichaAspirante('${esc(aspId)}')" style="cursor:pointer;">
           <td style="text-align:center; ${indentStyle}" onclick="event.stopPropagation()">
             <div class="asp-acciones-celda" style="display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap;">
-              ${a.pdf_public_url ? `<a href="${esc(a.pdf_public_url)}" target="_blank" rel="noopener" class="btn asp-action asp-action-pdf" title="Ver hoja de vida (PDF)" aria-label="Ver hoja de vida"><span>📄</span></a>` : ''}
+              ${a.pdf_public_url ? `<a href="${esc(a.pdf_public_url + (a.pdf_public_url.includes('?') ? '&' : '?') + 'v=' + Date.now())}" target="_blank" rel="noopener" class="btn asp-action asp-action-pdf" title="Ver hoja de vida (PDF)" aria-label="Ver hoja de vida"><span>📄</span></a>` : ''}
               <a href="/seleccion/portal/${encodeURIComponent(aspId)}" target="_blank" rel="noopener" class="btn asp-action asp-action-portal" title="Abrir el portal del aspirante" aria-label="Portal del aspirante">
                 <span>🌐</span>
               </a>
@@ -8055,7 +8055,7 @@
         if (btnHdv) {
           const cvUrl = a.pdf_public_url || a.hoja_vida_pdf_url;
           if (cvUrl) {
-            btnHdv.href = cvUrl;
+            btnHdv.href = cvUrl + (cvUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
             btnHdv.style.display = 'inline-flex';
           } else {
             btnHdv.style.display = 'none';

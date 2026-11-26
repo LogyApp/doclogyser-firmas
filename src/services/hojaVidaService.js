@@ -251,7 +251,7 @@ async function regenerarHojaVidaAspirante({ idAspirante, bucketAspirantes = BUCK
   await file.save(pdfBuffer, {
     contentType: 'application/pdf',
     metadata: {
-      cacheControl: 'no-cache, max-age=0',
+      cacheControl: 'no-cache, no-store, max-age=0, must-revalidate',
       contentDisposition: `inline; filename="HV_${identificacion}.pdf"`
     },
     resumable: false

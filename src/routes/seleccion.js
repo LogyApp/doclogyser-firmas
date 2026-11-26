@@ -385,7 +385,8 @@ router.get('/portal/:uuid', async (req, res) => {
 
     const asp = aspiranteRows[0];
     const nombre = asp.primer_nombre || 'Aspirante';
-    const pdfUrl = (asp.pdf_public_url || '').trim();
+    const pdfUrlRaw = (asp.pdf_public_url || '').trim();
+    const pdfUrl = pdfUrlRaw ? `${pdfUrlRaw}${pdfUrlRaw.includes('?') ? '&' : '?'}v=${Date.now()}` : '';
 
     let operacionAspirante = '';
     const tieneRequisicion = !!(asp.IdRequisicion && String(asp.IdRequisicion).trim());
@@ -515,7 +516,8 @@ router.get('/admin/:uuid', async (req, res) => {
     if (aspiranteRows.length === 0) return res.status(404).send("Aspirante no encontrado");
     
     const a = aspiranteRows[0];
-    const pdfUrl = (a.pdf_public_url || '').trim();
+    const pdfUrlRaw = (a.pdf_public_url || '').trim();
+    const pdfUrl = pdfUrlRaw ? `${pdfUrlRaw}${pdfUrlRaw.includes('?') ? '&' : '?'}v=${Date.now()}` : '';
     const nombreCompleto = [a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido]
                             .filter(n => n && n.trim() !== "").join(" ");
 
@@ -1092,7 +1094,7 @@ router.post('/aprobar-masivo', async (req, res) => {
 router.post('/regenerar-hoja-vida', async (req, res) => {
   const { id_aspirante } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
-  const volver = (msg, info) => res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${encodeURIComponent(usuario)}&msg=${msg}&info=${encodeURIComponent(info)}`);
+  const volver = (msg, info, extra = '') => res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${encodeURIComponent(usuario)}&msg=${msg}&info=${encodeURIComponent(info)}${extra}`);
 
   try {
     if (!id_aspirante) throw new Error('Falta id_aspirante');
@@ -1116,7 +1118,7 @@ router.post('/regenerar-hoja-vida', async (req, res) => {
       bucketAspirantes: BUCKET_ASPIRANTES
     });
 
-    volver('success', 'Hoja de Vida regenerada exitosamente.');
+    volver('success', 'Hoja de Vida regenerada exitosamente.', '&pdf_actualizado=1');
   } catch (err) {
     console.error('Error al regenerar hoja de vida:', err);
     volver('error', 'No se pudo regenerar la Hoja de Vida: ' + err.message);
@@ -3222,6 +3224,12 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
       const params = new URLSearchParams(volvioConAtras ? '' : window.location.search);
       if (params.get('msg') === 'success') {
         const info = params.get('info') || 'Proceso completado';
+        if (params.get('pdf_actualizado') === '1') {
+          const linkHdv = document.getElementById('linkVerHdv');
+          if (linkHdv && linkHdv.href) {
+            try { window.open(linkHdv.href, '_blank'); } catch (e) {}
+          }
+        }
         alert(info);
       }
       if (params.get('msg') === 'error') {
@@ -3427,7 +3435,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
                 <span class="font-mono font-bold text-slate-600">C.C. ${asp.identificacion}</span>
                 ${asp.pdfUrl ? `
                   <span class="text-slate-300">•</span>
-                  <a class="text-slate-600 hover:text-blue-600 transition-colors inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 text-sm" href="${asp.pdfUrl}" target="_blank" title="Ver Hoja de Vida (PDF)" aria-label="Ver Hoja de Vida">
+                  <a id="linkVerHdv" class="text-slate-600 hover:text-blue-600 transition-colors inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 text-sm" href="${asp.pdfUrl}" target="_blank" title="Ver Hoja de Vida (PDF)" aria-label="Ver Hoja de Vida">
                     📄
                   </a>
                 ` : ''}
