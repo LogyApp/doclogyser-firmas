@@ -336,6 +336,8 @@ router.post('/api/reenviar', async (req, res) => {
       nombreTrabajador: logysign.nombre_trabajador,
       identificacion: logysign.identificacion,
       nombreDocumento: logysign.nombre_documento || logysign.prefijo,
+      cargo: logysign.cargo,
+      operacion: logysign.operacion,
       linkFirma: `${baseUrl}/logysign/sign/${logysign.token}`,
       linkDescuento: await enlaceDescuentoPendiente(baseUrl, logysign.id_descuento_auto),
       recordatorio: true,

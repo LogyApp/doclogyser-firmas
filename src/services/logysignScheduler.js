@@ -157,6 +157,8 @@ async function verificarEnviosProgramados() {
           nombreTrabajador: doc.nombre_trabajador,
           identificacion: doc.identificacion,
           nombreDocumento,
+          cargo: doc.cargo,
+          operacion: doc.operacion,
           linkFirma,
           linkDescuento,
         });

@@ -513,6 +513,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         nombreTrabajador: trabajador,
         identificacion,
         nombreDocumento,
+        cargo,
+        operacion,
         linkFirma: `${baseUrl}/logysign/sign/${token}`,
         linkDescuento: idDescuentoAuto
           ? `${baseUrl}/descuentonomina/firmar?item=${idDescuentoAuto}&token=${tokenFirmaDescuento}`
@@ -762,6 +764,8 @@ ${encabezadoLogo('#27ae60')}
           
           <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
             <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${logysign.nombre_trabajador} (${logysign.identificacion})</td></tr>
+            <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Cargo</td><td style="padding:10px">${logysign.cargo || '—'}</td></tr>
+            <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568">Operación</td><td style="padding:10px">${logysign.operacion || '—'}</td></tr>
             <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${logysign.nombre_documento || logysign.prefijo}</td></tr>
             <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568">Fecha Firma</td><td style="padding:10px">${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</td></tr>
           </table>

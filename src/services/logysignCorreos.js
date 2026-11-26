@@ -5,7 +5,7 @@ const { encabezadoLogo } = require('./email');
 // (routes/logysign.js), el envío programado (logysignScheduler.js) y el reenvío
 // (routes/registrologysign.js), para que los tres lleven el mismo contenido. Si el documento
 // va con la Autorización de Descuento (linkDescuento), se arma el correo de ingreso con los dos enlaces.
-function correoSolicitudFirma({ nombreTrabajador, identificacion, nombreDocumento, linkFirma, linkDescuento, recordatorio = false }) {
+function correoSolicitudFirma({ nombreTrabajador, identificacion, nombreDocumento, cargo, operacion, linkFirma, linkDescuento, recordatorio = false }) {
   const pie = `
             <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
               <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
@@ -65,6 +65,8 @@ ${encabezadoLogo('#000b59')}
 
               <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
                 <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${nombreTrabajador} (${identificacion})</td></tr>
+                <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Cargo</td><td style="padding:10px">${cargo || '—'}</td></tr>
+                <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568">Operación</td><td style="padding:10px">${operacion || '—'}</td></tr>
                 <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
               </table>
 
