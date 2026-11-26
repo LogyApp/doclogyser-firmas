@@ -2034,16 +2034,21 @@ router.post('/api/documento-trabajador/validacion', async (req, res) => {
   }
 });
 
-// API: Eliminar documento (Pestaña Consolidado Todo - Solo Archivo/Sistema y Validación ERROR)
+// API: Eliminar documento (pestañas Todo y Doc. Retiros). Requiere rol autorizado y motivo;
+// antes de borrar se guarda una copia del registro en Historial_Eliminaciones_CloudDocs.
 router.post('/api/documento/eliminar', async (req, res) => {
   try {
     const { usuario, id, tipo_registro } = req.body;
+    const motivo = String(req.body.motivo || '').trim();
     if (!usuario || !id || !tipo_registro) {
       return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, id, tipo_registro)' });
     }
+    if (motivo.length < 5) {
+      return res.status(400).json({ error: 'Debes escribir el motivo de la eliminación (mínimo 5 caracteres).' });
+    }
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
-    // Roles: Config_Parametros CloudDocs / Trabajadores "Roles que pueden eliminar documentos con validación ERROR"
+    // Roles: Config_Parametros CloudDocs / Trabajadores "Roles que pueden eliminar documentos"
     if (!acceso || !(await configTrabajadores.puedeEliminarDocumentos(acceso.rol))) {
       return res.status(403).json({ error: 'No autorizado para eliminar documentos' });
     }
@@ -2052,18 +2057,35 @@ router.post('/api/documento/eliminar', async (req, res) => {
     const table = tipo_registro === 'Trabajador' ? 'Maestro_docTrabajador' : 'Maestro_docEmpresa';
 
     // Fetch the record first
-    const [rows] = await pool.execute(
-      `SELECT Url, \`Validación\` AS Validacion FROM ${table} WHERE id = ?`,
-      [id]
-    );
+    const [rows] = await pool.execute(`SELECT * FROM ${table} WHERE id = ?`, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Documento no encontrado' });
     }
 
     const doc = rows[0];
-    if (doc.Validacion !== 'ERROR') {
-      return res.status(400).json({ error: 'Solo se pueden eliminar documentos con validación ERROR' });
+
+    // Constancia antes de borrar. Si no se puede guardar (por ejemplo, falta la tabla), no se borra.
+    try {
+      await pool.execute(
+        `INSERT INTO Historial_Eliminaciones_CloudDocs
+           (Tabla, RegistroId, Identificacion, TipoDocumento, Url, Datos, Motivo, Usuario, Rol)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          table,
+          String(id),
+          doc['Identificación'] != null ? String(doc['Identificación']) : null,
+          doc.TipoDocumento != null ? String(doc.TipoDocumento) : null,
+          doc.Url || doc.Doc || null,
+          JSON.stringify(doc),
+          motivo.slice(0, 500),
+          String(usuario),
+          acceso.rol || null
+        ]
+      );
+    } catch (errHist) {
+      console.error('[cloud-docs] No se pudo guardar el historial de eliminación:', errHist.message);
+      return res.status(500).json({ error: 'No se pudo guardar la constancia de eliminación; el documento no se borró. Avisa a Sistemas.' });
     }
 
     // Delete record from DB

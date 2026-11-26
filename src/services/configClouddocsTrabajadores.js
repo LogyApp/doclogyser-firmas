@@ -10,7 +10,7 @@ const SECCION = 'Trabajadores';
 const P = {
   MAX_LISTADO:        'Máximo de trabajadores en el listado',
   ROLES_VALIDAR:      'Roles que pueden validar documentos',
-  ROLES_ELIMINAR:     'Roles que pueden eliminar documentos con validación ERROR',
+  ROLES_ELIMINAR:     'Roles que pueden eliminar documentos',
   ROLES_CREAR_TIPO:   'Roles que pueden crear tipos de documento',
   BLOQUEAR_REPETIDOS: 'Bloquear documentos repetidos al cargar',
 };
@@ -47,8 +47,16 @@ async function obtenerParametros() {
   }
 }
 
+// Nombres anteriores de un concepto (por si la fila aún no se ha renombrado en la tabla)
+const NOMBRES_ANTERIORES = {
+  [P.ROLES_ELIMINAR]: ['Roles que pueden eliminar documentos con validación ERROR'],
+};
+
 function valor(params, concepto) {
-  return Object.prototype.hasOwnProperty.call(params || {}, concepto) ? params[concepto] : DEFAULTS[concepto];
+  const tiene = c => Object.prototype.hasOwnProperty.call(params || {}, c);
+  if (tiene(concepto)) return params[concepto];
+  const anterior = (NOMBRES_ANTERIORES[concepto] || []).find(tiene);
+  return anterior ? params[anterior] : DEFAULTS[concepto];
 }
 
 function lista(params, concepto) {

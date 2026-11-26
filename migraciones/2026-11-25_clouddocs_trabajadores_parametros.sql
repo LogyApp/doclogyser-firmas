@@ -25,11 +25,12 @@ WHERE NOT EXISTS (
 
 -- Bloque 3
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
-SELECT 'CloudDocs', 'Trabajadores', 'Roles que pueden eliminar documentos con validación ERROR', 'Rol', 'Archivo, Sistema',
-       'Roles que ven el botón de eliminar en Cloud Docs y pueden borrar un documento (registro y archivo) cuando su validación está en ERROR. Lista separada por coma. Si la fila no existe se usa Archivo, Sistema; si se deja vacía nadie puede eliminar.'
+SELECT 'CloudDocs', 'Trabajadores', 'Roles que pueden eliminar documentos', 'Rol', 'Archivo, Sistema',
+       'Roles que ven el botón de eliminar en las pestañas Todo y Doc. Retiros de Cloud Docs y pueden borrar un documento (registro y archivo). Se exige un motivo y queda constancia en Historial_Eliminaciones_CloudDocs. Lista separada por coma. Si la fila no existe se usa Archivo, Sistema; si se deja vacía nadie puede eliminar.'
 FROM DUAL
 WHERE NOT EXISTS (
-  SELECT 1 FROM Config_Parametros WHERE Modulo = 'CloudDocs' AND Seccion = 'Trabajadores' AND Concepto = 'Roles que pueden eliminar documentos con validación ERROR'
+  SELECT 1 FROM Config_Parametros WHERE Modulo = 'CloudDocs' AND Seccion = 'Trabajadores'
+    AND Concepto IN ('Roles que pueden eliminar documentos', 'Roles que pueden eliminar documentos con validación ERROR')
 );
 
 -- Bloque 4

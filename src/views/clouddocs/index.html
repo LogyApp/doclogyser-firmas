@@ -1034,29 +1034,6 @@
       background: var(--danger-soft);
       transform: scale(1.1);
     }
-    .semaforo-dot {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      display: inline-block;
-      cursor: pointer;
-      opacity: 0.3;
-      transition: all 0.2s ease-in-out;
-      border: 1px solid rgba(0,0,0,0.15);
-    }
-    .semaforo-dot:hover {
-      opacity: 0.7;
-      transform: scale(1.2);
-    }
-    .semaforo-dot.active {
-      opacity: 1;
-      transform: scale(1.3);
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
-      border-width: 1.5px;
-    }
-    .dot-green { background-color: var(--success); }
-    .dot-yellow { background-color: var(--warning); }
-    .dot-red { background-color: var(--danger); }
     .permiso-checkbox-item {
       display: flex;
       align-items: center;
@@ -2048,7 +2025,6 @@
         { key: 'TrabajadorNombre', label: 'Trabajador', width: 280 },
         { key: 'Operación', label: 'Operación', width: 180 },
         { key: 'Estado', label: 'Estado', width: 110 },
-        { key: 'Validacion', label: 'Validación', width: 130, align: 'center' },
         { key: 'Usuario', label: 'Usuario', width: 140 },
         { key: 'Observaciones', label: 'Observaciones', width: 180 },
         { key: 'acciones', label: 'Acciones', width: 90, align: 'center' }
@@ -3087,7 +3063,12 @@
           docSelectWrapper.style.display = 'flex';
           estadoWrapper.style.display = 'flex';
           registroWrapper.style.display = tab === 'todo' ? 'flex' : 'none';
-          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'flex';
+          // El semáforo de validación solo se usa en Doc. Retiros
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = tab === 'docretiros' ? 'flex' : 'none';
+          if (tab !== 'docretiros') {
+            const selVal = document.getElementById('filter-todo-validacion');
+            if (selVal) selVal.value = '';
+          }
           solEstadoWrapper.style.display = 'none';
           labelBuscar.placeholder = '🔍 Buscar Trabajador...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador');
         } else if (tab === 'documento') {
@@ -3689,7 +3670,8 @@
           const valBadge = `<span class="badge-status" style="background:${valBg}; color:${valColor}; border:1px solid ${valBorder};">${esc(valVal)}</span>`;
 
           let actionBtnHtml = '—';
-          if (permisoTrabajadores('puedeEliminarDocs', ['Archivo', 'Sistema']) && valVal === 'ERROR') {
+          // Roles: Config_Parametros CloudDocs / Trabajadores "Roles que pueden eliminar documentos"
+          if (permisoTrabajadores('puedeEliminarDocs', ['Archivo', 'Sistema'])) {
             actionBtnHtml = `
               <button class="btn-delete-row" onclick="event.stopPropagation(); eliminarRegistroCloudDocs('${row.id}', '${row.tipo_registro}')" title="Eliminar Registro">
                 🗑️
@@ -3716,7 +3698,7 @@
             <td>
               ${row.Estado ? `<span class="badge-status ${row.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(row.Estado)}</span>` : '<span class="badge-status badge-general">General</span>'}
             </td>
-            <td>${valBadge}</td>
+            ${activeTab === 'docretiros' ? `<td>${valBadge}</td>` : ''}
             <td style="font-size: 0.82rem;">${esc(row.Usuario || 'N/A')}</td>
             <td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(row.Observaciones || '')}">${esc(row.Observaciones || '—')}</td>
             <td>${actionBtnHtml}</td>
@@ -3806,7 +3788,6 @@
       const tableEl = document.getElementById('modal-worker-table');
       const cols = (activeTab === 'validarcap' || activeTab === 'duplicados')
         ? [
-            { key: 'Validacion', label: 'Validación', width: 180, align: 'center' },
             { key: 'Prefijo', label: 'Prefijo', width: 100 },
             { key: 'Documento', label: 'Documento', width: 350 },
             { key: 'FechaRegistro', label: 'Fecha de Registro', width: 200 },
@@ -3849,18 +3830,7 @@
 
         const prefColorClass = doc.permitido ? 'text-allowed' : 'text-denied';
 
-        // Validation semaphore visual HTML
-        const valVal = doc.Validacion || 'PEND';
-        const semaforoHtml = `
-          <div style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
-            <span class="semaforo-dot dot-green ${valVal === 'OK' ? 'active' : ''}" onclick="event.stopPropagation(); setDocValidacion('${doc.id}', 'OK')" title="OK"></span>
-            <span class="semaforo-dot dot-yellow ${valVal === 'PEND' ? 'active' : ''}" onclick="event.stopPropagation(); setDocValidacion('${doc.id}', 'PEND')" title="Pendiente"></span>
-            <span class="semaforo-dot dot-red ${valVal === 'ERROR' ? 'active' : ''}" onclick="event.stopPropagation(); setDocValidacion('${doc.id}', 'ERROR')" title="Error"></span>
-          </div>
-        `;
-
         tr.innerHTML = `
-          ${(activeTab === 'validarcap' || activeTab === 'duplicados') ? `<td>${semaforoHtml}</td>` : ''}
           <td class="${prefColorClass}">${esc(doc.Prefijo)}</td>
           <td style="font-weight: 600; color: var(--text);">${esc(doc.Documento || 'N/A')}</td>
           <td>${doc.FechaRegistro}</td>
@@ -3874,40 +3844,14 @@
       });
     }
 
-    async function setDocValidacion(docId, valValue) {
-      try {
-        const res = await fetch('/cloud-docs/api/documento-trabajador/validacion', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            usuario: CONFIG.usuarioId,
-            id: docId,
-            validacion: valValue
-          })
-        });
-        const data = await res.json();
-        if (res.ok && data.ok) {
-          // Update local documents cache
-          const docObj = rawWorkerDocs.find(d => d.id === docId);
-          if (docObj) docObj.Validacion = valValue;
-          
-          const fDocObj = filteredWorkerDocs.find(d => d.id === docId);
-          if (fDocObj) fDocObj.Validacion = valValue;
-
-          showToast(`Documento validado como ${valValue}`);
-          renderWorkerModalTableRows();
-        } else {
-          showToast(data.error || 'Error al guardar validación', 'error');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('Error de conexión', 'error');
-      }
-    }
-
     async function eliminarRegistroCloudDocs(id, tipoRegistro) {
-      const confirmOk = confirm(`¿Estás seguro de que deseas eliminar este documento permanentemente?\nEsta acción no se puede deshacer y borrará el archivo de almacenamiento en la nube.`);
+      const confirmOk = confirm(`¿Estás seguro de que deseas eliminar este documento permanentemente?\nSe borrará el registro y el archivo de almacenamiento en la nube. Quedará constancia en el historial de eliminaciones.`);
       if (!confirmOk) return;
+      const motivo = (prompt('Escribe el motivo de la eliminación (obligatorio):') || '').trim();
+      if (motivo.length < 5) {
+        showToast('Debes escribir el motivo de la eliminación (mínimo 5 caracteres).', 'error');
+        return;
+      }
 
       showLoader();
       try {
@@ -3917,7 +3861,8 @@
           body: JSON.stringify({
             usuario: CONFIG.usuarioId,
             id: id,
-            tipo_registro: tipoRegistro
+            tipo_registro: tipoRegistro,
+            motivo: motivo
           })
         });
         const data = await res.json();
