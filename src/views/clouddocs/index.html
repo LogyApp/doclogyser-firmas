@@ -1182,6 +1182,9 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           ＋ Nueva Firma
         </a>
+        <button type="button" class="btn btn-submit" id="btn-faltantes-retiro" style="display: none; background: var(--primary-light); color: var(--text-inverse); border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirFaltantesRetiro()">
+          📋 Faltantes por trabajador
+        </button>
         <button type="button" class="btn btn-submit" id="btn-nuevo-tipo-doc-cd" style="display: none; background: var(--primary-light); color: var(--text-inverse); border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirModalNuevoTipoDocCD()">
           ＋ Nuevo Tipo de Documento
         </button>
@@ -1573,6 +1576,49 @@
       <div class="modal-footer">
         <button class="btn btn-request" onclick="closeModal('modal-nuevo-tipo-doc-cd')">Cancelar</button>
         <button class="btn btn-submit" id="btn-guardar-nuevo-tipo-doc-cd" onclick="guardarNuevoTipoDocCD()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Doc. Retiros › Faltantes por trabajador -->
+  <div class="modal-overlay" id="modal-faltantes-retiro">
+    <div class="modal-content" style="max-width: 1100px; width: 96%;">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Faltantes por trabajador retirado</h3>
+        <button class="modal-close" onclick="closeModal('modal-faltantes-retiro')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">
+          <div class="field"><label for="falt-desde">Retiro desde</label><input type="date" id="falt-desde"></div>
+          <div class="field"><label for="falt-hasta">Hasta</label><input type="date" id="falt-hasta"></div>
+          <div class="field" style="flex:1; min-width:180px;"><label for="falt-buscar">Trabajador o cédula</label><input type="text" id="falt-buscar" placeholder="🔍 Buscar..." onkeydown="if(event.key==='Enter') cargarFaltantesRetiro()"></div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:.85rem; padding-bottom:8px;"><input type="checkbox" id="falt-solo-pend" checked onchange="pintarFaltantesRetiro()"> Solo con faltantes</label>
+          <button class="btn btn-submit" onclick="cargarFaltantesRetiro()">Consultar</button>
+          <button class="btn btn-request" onclick="exportarFaltantesRetiro()">⬇ CSV</button>
+        </div>
+        <div id="falt-resumen" style="font-size:.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
+        <div style="max-height:60vh; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-sm);">
+          <table style="width:100%; border-collapse:collapse; font-size:.85rem;">
+            <thead style="position:sticky; top:0; background:var(--bg-elevated);">
+              <tr>
+                <th style="text-align:left; padding:8px;">Trabajador</th>
+                <th style="text-align:left; padding:8px;">Cargo</th>
+                <th style="text-align:left; padding:8px;">Operación</th>
+                <th style="text-align:left; padding:8px;">Fecha retiro</th>
+                <th style="text-align:left; padding:8px;">Motivo</th>
+                <th style="text-align:center; padding:8px;">Avance</th>
+                <th style="text-align:left; padding:8px;">Faltan</th>
+              </tr>
+            </thead>
+            <tbody id="falt-tbody"><tr><td colspan="7" style="padding:16px; text-align:center;">Presiona Consultar</td></tr></tbody>
+          </table>
+        </div>
+        <p style="font-size:.78rem; color:var(--text-muted); margin:10px 0 0;">
+          Se exigen los documentos de legalización del retiro según el motivo, los que marca Config_condicion_retiros
+          (evaluación de desempeño, aceptación de renuncia, paz y salvo) y los adicionales de Config_Parametros
+          (CloudDocs / DocRetiros). Un documento en ERROR o DESACTUALIZADO cuenta como faltante. Los filtros de
+          Regional y Operación de la pestaña también aplican.
+        </p>
       </div>
     </div>
   </div>
@@ -2035,6 +2081,8 @@
         { key: 'Prefijo', label: 'Prefijo', width: 90 },
         { key: 'TrabajadorNombre', label: 'Trabajador', width: 280 },
         { key: 'Operación', label: 'Operación', width: 180 },
+        { key: 'FechaRetiro', label: 'Fecha Retiro', width: 120 },
+        { key: 'MotivoRetiro', label: 'Motivo Retiro', width: 200 },
         { key: 'Estado', label: 'Estado', width: 110 },
         { key: 'Validacion', label: 'Validación', width: 130, align: 'center' },
         { key: 'Usuario', label: 'Usuario', width: 140 },
@@ -3136,6 +3184,9 @@
         }
       });
 
+      const btnFaltantesRetiro = document.getElementById('btn-faltantes-retiro');
+      if (btnFaltantesRetiro) btnFaltantesRetiro.style.display = tab === 'docretiros' ? 'inline-flex' : 'none';
+
       const bulkToolbar = document.getElementById('bulk-actions-toolbar');
       if (tab === 'docretiros' && puedeValidarRetiros()) {
         if (bulkToolbar) {
@@ -3706,6 +3757,7 @@
             <td class="${prefColorClass}">${esc(row.Prefijo)}</td>
             <td style="font-size: 0.85rem;">${esc(workerLabel)}</td>
             <td>${esc(row.Operación || 'N/A')}</td>
+            ${activeTab === 'docretiros' ? `<td style="font-size: 0.85rem;">${esc(row.FechaRetiro || '—')}</td><td style="font-size: 0.85rem;">${esc(row.MotivoRetiro || '—')}</td>` : ''}
             <td>
               ${row.Estado ? `<span class="badge-status ${row.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(row.Estado)}</span>` : '<span class="badge-status badge-general">General</span>'}
             </td>
@@ -3960,6 +4012,94 @@
       } finally {
         hideLoader();
       }
+    }
+
+    // ── Doc. Retiros › Faltantes por trabajador ──
+    let faltantesRetiroData = [];
+
+    function abrirFaltantesRetiro() {
+      openModal('modal-faltantes-retiro');
+      if (!faltantesRetiroData.length) cargarFaltantesRetiro();
+    }
+
+    async function cargarFaltantesRetiro() {
+      const tbody = document.getElementById('falt-tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:16px; text-align:center;">Cargando...</td></tr>';
+      const q = new URLSearchParams({ usuario: CONFIG.usuarioId });
+      const desde = document.getElementById('falt-desde').value;
+      const hasta = document.getElementById('falt-hasta').value;
+      const buscar = document.getElementById('falt-buscar').value.trim();
+      const regional = document.getElementById('filter-regional')?.value;
+      const operacion = document.getElementById('filter-operacion')?.value;
+      if (desde) q.set('desde', desde);
+      if (hasta) q.set('hasta', hasta);
+      if (buscar) q.set('buscar', buscar);
+      if (regional) q.set('regional', regional);
+      if (operacion) q.set('operacion', operacion);
+      try {
+        const res = await fetch(`/cloud-docs/api/docretiros/faltantes?${q}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al consultar faltantes');
+        document.getElementById('falt-desde').value = data.desde || '';
+        document.getElementById('falt-hasta').value = data.hasta || '';
+        faltantesRetiroData = Array.isArray(data.filas) ? data.filas : [];
+        pintarFaltantesRetiro();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:16px; color:var(--danger);">${esc(err.message)}</td></tr>`;
+      }
+    }
+
+    function pintarFaltantesRetiro() {
+      const tbody = document.getElementById('falt-tbody');
+      const soloPend = document.getElementById('falt-solo-pend').checked;
+      const filas = soloPend ? faltantesRetiroData.filter(f => f.faltantes.length || f.sinMotivo) : faltantesRetiroData;
+
+      const conFaltantes = faltantesRetiroData.filter(f => f.faltantes.length).length;
+      const porDoc = {};
+      faltantesRetiroData.forEach(f => f.faltantes.forEach(d => { porDoc[d] = (porDoc[d] || 0) + 1; }));
+      const top = Object.entries(porDoc).sort((a, b) => b[1] - a[1]).map(([d, n]) => `${esc(d)}: <strong>${n}</strong>`).join(' · ');
+      document.getElementById('falt-resumen').innerHTML =
+        `<strong>${faltantesRetiroData.length}</strong> retirados en el rango · <strong>${conFaltantes}</strong> con documentos faltantes` +
+        (top ? `<br>${top}` : '');
+
+      if (!filas.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px; text-align:center;">No hay trabajadores con faltantes en este rango.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      filas.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.className = 'clickable-row';
+        tr.style.borderTop = '1px solid var(--border)';
+        tr.onclick = () => { closeModal('modal-faltantes-retiro'); openWorkerModal(f.identificacion, f.trabajador, null, 'Retirado'); };
+        const completo = !f.faltantes.length;
+        const faltan = f.sinMotivo
+          ? '<span style="color:var(--danger);">Sin motivo de retiro registrado</span>'
+          : (completo ? '<span style="color:var(--success);">Completo</span>' : f.faltantes.map(esc).join(', '));
+        tr.innerHTML = `
+          <td style="padding:8px;"><strong>${esc(f.trabajador || '—')}</strong><br><span style="color:var(--text-muted); font-size:.8rem;">C.C. ${esc(f.identificacion)}</span></td>
+          <td style="padding:8px;">${esc(f.cargo || '—')}</td>
+          <td style="padding:8px;">${esc(f.operacion || '—')}</td>
+          <td style="padding:8px;">${esc(f.fechaRetiro || '—')}</td>
+          <td style="padding:8px;">${esc(f.motivo || '—')}</td>
+          <td style="padding:8px; text-align:center; font-weight:bold; color:${completo ? 'var(--success)' : 'var(--warning)'};">${f.cargados}/${f.requeridos}</td>
+          <td style="padding:8px;">${faltan}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportarFaltantesRetiro() {
+      if (!faltantesRetiroData.length) { showToast('Primero consulta los faltantes.', 'warning'); return; }
+      const soloPend = document.getElementById('falt-solo-pend').checked;
+      const filas = soloPend ? faltantesRetiroData.filter(f => f.faltantes.length || f.sinMotivo) : faltantesRetiroData;
+      const celda = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+      const lineas = [['Identificación', 'Trabajador', 'Cargo', 'Operación', 'Regional', 'Fecha ingreso', 'Fecha retiro', 'Motivo', 'Cargados', 'Requeridos', 'Faltan'].map(celda).join(';')];
+      filas.forEach(f => lineas.push([f.identificacion, f.trabajador, f.cargo, f.operacion, f.regional, f.fechaIngreso, f.fechaRetiro, f.motivo, f.cargados, f.requeridos, f.faltantes.join(', ')].map(celda).join(';')));
+      const blob = new Blob(['\ufeff' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `faltantes_retiro_${document.getElementById('falt-desde').value}_${document.getElementById('falt-hasta').value}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
     }
 
     async function toggleDuplicadosDocumento(docId, checked) {
