@@ -2896,7 +2896,22 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
-async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl }) {
+// Correo (Maestro_Usuarios.Email) del usuario que ejecuta una acción, para ponerlo en copia.
+async function correoUsuarioPorId(usuarioId) {
+  if (!usuarioId) return '';
+  try {
+    const [rows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]);
+    const email = rows.length ? String(rows[0].Email || '').trim() : '';
+    return email.includes('@') ? email : '';
+  } catch (err) {
+    console.error('[email] No se pudo obtener el correo del usuario', usuarioId, err.message);
+    return '';
+  }
+}
+
+// Envío manual del enlace del portal (Aspirantes y Cloud Docs › Trabajadores).
+// copia: correos en CC; normalmente el usuario que presiona "Enviar por correo".
+async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl, copia = [] }) {
   const asunto = `Acceso a tu Portal de Selección y Contratación — LOG&SER S.A.S.`;
   const cuerpo = `
     <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
@@ -2926,9 +2941,13 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
     </div>
   `;
 
+  const destino = String(correo || '').trim().toLowerCase();
+  const cc = [...new Set((copia || []).map(c => String(c || '').trim()).filter(c => c.includes('@') && c.toLowerCase() !== destino))];
+
   await transporter.sendMail({
     from: `"LOG&SER Selección" <${EMAIL_FROM}>`,
     to: correo,
+    cc: cc.length ? cc : undefined,
     subject: asunto,
     html: cuerpo,
     attachments: [LOGO_HEADER_ATTACHMENT],
@@ -3896,49 +3915,11 @@ module.exports = {
   COLOR_ENCABEZADO_AZUL,
 };
 
-// ── Aspirantes (Selección): avisos de la fase de firmas ─────────────────────
+// ── Aspirantes (Selección): aviso de firmas completas ───────────────────────
 // Interruptor: Config_Parametros talenthub/Aspirantes
 // 'Habilitar notificaciones de correo en Aspirantes' (ver services/avisosSeleccion.js).
-
-// Al aspirante: ya puede firmar sus documentos de vinculación.
-async function notificarAspiranteFaseFirmas({ correo, nombreAspirante, cargo, operacion, portalUrl, totalDocumentos, copia = [] }) {
-  const asunto = 'Ya puedes firmar tus documentos de vinculación — LOG&SER S.A.S.';
-  const cuerpo = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
-      <div style="padding:24px;background:#fff;border:1px solid #eee;color:#1a1a2e;line-height:1.6">
-        <h2 style="color:#1B2A5E;margin:0 0 10px">¡Hola, ${nombreAspirante}!</h2>
-        <p style="color:#555;font-size:.93rem;margin:0 0 14px">
-          Tu proceso de selección avanzó a la <strong>fase de firmas</strong>. Desde tu portal puedes leer
-          y firmar digitalmente ${totalDocumentos ? `los <strong>${totalDocumentos} documentos</strong>` : 'los documentos'} de tu vinculación.
-        </p>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:.92rem">
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:38%">Cargo</td><td style="padding:8px 12px;font-weight:bold">${cargo || '—'}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Operación</td><td style="padding:8px 12px">${operacion || '—'}</td></tr>
-        </table>
-        <div style="text-align:center;margin:26px 0">
-          <a href="${portalUrl}" target="_blank"
-             style="background:#F15A22;color:#fff;text-decoration:none;padding:13px 30px;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block">
-            Ir a firmar mis documentos ➔
-          </a>
-        </div>
-        <p style="font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:14px;margin:0">
-          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-          <a href="${portalUrl}" style="color:#2563eb;word-break:break-all">${portalUrl}</a>
-        </p>
-      </div>
-      ${FOOTER}
-    </div>`;
-
-  await transporter.sendMail({
-    from: `"LOG&SER Selección" <${EMAIL_FROM}>`,
-    to: correo,
-    cc: copia.length ? copia : undefined,
-    subject: asunto,
-    html: cuerpo,
-    attachments: [LOGO_HEADER_ATTACHMENT],
-  });
-}
+// El enlace del portal ya no se envía automáticamente al pasar a "En proceso": se envía
+// a mano (copiar enlace, WhatsApp o "Enviar por correo" con enviarCorreoPortalAspirante).
 
 // A Selección: el aspirante terminó de firmar todos sus documentos.
 async function notificarFirmasCompletasAspirante({ nombreAspirante, identificacion, cargo, operacion, totalDocumentos, adminUrl, para = [], copia = [] }) {
@@ -3978,4 +3959,4 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
-Object.assign(module.exports, { notificarAspiranteFaseFirmas, notificarFirmasCompletasAspirante });
+Object.assign(module.exports, { notificarFirmasCompletasAspirante, correoUsuarioPorId });

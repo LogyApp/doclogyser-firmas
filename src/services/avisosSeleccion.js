@@ -13,10 +13,11 @@ const {
 // ── Avisos por correo de la fase de firmas (Aspirantes / Selección) ─────────
 // Config_Parametros talenthub/Aspirantes:
 //   'Habilitar notificaciones de correo en Aspirantes'            → interruptor general (0 = apagado)
-//   'Aviso al aspirante al pasar a En proceso'                    → 1/0
 //   'Aviso a Selección cuando el aspirante completa las firmas'   → 1/0
 //   'Aviso de firmas completas - Para:' / '- Copia:'              → Roles
 // El aviso de firmas completas va además al "Responsable de Selección" de la requisición.
+// El enlace del portal ya no se envía al pasar a "En proceso": se envía a mano desde el portal
+// (copiar enlace, WhatsApp o "Enviar por correo", con copia a quien lo envía).
 // Estas funciones nunca lanzan error: lo registran en el log para no afectar el proceso.
 
 const ROLES_RESPONSABLES = ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR'];
@@ -71,39 +72,6 @@ async function datosAspirante(idAspirante) {
 async function avisoActivo(concepto) {
   const params = await obtenerParametrosAspirantes();
   return parametroActivo(params, P.HABILITAR_AVISOS) && parametroActivo(params, concepto) ? params : null;
-}
-
-// Al pasar a "En proceso": correo al aspirante con el enlace del portal. Quien hizo el cambio va en copia.
-async function avisarFaseFirmas({ idAspirante, usuario, baseUrl }) {
-  try {
-    if (!(await avisoActivo(P.AVISO_EN_PROCESO))) return false;
-    const a = await datosAspirante(idAspirante);
-    if (!a || !a.correo_electronico) {
-      console.log(`[avisosSeleccion] Aspirante ${idAspirante} sin correo: no se envía aviso de fase de firmas.`);
-      return false;
-    }
-    const copia = [];
-    if (usuario) {
-      const [u] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
-      if (u.length && u[0].Email) copia.push(u[0].Email);
-    }
-    const docs = await obtenerDocsFirmaParaOperacion(a.operacion);
-    const { notificarAspiranteFaseFirmas } = require('./email');
-    await notificarAspiranteFaseFirmas({
-      correo: a.correo_electronico.trim(),
-      nombreAspirante: a.nombre,
-      cargo: a.cargo,
-      operacion: a.operacion,
-      portalUrl: `${baseUrl}/seleccion/portal/${idAspirante}`,
-      totalDocumentos: docs.length,
-      copia: unicos(copia)
-    });
-    console.log(`[avisosSeleccion] Aviso de fase de firmas enviado a ${a.identificacion}.`);
-    return true;
-  } catch (err) {
-    console.error(`[avisosSeleccion] Error en aviso de fase de firmas (${idAspirante}):`, err.message);
-    return false;
-  }
 }
 
 // Cuando el aspirante completa todas las firmas: correo a Selección.
@@ -163,4 +131,4 @@ async function avisarFirmasCompletas({ idAspirante }) {
   }
 }
 
-module.exports = { avisarFaseFirmas, avisarFirmasCompletas };
+module.exports = { avisarFirmasCompletas };
