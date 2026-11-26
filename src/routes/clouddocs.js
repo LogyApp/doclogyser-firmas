@@ -24,6 +24,7 @@ const {
 } = require('../services/clouddocsFirmas');
 const configTrabajadores = require('../services/configClouddocsTrabajadores');
 const configDocRetiros = require('../services/configClouddocsDocRetiros');
+const { faltantesPorTrabajador } = require('../services/docRetirosFaltantes');
 
 const router = express.Router();
 
@@ -942,10 +943,18 @@ router.get('/api/docretiros', async (req, res) => {
         t.Url,
         t.Solicitud,
         t.Justificacion_Solicitud,
-        t.Visualizar
+        t.Visualizar,
+        DATE_FORMAT(rv.fecha_retiro, '%Y-%m-%d') AS FechaRetiro,
+        rv.motivo_retiro AS MotivoRetiro
       FROM Maestro_docTrabajador t
       LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
       LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
+      LEFT JOIN (
+        SELECT \`Identificación\` AS ident, \`Fecha de Ingreso\` AS fi,
+               MAX(\`Fecha de Retiro\`) AS fecha_retiro, MAX(\`Motivo del Retiro\`) AS motivo_retiro
+        FROM Maestro_Vinculación
+        GROUP BY \`Identificación\`, \`Fecha de Ingreso\`
+      ) rv ON rv.ident = t.Identificación AND rv.fi = t.Fecha_Ingreso
       ${where}
       ORDER BY t.FechaRegistro DESC
       LIMIT ${limiteRet}
@@ -982,6 +991,26 @@ router.get('/api/docretiros', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[cloud-docs] GET /api/docretiros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Doc. Retiros › Faltantes por trabajador (ver services/docRetirosFaltantes.js)
+router.get('/api/docretiros/faltantes', async (req, res) => {
+  try {
+    const { usuario, desde, hasta, regional, operacion, buscar } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!acceso.secciones.some(sec => String(sec).toLowerCase() === 'docretiros')) {
+      return res.status(403).json({ error: 'Tu rol no tiene acceso a Doc. Retiros' });
+    }
+
+    const resultado = await faltantesPorTrabajador({ acceso, desde, hasta, regional, operacion, buscar: (buscar || '').trim() });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/docretiros/faltantes:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -15,6 +15,7 @@ const P = {
   HABILITAR:      'Habilitar notificaciones de correo en Doc. Retiros',
   AVISO_PARA:     'Aviso de documento con ERROR - Para:',
   AVISO_COPIA:    'Aviso de documento con ERROR - Copia:',
+  DOCS_ADICIONALES: 'Documentos adicionales obligatorios en Faltantes',
 };
 
 const DEFAULTS = {
@@ -24,6 +25,7 @@ const DEFAULTS = {
   [P.HABILITAR]:     '1',
   [P.AVISO_PARA]:    'Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [P.AVISO_COPIA]:   '',
+  [P.DOCS_ADICIONALES]: '34, 35',
 };
 
 // Roles que se resuelven según la Operación del trabajador (configRetiro.js)
@@ -132,8 +134,15 @@ async function destinatariosAvisoError(operacion, correoQuienMarca) {
   return { para, copia };
 }
 
+// Vista "Faltantes por trabajador": documentos extra exigidos a todo retirado
+async function documentosAdicionales() {
+  return lista(await obtenerParametros(), P.DOCS_ADICIONALES)
+    .map(x => String(parseInt(x, 10))).filter(x => x !== 'NaN');
+}
+
 module.exports = {
   P,
+  documentosAdicionales,
   DEFAULTS,
   obtenerParametros,
   maxListado,
