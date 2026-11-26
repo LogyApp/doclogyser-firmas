@@ -108,6 +108,7 @@ const P = {
   ROLES_DESBLOQUEAR:      'Roles que pueden desbloquear aspirantes',
   ROLES_REINGRESO:        'Roles que pueden iniciar un reingreso',
   DOCS_CONSERVAR_REINGRESO: 'Documentos que se conservan en un reingreso',
+  ROLES_REGENERAR_HV:     'Roles que pueden regenerar hoja de vida',
 };
 const DEFAULTS = {
   [P.EXIGIR_DOCS_EN_PROCESO]: '0',
@@ -120,6 +121,7 @@ const DEFAULTS = {
   [P.ROLES_DESBLOQUEAR]:      'Sistema, CoorSelección',
   [P.ROLES_REINGRESO]:        'Selección, Selección Centro, CoorSelección, Sistema, AuxiliarR',
   [P.DOCS_CONSERVAR_REINGRESO]: 'CC',
+  [P.ROLES_REGENERAR_HV]:     'Sistema, CoorSelección',
 };
 
 const TTL_MS = 5 * 60 * 1000;
@@ -320,7 +322,24 @@ async function prefijosConservarReingreso() {
   return listaParametro(params, P.DOCS_CONSERVAR_REINGRESO).map(x => x.toUpperCase());
 }
 
+/** ¿El usuario puede regenerar la Hoja de Vida? (Config_Parametros talenthub/Aspirantes) */
+async function puedeRegenerarHv(usuarioId) {
+  if (!usuarioId) return false;
+  try {
+    const [[u], params] = await Promise.all([
+      pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]),
+      obtenerParametrosAspirantes(),
+    ]);
+    if (!u.length) return false;
+    return listaParametro(params, P.ROLES_REGENERAR_HV).map(normalizar).includes(normalizar(u[0].Rol));
+  } catch (err) {
+    console.error('[docsSeleccion] No se pudo validar el permiso de regenerar hoja de vida:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
+  puedeRegenerarHv,
   puedeIniciarReingreso,
   prefijosConservarReingreso,
   PARAMETROS_ASPIRANTES: P,

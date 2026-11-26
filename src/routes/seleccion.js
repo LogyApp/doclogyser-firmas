@@ -14,7 +14,8 @@ const {
   generarHtmlVistaFirma,
   procesarFirmaDocumento
 } = require('../services/seleccionFirmas');
-const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante, puedeIniciarReingreso, prefijosConservarReingreso } = require('../services/docsSeleccion');
+const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante, puedeIniciarReingreso, prefijosConservarReingreso, puedeRegenerarHv } = require('../services/docsSeleccion');
+const { regenerarHojaVidaAspirante } = require('../services/hojaVidaService');
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
 const { avisarFirmasCompletas } = require('../services/avisosSeleccion');
 const { crearNotificacionCargaDocumentosAspirante } = require('../services/notificacionesService');
@@ -545,12 +546,13 @@ router.get('/admin/:uuid', async (req, res) => {
     }
 
     // Panel Admin: nombres oficiales de Config_Doc_Trabajador y permisos de usuario en paralelo
-    const [docsFirmar, puedeDesbloquear, puedeReingreso] = await Promise.all([
+    const [docsFirmar, puedeDesbloquear, puedeReingreso, puedeRegenerar] = await Promise.all([
       obtenerDocsFirmaParaOperacion(operacionSugerida),
       String(a.estado_proceso || '').trim().toLowerCase() === 'bloqueado'
         ? puedeDesbloquearAspirante(usuario) : Promise.resolve(false),
       a.estado_proceso === 'contratado'
-        ? puedeIniciarReingreso(usuario) : Promise.resolve(false)
+        ? puedeIniciarReingreso(usuario) : Promise.resolve(false),
+      puedeRegenerarHv(usuario)
     ]);
 
     const mapaDocs = {};
@@ -569,6 +571,7 @@ router.get('/admin/:uuid', async (req, res) => {
         estadoProceso: a.estado_proceso,
         puedeDesbloquear,
         puedeReingreso,
+        puedeRegenerar,
         procesosAnteriores,
         telefono: a.telefono || '',
         correoElectronico: a.correo_electronico || ''
@@ -1085,6 +1088,41 @@ router.post('/aprobar-masivo', async (req, res) => {
 
 // Eliminar Documento (Portal Aspirante)
 // Regenera un documento firmado con la plantilla actual (misma firma, respuestas y huella)
+// Regenera la Hoja de Vida institucional con la plantilla actual
+router.post('/regenerar-hoja-vida', async (req, res) => {
+  const { id_aspirante } = req.body;
+  const usuario = req.query.usuario || req.body.usuario || '';
+  const volver = (msg, info) => res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${encodeURIComponent(usuario)}&msg=${msg}&info=${encodeURIComponent(info)}`);
+
+  try {
+    if (!id_aspirante) throw new Error('Falta id_aspirante');
+
+    const tienePermiso = await puedeRegenerarHv(usuario);
+    if (!tienePermiso) {
+      return volver('error', 'No tienes permisos para regenerar la Hoja de Vida.');
+    }
+
+    const [aspRows] = await pool.execute(
+      'SELECT estado_proceso, identificacion FROM Dynamic_hv_aspirante WHERE id_aspirante = ? LIMIT 1',
+      [id_aspirante]
+    );
+    if (!aspRows.length) throw new Error('Aspirante no encontrado');
+    if (String(aspRows[0].estado_proceso || '').toLowerCase() === 'contratado') {
+      return volver('error', 'No es posible regenerar la Hoja de Vida de un aspirante contratado.');
+    }
+
+    await regenerarHojaVidaAspirante({
+      idAspirante: id_aspirante,
+      bucketAspirantes: BUCKET_ASPIRANTES
+    });
+
+    volver('success', 'Hoja de Vida regenerada exitosamente.');
+  } catch (err) {
+    console.error('Error al regenerar hoja de vida:', err);
+    volver('error', 'No se pudo regenerar la Hoja de Vida: ' + err.message);
+  }
+});
+
 router.post('/regenerar-firma', async (req, res) => {
   const { id_aspirante, id_config_doc } = req.body;
   const usuario = req.query.usuario || req.body.usuario || '';
@@ -3193,6 +3231,18 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
       if (params.get('msg') === 'aprobado') alert('Documento aprobado con éxito');
       if (params.get('msg') === 'deleted') alert('Documento eliminado del sistema');
 
+      // Regenerar la Hoja de Vida institucional
+      function regenerarHojaVida() {
+        if (!confirm('¿Regenerar la Hoja de Vida institucional del aspirante con la plantilla actual? Se reemplazará el documento en el sistema.')) return;
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = '/seleccion/regenerar-hoja-vida' + window.location.search.replace(/[?&]msg=[^&]*/g, '').replace(/[?&]info=[^&]*/g, '');
+        const i = document.createElement('input'); i.type = 'hidden'; i.name = 'id_aspirante'; i.value = window.location.pathname.split('/').pop(); f.appendChild(i);
+        document.body.appendChild(f);
+        document.body.style.cursor = 'wait';
+        f.submit();
+      }
+
       // Regenerar un documento firmado con la plantilla actual (misma firma y huella)
       function regenerarFirma(idDoc, nombre) {
         if (!confirm('¿Regenerar "' + nombre + '" con la plantilla actual? Se conserva la firma, las respuestas y la huella.')) return;
@@ -3377,9 +3427,20 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
                 <span class="font-mono font-bold text-slate-600">C.C. ${asp.identificacion}</span>
                 ${asp.pdfUrl ? `
                   <span class="text-slate-300">•</span>
-                  <a class="text-blue-600 font-bold hover:underline inline-flex items-center gap-1 text-[11px]" href="${asp.pdfUrl}" target="_blank">
-                    <span>📄</span> Ver Hoja de Vida (PDF)
+                  <a class="text-slate-600 hover:text-blue-600 transition-colors inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 text-sm" href="${asp.pdfUrl}" target="_blank" title="Ver Hoja de Vida (PDF)" aria-label="Ver Hoja de Vida">
+                    📄
                   </a>
+                ` : ''}
+                ${asp.puedeRegenerar ? `
+                  ${asp.estadoProceso === 'contratado' ? `
+                    <button type="button" disabled class="inline-flex items-center justify-center p-0.5 rounded text-slate-300 cursor-not-allowed opacity-50 text-sm" title="No se puede regenerar: el aspirante ya está contratado" aria-label="Regenerar Hoja de Vida deshabilitado">
+                      🔄
+                    </button>
+                  ` : `
+                    <button type="button" onclick="regenerarHojaVida()" class="inline-flex items-center justify-center p-0.5 rounded text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors text-sm" title="Regenerar Hoja de Vida (PDF)" aria-label="Regenerar Hoja de Vida">
+                      🔄
+                    </button>
+                  `}
                 ` : ''}
                 ${asp.requisicionInfo ? `
                   <span class="text-slate-300">•</span>
