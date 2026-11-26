@@ -23,6 +23,7 @@ const {
   enviarCorreoPortalTrabajador
 } = require('../services/clouddocsFirmas');
 const configTrabajadores = require('../services/configClouddocsTrabajadores');
+const configDocRetiros = require('../services/configClouddocsDocRetiros');
 
 const router = express.Router();
 
@@ -71,9 +72,14 @@ router.get('/', async (req, res) => {
     const rolesFirmas = await obtenerRolesPermitidosFirmas();
     // Permisos de Trabajadores (Config_Parametros CloudDocs / Trabajadores)
     const permisosTrab = await configTrabajadores.permisosInterfaz(acceso.rol);
+    // Doc. Retiros (Config_Parametros CloudDocs / DocRetiros)
+    const puedeValidarRetiros = await configDocRetiros.puedeValidar(acceso.rol);
+    const docRetirosClasificaciones = await configDocRetiros.clasificacionesRetiro();
     const config = JSON.stringify({
       ...acceso,
       ...permisosTrab,
+      puedeValidarRetiros,
+      docRetirosClasificaciones,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       puedeVerSociodemografica,
       rolesFirmasActivos: rolesFirmas.rolesActivos,
@@ -868,7 +874,12 @@ router.get('/api/docretiros', async (req, res) => {
     const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const conds = ["c.Clasificacion LIKE '%Retiro%'"];
+    // Clasificación y tope: Config_Parametros CloudDocs / DocRetiros
+    const [condClasif, limiteRet] = await Promise.all([
+      configDocRetiros.sqlClasificacionRetiro('c'),
+      configDocRetiros.maxListado()
+    ]);
+    const conds = [condClasif];
     const params = [];
 
     if (!acceso.sinFiltro) {
@@ -937,7 +948,7 @@ router.get('/api/docretiros', async (req, res) => {
       LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
       ${where}
       ORDER BY t.FechaRegistro DESC
-      LIMIT 1000
+      LIMIT ${limiteRet}
     `;
 
     const [rows] = await pool.execute(sql, params);
@@ -1362,8 +1373,9 @@ router.get('/api/conteos', async (req, res) => {
     }
 
     else if (activeTab === 'docretiros') {
+      const condClasifRet = await configDocRetiros.sqlClasificacionRetiro('c');
       const buildFiltersRetirosLocal = (buscarVal, regionalVal, operacionVal, tipoDocumentoVal, estadoVal, validacionVal) => {
-        const cT = ["c.Clasificacion LIKE '%Retiro%'"];
+        const cT = [condClasifRet];
         const pT = [];
 
         if (!acceso.sinFiltro) {
@@ -2099,131 +2111,161 @@ router.post('/api/documento/eliminar', async (req, res) => {
   }
 });
 
-// Helper function to send email notification on docretiros error
-async function enviarNotificacionErrorRetiros(operacion, documentos) {
+// Aviso por correo cuando se marcan documentos de retiro con ERROR.
+// Destinatarios: Config_Parametros CloudDocs / DocRetiros ("Aviso de documento con ERROR - Para:" y
+// "- Copia:"); Auxiliar/AuxiliarR/Coordinador/CoordinadorR se resuelven según la Operación.
+// Quien marca va en copia. Interruptor: "Habilitar notificaciones de correo en Doc. Retiros".
+async function enviarNotificacionErrorRetiros(operacion, documentos, { quienMarca, motivo }) {
   try {
-    const [usuarios] = await pool.execute(
-      `SELECT DISTINCT Email FROM Maestro_Usuarios 
-       WHERE Operación = ? AND Rol IN ('Auxiliar', 'AuxiliarR', 'CoordinadorR', 'Coordinador') 
-         AND Email IS NOT NULL AND Email <> ''`,
-      [operacion]
-    );
-
-    if (usuarios.length === 0) {
-      console.log(`[cloud-docs] No users with matching roles found to notify for operation ${operacion}`);
+    const dest = await configDocRetiros.destinatariosAvisoError(operacion, quienMarca && quienMarca.email);
+    if (!dest) {
+      console.log(`[cloud-docs] Avisos de Doc. Retiros desactivados; no se envía correo (${operacion}).`);
+      return;
+    }
+    if (!dest.para.length) {
+      console.log(`[cloud-docs] Sin destinatarios para el aviso de ERROR de Doc. Retiros (${operacion}).`);
       return;
     }
 
-    const emails = usuarios.map(u => u.Email);
-    console.log(`[cloud-docs] Notifying emails: ${emails.join(', ')} for operation ${operacion}`);
+    const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT, COLOR_ENCABEZADO_AZUL } = require('../services/email');
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-    const rowsHtml = documentos.map(doc => `
+    const filas = documentos.map(doc => `
       <tr>
-        <td style="padding: 10px; border-bottom: 1.5px solid #eee; font-weight: bold; color: #000b59;">${doc.Documento || 'N/A'}</td>
-        <td style="padding: 10px; border-bottom: 1.5px solid #eee;">${doc.Identificacion || 'N/A'}</td>
-        <td style="padding: 10px; border-bottom: 1.5px solid #eee;">${doc.Operacion || 'N/A'}</td>
-      </tr>
-    `).join('');
+        <td style="padding:9px 10px;border-bottom:1px solid #eee;font-weight:bold;color:#1B2A5E">${esc(doc.Documento || 'N/A')}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(doc.Trabajador || 'N/A')}<br><span style="color:#64748b;font-size:.85em">C.C. ${esc(doc.Identificacion || 'N/A')}</span></td>
+        <td style="padding:9px 10px;border-bottom:1px solid #eee">${esc(doc.Cargo || '—')}</td>
+      </tr>`).join('');
 
-    const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('../services/email');
+    const quien = quienMarca && quienMarca.nombre ? `${esc(quienMarca.nombre)}${quienMarca.rol ? ` (${esc(quienMarca.rol)})` : ''}` : 'Cloud Docs';
 
-    const htmlContent = `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 24px; color: #334155;">
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1.5px solid #e2e8f0;">
-${encabezadoLogo('#000b59')}
-          <div style="padding: 24px;">
-            <h2 style="margin: 0 0 14px 0; font-size: 1.25rem; font-weight: 700; color: #000b59;">Novedad de Nómina: Documentos de Retiro</h2>
-            <p style="font-size: 1.05rem; line-height: 1.5; color: #1e293b;">
-              Hola,
-            </p>
-            <p style="font-size: 0.95rem; line-height: 1.5;">
-              El área de <strong>Nómina</strong> ha indicado que los siguientes documentos de retiro presentan novedades y deben volver a subirse:
-            </p>
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9rem; text-align: left;">
-              <thead>
-                <tr style="background: #f1f5f9; color: #475569;">
-                  <th style="padding: 10px; border-bottom: 1.5px solid #cbd5e1;">Documento</th>
-                  <th style="padding: 10px; border-bottom: 1.5px solid #cbd5e1;">Cédula</th>
-                  <th style="padding: 10px; border-bottom: 1.5px solid #cbd5e1;">Operación</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-            </table>
-            <p style="font-size: 0.9rem; line-height: 1.5; color: #64748b; margin-top: 24px;">
-              Por favor, ingrese al sistema para verificar y cargar nuevamente los soportes requeridos.
-            </p>
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+        <div style="padding:24px;background:#fff;border:1px solid #eee;color:#1a1a2e;line-height:1.5">
+          <h2 style="color:#1B2A5E;margin:0 0 10px;font-size:1.2rem">Documentos de retiro con novedad</h2>
+          <p style="margin:0 0 12px;font-size:.93rem">
+            <strong>${quien}</strong> marcó con <strong style="color:#b91c1c">ERROR</strong> los siguientes documentos de retiro de la operación
+            <strong>${esc(operacion)}</strong>. Deben revisarse y cargarse de nuevo.
+          </p>
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 12px;margin:0 0 16px;font-size:.9rem">
+            <strong>Motivo:</strong> ${esc(motivo)}
           </div>
-          <div style="background: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1.5px solid #e2e8f0; font-size: 0.8rem; color: #94a3b8;">
-            Este es un correo automático generado por LogyApp CloudDocs. Por favor no responder a esta dirección.
-          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:.9rem;text-align:left">
+            <thead><tr style="background:#f1f5f9;color:#475569">
+              <th style="padding:9px 10px">Documento</th><th style="padding:9px 10px">Trabajador</th><th style="padding:9px 10px">Cargo</th>
+            </tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+          <p style="font-size:.85rem;color:#64748b;margin-top:20px">Ingresa a Cloud Docs › Doc. Retiros para cargar de nuevo los soportes.</p>
         </div>
-      </div>
-    `;
+      </div>`;
 
     await transporter.sendMail({
-      from: `"CloudDocs Nómina" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
-      to: emails.join(', '),
-      subject: `[Novedad Retiro] Documentos de retiro presentan novedad - Operación ${operacion}`,
-      html: htmlContent,
+      from: `"CloudDocs Retiros" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
+      to: dest.para.join(', '),
+      cc: dest.copia.length ? dest.copia.join(', ') : undefined,
+      subject: `[Novedad Retiro] Documentos de retiro con novedad - Operación ${operacion}`,
+      html,
       attachments: [LOGO_HEADER_ATTACHMENT],
     });
-    console.log(`[cloud-docs] Email notification sent successfully for operation ${operacion}`);
+    console.log(`[cloud-docs] Aviso de ERROR de Doc. Retiros enviado (${operacion}) a ${dest.para.length} destinatario(s).`);
   } catch (err) {
-    console.error(`[cloud-docs] Error sending email notification for operation ${operacion}:`, err);
+    console.error(`[cloud-docs] Error enviando el aviso de ERROR de Doc. Retiros (${operacion}):`, err);
   }
 }
 
-// API: Validación masiva de documentos de retiros (Rol Archivo, Nomina y Sistema)
+// API: Validación masiva de documentos de retiros.
+// Roles: Config_Parametros CloudDocs / DocRetiros "Roles que pueden validar documentos de retiro".
+// ERROR exige motivo. Cada cambio queda en Historial_Validacion_CloudDocs (quién, cuándo, antes/después, motivo).
 router.post('/api/docretiros/validacion-masiva', async (req, res) => {
   try {
     const { usuario, ids, validacion } = req.body;
+    const motivo = String(req.body.motivo || '').trim();
     if (!usuario || !Array.isArray(ids) || ids.length === 0 || !validacion) {
       return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, ids, validacion)' });
     }
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
-    if (!acceso || !['Archivo', 'Nomina', 'Sistema'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado para realizar validación masiva' });
+    if (!acceso || !(await configDocRetiros.puedeValidar(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para validar documentos de retiro' });
     }
 
     if (!['OK', 'PEND', 'ERROR'].includes(validacion)) {
       return res.status(400).json({ error: 'Valor de validación inválido' });
     }
+    if (validacion === 'ERROR' && motivo.length < 5) {
+      return res.status(400).json({ error: 'Para marcar ERROR debes escribir el motivo (mínimo 5 caracteres).' });
+    }
 
-    // Update DB in batch
     const placeholders = ids.map(() => '?').join(',');
-    const sqlUpdate = `UPDATE Maestro_docTrabajador SET \`Validación\` = ? WHERE id IN (${placeholders})`;
-    await pool.execute(sqlUpdate, [validacion, ...ids]);
+    const [docs] = await pool.execute(
+      `SELECT t.id, t.\`Identificación\` AS Identificacion, t.\`Operación\` AS Operacion, t.TipoDocumento,
+              t.\`Validación\` AS ValidacionAnterior, t.Fecha_Ingreso, c.Documento
+       FROM Maestro_docTrabajador t
+       LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
+       WHERE t.id IN (${placeholders})`,
+      ids
+    );
+    if (!docs.length) return res.status(404).json({ error: 'No se encontraron los documentos seleccionados' });
 
-    // Send emails if ERROR
+    // Constancia antes de cambiar. Si no se puede guardar (por ejemplo, falta la tabla), no se cambia nada.
+    try {
+      const filas = docs.map(d => [
+        String(d.id),
+        d.Identificacion != null ? String(d.Identificacion) : null,
+        d.TipoDocumento != null ? String(d.TipoDocumento) : null,
+        d.ValidacionAnterior || null,
+        validacion,
+        motivo ? motivo.slice(0, 500) : null,
+        String(usuario),
+        acceso.rol || null
+      ]);
+      await pool.query(
+        `INSERT INTO Historial_Validacion_CloudDocs
+           (DocId, Identificacion, TipoDocumento, ValidacionAnterior, ValidacionNueva, Motivo, Usuario, Rol)
+         VALUES ?`,
+        [filas]
+      );
+    } catch (errHist) {
+      console.error('[cloud-docs] No se pudo guardar el historial de validación:', errHist.message);
+      return res.status(500).json({ error: 'No se pudo guardar el registro de la validación; no se cambió nada. Avisa a Sistemas.' });
+    }
+
+    await pool.execute(
+      `UPDATE Maestro_docTrabajador SET \`Validación\` = ? WHERE id IN (${docs.map(() => '?').join(',')})`,
+      [validacion, ...docs.map(d => d.id)]
+    );
+
+    // Aviso por correo si es ERROR (agrupado por operación)
     if (validacion === 'ERROR') {
-      const sqlSelect = `
-        SELECT t.id, t.Identificación AS Identificacion, t.Operación AS Operacion, c.Documento
-        FROM Maestro_docTrabajador t
-        LEFT JOIN Config_Doc_Trabajador c ON c.Id = t.TipoDocumento
-        WHERE t.id IN (${placeholders})
-      `;
-      const [docs] = await pool.execute(sqlSelect, ids);
+      const identificaciones = [...new Set(docs.map(d => d.Identificacion).filter(Boolean))];
+      const datosTrab = {};
+      if (identificaciones.length) {
+        const [vRows] = await pool.execute(
+          `SELECT \`Identificación\` AS Identificacion, Trabajador, Cargo, \`Fecha de Ingreso\` AS FechaIngreso
+           FROM Maestro_Vinculación WHERE \`Identificación\` IN (${identificaciones.map(() => '?').join(',')})
+           ORDER BY \`Fecha de Ingreso\` DESC`,
+          identificaciones
+        );
+        vRows.forEach(v => { if (!datosTrab[v.Identificacion]) datosTrab[v.Identificacion] = v; });
+      }
 
-      // Group documents by Operacion
-      const groups = {};
-      docs.forEach(doc => {
-        const op = doc.Operacion || 'Sin Operacion';
-        if (!groups[op]) groups[op] = [];
-        groups[op].push(doc);
+      const grupos = {};
+      docs.forEach(d => {
+        const op = d.Operacion || '';
+        if (!op) return;
+        const v = datosTrab[d.Identificacion] || {};
+        (grupos[op] = grupos[op] || []).push({ ...d, Trabajador: v.Trabajador, Cargo: v.Cargo });
       });
 
-      // Send notifications async
-      for (const op of Object.keys(groups)) {
-        if (op !== 'Sin Operacion') {
-          enviarNotificacionErrorRetiros(op, groups[op]); // Trigger async
-        }
+      const quienMarca = { nombre: acceso.usuarioNombre, rol: acceso.rol, email: acceso.usuarioEmail };
+      for (const op of Object.keys(grupos)) {
+        setImmediate(() => enviarNotificacionErrorRetiros(op, grupos[op], { quienMarca, motivo }));
       }
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, actualizados: docs.length });
   } catch (err) {
     console.error('[cloud-docs] POST /api/docretiros/validacion-masiva error:', err);
     res.status(500).json({ error: err.message });
@@ -2441,7 +2483,7 @@ router.get('/api/exportar-excel', async (req, res) => {
       const paramsGen = [];
 
       if (tab === 'docretiros') {
-        condsTrab.push("c.Clasificacion LIKE '%Retiro%'");
+        condsTrab.push(await configDocRetiros.sqlClasificacionRetiro('c'));
       }
 
       if (!acceso.sinFiltro) {

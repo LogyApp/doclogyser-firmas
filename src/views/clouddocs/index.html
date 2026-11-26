@@ -2143,6 +2143,17 @@
       return opNorm === 'italcol la estrella' ? 7 : 6;
     }
 
+    // Doc. Retiros: roles que validan y clasificaciones (Config_Parametros CloudDocs / DocRetiros)
+    function puedeValidarRetiros() {
+      return permisoTrabajadores('puedeValidarRetiros', ['Archivo', 'Nomina', 'Sistema']);
+    }
+    function esClasificacionRetiro(clasificacion) {
+      const terms = Array.isArray(CONFIG.docRetirosClasificaciones) && CONFIG.docRetirosClasificaciones.length
+        ? CONFIG.docRetirosClasificaciones : ['Retiro'];
+      const c = String(clasificacion || '').toLowerCase();
+      return terms.some(t => c.includes(String(t).toLowerCase()));
+    }
+
     function puedeGestionarFirmas(estadoTrabajador) {
       const rolNorm = normalizarCadena(CONFIG.rol);
       const estNorm = normalizarCadena(estadoTrabajador || 'Activo');
@@ -2916,7 +2927,7 @@
       select.innerHTML = '<option value="">— Todos los tipos —</option>';
       
       tiposDocumentosList.forEach(d => {
-        if (tab === 'docretiros' && !(d.Clasificacion || '').includes('Retiro')) return;
+        if (tab === 'docretiros' && !esClasificacionRetiro(d.Clasificacion)) return;
         if (tab === 'duplicados' && d.duplicados === 'SI') return;
         
         const option = document.createElement('option');
@@ -3126,7 +3137,7 @@
       });
 
       const bulkToolbar = document.getElementById('bulk-actions-toolbar');
-      if (tab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol)) {
+      if (tab === 'docretiros' && puedeValidarRetiros()) {
         if (bulkToolbar) {
           bulkToolbar.style.display = 'flex';
           document.getElementById('selected-rows-count').innerText = '0 seleccionados';
@@ -3468,7 +3479,7 @@
       const tableEl = document.getElementById('main-table');
       
       let cols = COLUMNS[activeTab];
-      const isRetirosAuth = activeTab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol);
+      const isRetirosAuth = activeTab === 'docretiros' && puedeValidarRetiros();
       if (isRetirosAuth) {
         cols = [
           { key: 'select', label: 'Sel.', width: 45, align: 'center' },
@@ -3508,7 +3519,7 @@
       actualizarBadgeRegistrosCD(activeTab === 'todo' ? todoPagination.total : currentData.length);
 
       let cols = COLUMNS[activeTab];
-      const isRetirosAuth = activeTab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol);
+      const isRetirosAuth = activeTab === 'docretiros' && puedeValidarRetiros();
       if (isRetirosAuth) {
         cols = [
           { key: 'select', label: 'Sel.', width: 45, align: 'center' },
@@ -3910,6 +3921,18 @@
       const confirmOk = confirm(`¿Estás seguro de que deseas marcar los ${checkboxes.length} documentos seleccionados como ${valState}?`);
       if (!confirmOk) return;
 
+      // ERROR exige motivo (va en el correo a los responsables de la operación y queda en el historial)
+      let motivo = '';
+      if (valState === 'ERROR') {
+        motivo = (prompt('Escribe el motivo del ERROR (obligatorio). Se enviará a los responsables de la operación:') || '').trim();
+        if (motivo.length < 5) {
+          showToast('Debes escribir el motivo del ERROR (mínimo 5 caracteres).', 'error');
+          return;
+        }
+      } else {
+        motivo = (prompt('Observación (opcional):') || '').trim();
+      }
+
       const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
 
       showLoader();
@@ -3920,7 +3943,8 @@
           body: JSON.stringify({
             usuario: CONFIG.usuarioId,
             ids: ids,
-            validacion: valState
+            validacion: valState,
+            motivo: motivo
           })
         });
         const data = await res.json();
