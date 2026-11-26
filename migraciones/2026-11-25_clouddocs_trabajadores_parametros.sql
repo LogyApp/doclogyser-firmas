@@ -14,14 +14,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM Config_Parametros WHERE Modulo = 'CloudDocs' AND Seccion = 'Trabajadores' AND Concepto = 'Máximo de trabajadores en el listado'
 );
 
--- Bloque 2
-INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
-SELECT 'CloudDocs', 'Trabajadores', 'Roles que pueden validar documentos', 'Rol', 'Archivo, Sistema, Asistencial',
-       'Roles que pueden cambiar el semáforo de validación (OK, PEND, ERROR) de los documentos de un trabajador en Cloud Docs. Lista separada por coma. Si la fila no existe se usa Archivo, Sistema, Asistencial; si se deja vacía nadie puede validar.'
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM Config_Parametros WHERE Modulo = 'CloudDocs' AND Seccion = 'Trabajadores' AND Concepto = 'Roles que pueden validar documentos'
-);
+-- Bloque 2: (retirado el 2026-11-26) "Roles que pueden validar documentos" ya no se usa; ver 2026-11-26_config_parametros_borrar_sin_uso.sql
 
 -- Bloque 3
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
@@ -51,7 +44,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM Config_Parametros WHERE Modulo = 'CloudDocs' AND Seccion = 'Trabajadores' AND Concepto = 'Bloquear documentos repetidos al cargar'
 );
 
--- Verificación (debe devolver 5 filas)
+-- Verificación (debe devolver 4 filas)
 SELECT Concepto, Condicion, Parametro
 FROM Config_Parametros
 WHERE Modulo = 'CloudDocs' AND Seccion = 'Trabajadores'

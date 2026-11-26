@@ -9,7 +9,6 @@ const SECCION = 'Trabajadores';
 
 const P = {
   MAX_LISTADO:        'Máximo de trabajadores en el listado',
-  ROLES_VALIDAR:      'Roles que pueden validar documentos',
   ROLES_ELIMINAR:     'Roles que pueden eliminar documentos',
   ROLES_CREAR_TIPO:   'Roles que pueden crear tipos de documento',
   BLOQUEAR_REPETIDOS: 'Bloquear documentos repetidos al cargar',
@@ -17,7 +16,6 @@ const P = {
 
 const DEFAULTS = {
   [P.MAX_LISTADO]:        '1000',
-  [P.ROLES_VALIDAR]:      'Archivo, Sistema, Asistencial',
   [P.ROLES_ELIMINAR]:     'Archivo, Sistema',
   [P.ROLES_CREAR_TIPO]:   'Archivo, Sistema',
   [P.BLOQUEAR_REPETIDOS]: '0',
@@ -77,10 +75,6 @@ async function maxListado() {
   return Number.isFinite(n) && n > 0 ? Math.min(n, 20000) : 1000;
 }
 
-async function puedeValidarDocumentos(rol) {
-  return rolEnLista(await obtenerParametros(), P.ROLES_VALIDAR, rol);
-}
-
 async function puedeEliminarDocumentos(rol) {
   return rolEnLista(await obtenerParametros(), P.ROLES_ELIMINAR, rol);
 }
@@ -97,7 +91,6 @@ async function bloquearRepetidos() {
 async function permisosInterfaz(rol) {
   const params = await obtenerParametros();
   return {
-    puedeValidarDocs: rolEnLista(params, P.ROLES_VALIDAR, rol),
     puedeEliminarDocs: rolEnLista(params, P.ROLES_ELIMINAR, rol),
     puedeCrearTipoDoc: rolEnLista(params, P.ROLES_CREAR_TIPO, rol),
   };
@@ -130,7 +123,6 @@ module.exports = {
   DEFAULTS,
   obtenerParametros,
   maxListado,
-  puedeValidarDocumentos,
   puedeEliminarDocumentos,
   puedeCrearTiposDocumento,
   bloquearRepetidos,

@@ -2003,37 +2003,6 @@ router.get('/api/permisos/colaboradores', async (req, res) => {
   }
 });
 
-// API: Actualizar validación de un documento de trabajador (Pestaña Validar Cap)
-router.post('/api/documento-trabajador/validacion', async (req, res) => {
-  try {
-    const { usuario, id, validacion } = req.body;
-    if (!usuario || !id || !validacion) {
-      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, id, validacion)' });
-    }
-
-    const acceso = await computarAccesoCloudDocs(pool, usuario);
-    // Roles: Config_Parametros CloudDocs / Trabajadores "Roles que pueden validar documentos"
-    if (!acceso || !(await configTrabajadores.puedeValidarDocumentos(acceso.rol))) {
-      return res.status(403).json({ error: 'Tu rol no tiene permiso para validar documentos' });
-    }
-
-    if (!['OK', 'PEND', 'ERROR'].includes(validacion)) {
-      return res.status(400).json({ error: 'Valor de validación inválido' });
-    }
-
-    // Actualizar columna Validación
-    await pool.execute(
-      'UPDATE Maestro_docTrabajador SET `Validación` = ? WHERE id = ?',
-      [validacion, id]
-    );
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[cloud-docs] POST /api/documento-trabajador/validacion error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // API: Eliminar documento (pestañas Todo y Doc. Retiros). Requiere rol autorizado y motivo;
 // antes de borrar se guarda una copia del registro en Historial_Eliminaciones_CloudDocs.
 router.post('/api/documento/eliminar', async (req, res) => {
