@@ -56,7 +56,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 })();
 
 const { obtenerCcEmails } = require('../services/logysignScheduler');
-const { obtenerConfigLogysign, prefijoEn, diasMs, normalizar } = require('../services/configLogysign');
+const { obtenerConfigLogysign, prefijoEn, diasMs, normalizar, usuarioLogysign } = require('../services/configLogysign');
 const { correoSolicitudFirma } = require('../services/logysignCorreos');
 
 // URL pública de GCS → { bucket, ruta } (el bucket sale de la URL, no se asume)
@@ -73,13 +73,11 @@ router.get('/', async (req, res) => {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
     }
 
-    const [uRows] = await pool.execute(
-      'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    if (!uRows.length) {
-      return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
+    const u = await usuarioLogysign(usuario);
+    if (!u) {
+      return res.status(403).send('<h2>Error: Usuario sin acceso a LogySign</h2>');
     }
+    const uRows = [u];
 
     const pathTemplate = path.join(__dirname, '../views/logysign/form.html');
     const html = fs.readFileSync(pathTemplate, 'utf8');
@@ -225,7 +223,8 @@ router.get('/api/signed-pdf/:id', async (req, res) => {
 // ═════ API: AUTOCOMPLETADO TRABAJADORES ═════
 router.get('/api/search-trabajadores', async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, usuario } = req.query;
+    if (!(await usuarioLogysign(usuario))) return res.status(403).json({ error: 'Usuario sin acceso a LogySign' });
     if (!q) return res.json([]);
 
     const [rows] = await pool.execute(
@@ -241,7 +240,8 @@ router.get('/api/search-trabajadores', async (req, res) => {
 // ═════ API: DATOS TRABAJADOR ═════
 router.get('/api/vinculacion', async (req, res) => {
   try {
-    const { trabajador } = req.query;
+    const { trabajador, usuario } = req.query;
+    if (!(await usuarioLogysign(usuario))) return res.status(403).json({ error: 'Usuario sin acceso a LogySign' });
     if (!trabajador) {
       return res.status(400).json({ error: 'Trabajador requerido' });
     }
@@ -278,10 +278,19 @@ router.get('/api/config-docs', async (req, res) => {
 });
 
 // ═════ API: OBTENER FIRMA RECIENTE ═════
-router.get('/api/firma-reciente/:identificacion', async (req, res) => {
+// La pide la página de firma del trabajador: se entrega solo con un enlace de firma PENDIENTE y
+// vigente, y es la firma de ese trabajador (antes bastaba conocer la cédula).
+router.get('/api/firma-reciente', async (req, res) => {
   try {
-    const { identificacion } = req.params;
-    const base64 = await obtenerFirmaBase64Reciente(identificacion);
+    const { token } = req.query;
+    const [rows] = await pool.execute(
+      'SELECT identificacion, token_expira FROM Dynamic_Logysign WHERE token = ? AND estado = "PENDIENTE"',
+      [token || '']
+    );
+    if (!rows.length || (rows[0].token_expira && new Date() > new Date(rows[0].token_expira))) {
+      return res.status(404).json({ error: 'Enlace de firma inválido o vencido' });
+    }
+    const base64 = await obtenerFirmaBase64Reciente(rows[0].identificacion);
     res.json({ base64 });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -334,6 +343,9 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       incluirDescuento
     } = req.body;
 
+    if (!(await usuarioLogysign(usuarioId))) {
+      return res.status(403).json({ error: 'Usuario sin acceso a LogySign' });
+    }
     if (!req.file) {
       return res.status(400).json({ error: 'Debe cargar un archivo PDF' });
     }
@@ -708,8 +720,8 @@ router.post('/api/firmar', async (req, res) => {
       await conn.execute(
         `INSERT INTO Maestro_docTrabajador
          (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
-          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
-         VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, 'Cargado desde el modulo logysign', NULL, NULL, NULL, ?)`,
+          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario, FechaRegistro)
+         VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, 'Cargado desde el modulo logysign', NULL, NULL, NULL, ?, NOW())`,
         [
           docTrabajadorId,
           logysign.regional,

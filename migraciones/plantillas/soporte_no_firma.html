@@ -1,0 +1,130 @@
+<style>
+  /* Estilos encerrados en .rdoc (mismo diseño de los documentos recientes). */
+  .rdoc { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9pt; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+  .rdoc * { box-sizing: border-box; }
+  .rdoc p { margin: 0 0 8px 0; text-align: justify; }
+
+  .rdoc .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #cbd5e1; }
+  .rdoc .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .rdoc .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .rdoc .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .rdoc .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px; }
+  .rdoc .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .rdoc .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .rdoc .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .rdoc .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .rdoc .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .rdoc .meta-ver { color: #334155; }
+  .rdoc .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .rdoc .status-banner { display: table; width: 100%; border: 1px solid #fed7aa; background: #fff7ed; border-left: 4px solid #f55400; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; }
+  .rdoc .status-banner .label { font-size: 7.5pt; font-weight: 700; color: #9a3412; text-transform: uppercase; letter-spacing: 0.5px; }
+  .rdoc .status-banner .value { font-size: 10pt; font-weight: 800; color: #7c2d12; margin-top: 1px; }
+
+  .rdoc .section-block { margin-bottom: 9px; page-break-inside: avoid; }
+  .rdoc .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 3px; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; }
+  .rdoc .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .rdoc .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 8.4pt; line-height: 1.3; }
+  .rdoc .data-grid td { padding: 3.5px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .rdoc .data-grid tr:last-child td { border-bottom: none; }
+  .rdoc .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .rdoc .data-label { width: 32%; font-weight: 700; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .rdoc .data-val { font-weight: 600; color: #0f172a; word-break: break-word; }
+  .rdoc .data-val.mono { font-family: Consolas, "Courier New", monospace; font-size: 7.6pt; font-weight: 500; color: #334155; }
+
+  .rdoc .letter-body p { font-size: 8.8pt; margin-bottom: 8px; }
+  .rdoc .letter-body strong { color: #000b59; }
+
+  .rdoc .note-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 6px 12px; margin: 2px 0 8px 0; }
+  .rdoc .note-box p { margin: 0 0 3px 0; font-size: 8.2pt; color: #334155; }
+  .rdoc .note-box p:last-child { margin-bottom: 0; }
+  .rdoc .note-box strong { color: #000b59; }
+  .rdoc .annotation { white-space: pre-line; font-weight: 700; color: #b91c1c; }
+
+  .rdoc .doc-footer { margin-top: 10px; text-align: center; }
+  .rdoc .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px; }
+  .rdoc .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px; }
+  .rdoc .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px; }
+</style>
+
+<div class="rdoc">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Soporte de solicitud de firma digital</div>
+        <div class="doc-subtitle">Gestión de Talento Humano</div>
+        <div class="doc-subdetail">Constancia de envío por correo electrónico — LogySign</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="status-banner">
+    <div class="label">Resultado de la solicitud</div>
+    <div class="value">El trabajador no firmó el documento — cerrado con soporte de correo electrónico</div>
+  </div>
+
+  <div class="letter-body">
+    <p><strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong> deja constancia de que el documento descrito a continuación fue puesto a disposición del trabajador para su revisión y firma digital a través de la plataforma <strong>LogySign</strong>, mediante un enlace personal notificado al correo electrónico registrado, y que el trabajador no lo firmó. En consecuencia, el documento se cerró con la anotación de soporte por correo electrónico que se indica en este soporte.</p>
+  </div>
+
+  <div class="section-block">
+    <div class="section-title">Datos del trabajador</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Nombre</td><td class="data-val">{{nombre_trabajador}}</td></tr>
+      <tr><td class="data-label">Identificación</td><td class="data-val">{{identificacion}}</td></tr>
+      <tr><td class="data-label">Cargo</td><td class="data-val">{{cargo}}</td></tr>
+      <tr><td class="data-label">Operación / Regional</td><td class="data-val">{{operacion}} / {{regional}}</td></tr>
+    </table>
+  </div>
+
+  <div class="section-block">
+    <div class="section-title">Solicitud de firma</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Documento</td><td class="data-val">{{nombre_documento}} ({{prefijo}})</td></tr>
+      {{fila_causa}}
+      <tr><td class="data-label">Fecha de registro</td><td class="data-val">{{fecha_registro}}</td></tr>
+      <tr><td class="data-label">Fecha de envío de la solicitud</td><td class="data-val">{{fecha_envio}}</td></tr>
+      <tr><td class="data-label">Correo electrónico notificado</td><td class="data-val">{{email_trabajador}}</td></tr>
+      <tr><td class="data-label">Celular registrado</td><td class="data-val">{{celular_trabajador}}</td></tr>
+      <tr><td class="data-label">Vigencia del enlace de firma</td><td class="data-val">{{token_expira}}</td></tr>
+      <tr><td class="data-label">Solicitado por</td><td class="data-val">{{creador}}</td></tr>
+    </table>
+  </div>
+
+  <div class="section-block">
+    <div class="section-title">Cierre como No firma</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Fecha de cierre</td><td class="data-val">{{fecha_no_firma}}</td></tr>
+      <tr><td class="data-label">Cerrado por</td><td class="data-val">{{usuario_no_firma}}</td></tr>
+      <tr><td class="data-label">Anotación en el documento</td><td class="data-val annotation">{{anotacion}}</td></tr>
+    </table>
+  </div>
+
+  <div class="section-block">
+    <div class="section-title">Verificación</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Código del registro</td><td class="data-val mono">{{id_registro}}</td></tr>
+      <tr><td class="data-label">Huella SHA-256 del documento enviado</td><td class="data-val mono">{{hash_original}}</td></tr>
+    </table>
+  </div>
+
+  <div class="note-box">
+    <p>El documento enviado al trabajador, con la anotación de soporte en el lugar de la firma, se conserva en los documentos del trabajador en Cloud Docs (<strong>{{prefijo}}</strong>).</p>
+    <p>La huella SHA-256 identifica de forma única el archivo enviado: si el archivo se modifica, la huella cambia. Soporte generado el <strong>{{fecha_generacion}}</strong>.</p>
+  </div>
+
+  <div class="doc-footer">
+    <div class="line"></div>
+    <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+    <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+  </div>
+
+</div>

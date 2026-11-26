@@ -8,9 +8,13 @@ const { storage } = require('../services/storage');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
 const { obtenerCcEmails } = require('../services/logysignScheduler');
-const { obtenerConfigLogysign, alcanceRegistros, rolEn, prefijoEn, diasMs } = require('../services/configLogysign');
+const { obtenerConfigLogysign, alcanceRegistros, rolEn, prefijoEn, diasMs, usuarioLogysign } = require('../services/configLogysign');
 const { correoSolicitudFirma, enlaceDescuentoPendiente } = require('../services/logysignCorreos');
 const { accesoSeccion } = require('../services/maestroMenu');
+const { generarSoporteNoFirma, idDocSoporte } = require('../services/logysignSoporte');
+
+// No firma y su soporte (como eliminar pendientes): quien creó el registro o 'Roles que pueden marcar No firma'
+const puedeNoFirma = (cfg, rol, usuario, creador) => creador === usuario || rolEn(cfg.rolesNoFirma, rol);
 
 // ── Config_Parametros (Modulo = 'CloudDocs', Seccion = 'LogySign') ──────────
 // Roles que pueden eliminar registros ya FIRMADOS (borra PDF firmado, PDF original
@@ -71,13 +75,11 @@ router.get('/', async (req, res) => {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
     }
 
-    const [uRows] = await pool.execute(
-      'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    if (!uRows.length) {
-      return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
+    const u = await usuarioLogysign(usuario);
+    if (!u) {
+      return res.status(403).send('<h2>Error: Usuario sin acceso a LogySign</h2>');
     }
+    const uRows = [u];
 
     const pathTemplate = path.join(__dirname, '../views/logysign/registros.html');
     const html = fs.readFileSync(pathTemplate, 'utf8');
@@ -100,9 +102,9 @@ router.get('/', async (req, res) => {
 router.get('/api/parametros', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario || '']);
-    if (!uRows.length) return res.status(403).json({ error: 'Usuario no autorizado' });
-    const rol = uRows[0].Rol || '';
+    const u = await usuarioLogysign(usuario);
+    if (!u) return res.status(403).json({ error: 'Usuario sin acceso a LogySign' });
+    const rol = u.Rol || '';
     const cfg = await obtenerConfigLogysign();
     res.json({
       verCreador: alcanceRegistros(cfg, rol) !== 'propios',
@@ -134,16 +136,12 @@ router.get('/api/registros', async (req, res) => {
       return res.status(400).json({ error: 'Usuario requerido' });
     }
 
-    // Consultar rol
-    const [uRows] = await pool.execute(
-      'SELECT Rol FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    if (!uRows.length) {
-      return res.status(403).json({ error: 'Usuario no autorizado' });
+    const u = await usuarioLogysign(usuario);
+    if (!u) {
+      return res.status(403).json({ error: 'Usuario sin acceso a LogySign' });
     }
 
-    const rol = uRows[0].Rol || '';
+    const rol = u.Rol || '';
     const cfg = await obtenerConfigLogysign();
     const alcance = alcanceRegistros(cfg, rol);
     let where = '';
@@ -158,22 +156,28 @@ router.get('/api/registros', async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT dl.*, cdt.Documento AS nombre_documento, mu.Nombre AS nombre_creador, s.Celular AS celular_trabajador,
-              dn.id_descuento AS auto_id_descuento, dn.token_firma AS auto_token_firma, dn.url_doc AS auto_url_doc
+              dn.id_descuento AS auto_id_descuento, dn.token_firma AS auto_token_firma, dn.url_doc AS auto_url_doc,
+              sop.id AS soporte_id
        FROM Dynamic_Logysign dl
        LEFT JOIN Config_Doc_Trabajador cdt ON dl.id_config_doc = cdt.Id
        LEFT JOIN Maestro_Usuarios mu ON dl.usuario_creador = mu.ID
        LEFT JOIN Maestro_Segmentación s ON dl.identificacion = s.Identificación
        LEFT JOIN Dynamic_descuentonomina dn ON dl.id_descuento_auto = dn.id_descuento
+       LEFT JOIN Maestro_docTrabajador sop ON sop.id = CONCAT('logysign-nf-', dl.id)
        ${where}
        ORDER BY dl.fecha_registro DESC`,
       params
     );
-    // puede_eliminar: los no firmados los elimina cualquiera; los FIRMADOS solo los
-    // roles de Config_Parametros (CloudDocs / LogySign).
+    // puede_eliminar (Config_Parametros CloudDocs / LogySign): los FIRMADOS, 'Roles que pueden eliminar
+    // registros firmados'; los demás, quien los creó o 'Roles que pueden eliminar registros pendientes'.
     const eliminaFirmados = await puedeEliminarFirmados(rol);
+    const eliminaPendientes = rolEn(cfg.rolesEliminarPendientes, rol);
     rows.forEach(r => {
-      r.puede_eliminar = r.estado !== 'FIRMADO' || eliminaFirmados;
-      r.estado_vista = estadoVista(r);
+      r.puede_eliminar = r.estado === 'FIRMADO' ? eliminaFirmados : (eliminaPendientes || r.usuario_creador === usuario);
+      r.no_firma = !!r.no_firma_fecha;
+      r.estado_vista = r.estado === 'FIRMADO' && r.no_firma ? 'NO_FIRMA' : estadoVista(r);
+      r.puede_no_firma = puedeNoFirma(cfg, rol, usuario, r.usuario_creador);
+      r.soporte_existe = !!r.soporte_id;
       r.causa_editable = prefijoEn(cfg.docsCausaEditable, r.prefijo);
       // El mensaje de WhatsApp lleva los dos enlaces si la Autorización de Descuento sigue sin firmar
       r.con_descuento = !!(r.auto_id_descuento && !r.auto_url_doc);
@@ -185,12 +189,13 @@ router.get('/api/registros', async (req, res) => {
   }
 });
 
-// ¿El usuario puede ver este registro? Misma regla que /api/registros (alcance de
-// Config_Parametros CloudDocs / LogySign). Devuelve el registro (con sus coordenadas) o null.
+// ¿El usuario puede ver este registro? Debe tener acceso a LogySign (Maestro_Menu) y el registro
+// estar en su alcance, la misma regla que /api/registros. Devuelve el registro (con sus
+// coordenadas y el rol del usuario en .rolUsuario) o null.
 async function obtenerRegistroVisible(usuario, id) {
-  const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario]);
-  if (!uRows.length) return null;
-  const rol = uRows[0].Rol || '';
+  const u = await usuarioLogysign(usuario);
+  if (!u) return null;
+  const rol = u.Rol || '';
   const cfg = await obtenerConfigLogysign();
   const alcance = alcanceRegistros(cfg, rol);
   const [rows] = await pool.execute(
@@ -203,12 +208,14 @@ async function obtenerRegistroVisible(usuario, id) {
     [id]
   );
   if (!rows.length) return null;
-  const reg = rows[0];
+  const reg = { ...rows[0], rolUsuario: rol };
   if (alcance === 'todo') return reg;
   if (reg.usuario_creador === usuario) return reg;
   if (alcance === 'ingreso' && String(reg.Clasificacion || '').includes(cfg.clasificacionIngreso)) return reg;
   return null;
 }
+
+const SIN_PERMISO_REGISTRO = 'Registro no encontrado o sin permiso para gestionarlo';
 
 // API: Vista previa de un documento pendiente de firma: el PDF que se subió con el/los
 // cuadro(s) de firma marcados donde firmará el trabajador. No guarda nada.
@@ -278,9 +285,12 @@ router.get('/api/vista-previa/:id', async (req, res) => {
 // apagadas, solo renueva el enlace para compartirlo por WhatsApp o copiarlo.
 router.post('/api/reenviar', async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id, usuario } = req.body;
     if (!id) {
       return res.status(400).json({ error: 'ID de registro requerido' });
+    }
+    if (!(await obtenerRegistroVisible(usuario, id))) {
+      return res.status(403).json({ error: SIN_PERMISO_REGISTRO });
     }
 
     const [rows] = await pool.execute(
@@ -350,9 +360,12 @@ router.post('/api/reenviar', async (req, res) => {
 // API: Actualizar causa de un registro
 router.post('/api/update-causa', async (req, res) => {
   try {
-    const { id, causa } = req.body;
+    const { id, causa, usuario } = req.body;
     if (!id) {
       return res.status(400).json({ error: 'ID de registro requerido' });
+    }
+    if (!(await obtenerRegistroVisible(usuario, id))) {
+      return res.status(403).json({ error: SIN_PERMISO_REGISTRO });
     }
 
     const [lRows] = await pool.execute('SELECT id_config_doc, prefijo FROM Dynamic_Logysign WHERE id = ?', [id]);
@@ -398,13 +411,14 @@ router.post('/api/actualizar-contacto', async (req, res) => {
       return res.status(400).json({ error: 'Parámetros incompletos' });
     }
 
-    // Verificar usuario
-    const [uRows] = await pool.execute(
-      'SELECT Rol FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    if (!uRows.length) {
-      return res.status(403).json({ error: 'Usuario no autorizado' });
+    // Solo quien ve al menos un registro de LogySign de ese trabajador
+    const [delTrabajador] = await pool.execute('SELECT id FROM Dynamic_Logysign WHERE identificacion = ?', [identificacion]);
+    let visible = false;
+    for (const r of delTrabajador) {
+      if (await obtenerRegistroVisible(usuario, r.id)) { visible = true; break; }
+    }
+    if (!visible) {
+      return res.status(403).json({ error: 'Sin permiso para actualizar el contacto de este trabajador' });
     }
 
     // 1. Actualizar en Maestro_Segmentación
@@ -426,8 +440,9 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
-// API: Eliminar registro. Los no firmados los puede eliminar cualquier usuario; los
-// FIRMADOS solo los roles de Config_Parametros (CloudDocs / LogySign, por defecto Sistema).
+// API: Eliminar registro (debe estar en el alcance del usuario). Los FIRMADOS solo los roles de
+// 'Roles que pueden eliminar registros firmados' (por defecto Sistema); los demás, quien los creó o
+// 'Roles que pueden eliminar registros pendientes' (por defecto Sistema).
 // Borra todo rastro: PDF firmado y PDF original en el bucket, la fila de
 // Maestro_docTrabajador (logysign-<id>) y la de Dynamic_Logysign.
 router.delete('/api/eliminar/:id', async (req, res) => {
@@ -438,25 +453,20 @@ router.delete('/api/eliminar/:id', async (req, res) => {
       return res.status(400).json({ error: 'Parámetros incompletos' });
     }
 
-    const [uRows] = await pool.execute(
-      'SELECT ID, Rol FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    if (!uRows.length) {
-      return res.status(403).json({ error: 'Usuario no autorizado' });
+    const registro = await obtenerRegistroVisible(usuario, id);
+    if (!registro) {
+      return res.status(403).json({ error: SIN_PERMISO_REGISTRO });
     }
 
-    const [logRows] = await pool.execute(
-      'SELECT estado, original_pdf_url FROM Dynamic_Logysign WHERE id = ?',
-      [id]
-    );
-    if (!logRows.length) {
-      return res.status(404).json({ error: 'El registro no existe' });
-    }
-    const registro = logRows[0];
-
-    if (registro.estado === 'FIRMADO' && !(await puedeEliminarFirmados(uRows[0].Rol))) {
-      return res.status(403).json({ error: 'Solo el rol autorizado puede eliminar un registro que ya fue firmado' });
+    if (registro.estado === 'FIRMADO') {
+      if (!(await puedeEliminarFirmados(registro.rolUsuario))) {
+        return res.status(403).json({ error: 'Solo el rol autorizado puede eliminar un registro que ya fue firmado' });
+      }
+    } else {
+      const cfg = await obtenerConfigLogysign();
+      if (registro.usuario_creador !== usuario && !rolEn(cfg.rolesEliminarPendientes, registro.rolUsuario)) {
+        return res.status(403).json({ error: 'Solo quien creó el registro o un rol autorizado puede eliminarlo' });
+      }
     }
 
     const docId = `logysign-${id}`;
@@ -497,9 +507,17 @@ router.delete('/api/eliminar/:id', async (req, res) => {
 // API: Procesar como "No Firma" (Soporte Correo)
 router.post('/api/no-firma', async (req, res) => {
   try {
-    const { id, anotacion } = req.body;
+    const { id, anotacion, usuario } = req.body;
     if (!id) {
       return res.status(400).json({ error: 'ID de registro requerido' });
+    }
+    // Quien creó el registro o 'Roles que pueden marcar No firma' (Config_Parametros CloudDocs / LogySign)
+    const visible = await obtenerRegistroVisible(usuario, id);
+    if (!visible) {
+      return res.status(403).json({ error: SIN_PERMISO_REGISTRO });
+    }
+    if (!puedeNoFirma(await obtenerConfigLogysign(), visible.rolUsuario, usuario, visible.usuario_creador)) {
+      return res.status(403).json({ error: 'Solo quien creó el registro o un rol autorizado puede marcarlo como No firma' });
     }
 
     // 1. Fetch Dynamic_Logysign record
@@ -610,8 +628,9 @@ router.post('/api/no-firma', async (req, res) => {
     try {
       await conn.beginTransaction();
       const [claim] = await conn.execute(
-        'UPDATE Dynamic_Logysign SET estado = "FIRMADO" WHERE id = ? AND estado = "PENDIENTE"',
-        [id]
+        `UPDATE Dynamic_Logysign SET estado = "FIRMADO", no_firma_fecha = NOW(), no_firma_usuario = ?, no_firma_anotacion = ?
+         WHERE id = ? AND estado = "PENDIENTE"`,
+        [usuario, String(textToDraw).slice(0, 500), id]
       );
       if (!claim.affectedRows) {
         await conn.rollback();
@@ -620,8 +639,8 @@ router.post('/api/no-firma', async (req, res) => {
       await conn.execute(
         `INSERT INTO Maestro_docTrabajador
          (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
-          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
-         VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, 'El trabajador no firma (soporte correo electrónico)', NULL, NULL, NULL, ?)`,
+          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario, FechaRegistro)
+         VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, 'El trabajador no firma (soporte correo electrónico)', NULL, NULL, NULL, ?, NOW())`,
         [
           docTrabajadorId,
           logysign.regional,
@@ -644,9 +663,54 @@ router.post('/api/no-firma', async (req, res) => {
       conn.release();
     }
 
-    res.json({ success: true, finalPdfUrl });
+    // Soporte de solicitud de firma digital: si falla, el No firma ya quedó y se puede regenerar desde Registros
+    let soporte = false;
+    try {
+      await generarSoporteNoFirma(id, usuario);
+      soporte = true;
+    } catch (errSop) {
+      console.error(`[registrologysign] No se pudo generar el soporte de No firma de ${id}:`, errSop.message);
+    }
+
+    res.json({ success: true, finalPdfUrl, soporte });
   } catch (err) {
     console.error('[registrologysign] Error in /api/no-firma:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Ver el soporte de solicitud de firma digital de un registro cerrado como No firma
+router.get('/api/soporte/:id', async (req, res) => {
+  try {
+    const reg = await obtenerRegistroVisible(req.query.usuario, req.params.id);
+    if (!reg) return res.status(404).send('Registro no encontrado o sin permiso para verlo');
+    const [rows] = await pool.execute('SELECT Doc FROM Maestro_docTrabajador WHERE id = ?', [idDocSoporte(req.params.id)]);
+    if (!rows.length || !rows[0].Doc) return res.status(404).send('<h2>Este registro aún no tiene soporte. Use Regenerar soporte.</h2>');
+    const partes = new URL(rows[0].Doc).pathname.replace(/^\//, '').split('/');
+    const [pdf] = await storage.bucket(partes[0]).file(decodeURIComponent(partes.slice(1).join('/'))).download();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Soporte_no_firma_${reg.identificacion}.${reg.prefijo}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error('[registrologysign] Error mostrando soporte:', err);
+    res.status(500).send('Error al abrir el soporte');
+  }
+});
+
+// API: Generar o regenerar el soporte (registros cerrados como No firma, también los anteriores a
+// este soporte). Mismo permiso que No firma: quien creó el registro o 'Roles que pueden marcar No firma'.
+router.post('/api/soporte/:id/regenerar', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    const reg = await obtenerRegistroVisible(usuario, req.params.id);
+    if (!reg) return res.status(403).json({ error: SIN_PERMISO_REGISTRO });
+    if (!puedeNoFirma(await obtenerConfigLogysign(), reg.rolUsuario, usuario, reg.usuario_creador)) {
+      return res.status(403).json({ error: 'Solo quien creó el registro o un rol autorizado puede generar el soporte' });
+    }
+    const { url } = await generarSoporteNoFirma(req.params.id, usuario);
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[registrologysign] Error regenerando soporte:', err);
     res.status(500).json({ error: err.message });
   }
 });

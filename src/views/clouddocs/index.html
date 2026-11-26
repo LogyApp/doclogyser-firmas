@@ -644,6 +644,7 @@
     .badge-firmado { background: var(--success-soft); border: 1px solid var(--success-soft); color: var(--success-dark); }
     .badge-pendiente { background: var(--warning-soft); border: 1px solid var(--warning-soft); color: var(--warning-dark); }
     .badge-cancelado { background: var(--border); border: 1px solid var(--border); color: var(--text-muted); }
+    .badge-nofirma { background: #ffedd5; border: 1px solid #fed7aa; color: #9a3412; }
 
     /* Filtros plegables (pestaña LogySign) */
     .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
@@ -1468,6 +1469,7 @@
                 <option value="VENCIDO">Enlace vencido</option>
                 <option value="PROGRAMADO">Programados</option>
                 <option value="FIRMADO">Firmados</option>
+                <option value="NO_FIRMA">No firma (soporte correo)</option>
                 <option value="CANCELADO">Cancelados</option>
               </select>
             </div>
@@ -5135,6 +5137,7 @@
       VENCIDO:    ['badge-retired', 'Enlace vencido'],
       PROGRAMADO: ['badge-general', 'Programado'],
       CANCELADO:  ['badge-cancelado', 'Cancelado'],
+      NO_FIRMA:   ['badge-nofirma', 'No firma'],
     };
     function logysignBadgeEstado(item) {
       const [cls, label] = LOGYSIGN_ESTADOS[item.estado_vista] || LOGYSIGN_ESTADOS.PENDIENTE;
@@ -5332,9 +5335,9 @@
             <button class="btn-icon-circle" style="background:var(--success);color:var(--text-inverse);" onclick="reenviarCorreoLogysign('${item.id}')" title="Enlace vencido: renovar el plazo y reenviar el correo">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
             </button>
-            <button class="btn-icon-circle" style="background:var(--warning);color:var(--text-inverse);" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">
+            ${item.puede_no_firma ? `<button class="btn-icon-circle" style="background:var(--warning);color:var(--text-inverse);" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-            </button>
+            </button>` : ''}
           </div>`;
       }
       if (item.estado_vista === 'PROGRAMADO') {
@@ -5372,13 +5375,27 @@
             <button class="btn-icon-circle" style="background:var(--success);color:var(--text-inverse);" onclick="reenviarCorreoLogysign('${item.id}')" title="Reenviar notificación">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
-            <button class="btn-icon-circle" style="background:var(--warning);color:var(--text-inverse);" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">
+            ${item.puede_no_firma ? `<button class="btn-icon-circle" style="background:var(--warning);color:var(--text-inverse);" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-            </button>
+            </button>` : ''}
           </div>`;
       }
       const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
-      return `<a href="${viewPdfUrl}" target="_blank" class="btn btn-submit" style="padding:6px 10px;font-size:.78rem;" title="Ver PDF Firmado">PDF</a>`;
+      const pdfBtn = `<a href="${viewPdfUrl}" target="_blank" class="btn btn-submit" style="padding:6px 10px;font-size:.78rem;" title="Ver PDF Firmado">PDF</a>`;
+      if (!item.no_firma) return pdfBtn;
+      // Cerrado como No firma: soporte de solicitud de firma digital (ver / generar o regenerar)
+      let soporte = '';
+      if (item.soporte_existe) {
+        soporte += `<a href="/registrologysign/api/soporte/${encodeURIComponent(item.id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" rel="noopener" class="btn-icon-circle" style="background:#ea580c;color:var(--text-inverse);" title="Ver soporte de solicitud de firma digital">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"></path><polyline points="4 6 12 13 20 6"></polyline></svg>
+            </a>`;
+      }
+      if (item.puede_no_firma) {
+        soporte += `<button class="btn-icon-circle" style="background:#0284c7;color:var(--text-inverse);" onclick="regenerarSoporteLogysign('${item.id}')" title="${item.soporte_existe ? 'Regenerar' : 'Generar'} soporte de solicitud de firma digital">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+            </button>`;
+      }
+      return `<div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">${pdfBtn}${soporte}</div>`;
     }
 
     function renderLogysignRows(filtered) {
@@ -5429,7 +5446,7 @@
       body.querySelectorAll('tr.logysign-row').forEach(tr => {
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', (e) => {
-          if (e.target.closest('.logysign-causa-editable') || e.target.closest('.btn') || e.target.closest('a')) return;
+          if (e.target.closest('.logysign-causa-editable') || e.target.closest('.btn') || e.target.closest('button') || e.target.closest('a')) return;
           abrirDetalleLogysign(tr.dataset.id);
         });
       });
@@ -5445,7 +5462,7 @@
       showLoader('Reenviando recordatorio de firma...');
       try {
         const res = await fetch('/registrologysign/api/reenviar', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo reenviar la notificación');
@@ -5470,13 +5487,34 @@
       showLoader('Generando documento soporte...');
       try {
         const res = await fetch('/registrologysign/api/no-firma', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, anotacion })
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, anotacion, usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo procesar la acción');
-        showToast('Documento soporte generado y finalizado con éxito', 'success');
+        showToast(data.soporte === false
+          ? 'Documento cerrado como No firma. El soporte no se pudo generar: use Generar soporte.'
+          : 'Documento cerrado como No firma y soporte generado con éxito', data.soporte === false ? 'error' : 'success');
         closeModal('modal-logysign-detalle');
         await fetchLogysignRecords();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    async function regenerarSoporteLogysign(id) {
+      if (!confirm('¿Generar el soporte de solicitud de firma digital de este registro? Quedará en los documentos del trabajador en Cloud Docs.')) return;
+      showLoader('Generando soporte...');
+      try {
+        const res = await fetch(`/registrologysign/api/soporte/${encodeURIComponent(id)}/regenerar`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo generar el soporte');
+        showToast('Soporte generado con éxito', 'success');
+        await fetchLogysignRecords();
+        if (String(logysignSelectedId) === String(id)) abrirDetalleLogysign(id);
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
@@ -5665,7 +5703,7 @@
         try {
           const res = await fetch('/registrologysign/api/update-causa', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: logysignEdicionCausaId, idConfigDoc: logysignEdicionConfigDocId, causa: causaFinal || null })
+            body: JSON.stringify({ id: logysignEdicionCausaId, causa: causaFinal || null, usuario: CONFIG.usuarioId })
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'No se pudo guardar la causa');

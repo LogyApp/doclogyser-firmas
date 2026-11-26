@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { accesoSeccion } = require('./maestroMenu');
 
 // ── Parámetros de Cloud Docs › LogySign (Config_Parametros) ──
 // Modulo = 'CloudDocs', Seccion = 'LogySign'. Si una fila no existe en la tabla se usa el valor
@@ -22,6 +23,9 @@ const P = {
   // Conceptos que se repiten (uno por rol / por grupo): cualquier Concepto que empiece así
   PRESELECCION:        'Documento preseleccionado por rol', // Condicion = rol, Parametro = prefijo
   TEXTO_NO_FIRMA:      'Texto por defecto de la anotación No firma',
+  ROLES_NO_FIRMA:      'Roles que pueden marcar No firma',
+  DOC_SOPORTE:         'Documento de soporte de No firma',
+  ROLES_ELIMINAR_PENDIENTES: 'Roles que pueden eliminar registros pendientes',
   ROLES_RESPONSABLES:  'Roles responsables de la Operación en copia',
   ROLES_REGIONAL:      'Roles en copia por Regional cuando la Operación no tiene responsables',
   COPIA_DOCUMENTO:     'Copia por documento',                // Condicion = prefijos, Parametro = roles o correos
@@ -40,6 +44,9 @@ const DEFAULTS = {
   [P.CLASIF_INGRESO]:        'Documentos de Ingreso',
   [P.ROLES_CAUSA]:           'Sistema, Juridica',
   [P.TEXTO_NO_FIRMA]:        'El trabajador no firma,|se soporta por correo electrónico',
+  [P.ROLES_NO_FIRMA]:        'Sistema',
+  [P.DOC_SOPORTE]:           'SSFD',
+  [P.ROLES_ELIMINAR_PENDIENTES]: 'Sistema',
   [P.ROLES_RESPONSABLES]:    'Auxiliar, Coordinador, AuxiliarR, CoordinadorR',
   [P.ROLES_REGIONAL]:        'AuxiliarR, CoordinadorR',
 };
@@ -125,6 +132,9 @@ async function obtenerConfigLogysign() {
     clasificacionIngreso: String(valor(p, P.CLASIF_INGRESO) || '').trim(),
     rolesCausa: roles(P.ROLES_CAUSA),
     preseleccion: p.preseleccion,
+    rolesNoFirma: roles(P.ROLES_NO_FIRMA),
+    docSoporte: String(valor(p, P.DOC_SOPORTE) || DEFAULTS[P.DOC_SOPORTE]).trim().toUpperCase(),
+    rolesEliminarPendientes: roles(P.ROLES_ELIMINAR_PENDIENTES),
     rolesResponsables: roles(P.ROLES_RESPONSABLES),
     rolesRegional: roles(P.ROLES_REGIONAL),
     copiasDocumento: p.copiasDocumento,
@@ -145,6 +155,15 @@ function alcanceRegistros(cfg, rol) {
 
 const diasMs = d => Math.round(d * 24 * 3600000);
 
+// Usuario con acceso a Cloud Docs › LogySign en Maestro_Menu ({ ID, Nombre, Rol, Email }) o null
+async function usuarioLogysign(usuarioId) {
+  if (!usuarioId) return null;
+  const [rows] = await pool.execute('SELECT ID, Nombre, Rol, Email FROM Maestro_Usuarios WHERE ID = ?', [usuarioId]);
+  if (!rows.length) return null;
+  const acceso = await accesoSeccion('clouddocs', rows[0].Rol || '', 'LogySign');
+  return acceso == null ? null : rows[0];
+}
+
 module.exports = {
   obtenerConfigLogysign,
   alcanceRegistros,
@@ -152,5 +171,6 @@ module.exports = {
   prefijoEn,
   diasMs,
   normalizar,
+  usuarioLogysign,
   PARAMETROS_LOGYSIGN: P,
 };

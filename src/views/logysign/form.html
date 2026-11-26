@@ -1033,7 +1033,7 @@
 
       searchTimeout = setTimeout(async () => {
         try {
-          const res = await fetch(`/logysign/api/search-trabajadores?q=${encodeURIComponent(val)}`);
+          const res = await fetch(`/logysign/api/search-trabajadores?q=${encodeURIComponent(val)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
           if (!res.ok) throw new Error('Error al buscar trabajadores');
           const data = await res.json();
           
@@ -1071,7 +1071,7 @@
       showLoading('Cargando información del trabajador...');
 
       try {
-        const res = await fetch(`/logysign/api/vinculacion?trabajador=${encodeURIComponent(name)}`);
+        const res = await fetch(`/logysign/api/vinculacion?trabajador=${encodeURIComponent(name)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (!res.ok) throw new Error('Error al consultar vinculación');
         const data = await res.json();
         

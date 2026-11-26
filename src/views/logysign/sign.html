@@ -905,7 +905,7 @@
     // Check GCS for recent signature
     async function checkRecentSignature() {
       try {
-        const res = await fetch(`/logysign/api/firma-reciente/${CONFIG.identificacion}`);
+        const res = await fetch(`/logysign/api/firma-reciente?token=${encodeURIComponent(CONFIG.token)}`);
         if (!res.ok) throw new Error('Error al cargar firma');
         const data = await res.json();
         

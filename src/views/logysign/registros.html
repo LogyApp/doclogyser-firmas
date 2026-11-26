@@ -345,6 +345,12 @@
       border: 1px solid rgba(2, 132, 199, 0.18);
     }
 
+    .badge-nofirma {
+      background: rgba(234, 88, 12, 0.1);
+      color: #9a3412;
+      border: 1px solid rgba(234, 88, 12, 0.22);
+    }
+
     .badge-cancelled {
       background: rgba(100, 116, 139, 0.1);
       color: #475569;
@@ -575,6 +581,7 @@
             <option value="VENCIDO">Enlace vencido</option>
             <option value="PROGRAMADO">Programados</option>
             <option value="FIRMADO">Firmados</option>
+            <option value="NO_FIRMA">No firma (soporte correo)</option>
             <option value="CANCELADO">Cancelados</option>
           </select>
         </div>
@@ -731,7 +738,21 @@
       VENCIDO:    ['badge-expired', 'Enlace vencido'],
       PROGRAMADO: ['badge-scheduled', 'Programado'],
       CANCELADO:  ['badge-cancelled', 'Cancelado'],
+      NO_FIRMA:   ['badge-nofirma', 'No firma'],
     };
+    // Soporte de solicitud de firma digital de los registros cerrados como No firma
+    function soporteAccionesHtml(item, ancho) {
+      if (!item.no_firma) return '';
+      const est = ancho ? 'width: 100%; margin-bottom: 8px;' : 'padding: 7px 10px;';
+      let html = '';
+      if (item.soporte_existe) {
+        html += `<a href="/registrologysign/api/soporte/${encodeURIComponent(item.id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn" style="${est} background: #ea580c; border-color: #ea580c; color: #fff;" title="Soporte de solicitud de firma digital">Soporte</a>`;
+      }
+      if (item.puede_no_firma) {
+        html += `<button class="btn btn-secondary" onclick="regenerarSoporte('${item.id}')" style="${est}" title="Genera de nuevo el soporte con los datos actuales">${item.soporte_existe ? 'Regenerar soporte' : 'Generar soporte'}</button>`;
+      }
+      return html;
+    }
     function badgeEstado(item) {
       const [cls, label] = ESTADOS_LS[item.estado_vista] || ESTADOS_LS.PENDIENTE;
       return `<span class="badge ${cls}">${label}</span>`;
@@ -1136,9 +1157,9 @@
                     <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="padding: 7px 10px;" title="Renueva el plazo del enlace y reenvía el correo">
                       Renovar enlace
                     </button>
-                    <button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
+                    ${item.puede_no_firma ? `<button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
                       No Firma
-                    </button>
+                    </button>` : ''}
                   </div>
                 `;
               } else if (item.estado_vista === 'PROGRAMADO') {
@@ -1169,9 +1190,9 @@
                     <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="padding: 7px 10px;">
                       Reenviar
                     </button>
-                    <button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
+                    ${item.puede_no_firma ? `<button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
                       No Firma
-                    </button>
+                    </button>` : ''}
                   </div>
                 `;
               } else {
@@ -1182,6 +1203,7 @@
                       <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,3H14.82C14.4,1.84 13.3,1 12,1C10.7,1 9.6,1.84 9.18,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M12,3A1,1 0 0,1 13,4A1,1 0 0,1 12,5A1,1 0 0,1 11,4A1,1 0 0,1 12,3M14,17H7V15H14V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
                       Ver PDF Firmado
                     </a>
+                    ${soporteAccionesHtml(item)}
                   </div>
                 `;
               }
@@ -1220,7 +1242,7 @@
         const res = await fetch('/registrologysign/api/reenviar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
+          body: JSON.stringify({ id, usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo reenviar la notificación');
@@ -1247,11 +1269,13 @@
         const res = await fetch('/registrologysign/api/no-firma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, anotacion })
+          body: JSON.stringify({ id, anotacion, usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo procesar la acción');
-        showToast('Documento soporte generado y finalizado con éxito', 'success');
+        showToast(data.soporte === false
+          ? 'Documento cerrado como No firma. El soporte no se pudo generar: use Generar soporte.'
+          : 'Documento cerrado como No firma y soporte generado con éxito', data.soporte === false ? 'error' : 'success');
         
         document.getElementById('detalle-card').style.display = 'none';
         document.getElementById('layout-container').classList.remove('detail-active');
@@ -1263,6 +1287,28 @@
       }
     }
     window.marcarNoFirma = marcarNoFirma;
+
+    async function regenerarSoporte(id) {
+      if (!confirm('¿Generar el soporte de solicitud de firma digital de este registro? Quedará en los documentos del trabajador en Cloud Docs.')) return;
+      showLoading('Generando soporte...');
+      try {
+        const res = await fetch(`/registrologysign/api/soporte/${encodeURIComponent(id)}/regenerar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo generar el soporte');
+        showToast('Soporte generado con éxito', 'success');
+        await loadRecords();
+        if (selectedRegistroId === id) abrirDetalle(id);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+    window.regenerarSoporte = regenerarSoporte;
 
     // Modal causa edit state
     let edicionCausaId = null;
@@ -1357,8 +1403,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: edicionCausaId,
-            idConfigDoc: edicionConfigDocId,
-            causa: causaFinal || null
+            causa: causaFinal || null,
+            usuario: CONFIG.usuarioId
           })
         });
         
@@ -1461,7 +1507,7 @@
         optsHtml += `${tituloControl}
           <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 10px;">El enlace de firma venció. Renuévelo para volver a compartirlo.</p>
           <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="width: 100%; margin-bottom: 8px;">Renovar enlace y reenviar correo</button>
-          <button class="btn" onclick="marcarNoFirma('${item.id}')" style="width: 100%; margin-bottom: 8px; background: #e67e22; border-color: #e67e22; color: #fff;">📋 Marcar como No Firma</button>
+          ${item.puede_no_firma ? `<button class="btn" onclick="marcarNoFirma('${item.id}')" style="width: 100%; margin-bottom: 8px; background: #e67e22; border-color: #e67e22; color: #fff;">📋 Marcar como No Firma</button>` : ''}
         `;
       } else if (item.estado_vista === 'PROGRAMADO' || item.estado_vista === 'CANCELADO') {
         // Sin acciones de firma: el correo aún no sale o el envío fue reemplazado
@@ -1483,13 +1529,14 @@
           <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
           <a href="${waUrl}" target="_blank" class="btn btn-success" style="width: 100%; margin-bottom: 8px; background: #25d366; border-color: #25d366; color: #fff;">Enviar WhatsApp</a>
           <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')" style="width: 100%; margin-bottom: 8px; background: #2980b9; color: #fff;">📋 Copiar Enlace</button>
-          <button class="btn" onclick="marcarNoFirma('${item.id}')" style="width: 100%; margin-bottom: 8px; background: #e67e22; border-color: #e67e22; color: #fff;">📋 Marcar como No Firma</button>
+          ${item.puede_no_firma ? `<button class="btn" onclick="marcarNoFirma('${item.id}')" style="width: 100%; margin-bottom: 8px; background: #e67e22; border-color: #e67e22; color: #fff;">📋 Marcar como No Firma</button>` : ''}
         `;
       } else {
         const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
         optsHtml += `
           <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid var(--border); padding-bottom: 4px;">Acciones de Control</div>
           <a href="${viewPdfUrl}" target="_blank" class="btn btn-success" style="width: 100%; margin-bottom: 8px;">Abrir PDF Firmado</a>
+          ${soporteAccionesHtml(item, true)}
         `;
       }
 

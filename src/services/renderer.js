@@ -67,6 +67,33 @@ async function esperarImagenes(page, topeMs = 15000) {
   ]), topeMs).catch(() => {});
 }
 
+// Un Chrome que sigue conectado pero quedó colgado (p. ej. tras horas abierto o una suspensión del
+// equipo) no dispara 'disconnected', y cada PDF fallaba por tiempo agotado. Si la generación falla
+// por tiempo o por la pestaña/sesión cerrada, se cierra ese Chrome y se reintenta una vez con uno nuevo.
+const ERROR_CHROME = /timeout|timed out|Target closed|Session closed|detached|Protocol error|Connection closed/i;
+
+async function reiniciarNavegador() {
+  const browser = browserInstance;
+  browserInstance = null;
+  if (browser) await browser.close().catch(() => {});
+}
+
+async function conPagina(trabajo) {
+  for (let intento = 1; ; intento++) {
+    const page = await nuevaPagina();
+    try {
+      return await trabajo(page);
+    } catch (err) {
+      if (intento > 1 || !ERROR_CHROME.test(String(err && err.message))) throw err;
+      console.warn('[renderer] Chrome no respondió, se reinicia y se reintenta:', err.message);
+      await page.close().catch(() => {});
+      await reiniciarNavegador();
+    } finally {
+      await page.close().catch(() => {});
+    }
+  }
+}
+
 async function generarPDF(htmlContenido, options = {}) {
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -74,37 +101,29 @@ async function generarPDF(htmlContenido, options = {}) {
 <body>${htmlContenido}</body>
 </html>`;
 
-  const page = await nuevaPagina();
-  try {
+  return conPagina(async (page) => {
     await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
     await esperarImagenes(page);
-    const buffer = await page.pdf({
+    return page.pdf({
       format: 'A4',
       printBackground: true,
       margin: options.margin || { top: '12mm', bottom: '18mm', left: '20mm', right: '18mm' },
       ...options
     });
-    return buffer;
-  } finally {
-    await page.close().catch(() => {});
-  }
+  });
 }
 
 async function generarPDFDesdeHTML(htmlCompleto, options = {}) {
-  const page = await nuevaPagina();
-  try {
+  return conPagina(async (page) => {
     await page.setContent(htmlCompleto, { waitUntil: 'networkidle2', timeout: 30000 });
     await esperarImagenes(page);
-    const buffer = await page.pdf({
+    return page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
       ...options,
     });
-    return buffer;
-  } finally {
-    await page.close().catch(() => {});
-  }
+  });
 }
 
 module.exports = { generarPDF, generarPDFDesdeHTML, nuevaPagina };
