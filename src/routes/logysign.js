@@ -56,6 +56,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 })();
 
 const { obtenerCcEmails } = require('../services/logysignScheduler');
+const { obtenerConfigLogysign, prefijoEn, diasMs, normalizar } = require('../services/configLogysign');
+const { correoSolicitudFirma } = require('../services/logysignCorreos');
+
+// URL pública de GCS → { bucket, ruta } (el bucket sale de la URL, no se asume)
+function rutaGcs(url) {
+  const partes = new URL(url).pathname.replace(/^\//, '').split('/');
+  return { bucket: partes[0], ruta: decodeURIComponent(partes.slice(1).join('/')) };
+}
 
 // ═════ SERVIR INTERFAZ CREADOR (form.html) ═════
 router.get('/', async (req, res) => {
@@ -76,10 +84,17 @@ router.get('/', async (req, res) => {
     const pathTemplate = path.join(__dirname, '../views/logysign/form.html');
     const html = fs.readFileSync(pathTemplate, 'utf8');
 
+    // Config_Parametros CloudDocs / LogySign (documentos por Prefijo)
+    const cfg = await obtenerConfigLogysign();
     const config = JSON.stringify({
       usuarioId: uRows[0].ID,
       usuarioNombre: uRows[0].Nombre,
-      usuarioRol: uRows[0].Rol || ''
+      usuarioRol: uRows[0].Rol || '',
+      parametros: {
+        docsCausa: cfg.docsCausa,
+        docsConDescuento: cfg.docsConDescuento,
+        preseleccion: cfg.preseleccion[normalizar(uRows[0].Rol)] || '',
+      },
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -170,22 +185,34 @@ router.get('/api/pdf/:id', async (req, res) => {
 router.get('/api/signed-pdf/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.execute(
+    let [rows] = await pool.execute(
       'SELECT Doc FROM Maestro_docTrabajador WHERE id = ?',
       [`logysign-${id}`]
     );
     if (!rows.length) {
-      return res.status(404).send('PDF firmado no encontrado');
+      // El documento pudo reemplazarse en Cloud Docs (otra fila): se busca el del mismo trabajador,
+      // tipo y prefijo cargado desde la fecha del registro. Solo si hay uno, para no mostrar otro documento.
+      const [lRows] = await pool.execute(
+        "SELECT identificacion, id_config_doc, prefijo, fecha_registro FROM Dynamic_Logysign WHERE id = ? AND estado = 'FIRMADO'",
+        [id]
+      );
+      if (lRows.length) {
+        const l = lRows[0];
+        [rows] = await pool.execute(
+          `SELECT Doc FROM Maestro_docTrabajador
+           WHERE Identificación = ? AND TipoDocumento = ? AND Prefijo = ? AND FechaRegistro >= ?
+             AND Doc LIKE 'https://storage.googleapis.com/%'`,
+          [l.identificacion, String(l.id_config_doc), l.prefijo, l.fecha_registro]
+        );
+        if (rows.length !== 1) rows = [];
+      }
+    }
+    if (!rows.length) {
+      return res.status(404).send('<h2>El documento firmado ya no está en Cloud Docs. Búsquelo en los documentos del trabajador.</h2>');
     }
 
-    const { Doc } = rows[0];
-    const parsedUrl = new URL(Doc);
-    const pathInBucket = parsedUrl.pathname.replace(/^\/[^\/]+\//, ''); // strip bucket name
-    
-    const bucketName = process.env.BUCKET_PDFS || 'talenthub_central';
-    const signedPdfFile = storage.bucket(bucketName).file(pathInBucket);
-    
-    const [pdfBuffer] = await signedPdfFile.download();
+    const { bucket, ruta } = rutaGcs(rows[0].Doc);
+    const [pdfBuffer] = await storage.bucket(bucket).file(ruta).download();
     
     res.setHeader('Content-Type', 'application/pdf');
     res.send(pdfBuffer);
@@ -311,6 +338,15 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Debe cargar un archivo PDF' });
     }
 
+    const cfg = await obtenerConfigLogysign();
+    const [cRows] = await pool.execute(
+      'SELECT Documento, Prefijo FROM Config_Doc_Trabajador WHERE Id = ?',
+      [idConfigDoc]
+    );
+    const prefijoDoc = cRows.length ? cRows[0].Prefijo : prefijo;
+    const nombreDocumento = cRows.length ? cRows[0].Documento : (prefijo || 'Documento');
+    const pideCausa = prefijoEn(cfg.docsCausa, prefijoDoc);
+
     // Verificar si ya existe una solicitud PENDIENTE del mismo documento para este trabajador
     const [pendingRows] = await pool.execute(
       'SELECT id, usuario_creador, fecha_registro FROM Dynamic_Logysign WHERE identificacion = ? AND id_config_doc = ? AND estado = "PENDIENTE"',
@@ -340,7 +376,7 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     );
 
     // Save custom causa in Config_Motivos_Documento if new
-    if ([55, 76, 77].includes(Number(idConfigDoc)) && causa && causa.trim()) {
+    if (pideCausa && causa && causa.trim()) {
       const cleanCausa = causa.trim();
       const [mRows] = await pool.execute(
         'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = ? AND LOWER(motivo) = ?',
@@ -366,8 +402,7 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
 
     // 3. Create long safe token and expiry
     const token = uuidv4();
-    const tokenExpira = new Date();
-    tokenExpira.setDate(tokenExpira.getDate() + 30); // 30 days expiration
+    const tokenExpira = new Date(Date.now() + diasMs(cfg.diasEnlace)); // 'Días de vigencia del enlace de firma'
 
     const cleanFechaIngreso = (fechaIngreso && typeof fechaIngreso === 'string') 
       ? fechaIngreso.split('T')[0] 
@@ -379,10 +414,10 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     let idDescuentoAuto = null;
     let tokenFirmaDescuento = null;
 
-    // Contrato firmado (Id 18): por defecto se agrupa con la Autorización de
-    // Descuento por Nómina, pero puede desmarcarse desde el formulario para
-    // enviar únicamente el contrato (incluirDescuento llega como 'false').
-    if (Number(idConfigDoc) === 18 && incluirDescuento !== 'false') {
+    // Documentos de 'Documentos que se envían con la Autorización de Descuento' (por defecto el
+    // Contrato, CONT): se agrupan con la Autorización de Descuento por Nómina, pero puede
+    // desmarcarse desde el formulario para enviar solo el documento (incluirDescuento = 'false').
+    if (prefijoEn(cfg.docsConDescuento, prefijoDoc) && incluirDescuento !== 'false') {
       let ciudad = '';
       const [ccRows] = await pool.execute(
         'SELECT `C.C.` FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1',
@@ -395,8 +430,7 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       const crypto = require('crypto');
       const idDescuento = uuidv4();
       const tokenFirma = crypto.randomBytes(32).toString('hex');
-      const tokenExpiraDescuento = new Date();
-      tokenExpiraDescuento.setDate(tokenExpiraDescuento.getDate() + 30); // 30 days
+      const tokenExpiraDescuento = new Date(Date.now() + diasMs(cfg.diasDescuento));
 
       const cleanTrabajador = String(trabajador || '').trim();
       const fechaHoy = new Date().toISOString().slice(0, 10);
@@ -454,91 +488,24 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         firmasCoordenadas || null,
         parsedFechaProgramada,
         baseUrl,
-        ([55, 76, 77].includes(Number(idConfigDoc)) && causa) ? causa.trim() : null,
+        (pideCausa && causa) ? causa.trim() : null,
         idDescuentoAuto
       ]
     );
 
-    // Only send email immediately if NOT scheduled
-    if (!fechaProgramada) {
-      // 5. Get CC list
+    // Correo inmediato si no está programado y 'Habilitar notificaciones de correo en LogySign' está activo
+    let correoEnviado = false;
+    if (!fechaProgramada && cfg.notificaciones) {
       const ccEmails = await obtenerCcEmails(usuarioId, identificacion, idConfigDoc);
-
-      // Get Documento name
-      const [cRows] = await pool.execute(
-        'SELECT Documento FROM Config_Doc_Trabajador WHERE Id = ?',
-        [idConfigDoc]
-      );
-      const nombreDocumento = cRows.length ? cRows[0].Documento : (prefijo || 'Documento');
-
-      // 6. Send email to worker
-      const scheme = req.secure ? 'https' : 'http';
-      const host = req.get('host');
-      const linkFirma = `${scheme}://${host}/logysign/sign/${token}`;
-
-      let mailBody = '';
-      let mailSubject = `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${trabajador}`;
-
-      if (Number(idConfigDoc) === 18 && idDescuentoAuto) {
-        const linkFirmaDescuento = `${scheme}://${host}/descuentonomina/firmar?item=${idDescuentoAuto}&token=${tokenFirmaDescuento}`;
-        mailSubject = `LOG&SER: Documentos pendientes de ingreso (Contrato y Autorización Descuento) — ${trabajador}`;
-        mailBody = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-${encabezadoLogo('#000b59')}
-            <div style="padding:24px;background:#ffffff">
-              <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Proceso de Ingreso</h2>
-              <p style="font-size:1.05rem;color:#2d3748">¡Hola <strong>${trabajador}</strong>!</p>
-              <p style="color:#4a5568;line-height:1.6">Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo.</p>
-              <p style="color:#4a5568;line-height:1.6">Para completar tu proceso de ingreso de forma rápida, por favor ingresa a los siguientes enlaces para revisar y firmar digitalmente tus documentos de ingreso obligatorios:</p>
-              
-              <div style="margin:24px 0;border-left:4px solid #000b59;padding-left:16px">
-                <p style="margin:0 0 8px 0;font-weight:bold;color:#2d3748">📄 1. Contrato de Trabajo:</p>
-                <p style="margin:0 0 12px 0;font-size:0.9rem;color:#4a5568">(Por favor verifica que tus datos personales estén correctos y lee las condiciones antes de firmar).</p>
-                <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:8px 16px;text-decoration:none;font-weight:bold;border-radius:4px;display:inline-block;font-size:0.85rem">Firmar Contrato de Trabajo</a>
-              </div>
-
-              <div style="margin:24px 0;border-left:4px solid #000b59;padding-left:16px">
-                <p style="margin:0 0 8px 0;font-weight:bold;color:#2d3748">📝 2. Autorización de Descuento por Nómina:</p>
-                <p style="margin:0 0 12px 0;font-size:0.9rem;color:#4a5568">(Este formato es un requisito estándar de la compañía que se firma de manera preventiva para respaldar los activos y herramientas de trabajo frente a daños o pérdidas).</p>
-                <a href="${linkFirmaDescuento}" target="_blank" style="background:#000b59;color:#ffffff;padding:8px 16px;text-decoration:none;font-weight:bold;border-radius:4px;display:inline-block;font-size:0.85rem">Firmar Autorización de Descuento</a>
-              </div>
-
-              <p style="color:#4a5568;line-height:1.6;font-size:0.95rem">Una vez firmes ambos documentos, el sistema enviará los respaldos directamente a nuestro soporte legal.</p>
-              <p style="color:#4a5568;line-height:1.6;font-size:0.95rem">Por último, si deseas afiliar beneficiarios a la caja de compensación, dime qué beneficiario deseas afiliar y te indicaré los documentos que me debes enviar para su respectiva afiliación.</p>
-              <p style="color:#4a5568;line-height:1.6;font-weight:bold">¡Muchos éxitos en esta nueva etapa con nosotros!</p>
-            </div>
-            <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
-              <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
-            </div>
-          </div>
-        `;
-      } else {
-        mailBody = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-${encabezadoLogo('#000b59')}
-            <div style="padding:24px;background:#ffffff">
-              <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Firma de Documento</h2>
-              <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${trabajador}</strong>,</p>
-              <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
-              
-              <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
-                <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${trabajador} (${identificacion})</td></tr>
-                <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
-              </table>
-
-              <div style="text-align:center;margin:32px 0">
-                <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;box-shadow:0 4px 6px rgba(0,11,89,0.15)">Ver y Firmar Documento</a>
-              </div>
-              
-              <p style="font-size:0.85rem;color:#718096;line-height:1.4">Si el botón no funciona, copie y pegue este enlace en la barra de direcciones de su navegador:</p>
-              <p style="font-size:0.85rem;color:#000b59;word-break:break-all">${linkFirma}</p>
-            </div>
-            <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
-              <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
-            </div>
-          </div>
-        `;
-      }
+      const correo = correoSolicitudFirma({
+        nombreTrabajador: trabajador,
+        identificacion,
+        nombreDocumento,
+        linkFirma: `${baseUrl}/logysign/sign/${token}`,
+        linkDescuento: idDescuentoAuto
+          ? `${baseUrl}/descuentonomina/firmar?item=${idDescuentoAuto}&token=${tokenFirmaDescuento}`
+          : null,
+      });
 
       // No se espera (await) el envío: el registro ya quedó guardado en Dynamic_Logysign, así
       // que el éxito de la operación para el usuario no depende de que el correo salga en ese
@@ -548,15 +515,16 @@ ${encabezadoLogo('#000b59')}
         from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
         to: emailTrabajador,
         cc: ccEmails.length ? ccEmails.join(', ') : undefined,
-        subject: mailSubject,
-        html: mailBody,
+        subject: correo.subject,
+        html: correo.html,
         attachments: [LOGO_HEADER_ATTACHMENT],
       }).catch(err => {
         console.error(`[logysign] Error enviando email de notificación para ${uuid} (no bloqueante):`, err.message);
       });
+      correoEnviado = true;
     }
 
-    res.json({ success: true, logysignId: uuid });
+    res.json({ success: true, logysignId: uuid, correoEnviado });
   } catch (err) {
     console.error('[logysign] Error en /api/enviar:', err);
     res.status(500).json({ error: err.message });
@@ -584,6 +552,9 @@ router.post('/api/firmar', async (req, res) => {
     }
 
     const logysign = dRows[0];
+    if (logysign.token_expira && new Date() > new Date(logysign.token_expira)) {
+      return res.status(410).json({ error: 'El enlace de firma ha expirado. Solicite un nuevo enlace a quien le envió el documento.' });
+    }
     let signatureBuffer;
 
     if (usarFirmaReciente) {
@@ -712,39 +683,54 @@ router.post('/api/firmar', async (req, res) => {
     await finalPdfFile.save(Buffer.from(signedPdfBytes), { contentType: 'application/pdf' });
     const finalPdfUrl = `https://storage.googleapis.com/${bucketPdfs.name}/${finalPdfName}`;
 
-    // 5. Update Dynamic_Logysign to FIRMADO
-    await pool.execute(
-      'UPDATE Dynamic_Logysign SET estado = "FIRMADO" WHERE token = ?',
-      [token]
-    );
-
-    // 6. Get worker current vinculación status for record
+    // 5-7. Estado FIRMADO y registro en Cloud Docs juntos: si algo falla, el documento sigue
+    // PENDIENTE (y se borra el PDF recién subido) en vez de quedar firmado sin documento.
+    // El UPDATE reclama el registro: si dos firmas llegan a la vez, solo una lo procesa.
     const [vRows] = await pool.execute(
       'SELECT Estado FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
       [logysign.identificacion]
     );
     const estadoTrabajador = vRows.length ? vRows[0].Estado : 'Activo';
-
-    // 7. Save entry in Maestro_docTrabajador
     const docTrabajadorId = `logysign-${logysign.id}`;
-    await pool.execute(
-      `INSERT INTO Maestro_docTrabajador
-       (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
-        TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
-       VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, 'Cargado desde el modulo logysign', NULL, NULL, NULL, ?)`,
-      [
-        docTrabajadorId,
-        logysign.regional,
-        logysign.operacion,
-        logysign.identificacion,
-        estadoTrabajador,
-        logysign.fecha_ingreso,
-        logysign.id_config_doc,
-        logysign.prefijo,
-        finalPdfUrl,
-        logysign.usuario_creador
-      ]
-    );
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [claim] = await conn.execute(
+        'UPDATE Dynamic_Logysign SET estado = "FIRMADO" WHERE token = ? AND estado = "PENDIENTE"',
+        [token]
+      );
+      if (!claim.affectedRows) {
+        // Otra firma simultánea ganó; su PDF puede tener este mismo nombre, así que no se borra
+        await conn.rollback();
+        return res.status(409).json({ error: 'Este documento ya fue firmado.' });
+      }
+      await conn.execute(
+        `INSERT INTO Maestro_docTrabajador
+         (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
+         VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, 'Cargado desde el modulo logysign', NULL, NULL, NULL, ?)`,
+        [
+          docTrabajadorId,
+          logysign.regional,
+          logysign.operacion,
+          logysign.identificacion,
+          estadoTrabajador,
+          logysign.fecha_ingreso,
+          logysign.id_config_doc,
+          logysign.prefijo,
+          finalPdfUrl,
+          logysign.usuario_creador
+        ]
+      );
+      await conn.commit();
+    } catch (errTx) {
+      await conn.rollback().catch(() => {});
+      await finalPdfFile.delete().catch(() => {});
+      throw errTx;
+    } finally {
+      conn.release();
+    }
 
     // 8. Get final CC notification emails list
     const ccEmails = await obtenerCcEmails(logysign.usuario_creador, logysign.identificacion, logysign.id_config_doc);
@@ -780,8 +766,9 @@ ${encabezadoLogo('#27ae60')}
 
     // Sin await: el documento firmado ya quedó guardado (PDF + registro), el aviso por correo
     // a los destinatarios en copia es secundario y no debe retrasar la confirmación al
-    // colaborador que acaba de firmar.
-    transporter.sendMail({
+    // colaborador que acaba de firmar. Respeta 'Habilitar notificaciones de correo en LogySign'.
+    const cfgFirma = await obtenerConfigLogysign();
+    if (cfgFirma.notificaciones && ccEmails.length) transporter.sendMail({
       from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
       to: ccEmails.join(', '),
       subject: `LOG&SER: Documento firmado completado (${logysign.nombre_documento || logysign.prefijo}) — ${logysign.nombre_trabajador}`,

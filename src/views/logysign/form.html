@@ -742,7 +742,7 @@
           </select>
         </div>
 
-        <!-- Causa de Desvinculación (Only for Doc ID 55) -->
+        <!-- Causa de Desvinculación (documentos de 'Documentos que piden Causa' en Config_Parametros) -->
         <div class="form-group" id="grp-causa" style="display: none;">
           <label for="select-causa">Causa de Desvinculación</label>
           <select id="select-causa">
@@ -752,7 +752,7 @@
           <input type="text" id="input-causa-nueva" style="display: none; margin-top: 8px;" placeholder="Escriba la nueva causa...">
         </div>
 
-        <!-- Incluir Autorización de Descuento (Only for Doc ID 18 - Contrato firmado) -->
+        <!-- Incluir Autorización de Descuento ('Documentos que se envían con la Autorización de Descuento', por defecto el Contrato) -->
         <div class="form-group" id="grp-incluir-descuento" style="display: none;">
           <label style="display: flex; align-items: center; cursor: pointer; gap: 8px; font-weight: 500; font-size: 0.9rem; color: var(--text);">
             <input type="checkbox" id="chk-incluir-descuento" checked style="width: 16px; height: 16px; cursor: pointer; margin: 0;">
@@ -919,29 +919,29 @@
           selectClasificacion.appendChild(opt);
         });
 
-        // Preselection based on user Rol
-        const rol = (CONFIG.usuarioRol || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // strip accents
-        if (rol === 'juridica') {
-          const matchedClass = classifications.find(c => c.toLowerCase().includes('8. retiro'));
-          if (matchedClass) {
-            selectClasificacion.value = matchedClass;
-            selectClasificacion.dispatchEvent(new Event('change'));
-            selectDocumento.value = "55";
-            selectDocumento.dispatchEvent(new Event('change'));
-          }
-        } else if (rol === 'contratacion') {
-          const matchedClass = classifications.find(c => c.toLowerCase().includes('4. documentos de ingreso'));
-          if (matchedClass) {
-            selectClasificacion.value = matchedClass;
-            selectClasificacion.dispatchEvent(new Event('change'));
-            selectDocumento.value = "18";
-            selectDocumento.dispatchEvent(new Event('change'));
-          }
+        // Documento preseleccionado según el rol (Config_Parametros 'Documento preseleccionado por rol', por Prefijo)
+        const docPre = PARAMS_LS.preseleccion
+          ? configDocs.find(c => String(c.Prefijo || '').toUpperCase() === PARAMS_LS.preseleccion)
+          : null;
+        if (docPre && docPre.Clasificacion) {
+          selectClasificacion.value = docPre.Clasificacion;
+          selectClasificacion.dispatchEvent(new Event('change'));
+          selectDocumento.value = String(docPre.Id);
+          selectDocumento.dispatchEvent(new Event('change'));
         }
       } catch (err) {
         showToast(err.message, 'error');
       }
     }
+
+    // Config_Parametros CloudDocs / LogySign (documentos por Prefijo)
+    const PARAMS_LS = CONFIG.parametros || {};
+    const prefijoSeleccionado = () => {
+      const opt = selectDocumento.options[selectDocumento.selectedIndex];
+      return String((opt && opt.dataset.prefijo) || '').toUpperCase();
+    };
+    const docPideCausa = () => (PARAMS_LS.docsCausa || []).includes(prefijoSeleccionado());
+    const docConDescuento = () => (PARAMS_LS.docsConDescuento || []).includes(prefijoSeleccionado());
 
     loadConfigDocs();
 
@@ -986,7 +986,7 @@
 
     selectDocumento.addEventListener('change', () => {
       const val = selectDocumento.value;
-      if (['55', '76', '77'].includes(val)) {
+      if (val && docPideCausa()) {
         grpCausa.style.display = 'block';
         loadCausas(val);
       } else {
@@ -996,9 +996,9 @@
         inputCausaNueva.style.display = 'none';
       }
 
-      // Contrato firmado (Id 18): por defecto va agrupado con la Autorización de
-      // Descuento por Nómina, pero se puede desmarcar para enviar solo el contrato.
-      if (val === '18') {
+      // Por defecto el Contrato va agrupado con la Autorización de Descuento por
+      // Nómina, pero se puede desmarcar para enviar solo el documento.
+      if (val && docConDescuento()) {
         grpIncluirDescuento.style.display = 'block';
         chkIncluirDescuento.checked = true;
       } else {
@@ -1408,7 +1408,7 @@
       }
 
       let causaValid = true;
-      if (['55', '76', '77'].includes(selectDocumento.value)) {
+      if (selectDocumento.value && docPideCausa()) {
         if (selectCausa.value === '*Nuevo') {
           causaValid = !!inputCausaNueva.value.trim();
         } else {
@@ -1475,7 +1475,7 @@
 
       try {
         let causaVal = '';
-        if (['55', '76', '77'].includes(String(idConfigDoc))) {
+        if (docPideCausa()) {
           causaVal = selectCausa.value === '*Nuevo' ? inputCausaNueva.value.trim() : selectCausa.value;
         }
 
@@ -1501,7 +1501,7 @@
         formData.append('firmasCoordenadas', JSON.stringify(boxesRelative));
         formData.append('fechaProgramada', chkProgramar.checked ? inputFechaProgramacion.value : '');
         formData.append('causa', causaVal);
-        formData.append('incluirDescuento', (idConfigDoc === '18' && chkIncluirDescuento.checked) ? 'true' : 'false');
+        formData.append('incluirDescuento', (docConDescuento() && chkIncluirDescuento.checked) ? 'true' : 'false');
 
         let res = await fetch('/logysign/api/enviar', {
           method: 'POST',
@@ -1529,7 +1529,10 @@
 
         if (!res.ok) throw new Error(data.error || data.message || 'Ocurrió un error al enviar el flujo');
 
-        showToast(chkProgramar.checked ? 'Envío programado con éxito.' : 'Documento registrado y enviado con éxito.', 'success');
+        showToast(chkProgramar.checked ? 'Envío programado con éxito.'
+          : (data.correoEnviado === false
+            ? 'Documento registrado. Las notificaciones de correo están deshabilitadas: comparta el enlace desde Registros.'
+            : 'Documento registrado y enviado con éxito.'), 'success');
         
         setTimeout(() => {
           window.location.href = `/registrologysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;

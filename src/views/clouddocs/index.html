@@ -643,6 +643,7 @@
     .badge-general { background: var(--info-soft); border: 1px solid var(--info-soft); color: var(--info-dark); }
     .badge-firmado { background: var(--success-soft); border: 1px solid var(--success-soft); color: var(--success-dark); }
     .badge-pendiente { background: var(--warning-soft); border: 1px solid var(--warning-soft); color: var(--warning-dark); }
+    .badge-cancelado { background: var(--border); border: 1px solid var(--border); color: var(--text-muted); }
 
     /* Filtros plegables (pestaña LogySign) */
     .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
@@ -1464,7 +1465,10 @@
               <select id="logysign-filter-estado" onchange="filtrarLogysign()">
                 <option value="">— Todos —</option>
                 <option value="PENDIENTE">Pendientes de Firma</option>
+                <option value="VENCIDO">Enlace vencido</option>
+                <option value="PROGRAMADO">Programados</option>
                 <option value="FIRMADO">Firmados</option>
+                <option value="CANCELADO">Cancelados</option>
               </select>
             </div>
             <div class="field">
@@ -5121,6 +5125,26 @@
     let logysignSelectedTrabajadorId = null;
     let logysignEdicionCausaId = null;
     let logysignEdicionConfigDocId = null;
+    // Parámetros de pantalla según el rol (Config_Parametros CloudDocs / LogySign, vía /registrologysign/api/parametros)
+    let logysignParams = null;
+
+    // Estado que se muestra (estado_vista viene del servidor: PENDIENTE con enlace vencido = VENCIDO)
+    const LOGYSIGN_ESTADOS = {
+      FIRMADO:    ['badge-firmado', '✓ Firmado'],
+      PENDIENTE:  ['badge-pendiente', 'Pendiente'],
+      VENCIDO:    ['badge-retired', 'Enlace vencido'],
+      PROGRAMADO: ['badge-general', 'Programado'],
+      CANCELADO:  ['badge-cancelado', 'Cancelado'],
+    };
+    function logysignBadgeEstado(item) {
+      const [cls, label] = LOGYSIGN_ESTADOS[item.estado_vista] || LOGYSIGN_ESTADOS.PENDIENTE;
+      return `<span class="badge-status ${cls}">${label}</span>`;
+    }
+    function logysignFechaHora(valor) {
+      if (!valor) return '—';
+      const d = new Date(valor);
+      return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) + ' ' + d.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+    }
 
     function getLogysignColumns() {
       const cols = [
@@ -5129,10 +5153,10 @@
         { key: 'documento', label: 'Documento', width: 220 },
         { key: 'fecha_registro', label: 'Fecha de Registro', width: 170 },
       ];
-      if (['Sistema', 'Contratación', 'Archivo', 'Asistencial'].includes(CONFIG.rol)) {
+      if (logysignParams && logysignParams.verCreador) {
         cols.push({ key: 'creador', label: 'Creado por', width: 150 });
       }
-      if (CONFIG.rol === 'Sistema' || CONFIG.rol === 'Juridica') {
+      if (logysignParams && logysignParams.verCausa) {
         cols.push({ key: 'causa', label: 'Causa', width: 170 });
       }
       cols.push({ key: 'estado', label: 'Estado', width: 110, align: 'center' });
@@ -5182,6 +5206,10 @@
     async function fetchLogysignRecords() {
       showLoader('Cargando registros de LogySign...');
       try {
+        if (!logysignParams) {
+          const rp = await fetch(`/registrologysign/api/parametros?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          if (rp.ok) logysignParams = await rp.json();
+        }
         const res = await fetch(`/registrologysign/api/registros?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (!res.ok) throw new Error('No se pudieron cargar los registros');
         const data = await res.json();
@@ -5200,7 +5228,7 @@
         logysignUniqueOperaciones = [...new Set(logysignRecords.map(r => r.operacion).filter(Boolean))].sort();
         logysignUniqueCausas = [...new Set(logysignRecords.map(r => r.causa).filter(Boolean))].sort();
 
-        if (CONFIG.rol === 'Sistema' || CONFIG.rol === 'Juridica') {
+        if (logysignParams && logysignParams.verCausa) {
           document.getElementById('logysign-filter-causa-wrapper').style.display = 'flex';
         }
 
@@ -5235,7 +5263,7 @@
             norm(item.documento || '').includes(q);
           if (!textMatch) return false;
         }
-        if (status && item.estado !== status) return false;
+        if (status && item.estado_vista !== status) return false;
         if (item.fecha_registro) {
           const itemDate = String(item.fecha_registro).split('T')[0];
           if (desde && itemDate < desde) return false;
@@ -5292,10 +5320,33 @@
     }
 
     function logysignAccionesHtml(item) {
+      const vistaPreviaBtn = `
+            <a href="/registrologysign/api/vista-previa/${encodeURIComponent(item.id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" rel="noopener" class="btn-icon-circle" style="background:var(--info);color:var(--text-inverse);" title="Ver documento con el cuadro de firma (aún sin firmar)">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </a>`;
+      if (item.estado_vista === 'VENCIDO') {
+        // Enlace vencido: no se comparte; Renovar lo reactiva (y reenvía el correo si está habilitado)
+        return `
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+            ${vistaPreviaBtn}
+            <button class="btn-icon-circle" style="background:var(--success);color:var(--text-inverse);" onclick="reenviarCorreoLogysign('${item.id}')" title="Enlace vencido: renovar el plazo y reenviar el correo">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+            </button>
+            <button class="btn-icon-circle" style="background:var(--warning);color:var(--text-inverse);" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+            </button>
+          </div>`;
+      }
+      if (item.estado_vista === 'PROGRAMADO') {
+        return `<div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">${vistaPreviaBtn}<span style="font-size:.75rem;color:var(--text-muted);">Envío: ${logysignFechaHora(item.fecha_envio_programado)}</span></div>`;
+      }
+      if (item.estado_vista === 'CANCELADO') {
+        return `<span style="font-size:.75rem;color:var(--text-muted);" title="Se reemplazó por un envío nuevo del mismo documento">Reemplazado</span>`;
+      }
       if (item.estado === 'PENDIENTE') {
         const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
         let msgWaText;
-        if (Number(item.id_config_doc) === 18 && item.auto_id_descuento) {
+        if (item.con_descuento) {
           const linkFirmaDescuento = `${window.location.origin}/descuentonomina/firmar?item=${item.auto_id_descuento}&token=${item.auto_token_firma}`;
           msgWaText = encodeURIComponent(`¡Hola! Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo \n\nPara completar tu proceso de ingreso de forma rápida, puedes firmar tus documentos directamente desde aquí:\n\n📄 1. Contrato de Trabajo:\n👉 ${linkFirma}\n\n📝 2. Autorización de Descuento:\n👉 ${linkFirmaDescuento}\n\nAvísanos por este medio si tienes alguna duda. ¡Muchos éxitos en esta nueva etapa con nosotros!`);
         } else {
@@ -5358,16 +5409,13 @@
             case 'creador':
               return `<td>${esc(item.creador || '—')}</td>`;
             case 'causa': {
-              const isEditable = Number(item.id_config_doc) === 55;
-              if (isEditable) {
+              if (item.causa_editable) {
                 return `<td><span class="logysign-causa-editable" onclick="iniciarEdicionCausaLogysign('${item.id}')" style="cursor:pointer;border-bottom:1px dashed var(--accent);padding:2px 4px;font-weight:700;" title="Haga clic para editar Causa">${esc(item.causa || '—')}</span></td>`;
               }
               return `<td><strong>${esc(item.causa || '—')}</strong></td>`;
             }
             case 'estado': {
-              const cls = item.estado === 'FIRMADO' ? 'badge-firmado' : 'badge-pendiente';
-              const label = item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente';
-              return `<td style="text-align:center;"><span class="badge-status ${cls}">${label}</span></td>`;
+              return `<td style="text-align:center;">${logysignBadgeEstado(item)}</td>`;
             }
             case 'acciones':
               return `<td style="text-align:center;">${logysignAccionesHtml(item)}</td>`;
@@ -5401,7 +5449,10 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo reenviar la notificación');
-        showToast('Notificación recordatorio reenviada con éxito', 'success');
+        showToast(data.mensaje || 'Enlace renovado y recordatorio reenviado con éxito', 'success');
+        // El plazo del enlace cambió: se recarga para que vuelvan WhatsApp y Copiar
+        await fetchLogysignRecords();
+        if (String(logysignSelectedId) === String(id)) abrirDetalleLogysign(id);
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
@@ -5411,8 +5462,8 @@
 
     async function marcarNoFirmaLogysign(id) {
       const anotacion = prompt(
-        "Ingrese el texto de la anotación de soporte que saldrá en la firma (por ejemplo: 'El trabajador no firma, se soporta por correo electrónico'):",
-        "El trabajador no firma,\nse soporta por correo electrónico"
+        "Ingrese el texto de la anotación de soporte que saldrá en la firma:",
+        (logysignParams && logysignParams.textoNoFirma) || "El trabajador no firma,\nse soporta por correo electrónico"
       );
       if (anotacion === null) return;
 
@@ -5447,7 +5498,9 @@
       }
 
       let expiraHtml = '';
-      if (item.estado === 'PENDIENTE') {
+      if (item.estado_vista === 'PROGRAMADO') {
+        expiraHtml = `<p><strong>Envío programado:</strong> ${logysignFechaHora(item.fecha_envio_programado)}</p>`;
+      } else if (item.estado === 'PENDIENTE') {
         const expDate = item.token_expira ? new Date(item.token_expira) : null;
         if (expDate) {
           const isExpired = expDate < new Date();
@@ -5465,7 +5518,7 @@
         <p><strong>Regional:</strong> ${esc(item.regional || '—')}</p>
         <p><strong>Documento:</strong> ${esc(item.documento || '—')}</p>
         <p><strong>Creador:</strong> ${esc(item.creador || '—')}</p>
-        <p><strong>Estado:</strong> <span class="badge-status ${item.estado === 'FIRMADO' ? 'badge-firmado' : 'badge-pendiente'}">${item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente'}</span></p>
+        <p><strong>Estado:</strong> ${logysignBadgeEstado(item)}</p>
         ${expiraHtml}
       `;
 
@@ -5474,7 +5527,7 @@
       document.getElementById('logysign-opciones-contacto').style.display = 'block';
 
       let optsHtml = '<div style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Acciones de Control</div>';
-      if (item.estado === 'PENDIENTE') {
+      if (item.estado === 'PENDIENTE' || item.estado === 'PROGRAMADO') {
         optsHtml += logysignAccionesHtml(item).replace('justify-content:center;', 'justify-content:flex-start;');
       } else {
         optsHtml += logysignAccionesHtml(item);

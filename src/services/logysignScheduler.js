@@ -1,9 +1,15 @@
 const pool = require('./db');
-const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('./email');
+const { transporter, LOGO_HEADER_ATTACHMENT } = require('./email');
+const { obtenerConfigLogysign, prefijoEn, diasMs, normalizar } = require('./configLogysign');
+const { correoSolicitudFirma, enlaceDescuentoPendiente } = require('./logysignCorreos');
 
-// Helper to resolve CC emails list (shared with logysign router)
-// Prioriza la Operación del trabajador (Maestro_Vinculación) y, solo si no hay
-// Auxiliar/Coordinador/AuxiliarR/CoordinadorR asignado a esa Operación, cae a la Regional.
+// Destinatarios en copia de los correos de LogySign (Config_Parametros CloudDocs / LogySign):
+// 1. Quien envía el documento.
+// 2. Los responsables de la Operación del trabajador ('Roles responsables de la Operación en copia');
+//    si nadie tiene esa Operación, los de la SOCIODEMOGRAFICA de la operación (Dispositivo) y, si
+//    tampoco, los de la Regional ('Roles en copia por Regional cuando la Operación no tiene responsables').
+//    Se omite para 'Documentos que no copian a los responsables de la Operación' (por defecto CONT).
+// 3. 'Copia por documento - …' (Condicion = prefijos): roles o correos escritos tal cual.
 async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
   const ccList = [];
   try {
@@ -13,7 +19,11 @@ async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
       ccList.push(uRows[0].Email);
     }
 
-    const omitirRolesLocales = (idConfigDoc === 18 || Number(idConfigDoc) === 18);
+    const cfg = await obtenerConfigLogysign();
+    const [docRows] = await pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = ? LIMIT 1', [idConfigDoc]);
+    const prefijoDoc = docRows.length ? docRows[0].Prefijo : '';
+    const omitirRolesLocales = prefijoEn(cfg.docsSinResponsables, prefijoDoc);
+    const deRol = (rows, roles) => rows.filter(r => r.Email && roles.includes(normalizar(r.Rol)));
 
     if (!omitirRolesLocales && identificacion) {
       const [vinRows] = await pool.execute(
@@ -23,15 +33,16 @@ async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
       const operacionTrabajador = vinRows.length ? vinRows[0]['Operación'] : null;
       const regionalTrabajador  = vinRows.length ? vinRows[0].Regional : null;
 
-      // 2. Auxiliar, Coordinador, AuxiliarR y CoordinadorR por Operación del trabajador
+      // 2. Responsables por Operación del trabajador
       let foundOperacionCc = false;
-      if (operacionTrabajador) {
+      if (operacionTrabajador && cfg.rolesResponsables.length) {
         const [opRows] = await pool.execute(
-          'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR")',
+          'SELECT Rol, Email FROM Maestro_Usuarios WHERE `Operación` = ?',
           [operacionTrabajador]
         );
-        if (opRows.length) {
-          opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+        const responsables = deRol(opRows, cfg.rolesResponsables);
+        if (responsables.length) {
+          responsables.forEach(r => ccList.push(r.Email));
           foundOperacionCc = true;
         }
 
@@ -44,43 +55,42 @@ async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
           const sociodemografica = moRows.length ? (moRows[0].SOCIODEMOGRAFICA || '').trim() : '';
           if (sociodemografica) {
             const [dispRows] = await pool.execute(
-              `SELECT Email, Dispositivo FROM Maestro_Usuarios
-               WHERE LOWER(Dispositivo) LIKE ?
-                 AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR")
-                 AND Email IS NOT NULL AND Email <> ''`,
+              `SELECT Rol, Email FROM Maestro_Usuarios
+               WHERE LOWER(Dispositivo) LIKE ? AND Email IS NOT NULL AND Email <> ''`,
               [`%${sociodemografica.toLowerCase()}%`]
             );
-            if (dispRows.length) {
-              dispRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+            const porDispositivo = deRol(dispRows, cfg.rolesResponsables);
+            if (porDispositivo.length) {
+              porDispositivo.forEach(r => ccList.push(r.Email));
               foundOperacionCc = true;
             }
           }
         }
       }
 
-      // 3. Fallback: AuxiliarR y CoordinadorR por Regional del trabajador
-      if (!foundOperacionCc && regionalTrabajador) {
+      // 3. Fallback por Regional del trabajador
+      if (!foundOperacionCc && regionalTrabajador && cfg.rolesRegional.length) {
         const [regRows] = await pool.execute(
-          'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
+          'SELECT Rol, Email FROM Maestro_Usuarios WHERE Regional = ?',
           [regionalTrabajador]
         );
-        regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+        deRol(regRows, cfg.rolesRegional).forEach(r => ccList.push(r.Email));
       }
     }
 
-    // 4. Fixed copies
-    ccList.push('admin@logyser.com');
-    const idConfigDocNum = Number(idConfigDoc);
-    if ([55, 70, 76, 77].includes(idConfigDocNum)) {
-      ccList.push('retiros@logyser.com');
-    }
-    if (idConfigDocNum === 40) {
-      ccList.push('nomina@logyser.com');
-      ccList.push('gestor.nomina@logyser.com');
-      ccList.push('contratacionnacional@logyser.com');
-    }
-    if (idConfigDocNum === 42) {
-      ccList.push('gestor.nomina@logyser.com');
+    // 4. 'Copia por documento - …' (Condicion = prefijos). Cada valor es un Rol (Email de
+    // Maestro_Usuarios) o un correo escrito tal cual, para los buzones sin rol (admin@, retiros@).
+    const destinos = [];
+    cfg.copiasDocumento
+      .filter(c => prefijoEn(c.prefijos, prefijoDoc))
+      .forEach(c => destinos.push(...c.destinos));
+    const rolesCopia = destinos.filter(d => !d.includes('@')).map(normalizar);
+    destinos.filter(d => d.includes('@')).forEach(e => ccList.push(e));
+    if (rolesCopia.length) {
+      const [rolRows] = await pool.execute(
+        "SELECT Rol, Email FROM Maestro_Usuarios WHERE Email IS NOT NULL AND Email <> ''"
+      );
+      deRol(rolRows, rolesCopia).forEach(r => ccList.push(r.Email));
     }
   } catch (err) {
     console.error('[logysignScheduler] Error fetching CC list:', err);
@@ -112,13 +122,22 @@ async function verificarEnviosProgramados() {
       let reclamado = false;
       try {
         // Se reclama el registro antes de enviar: si otro servidor ya lo tomó, affectedRows = 0 y no se
-        // envía otra vez (hay dos servicios de Cloud Run revisando cada minuto)
+        // envía otra vez (hay dos servicios de Cloud Run revisando cada minuto). El plazo del enlace
+        // empieza a contar desde el envío, no desde que se programó.
+        const cfg = await obtenerConfigLogysign();
         const [claim] = await pool.execute(
-          "UPDATE `Dynamic_Logysign` SET `estado` = 'PENDIENTE' WHERE `id` = ? AND `estado` = 'PROGRAMADO'",
-          [doc.id]
+          "UPDATE `Dynamic_Logysign` SET `estado` = 'PENDIENTE', `token_expira` = ? WHERE `id` = ? AND `estado` = 'PROGRAMADO'",
+          [new Date(Date.now() + diasMs(cfg.diasEnlace)), doc.id]
         );
         if (!claim.affectedRows) continue;
         reclamado = true;
+
+        if (!cfg.notificaciones) {
+          // "Habilitar notificaciones de correo en LogySign" apagado: el enlace queda activo para
+          // compartirlo por WhatsApp o copiarlo desde Registros, pero no se envía correo.
+          console.log(`[logysignScheduler] id=${doc.id} pasa a PENDIENTE sin correo (notificaciones de LogySign deshabilitadas).`);
+          continue;
+        }
         console.log(`[logysignScheduler] Sending scheduled email for doc id=${doc.id} worker="${doc.nombre_trabajador}"`);
 
         // Get CC emails
@@ -131,43 +150,23 @@ async function verificarEnviosProgramados() {
         );
         const nombreDocumento = cRows.length ? cRows[0].Documento : (doc.prefijo || 'Documento');
 
-        // Link to sign
+        // Enlaces de firma (el contrato programado también lleva su Autorización de Descuento)
         const linkFirma = `${doc.base_url}/logysign/sign/${doc.token}`;
+        const linkDescuento = await enlaceDescuentoPendiente(doc.base_url, doc.id_descuento_auto);
+        const correo = correoSolicitudFirma({
+          nombreTrabajador: doc.nombre_trabajador,
+          identificacion: doc.identificacion,
+          nombreDocumento,
+          linkFirma,
+          linkDescuento,
+        });
 
-        // Build mailBody
-        const mailBody = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-${encabezadoLogo('#000b59')}
-            <div style="padding:24px;background:#ffffff">
-              <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Firma de Documento</h2>
-              <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${doc.nombre_trabajador}</strong>,</p>
-              <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
-              
-              <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
-                <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${doc.nombre_trabajador} (${doc.identificacion})</td></tr>
-                <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
-              </table>
-
-              <div style="text-align:center;margin:32px 0">
-                <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;box-shadow:0 4px 6px rgba(0,11,89,0.15)">Ver y Firmar Documento</a>
-              </div>
-              
-              <p style="font-size:0.85rem;color:#718096;line-height:1.4">Si el botón no funciona, copie y pegue este enlace en la barra de direcciones de su navegador:</p>
-              <p style="font-size:0.85rem;color:#000b59;word-break:break-all">${linkFirma}</p>
-            </div>
-            <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
-              <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
-            </div>
-          </div>
-        `;
-
-        // Send email
         await transporter.sendMail({
           from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
           to: doc.email_trabajador,
           cc: ccEmails.length ? ccEmails.join(', ') : undefined,
-          subject: `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${doc.nombre_trabajador}`,
-          html: mailBody,
+          subject: correo.subject,
+          html: correo.html,
           attachments: [LOGO_HEADER_ATTACHMENT],
         });
 
