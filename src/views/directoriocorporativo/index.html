@@ -1343,13 +1343,14 @@
         <table class="data-table" id="tabla-tickets">
           <thead>
             <tr>
-              <th style="width: 52px; text-align: center;" title="Editar (quien lo puso, En Proceso o Pendiente) o Gestionar (quien resuelve tickets del módulo)">✏️</th>
+              <th style="width: 78px; text-align: center;" title="Editar o gestionar ticket">✏️</th>
               <th style="width: 120px;" data-sort="estado">Estado<span class="sort-indicator"></span></th>
               <th style="width: 120px;" data-sort="satisfaccion">Calificación<span class="sort-indicator"></span></th>
               <th style="width: 110px;" data-sort="ticket">Ticket<span class="sort-indicator"></span></th>
               <th style="width: 145px;" data-sort="fechaRegistro">Fecha Registro<span class="sort-indicator"></span></th>
               <th style="width: 120px;" data-sort="modulo">Módulo<span class="sort-indicator"></span></th>
               <th style="width: 150px;" data-sort="operacion">Operación<span class="sort-indicator"></span></th>
+              <th style="width: 160px;" data-sort="idrecibo">IdRecibo / IdServicio<span class="sort-indicator"></span></th>
               <th style="width: 170px;" data-sort="motivo">Motivo<span class="sort-indicator"></span></th>
               <th style="width: 190px;" data-sort="identificaciones">Trabajadores<span class="sort-indicator"></span></th>
               <th style="width: 220px;" data-sort="descripcion">Descripción<span class="sort-indicator"></span></th>
@@ -1966,7 +1967,7 @@
       const verTodos = Boolean(d.verTodos);
       const verSolicitantes = Boolean(d.verSolicitantes);
       document.getElementById('tkSubtitulo').textContent = d.resuelve
-        ? 'Tickets de todos los usuarios y módulos. Con 🛠️ Gestionar los pasa a Pendiente, Rechazado o Resuelto con la respuesta.'
+        ? 'Tickets de todos los usuarios y módulos. Edita sus datos con ✏️ o cambia su estado con 🛠️.'
         : 'Tickets que has puesto desde cualquier módulo. Puedes editarlos mientras estén En Proceso o Pendiente. Para poner uno nuevo usa el botón Ticket de cada módulo.';
       document.getElementById('tkMiosWrap').style.display = verSolicitantes ? 'inline-flex' : 'none';
       document.getElementById('tkCampoSolicitante').style.display = verSolicitantes ? '' : 'none';
@@ -2006,18 +2007,19 @@
       const body = document.getElementById('tkBody');
       tkState.vista = ordenarTickets(d.tickets);
       if (!tkState.vista.length) {
-        body.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
+        body.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:28px; color:var(--text-muted);">No hay tickets con estos filtros.</td></tr>';
         return;
       }
       body.innerHTML = tkState.vista.map((t, i) => `
         <tr onclick="verTicket(${i})" title="Clic para ver el detalle">
-          <td style="text-align:center; padding-left:4px; padding-right:4px; text-overflow:clip;">${t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Editar ticket" aria-label="Editar ticket" onclick="event.stopPropagation(); editarTicket(${i})">✏️</button>` : ''}${t.puedeResolver && !t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Gestionar ticket" aria-label="Gestionar ticket" onclick="event.stopPropagation(); gestionarTicket(${i})">🛠️</button>` : ''}</td>
+          <td style="text-align:center; padding-left:4px; padding-right:4px; text-overflow:clip;">${t.puedeEditar ? `<button type="button" class="tk-lapiz" title="Editar ticket" aria-label="Editar ticket" onclick="event.stopPropagation(); editarTicket(${i})">✏️</button>` : ''}${t.puedeResolver ? `<button type="button" class="tk-lapiz" title="Gestionar ticket" aria-label="Gestionar ticket" onclick="event.stopPropagation(); gestionarTicket(${i})">🛠️</button>` : ''}</td>
           <td>${tkBadge(t.estado)}</td>
           <td>${tkCalificacionHtml(t)}</td>
           <td style="font-weight:700;">${tkEsc(t.ticket)}</td>
           <td>${tkEsc(t.fechaRegistro)}</td>
           <td>${tkEsc(t.modulo)}</td>
           <td title="${tkEsc(t.operacion || '')}">${tkEsc(t.operacion || '—')}</td>
+          <td>${tkReferenciaHtml(t)}</td>
           <td title="${tkEsc(t.motivo || '')}">${tkEsc(t.motivo || '—')}</td>
           <td title="${tkEsc((t.trabajadores || []).map(w => w.nombre + ' (' + w.identificacion + ')').join(', '))}">${(t.trabajadores || []).length ? tkTrabajadoresHtml(t, ', ') : '—'}</td>
           <td title="${tkEsc(t.descripcion || '')}">${tkEsc(t.descripcion || '—')}</td>
@@ -2034,6 +2036,15 @@
       document.getElementById('tkModal').classList.add('abierto');
     }
     function cerrarModalTicket() { document.getElementById('tkModal').classList.remove('abierto'); }
+    function tkReferenciaHtml(t) {
+      if (!t.idrecibo) return '—';
+      const id = encodeURIComponent(t.idrecibo);
+      const usuario = encodeURIComponent(paramUsuario);
+      const enlaces = [];
+      if (Number(t.esRecibo) === 1) enlaces.push(`<a href="/facturacion?usuario=${usuario}&amp;tab=recibos&amp;idrecibo=${id}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir recibo">${tkEsc(t.idrecibo)}</a>`);
+      if (Number(t.esServicio) === 1) enlaces.push(`<a href="/facturacion?usuario=${usuario}&amp;tab=servicios&amp;idservicio=${id}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir servicio">${tkEsc(t.idrecibo)}${Number(t.esRecibo) === 1 ? ' (servicio)' : ''}</a>`);
+      return enlaces.length ? enlaces.join(' / ') : tkEsc(t.idrecibo);
+    }
     // Trabajadores del ticket. En Configuración › Tickets cada uno abre Nómina › Asistencia y Novedades
     // buscando su identificación, para hacer el cambio que piden.
     function tkTrabajadoresHtml(t, separador) {
@@ -2055,7 +2066,7 @@
         ${fila('Módulo', tkEsc(t.modulo))}
         ${fila('Regional', tkEsc(t.regional))}
         ${fila('Operación', tkEsc(t.operacion))}
-        ${fila('Recibo', tkEsc(t.idrecibo))}
+        ${fila('Recibo / Servicio', t.idrecibo ? tkReferenciaHtml(t) : '')}
         ${fila('Motivo', tkEsc(t.motivo))}
         ${fila('Trabajadores', tkTrabajadoresHtml(t))}
         ${fila('Descripción', multilinea(t.descripcion))}
@@ -2086,6 +2097,7 @@
         ${t.evidencia ? `<div class="tk-det-fila"><span>Evidencia</span><div><a href="${tkEsc(t.evidencia)}" target="_blank" rel="noopener">Ver archivo</a></div></div>` : ''}
         <div class="tk-form-campo" style="margin-top:14px;"><label>Acción a ejecutar *</label>
           <div class="tk-acc-grupo">
+            <button type="button" class="tk-acc" data-acc="En Proceso" onclick="tkElegirAccion(this)">🔵 En Proceso</button>
             <button type="button" class="tk-acc" data-acc="Pendiente" onclick="tkElegirAccion(this)">🟡 Pendiente</button>
             <button type="button" class="tk-acc" data-acc="Rechazado" onclick="tkElegirAccion(this)">🔴 Rechazado</button>
             <button type="button" class="tk-acc" data-acc="Resuelto" onclick="tkElegirAccion(this)">🟢 Resuelto</button>
@@ -2104,7 +2116,7 @@
     async function guardarGestionTicket(i) {
       const t = tkState.vista[i];
       const observaciones = document.getElementById('tkGesRespuesta').value.trim();
-      if (!tkState.accion) return showToast('Escoge una acción: Pendiente, Rechazado o Resuelto.', 'error');
+      if (!tkState.accion) return showToast('Escoge un estado para el ticket.', 'error');
       if (!observaciones) return showToast('Escribe la respuesta para quien puso el ticket.', 'error');
       const btn = document.getElementById('tkGesGuardar');
       btn.disabled = true;
@@ -2128,6 +2140,7 @@
     }
     async function editarTicket(i) {
       const t = tkState.vista[i];
+      if (t.puedeEditarGestion) return editarTicketGestion(i);
       abrirModalTicket(`✏️ Editar ticket #${tkEsc(t.ticket)}`, `
         <div style="margin-bottom:10px;">${tkBadge(t.estado)} <span style="color:var(--text-muted); font-size:.82rem;">${tkEsc(t.modulo)} · ${tkEsc(t.operacion || '')}</span></div>
         <div class="tk-form-campo"><label>Motivo</label><div id="tkEdMotivoWrap"><input type="text" id="tkEdMotivo" value="${tkEsc(t.motivo || '')}"></div></div>
@@ -2146,6 +2159,106 @@
           wrap.innerHTML = '<select id="tkEdMotivo">' + lista.map(m => `<option value="${tkEsc(m)}"${m === t.motivo ? ' selected' : ''}>${tkEsc(m)}</option>`).join('') + '</select>';
         }
       } catch (e) { /* queda el campo de texto */ }
+    }
+    async function editarTicketGestion(i) {
+      const t = tkState.vista[i];
+      try {
+        const [rMod, rOps] = await Promise.all([
+          fetch('/tickets/api/modulos'),
+          fetch(`/tickets/api/operaciones?usuario=${encodeURIComponent(paramUsuario)}`)
+        ]);
+        const [modulos, operaciones] = await Promise.all([rMod.json(), rOps.json()]);
+        if (!rMod.ok || !Array.isArray(modulos)) throw new Error(modulos.error || 'No se pudieron cargar los módulos.');
+        if (!rOps.ok || !operaciones.ok) throw new Error(operaciones.error || 'No se pudieron cargar las operaciones.');
+        const opciones = (lista, actual) => [...new Set([actual, ...lista].filter(Boolean))]
+          .map(v => `<option value="${tkEsc(v)}"${v === actual ? ' selected' : ''}>${tkEsc(v)}</option>`).join('');
+        const ops = Object.values(operaciones.opsPorRegional || {}).flat();
+        abrirModalTicket(`✏️ Editar ticket #${tkEsc(t.ticket)}`, `
+          <div class="tk-nota">El número, las fechas y la calificación se conservan. Cambiar el módulo no elimina el recibo ni los trabajadores asociados.</div>
+          <div class="tk-form-campo"><label>Módulo *</label><select id="tkAdmModulo" onchange="tkCargarMotivosGestion()"><option value="">Seleccione módulo</option>${opciones(modulos, t.moduloOriginal)}</select></div>
+          <div class="tk-form-campo"><label>Operación *</label><select id="tkAdmOperacion"><option value="">Seleccione operación</option>${opciones(ops, t.operacion)}</select></div>
+          <div class="tk-form-campo"><label>Solicitante (ID de usuario) *</label><input id="tkAdmSolicitante" value="${tkEsc(t.solicitante || '')}"></div>
+          <div class="tk-form-campo"><label>Motivo</label><div id="tkAdmMotivoWrap"></div></div>
+          <div class="tk-form-campo"><label>Descripción *</label><textarea id="tkAdmDescripcion" rows="4">${tkEsc(t.descripcion || '')}</textarea></div>
+          <div class="tk-form-campo"><label>Teléfono de contacto</label><input id="tkAdmTelefono" inputmode="numeric" value="${tkEsc(t.telefono || '')}"></div>
+          <div class="tk-form-campo"><label>ID del recibo o servicio</label><input id="tkAdmRecibo" value="${tkEsc(t.idrecibo || '')}"></div>
+          <div class="tk-form-campo"><label>Identificaciones de trabajadores (separadas por coma)</label><textarea id="tkAdmTrabajadores" rows="2">${tkEsc(t.identificaciones || '')}</textarea></div>
+          <div class="tk-form-campo"><label>Respuesta</label><textarea id="tkAdmRespuesta" rows="3">${tkEsc(t.observaciones || '')}</textarea></div>
+          <div class="tk-form-campo"><label>Reemplazar evidencia (opcional, máximo 15 MB)</label>
+            ${t.evidencia ? `<a href="${tkEsc(t.evidencia)}" target="_blank" rel="noopener">Ver evidencia actual</a>` : ''}
+            <input id="tkAdmEvidencia" type="file">
+          </div>
+          <div class="tk-modal-acciones">
+            <button type="button" class="btn-header" onclick="cerrarModalTicket()">Cancelar</button>
+            <button type="button" class="btn-header accent" id="tkAdmGuardar" onclick="guardarTicketGestion(${i})">Guardar cambios</button>
+          </div>`);
+        await tkCargarMotivosGestion(t.motivo || '');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+    let tkSolicitudMotivos = 0;
+    async function tkCargarMotivosGestion(motivoActual = '') {
+      const solicitud = ++tkSolicitudMotivos;
+      const moduloEl = document.getElementById('tkAdmModulo');
+      const wrap = document.getElementById('tkAdmMotivoWrap');
+      const btn = document.getElementById('tkAdmGuardar');
+      const modulo = moduloEl.value;
+      wrap.innerHTML = '<select id="tkAdmMotivo" disabled><option value="">Cargando motivos...</option></select>';
+      btn.disabled = true;
+      if (!modulo) {
+        wrap.innerHTML = '<select id="tkAdmMotivo" disabled><option value="">Seleccione un módulo</option></select>';
+        return;
+      }
+      try {
+        const r = await fetch(`/tickets/api/motivos?modulo=${encodeURIComponent(modulo)}`);
+        const datosMotivos = await r.json();
+        if (solicitud !== tkSolicitudMotivos || document.getElementById('tkAdmMotivoWrap') !== wrap || moduloEl.value !== modulo) return;
+        if (!r.ok || !Array.isArray(datosMotivos)) throw new Error(datosMotivos.error || 'No se pudieron cargar los motivos.');
+        const motivos = datosMotivos.map(m => String(m || '').trim()).filter(Boolean);
+        if (motivos.length) {
+          const lista = [...new Set(motivoActual && !motivos.includes(motivoActual) ? [motivoActual, ...motivos] : motivos)];
+          wrap.innerHTML = '<select id="tkAdmMotivo"><option value="">— Seleccione un motivo —</option>' +
+            lista.map(m => `<option value="${tkEsc(m)}"${m === motivoActual ? ' selected' : ''}>${tkEsc(m)}</option>`).join('') + '</select>';
+        } else {
+          wrap.innerHTML = `<input type="text" id="tkAdmMotivo" value="${tkEsc(motivoActual)}" placeholder="Este módulo no tiene motivos configurados">`;
+        }
+        btn.disabled = false;
+      } catch (e) {
+        if (solicitud !== tkSolicitudMotivos || document.getElementById('tkAdmMotivoWrap') !== wrap || moduloEl.value !== modulo) return;
+        wrap.innerHTML = '<button type="button" class="btn-header">Reintentar carga de motivos</button>';
+        wrap.querySelector('button').onclick = () => tkCargarMotivosGestion(motivoActual);
+        showToast(e.message, 'error');
+      }
+    }
+    async function guardarTicketGestion(i) {
+      const t = tkState.vista[i];
+      const campos = {
+        modulo: 'tkAdmModulo', operacion: 'tkAdmOperacion', solicitante: 'tkAdmSolicitante',
+        motivo: 'tkAdmMotivo', descripcion: 'tkAdmDescripcion', telefono: 'tkAdmTelefono',
+        idrecibo: 'tkAdmRecibo', identificaciones: 'tkAdmTrabajadores', observaciones: 'tkAdmRespuesta'
+      };
+      const datos = new FormData();
+      datos.append('usuario', paramUsuario);
+      Object.entries(campos).forEach(([nombre, id]) => datos.append(nombre, document.getElementById(id).value.trim()));
+      const archivo = document.getElementById('tkAdmEvidencia').files[0];
+      if (archivo && archivo.size > 15 * 1024 * 1024) return showToast('La evidencia supera los 15 MB.', 'error');
+      if (archivo) datos.append('evidencia', archivo);
+      const btn = document.getElementById('tkAdmGuardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        const r = await fetch(`/tickets/api/ticket/${encodeURIComponent(t.ticket)}/gestion`, { method: 'PUT', body: datos });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar.');
+        cerrarModalTicket();
+        showToast('Ticket actualizado.');
+        await cargarTickets();
+      } catch (e) {
+        showToast(e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Guardar cambios';
+      }
     }
     async function guardarTicketEditado(i) {
       const t = tkState.vista[i];

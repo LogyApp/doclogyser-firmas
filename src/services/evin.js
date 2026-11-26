@@ -20,11 +20,15 @@ const P = {
   CARGOS:    'Cargos a los que se les genera la EVIN',
   MINIMO:    'Porcentaje mínimo para aprobar la EVIN',
   HABILITAR: 'Habilitar notificaciones de correo en EVIN',
+  RESPUESTA_9: 'Respuesta correcta EVIN pregunta 9 COPASST',
+  RESPUESTA_25: 'Respuesta correcta EVIN pregunta 25 PESV',
 };
 const DEFAULTS = {
   [P.CARGOS]:    '',
   [P.MINIMO]:    '80',
   [P.HABILITAR]: '1',
+  [P.RESPUESTA_9]: 'c',
+  [P.RESPUESTA_25]: 'b',
 };
 
 // Calificación de cada aspecto de la inducción: el trabajador ve la palabra; el PDF marca la letra
@@ -226,10 +230,20 @@ function valor(params, concepto) {
 async function configuracion() {
   const p = await obtenerParametros();
   const minimo = Number(String(valor(p, P.MINIMO) || '').replace(',', '.'));
+  const claves = Object.fromEntries(PREGUNTAS.map(q => [q.n, q.correcta]));
+  for (const [numero, concepto] of [[9, P.RESPUESTA_9], [25, P.RESPUESTA_25]]) {
+    const respuesta = String(valor(p, concepto) || '').trim().toLowerCase();
+    const pregunta = PREGUNTAS.find(q => q.n === numero);
+    if (!Object.prototype.hasOwnProperty.call(pregunta.opciones, respuesta)) {
+      throw new Error(`La respuesta configurada para la pregunta EVIN ${numero} no es válida.`);
+    }
+    claves[numero] = respuesta;
+  }
   return {
     cargos: String(valor(p, P.CARGOS) || '').split(',').map(s => s.trim()).filter(Boolean),
     minimo: minimo > 0 && minimo <= 100 ? minimo : Number(DEFAULTS[P.MINIMO]),
     correoHabilitado: ['1', 'true', 'si', 'yes'].includes(normalizarTexto(valor(p, P.HABILITAR))),
+    claves,
   };
 }
 
@@ -268,8 +282,8 @@ function validarRespuestas(aspectosIn, respuestasIn) {
   return { aspectos, respuestas };
 }
 
-function calificar(respuestas, minimo) {
-  const correctas = PREGUNTAS.filter(q => respuestas[q.n] === q.correcta).length;
+function calificar(respuestas, minimo, claves) {
+  const correctas = PREGUNTAS.filter(q => respuestas[q.n] === claves[q.n]).length;
   const porcentaje = Math.round((correctas / TOTAL_PREGUNTAS) * 10000) / 100;
   return { correctas, total: TOTAL_PREGUNTAS, porcentaje, aprobado: porcentaje >= minimo };
 }
@@ -343,11 +357,13 @@ function htmlAspectos(aspectos) {
 // Preguntas con la opción que marcó el trabajador; con respuestas muestra si acertó (para el refuerzo)
 function htmlPreguntas(respuestas) {
   const hay = Object.keys(respuestas).length > 0;
+  // Las evaluaciones antiguas no tienen claves guardadas y usaron las originales del formato.
+  const claves = respuestas._claves || Object.fromEntries(PREGUNTAS.map(q => [q.n, q.correcta]));
   return SECCIONES_PREGUNTAS.map(s => `
     <div class="preg-seccion">${esc(s.titulo)}</div>
     <div class="preg-grid">${s.preguntas.map(q => {
       const marcada = respuestas[q.n];
-      const estado = !hay ? '' : (marcada === q.correcta ? '<span class="preg-ok">✓ Correcta</span>' : '<span class="preg-mal">✗ Incorrecta</span>');
+      const estado = !hay ? '' : (marcada === claves[q.n] ? '<span class="preg-ok">✓ Correcta</span>' : '<span class="preg-mal">✗ Incorrecta</span>');
       return `<div class="preg"><div class="preg-txt">${q.n}. ${esc(q.texto)} ${estado}</div>${Object.entries(q.opciones).map(([k, t]) =>
         `<div class="preg-op${marcada === k ? ' marcada' : ''}"><span class="preg-caja">${marcada === k ? 'X' : '&nbsp;'}</span> ${k}. ${esc(t)}</div>`).join('')}</div>`;
     }).join('')}</div>`).join('');

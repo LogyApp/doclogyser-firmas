@@ -314,8 +314,11 @@ const SELECT_TICKET_BASE = `
   SELECT t.Ticket AS ticket,
          DATE_FORMAT(t.fecha_registro, '%Y-%m-%d %H:%i') AS fechaRegistro,
          t.\`Operación\` AS operacion, mo.REGIONAL AS regional,
-         t.solicitante AS solicitante, COALESCE(NULLIF(t.modulo, ''), 'Sin módulo') AS modulo,
-         t.motivo AS motivo, t.idrecibo AS idrecibo, t.descripcion AS descripcion,
+         t.solicitante AS solicitante, t.modulo AS moduloOriginal, COALESCE(NULLIF(t.modulo, ''), 'Sin módulo') AS modulo,
+         t.motivo AS motivo, t.idrecibo AS idrecibo,
+         EXISTS(SELECT 1 FROM Dynamic_Recibos r WHERE r.IdRecibo = t.idrecibo) AS esRecibo,
+         EXISTS(SELECT 1 FROM Dynamic_Servicios s WHERE s.IdServicio = t.idrecibo) AS esServicio,
+         t.descripcion AS descripcion,
          t.Evidencia AS evidencia, t.telefono AS telefono, t.Estado AS estado,
          t.Observaciones AS observaciones,
          DATE_FORMAT(t.fecha_finalizacion, '%Y-%m-%d %H:%i') AS fechaFinalizacion,
@@ -495,7 +498,11 @@ router.get('/api/listado', async (req, res) => {
 
     const rows = base.filter(t => cumple(t, null));
     await agregarTrabajadores(rows);
-    rows.forEach(t => { t.puedeEditar = puedeEditarTicket(t, usuario); t.puedeResolver = gestion && puedeResolverTicket(t, permisoResolver); });
+    rows.forEach(t => {
+      t.puedeEditarGestion = gestion && puedeResolverTicket(t, permisoResolver);
+      t.puedeEditar = t.puedeEditarGestion || puedeEditarTicket(t, usuario);
+      t.puedeResolver = gestion && puedeResolverTicket(t, permisoResolver);
+    });
     res.json({
       ok: true,
       verTodos,
@@ -568,6 +575,96 @@ router.put('/api/ticket/:ticket', async (req, res) => {
     res.json({ ok: true, ticket: act[0] });
   } catch (err) {
     console.error('[tickets] PUT /api/ticket/:ticket:', err);
+    res.status(500).json({ error: 'No se pudo guardar el ticket.' });
+  }
+});
+
+// Corrección administrativa independiente de la edición limitada del solicitante.
+router.put('/api/ticket/:ticket/gestion', uploadTicket.single('evidencia'), async (req, res) => {
+  try {
+    const user = await usuarioRegistrado(req.body.usuario);
+    if (!user || !(await accesoSeccion('configuracion', user.Rol, 'Tickets')) ||
+        !(await permisoResolverTickets(user.Rol))) {
+      return res.status(403).json({ error: 'No tienes permiso para editar tickets en Configuración.' });
+    }
+    const [rows] = await pool.query(`${await selectTicket()} WHERE t.Ticket = ? LIMIT 1`, [req.params.ticket]);
+    if (!rows.length) return res.status(404).json({ error: 'Ticket no encontrado.' });
+    const anterior = rows[0];
+    const campo = nombre => String(req.body[nombre] == null ? '' : req.body[nombre]).trim();
+    const modulo = campo('modulo');
+    const operacion = campo('operacion');
+    const solicitante = campo('solicitante');
+    const motivo = campo('motivo');
+    const descripcion = campo('descripcion');
+    const telefono = campo('telefono');
+    const idrecibo = campo('idrecibo');
+    const observaciones = campo('observaciones');
+    const identificaciones = campo('identificaciones');
+    if (!modulo || !operacion || !solicitante || !descripcion) {
+      return res.status(400).json({ error: 'Módulo, operación, solicitante y descripción son obligatorios.' });
+    }
+    if (telefono && !/^\d{1,15}$/.test(telefono)) {
+      return res.status(400).json({ error: 'El teléfono debe contener hasta 15 dígitos.' });
+    }
+    if (modulo !== anterior.modulo) {
+      const [modulos] = await pool.execute('SELECT 1 FROM Config_motivo_tickets WHERE Modulo = ? LIMIT 1', [modulo]);
+      if (!modulos.length) return res.status(400).json({ error: 'El módulo seleccionado no existe.' });
+    }
+    if (modulo !== anterior.modulo || motivo !== String(anterior.motivo || '').trim()) {
+      if (!motivo) return res.status(400).json({ error: 'El motivo es obligatorio al cambiar el módulo o motivo.' });
+      const [motivos] = await pool.execute(
+        'SELECT Motivo FROM Config_motivo_tickets WHERE Modulo = ? AND Motivo IS NOT NULL AND TRIM(Motivo) <> ?',
+        [modulo, '']
+      );
+      if (motivos.length && !motivos.some(m => String(m.Motivo).trim() === motivo)) {
+        return res.status(400).json({ error: 'Selecciona un motivo válido para el módulo.' });
+      }
+    }
+    if (operacion !== anterior.operacion) {
+      const [ops] = await pool.execute("SELECT 1 FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' LIMIT 1", [operacion]);
+      if (!ops.length) return res.status(400).json({ error: 'La operación seleccionada no está activa.' });
+    }
+    if (solicitante !== anterior.solicitante && !(await usuarioRegistrado(solicitante))) {
+      return res.status(400).json({ error: 'El solicitante no está registrado.' });
+    }
+    if (idrecibo && idrecibo !== (anterior.idrecibo || '')) {
+      const [[referencia]] = await pool.execute(
+        'SELECT EXISTS(SELECT 1 FROM Dynamic_Recibos WHERE IdRecibo = ?) AS recibo, EXISTS(SELECT 1 FROM Dynamic_Servicios WHERE IdServicio = ?) AS servicio',
+        [idrecibo, idrecibo]
+      );
+      if (!referencia.recibo && !referencia.servicio) return res.status(400).json({ error: 'El recibo o servicio indicado no existe.' });
+    }
+    const conIdentificaciones = await tieneColumnaIdentificaciones();
+    if (!conIdentificaciones && identificaciones) {
+      return res.status(400).json({ error: 'No está disponible el campo de trabajadores.' });
+    }
+    if (identificaciones !== String(anterior.identificaciones || '')) {
+      if (identificaciones.length > 2000 || (identificaciones && !/^\d+(?:\s*,\s*\d+)*$/.test(identificaciones))) {
+        return res.status(400).json({ error: 'Escribe las identificaciones como números separados por comas (máximo 2000 caracteres).' });
+      }
+      const ids = [...new Set(listaIdentificaciones(identificaciones))];
+      if (ids.length) {
+        const [trabajadores] = await pool.query(
+          `SELECT DISTINCT \`Identificación\` AS id FROM \`Maestro_Segmentación\` WHERE \`Identificación\` IN (${ids.map(() => '?').join(',')})`,
+          ids
+        );
+        const encontrados = new Set(trabajadores.map(t => String(t.id)));
+        const faltantes = ids.filter(id => !encontrados.has(id));
+        if (faltantes.length) return res.status(400).json({ error: `No se encontraron trabajadores con identificación: ${faltantes.join(', ')}.` });
+      }
+    }
+    const evidencia = req.file
+      ? await subirEvidenciaTicket(`${req.params.ticket}.${crypto.randomUUID()}`, req.file.buffer, req.file.originalname, req.file.mimetype)
+      : anterior.evidencia;
+    await pool.execute(
+      `UPDATE Dynamic_Tickets SET modulo = ?, \`Operación\` = ?, solicitante = ?, motivo = ?, descripcion = ?,
+       telefono = ?, idrecibo = ?, Observaciones = ?, Evidencia = ?${conIdentificaciones ? ', identificaciones = ?' : ''} WHERE Ticket = ?`,
+      [modulo, operacion, solicitante, motivo || null, descripcion, telefono || null, idrecibo || null,
+        observaciones || null, evidencia || null, ...(conIdentificaciones ? [identificaciones || null] : []), req.params.ticket]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[tickets] PUT /api/ticket/:ticket/gestion:', err);
     res.status(500).json({ error: 'No se pudo guardar el ticket.' });
   }
 });

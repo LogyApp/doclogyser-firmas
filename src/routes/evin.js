@@ -108,12 +108,13 @@ router.post('/api/firmar', async (req, res) => {
     }
 
     const cfg = await evin.configuracion();
-    const resultado = evin.calificar(datos.respuestas, cfg.minimo);
+    const resultado = evin.calificar(datos.respuestas, cfg.minimo, cfg.claves);
+    const respuestasConClaves = { ...datos.respuestas, _claves: cfg.claves };
     const [upd] = await pool.execute(
       `UPDATE Dynamic_evin SET aspectos = ?, respuestas = ?, correctas = ?, porcentaje = ?, aprobado = ?,
               url_firma = ?, fecha_firma = ?, token_firma = NULL
         WHERE id_evin = ? AND token_firma = ?`,
-      [JSON.stringify(datos.aspectos), JSON.stringify(datos.respuestas), resultado.correctas, resultado.porcentaje,
+      [JSON.stringify(datos.aspectos), JSON.stringify(respuestasConClaves), resultado.correctas, resultado.porcentaje,
         resultado.aprobado ? 1 : 0, url, ahoraBogota(), e.id_evin, String(token)]
     );
     if (!upd.affectedRows) return res.status(409).json({ error: 'Esta evaluación ya fue respondida.' });
