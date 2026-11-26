@@ -22,6 +22,7 @@ const {
   actualizarContactoTrabajador,
   enviarCorreoPortalTrabajador
 } = require('../services/clouddocsFirmas');
+const configTrabajadores = require('../services/configClouddocsTrabajadores');
 
 const router = express.Router();
 
@@ -68,8 +69,11 @@ router.get('/', async (req, res) => {
     // la Sección Sociodemografica del módulo talenthub en Maestro_Menu.
     const puedeVerSociodemografica = Boolean(await accesoSeccion('talenthub', acceso.rol, 'Sociodemografica').catch(() => null));
     const rolesFirmas = await obtenerRolesPermitidosFirmas();
+    // Permisos de Trabajadores (Config_Parametros CloudDocs / Trabajadores)
+    const permisosTrab = await configTrabajadores.permisosInterfaz(acceso.rol);
     const config = JSON.stringify({
       ...acceso,
+      ...permisosTrab,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       puedeVerSociodemografica,
       rolesFirmasActivos: rolesFirmas.rolesActivos,
@@ -123,15 +127,25 @@ router.get('/api/trabajadores', async (req, res) => {
 
     const whereClause = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
+    // Documentos de firma y tope del listado: Config_Doc_Trabajador (Clasificación "3.")
+    // y Config_Parametros CloudDocs / Trabajadores
+    const [idsFirma, limite] = await Promise.all([
+      configTrabajadores.idsDocumentosFirma(),
+      configTrabajadores.maxListado()
+    ]);
+    const idsSeguros = (idsFirma.length ? idsFirma : [0]).map(n => Number(n) || 0);
+    const idsFirmaNum = idsSeguros.join(',');
+    const idsFirmaTxt = idsSeguros.map(n => `'${n}'`).join(',');
+
     const sql = `
-      SELECT 
+      SELECT
         s.Identificación AS identificacion,
         s.Trabajador AS trabajador,
         mv.Operación AS operacion,
         mv.Estado AS estado,
         DATE_FORMAT(mv.max_fecha_ingreso, '%Y-%m-%d') AS fechaIngreso,
         COALESCE(d.doc_count, 0) AS documentosCount,
-        COALESCE(f.firmas_count, 0) AS firmasCount
+        f.firmas_ids AS firmasIds
       FROM Maestro_Segmentación s
       JOIN (
         SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado, v1.\`Fecha de Ingreso\` AS max_fecha_ingreso
@@ -148,27 +162,41 @@ router.get('/api/trabajadores', async (req, res) => {
         GROUP BY Identificación
       ) d ON s.Identificación = d.Identificación
       LEFT JOIN (
-        SELECT Identificación, COUNT(DISTINCT doc_id) AS firmas_count
+        SELECT Identificación, GROUP_CONCAT(DISTINCT doc_id) AS firmas_ids
         FROM (
           SELECT Identificación, CAST(TipoDocumento AS UNSIGNED) AS doc_id
           FROM Maestro_docTrabajador
-          WHERE TipoDocumento IN ('2', '16', '20', '33', '39', '48', '49')
+          WHERE TipoDocumento IN (${idsFirmaTxt})
           UNION
           SELECT CAST(h.identificacion AS UNSIGNED) AS Identificación, d.id_config_doc AS doc_id
           FROM Dynamic_hv_aspirante h
           JOIN Dynamic_hv_documentos d ON h.id_aspirante = d.id_aspirante
-          WHERE d.id_config_doc IN (2, 16, 20, 33, 39, 48, 49)
+          WHERE d.id_config_doc IN (${idsFirmaNum})
             AND d.estado IN ('Firmado', 'Aprobado')
         ) uf
         GROUP BY Identificación
       ) f ON s.Identificación = f.Identificación
       ${whereClause}
       ORDER BY mv.max_fecha_ingreso DESC, mv.Operación ASC, mv.Estado ASC, s.Trabajador ASC
-      LIMIT 1000
+      LIMIT ${limite}
     `;
 
     const [rows] = await pool.execute(sql, params);
-    res.json(rows);
+
+    // Firmas requeridas según la operación del trabajador (mismas reglas del portal de firmas).
+    // Solo cuentan como firmados los documentos que aplican a su operación.
+    const firmasDeOperacion = configTrabajadores.crearResolverFirmasPorOperacion();
+    const resultado = await Promise.all(rows.map(async r => {
+      const requeridos = await firmasDeOperacion(r.operacion);
+      const firmados = new Set(String(r.firmasIds || '').split(',').map(x => Number(x)).filter(Boolean));
+      const { firmasIds, ...resto } = r;
+      return {
+        ...resto,
+        firmasCount: requeridos.filter(id => firmados.has(id)).length,
+        firmasRequeridas: requeridos.length
+      };
+    }));
+    res.json(resultado);
   } catch (err) {
     console.error('[cloud-docs] GET /api/trabajadores:', err);
     res.status(500).json({ error: err.message });
@@ -1984,8 +2012,9 @@ router.post('/api/documento-trabajador/validacion', async (req, res) => {
     }
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
-    if (!acceso || !['Archivo', 'Sistema', 'Asistencial'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado' });
+    // Roles: Config_Parametros CloudDocs / Trabajadores "Roles que pueden validar documentos"
+    if (!acceso || !(await configTrabajadores.puedeValidarDocumentos(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para validar documentos' });
     }
 
     if (!['OK', 'PEND', 'ERROR'].includes(validacion)) {
@@ -2014,7 +2043,8 @@ router.post('/api/documento/eliminar', async (req, res) => {
     }
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
-    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+    // Roles: Config_Parametros CloudDocs / Trabajadores "Roles que pueden eliminar documentos con validación ERROR"
+    if (!acceso || !(await configTrabajadores.puedeEliminarDocumentos(acceso.rol))) {
       return res.status(403).json({ error: 'No autorizado para eliminar documentos' });
     }
 

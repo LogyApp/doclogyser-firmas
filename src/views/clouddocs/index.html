@@ -2151,6 +2151,22 @@
         .replace(/[̀-ͯ]/g, '');
     }
 
+    // Permisos de Trabajadores que vienen de Config_Parametros (CloudDocs / Trabajadores).
+    // Si el servidor no los envía, se usa la lista de roles anterior.
+    function permisoTrabajadores(flag, rolesRespaldo) {
+      return typeof CONFIG[flag] === 'boolean' ? CONFIG[flag] : rolesRespaldo.includes(CONFIG.rol);
+    }
+
+    // Documentos de firma requeridos: los calcula el servidor según la operación
+    // (Config_Doc_Trabajador Clasificación "3." y reglas por operación de talenthub/Aspirantes).
+    function firmasRequeridasFila(row) {
+      if (row && row.firmasRequeridas != null && Number.isFinite(Number(row.firmasRequeridas))) {
+        return Number(row.firmasRequeridas);
+      }
+      const opNorm = ((row && row.operacion) || '').trim().toLowerCase();
+      return opNorm === 'italcol la estrella' ? 7 : 6;
+    }
+
     function puedeGestionarFirmas(estadoTrabajador) {
       const rolNorm = normalizarCadena(CONFIG.rol);
       const estNorm = normalizarCadena(estadoTrabajador || 'Activo');
@@ -3050,7 +3066,7 @@
         if (permisosContainer) permisosContainer.style.display = 'none';
         if (logysignContainer) logysignContainer.style.display = 'none';
         btnNuevaFirma.style.display = 'none';
-        btnNuevoTipoDoc.style.display = (tab === 'documento' && ['Sistema', 'Archivo'].includes(CONFIG.rol)) ? 'inline-flex' : 'none';
+        btnNuevoTipoDoc.style.display = (tab === 'documento' && permisoTrabajadores('puedeCrearTipoDoc', ['Sistema', 'Archivo'])) ? 'inline-flex' : 'none';
 
         // Hide/Show Regional, Operación dropdowns and Cargar/Validar buttons
         if (tab === 'validarcap') {
@@ -3545,8 +3561,7 @@
           let btnFirmasHtml = '<span style="color: #cbd5e1; font-size: 0.75rem;">—</span>';
 
           if (tienePermisoFirmas) {
-            const opNorm = (row.operacion || '').trim().toLowerCase();
-            const docsReq = opNorm === 'italcol la estrella' ? 7 : 6;
+            const docsReq = firmasRequeridasFila(row);
             const firmados = Number(row.firmasCount || 0);
             const tienePendientes = firmados < docsReq;
 
@@ -3674,7 +3689,7 @@
           const valBadge = `<span class="badge-status" style="background:${valBg}; color:${valColor}; border:1px solid ${valBorder};">${esc(valVal)}</span>`;
 
           let actionBtnHtml = '—';
-          if (['Archivo', 'Sistema'].includes(CONFIG.rol) && valVal === 'ERROR') {
+          if (permisoTrabajadores('puedeEliminarDocs', ['Archivo', 'Sistema']) && valVal === 'ERROR') {
             actionBtnHtml = `
               <button class="btn-delete-row" onclick="event.stopPropagation(); eliminarRegistroCloudDocs('${row.id}', '${row.tipo_registro}')" title="Eliminar Registro">
                 🗑️
@@ -3724,8 +3739,7 @@
         const tienePermiso = puedeGestionarFirmas(activeWorkerModal.estado);
         btnFirmas.style.display = tienePermiso ? 'inline-flex' : 'none';
         if (tienePermiso && rowMatch) {
-          const opNorm = (rowMatch.operacion || '').trim().toLowerCase();
-          const docsReq = opNorm === 'italcol la estrella' ? 7 : 6;
+          const docsReq = firmasRequeridasFila(rowMatch);
           const firmados = Number(rowMatch.firmasCount || 0);
           const tienePendientes = firmados < docsReq;
           if (tienePendientes) {

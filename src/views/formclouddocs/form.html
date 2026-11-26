@@ -1125,7 +1125,10 @@
     }
 
     function verificarPermisoNuevoTipoDoc() {
-      const isSystemOrArchivo = ['Sistema', 'Archivo'].includes(CONFIG.rol);
+      // Viene de Config_Parametros CloudDocs / Trabajadores; si no llega, lista de roles anterior
+      const isSystemOrArchivo = typeof CONFIG.puedeCrearTipoDoc === 'boolean'
+        ? CONFIG.puedeCrearTipoDoc
+        : ['Sistema', 'Archivo'].includes(CONFIG.rol);
       const isAdministracion = CONFIG.operacion && ['administracion', 'administración'].includes(CONFIG.operacion.toLowerCase().trim());
 
       let habilitado = false;
