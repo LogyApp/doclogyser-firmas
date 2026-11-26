@@ -3,7 +3,7 @@
  * Pestaña Reportes e Indicadores de Nómina:
  * - Vista por defecto: Tabla consolidada por operación con conteos y porcentajes,
  *   ordenamiento interactivo en columnas y redimensionamiento (achicar/anchar).
- * - Vistas detalladas: Ranking de rotación, Oportunidad de aviso, Fuga <60d y Motivos.
+ * - Vistas: tabla consolidada y ranking de rotación por operación.
  * - Filtros en cascada: Regional -> Operación con porcentajes interactivos (Rotación e Ingresos).
  * - Ventana emergente (Modal): Evolución histórica mensual (1-12) de En Planta, Ingresos, Retiros y Fuga <60d
  *   con filtros por Año, Regional y Operación (exclusiva para roles autorizados: Nomina, Directorth, Juridica, etc.).
@@ -14,13 +14,14 @@
   const _repState = {
     cargado: false,
     cargando: false,
-    vista: 'tabla', // 'tabla' (por defecto) | 'ranking' | 'aviso' | 'fuga' | 'motivos'
+    vista: 'tabla', // 'tabla' (por defecto) | 'ranking'
     anio: new Date().getFullYear(),
     mes: new Date().getMonth() + 1,
     quincena: 'todas', // 'todas' | 'Q1' | 'Q2'
     filtroRegional: '',
     filtroOperacion: '',
     filtroSoloRetiros: false, // Por defecto false para mostrar operaciones con 0 retiros (ej. Norte de Santander)
+    filtrosPrellenados: false,
     ordenColumna: 'regional',
     ordenDir: 'asc',
     data: null,
@@ -320,15 +321,6 @@
           <button type="button" class="btn-vista" data-v="ranking" onclick="window.repCambiarVista('ranking')" style="padding:7px 14px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.82rem; cursor:pointer; border-left:1px solid var(--border);">
             🏆 Ranking Rotación
           </button>
-          <button type="button" class="btn-vista" data-v="aviso" onclick="window.repCambiarVista('aviso')" style="padding:7px 14px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.82rem; cursor:pointer; border-left:1px solid var(--border);">
-            ⏱️ Oportunidad Aviso
-          </button>
-          <button type="button" class="btn-vista" data-v="fuga" onclick="window.repCambiarVista('fuga')" style="padding:7px 14px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.82rem; cursor:pointer; border-left:1px solid var(--border);">
-            💸 Fuga &lt; 60 días
-          </button>
-          <button type="button" class="btn-vista" data-v="motivos" onclick="window.repCambiarVista('motivos')" style="padding:7px 14px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.82rem; cursor:pointer; border-left:1px solid var(--border);">
-            🏷️ Motivos de Retiro
-          </button>
         </div>
 
         <div class="rep-filtros-cascada" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -392,6 +384,31 @@
       }
 
       _repState.data = json;
+
+      // Prellenar filtros de Regional / Operación según el tipo de acceso del rol
+      if (!_repState.filtrosPrellenados) {
+        const acc = json.accesoUsuario || {};
+        if (!acc.sinFiltro) {
+          const opsPermitidas = acc.operacionesFiltro || [];
+          if (acc.tipoAcceso === 'operacion' || acc.operacion || opsPermitidas.length === 1) {
+            const opTarget = acc.operacion || opsPermitidas[0];
+            if (opTarget) {
+              _repState.filtroOperacion = opTarget;
+              const opObj = (json.operaciones || []).find(o => o.operacion.toLowerCase() === opTarget.toLowerCase());
+              if (opObj && opObj.regional) {
+                _repState.filtroRegional = opObj.regional;
+              } else if (acc.regional) {
+                _repState.filtroRegional = acc.regional;
+              }
+            }
+          } else if (acc.tipoAcceso === 'regional' || acc.regional) {
+            if (acc.regional) {
+              _repState.filtroRegional = acc.regional;
+            }
+          }
+        }
+        _repState.filtrosPrellenados = true;
+      }
 
       // Habilitar botón de evolución mensual si tiene permiso
       const btnModal = document.getElementById('btnRepAbrirModal');
@@ -695,6 +712,7 @@
     let totPlanta = 0;
     let totRetiros = 0;
     let totIngresos = 0;
+    let totIngresoRetiroPeriodo = 0;
     let totTempranos = 0;
     let sumPondAviso = 0;
     let sumPondPerm = 0;
@@ -704,6 +722,7 @@
       totPlanta += (o.planta || 0);
       totRetiros += (o.retiros || 0);
       totIngresos += (o.ingresos || 0);
+      totIngresoRetiroPeriodo += (o.ingresoRetiroPeriodo || 0);
       totTempranos += (o.retirosTempranos || 0);
       if (o.retiros > 0) {
         sumPondAviso += (o.retrasoAvisoMedioDias * o.retiros);
@@ -718,6 +737,7 @@
     const rotGlobal = totPlanta > 0 ? ((totRetiros / totPlanta) * 100).toFixed(1) : '0.0';
     const ingGlobal = totPlanta > 0 ? ((totIngresos / totPlanta) * 100).toFixed(1) : '0.0';
     const fugaGlobal = totRetiros > 0 ? ((totTempranos / totRetiros) * 100).toFixed(1) : '0.0';
+    const ingresoRetiroGlobal = totIngresos > 0 ? ((totIngresoRetiroPeriodo / totIngresos) * 100).toFixed(1) : '0.0';
     const avisoGlobal = totRetiros > 0 ? (sumPondAviso / totRetiros).toFixed(1) : '0.0';
     const permGlobal = opsConRetiro > 0 ? Math.round(sumPondPerm / opsConRetiro) : '—';
 
@@ -740,14 +760,22 @@
         avisoTag = `<span style="font-weight:700;">${dot} ${o.retrasoAvisoMedioDias} d</span>`;
       }
 
-      // Fuga temprana
-      let fugaTag = `<span style="color:var(--text-muted);">-</span>`;
-      if (o.retiros > 0) {
-        const fColor = o.pctTemprano > 30 ? '#dc2626' : (o.pctTemprano > 15 ? '#d97706' : 'var(--text)');
-        fugaTag = `<b>${o.retirosTempranos || 0}</b> <span style="font-size:0.75rem; color:${fColor};">(${o.pctTemprano}%)</span>`;
-      } else {
-        fugaTag = `0 <span style="font-size:0.75rem; color:var(--text-muted);">(0.0%)</span>`;
+      function indicadorRetiros(cantidad, porcentaje) {
+        if (!o.retiros) return `0 <span style="font-size:0.75rem; color:var(--text-muted);">(0.0%)</span>`;
+        const color = porcentaje > 30 ? '#dc2626' : (porcentaje > 15 ? '#d97706' : 'var(--text)');
+        return `<b>${cantidad}</b> <span style="font-size:0.75rem; color:${color};">(${porcentaje}%)</span>`;
       }
+
+      function indicadorIngresoRetiro(cantidad, porcentaje) {
+        if (!cantidad) return `0 <span style="font-size:0.75rem; color:var(--text-muted);">(0.0%)</span>`;
+        const color = porcentaje > 30 ? '#dc2626' : (porcentaje > 15 ? '#d97706' : 'var(--text)');
+        return `<b>${cantidad}</b> <span style="font-size:0.75rem; color:${color};">(${porcentaje}%)</span>`;
+      }
+
+      const ingresoRetiro = o.ingresoRetiroPeriodo || 0;
+      const pctIngresoRetiro = o.ingresos > 0 ? ((ingresoRetiro / o.ingresos) * 100).toFixed(1) : (ingresoRetiro > 0 ? '100.0' : '0.0');
+      const ingresoRetiroTag = indicadorIngresoRetiro(ingresoRetiro, pctIngresoRetiro);
+      const fugaTag = indicadorRetiros(o.retirosTempranos || 0, o.pctTemprano);
 
       const permTag = o.permanenciaMediaDias !== null ? `${Math.round(o.permanenciaMediaDias)} d` : `<span style="color:var(--text-muted);">-</span>`;
 
@@ -768,6 +796,7 @@
             <b style="color:var(--text);">${plantaFinal}</b>
             <span style="font-size:0.75rem; ${balClass} font-weight:700;">(${balSign})</span>
           </td>
+          <td style="text-align:right;">${ingresoRetiroTag}</td>
           <td style="text-align:right;">${fugaTag}</td>
           <td style="text-align:center;">${avisoTag}</td>
           <td style="text-align:center;">${permTag}</td>
@@ -802,6 +831,9 @@
               <th onclick="window.repOrdenarTabla('balance')" style="text-align:right; min-width:115px;">
                 Balance Neto${sortIcon('balance')}<div class="rep-resizer"></div>
               </th>
+              <th onclick="window.repOrdenarTabla('ingresoRetiroPeriodo')" title="Personas que ingresaron en el mes y salieron en este período; porcentaje sobre los ingresos del período" style="text-align:right; min-width:145px;">
+                Ingresaron y salieron${sortIcon('ingresoRetiroPeriodo')}<div class="rep-resizer"></div>
+              </th>
               <th onclick="window.repOrdenarTabla('retirosTempranos')" style="text-align:right; min-width:125px;">
                 Retiros &lt; 60 d${sortIcon('retirosTempranos')}<div class="rep-resizer"></div>
               </th>
@@ -826,6 +858,7 @@
                 <b>${totPlantaFinal}</b>
                 <span style="font-size:0.75rem; color:${balGlobalColor}; font-weight:700;">(${balGlobalSign})</span>
               </td>
+              <td style="text-align:right;">${totIngresoRetiroPeriodo} (${ingresoRetiroGlobal}%)</td>
               <td style="text-align:right;">${totTempranos} (${fugaGlobal}%)</td>
               <td style="text-align:center;">${avisoGlobal} d</td>
               <td style="text-align:center;">${permGlobal} ${permGlobal !== '—' ? 'd' : ''}</td>
@@ -890,7 +923,7 @@
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // VISTAS 2, 3, 4 y 5: TARJETAS Y DETALLES ESPECÍFICOS
+  // VISTA DE RANKING: TARJETAS POR OPERACIÓN
   // ──────────────────────────────────────────────────────────────────────────
   function renderizarListaOperaciones() {
     const contenedor = document.getElementById('repContenedorOperaciones');
@@ -903,16 +936,7 @@
       lista = lista.filter(o => o.pctRotacion > 0 || (o.retiros !== null ? o.retiros > 0 : false));
     }
 
-    // Ordenamiento según la vista activa
-    if (_repState.vista === 'ranking') {
-      lista.sort((a, b) => b.pctRotacion - a.pctRotacion);
-    } else if (_repState.vista === 'aviso') {
-      lista.sort((a, b) => b.retrasoAvisoMedioDias - a.retrasoAvisoMedioDias);
-    } else if (_repState.vista === 'fuga') {
-      lista.sort((a, b) => b.pctTemprano - a.pctTemprano);
-    } else if (_repState.vista === 'motivos') {
-      lista.sort((a, b) => (b.retiros || b.pctRotacion) - (a.retiros || a.pctRotacion));
-    }
+    lista.sort((a, b) => b.pctRotacion - a.pctRotacion);
 
     if (lista.length === 0) {
       contenedor.innerHTML = `
@@ -1051,6 +1075,19 @@
     _repState.modalHist.regional = _repState.filtroRegional;
     _repState.modalHist.operacion = _repState.filtroOperacion;
 
+    // Si aún no hay filtro fijado y el rol tiene restricción por Operación o Regional, prellenarlo
+    const acc = (_repState.data && _repState.data.accesoUsuario) || {};
+    if (!acc.sinFiltro) {
+      if (!_repState.modalHist.operacion && (acc.tipoAcceso === 'operacion' || acc.operacion || (acc.operacionesFiltro && acc.operacionesFiltro.length === 1))) {
+        _repState.modalHist.operacion = acc.operacion || acc.operacionesFiltro[0];
+        if (acc.regional && !_repState.modalHist.regional) {
+          _repState.modalHist.regional = acc.regional;
+        }
+      } else if (!_repState.modalHist.regional && (acc.tipoAcceso === 'regional' || acc.regional)) {
+        _repState.modalHist.regional = acc.regional;
+      }
+    }
+
     wrap.style.display = 'block';
     renderizarEstructuraModal();
     cargarDatosModalEvolucion();
@@ -1172,6 +1209,28 @@
     const selOp = document.getElementById('repModSelOperacion');
     if (!selReg || !selOp) return;
 
+    const acc = (_repState.modalHist.data && _repState.modalHist.data.accesoUsuario) || (_repState.data && _repState.data.accesoUsuario) || {};
+
+    // Si aún no hay filtro fijado en el modal y el rol tiene restricción por Operación o Regional, prellenar
+    if (!_repState.modalHist.regional && !_repState.modalHist.operacion && !acc.sinFiltro) {
+      if (acc.tipoAcceso === 'operacion' || acc.operacion || (acc.operacionesFiltro && acc.operacionesFiltro.length === 1)) {
+        const opTarget = acc.operacion || acc.operacionesFiltro[0];
+        if (opTarget) {
+          _repState.modalHist.operacion = opTarget;
+          const matchCat = catalogo.find(c => c.operacion.toLowerCase() === opTarget.toLowerCase());
+          if (matchCat && matchCat.regional) {
+            _repState.modalHist.regional = matchCat.regional;
+          } else if (acc.regional) {
+            _repState.modalHist.regional = acc.regional;
+          }
+        }
+      } else if (acc.tipoAcceso === 'regional' || acc.regional) {
+        if (acc.regional) {
+          _repState.modalHist.regional = acc.regional;
+        }
+      }
+    }
+
     // 1. Regionales
     const regSet = new Set();
     catalogo.forEach(c => { if (c.regional) regSet.add(c.regional); });
@@ -1214,6 +1273,7 @@
             <td style="text-align:right; color:var(--text-muted);">—</td>
             <td style="text-align:right; color:var(--text-muted);">—</td>
             <td style="text-align:right; color:var(--text-muted);">—</td>
+            <td style="text-align:right; color:var(--text-muted);">—</td>
           </tr>
         `;
       }
@@ -1224,6 +1284,7 @@
       const plantaFinalMes = m.planta + bal;
       const rotClass = m.pctRotacion > 10 ? 'color:#dc2626; font-weight:800;' : (m.pctRotacion > 5 ? 'color:#f59e0b; font-weight:700;' : 'color:#16a34a;');
       const fugaClass = m.pctFuga > 30 ? 'color:#dc2626; font-weight:800;' : (m.pctFuga > 15 ? 'color:#d97706; font-weight:700;' : 'color:var(--text-muted);');
+      const irClass = m.pctIngresoRetiro > 30 ? 'color:#dc2626; font-weight:800;' : (m.pctIngresoRetiro > 15 ? 'color:#d97706; font-weight:700;' : 'color:var(--text-muted);');
       const badgeCurso = m.esMesEnCurso ? `<span style="font-size:0.68rem; background:rgba(37,99,235,0.1); color:#2563eb; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:4px;">En curso</span>` : '';
 
       return `
@@ -1234,6 +1295,9 @@
           <td style="text-align:right; color:#dc2626; font-weight:700;">${m.retiros}</td>
           <td style="text-align:right;">
             <b style="color:var(--text);">${plantaFinalMes}</b> <span style="font-size:0.75rem; ${balClass} font-weight:700;">(${balSign})</span>
+          </td>
+          <td style="text-align:right;">
+            <b>${m.ingresoRetiro || 0}</b> <span style="font-size:0.75rem; ${irClass}">(${m.pctIngresoRetiro || 0}%)</span>
           </td>
           <td style="text-align:right;">
             <b>${m.retirosTempranos}</b> <span style="font-size:0.75rem; ${fugaClass}">(${m.pctFuga}%)</span>
@@ -1256,6 +1320,7 @@
               <th style="text-align:right; min-width:90px;">Ingresos</th>
               <th style="text-align:right; min-width:90px;">Retiros</th>
               <th style="text-align:right; min-width:115px;">Balance</th>
+              <th style="text-align:right; min-width:145px;" title="Personas que ingresaron en el mes y salieron en el mismo mes; porcentaje sobre los ingresos del mes">Ingresaron y salieron</th>
               <th style="text-align:right; min-width:130px;">Retiros &lt; 60 días</th>
               <th style="text-align:right; min-width:105px;">Rotación %</th>
             </tr>
@@ -1270,6 +1335,7 @@
               <td style="text-align:right; color:#16a34a;">${totales.totalIngresos || 0}</td>
               <td style="text-align:right; color:#dc2626;">${totales.totalRetiros || 0}</td>
               <td style="text-align:right; color:${balTotColor}; font-weight:800;">${balTotSign}</td>
+              <td style="text-align:right;">${totales.totalIngresoRetiro || 0} (${totales.pctIngresoRetiroMedia || 0}%)</td>
               <td style="text-align:right;">${totales.totalTempranos || 0} (${totales.pctFugaMedia || 0}%)</td>
               <td style="text-align:right;">—</td>
             </tr>
@@ -1366,4 +1432,5 @@
     }
   };
 
+  if (typeof _tabActual !== 'undefined' && _tabActual === 'reportes') window.inicializarReportesIndicadores();
 })();

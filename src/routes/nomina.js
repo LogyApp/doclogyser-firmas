@@ -37,7 +37,7 @@ const { hoyBogota } = require('../services/trasladoVinculacion');
 const { programarRellenoVinculacion, sincronizarRelleno } = require('../services/rellenoAsistencia');
 const { obtenerControlQuincena } = require('../services/controlQuincena');
 const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
-const { obtenerIndicadoresOperaciones, obtenerEvolucionMensual, obtenerParametrosReportes } = require('../services/reportesNominaService');
+const { obtenerIndicadoresOperaciones, obtenerEvolucionMensual } = require('../services/reportesNominaService');
 const {
   buscarTrabajadorCesantias,
   buscarColaboradoresCesantias,
@@ -344,11 +344,11 @@ router.get('/', async (req, res) => {
     // Reportes e Indicadores de Operaciones (Rotación, Oportunidad de aviso, Deserción temprana)
     const accesoReportes = await computarAccesoNomina(usuario, 'Reportes');
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia && !accesoQuincenaExcel && !accesoInformes) {
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd && !accesoAsistencia && !accesoQuincenaExcel && !accesoInformes && !accesoReportes) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia || accesoQuincenaExcel || accesoInformes;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd || accesoAsistencia || accesoQuincenaExcel || accesoInformes || accesoReportes;
     const puedeGenerarDocs = await puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -516,16 +516,6 @@ router.get('/api/reportes/evolucion-mensual', async (req, res) => {
       acceso = (await computarAccesoNomina(usuario, 'Retiro')) || (await computarAccesoNomina(usuario, 'Activo'));
     }
     if (!acceso) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
-
-    const paramsConfig = await obtenerParametrosReportes();
-    const rolesHistoricoStr = paramsConfig.Roles_Historico_Mes || 'Nomina,Directorth,Juridica,subgerente,Sistema';
-    const rolesAutorizados = new Set(
-      rolesHistoricoStr.split(',').map(r => r.trim().toLowerCase()).filter(Boolean)
-    );
-    const rolUsuario = String(acceso.rol || '').trim().toLowerCase();
-    if (!acceso.sinFiltro && !rolesAutorizados.has(rolUsuario)) {
-      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver la evolución histórica mensual' });
-    }
 
     const data = await obtenerEvolucionMensual({
       anio: parseInt(anio, 10) || new Date().getFullYear(),

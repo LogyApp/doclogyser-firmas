@@ -8,7 +8,6 @@ const DEFAULTS_PARAMETROS = {
   Dias_Aviso_Alerta: 5,
   Dias_Fuga_Temprana: 60,
   Pct_Rotacion_Alerta: 5.0,
-  Roles_Historico_Mes: 'Nomina,Directorth,Juridica,subgerente,Sistema',
 };
 
 async function obtenerParametrosReportes() {
@@ -56,9 +55,12 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
   const diasOportuno = paramsConfig.Dias_Aviso_Oportuno || 2;
   const diasAlerta = paramsConfig.Dias_Aviso_Alerta || 5;
 
+  const fechaInicioMes = String(fechaDesde).substring(0, 7) + '-01';
+
   const [
     [retirosRows],
     [ingresosRows],
+    [ingresoRetiroPeriodoRows],
     [plantaRows],
     [motivosRows],
     [regionalesRows]
@@ -89,6 +91,20 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
         AND \`Operación\` IS NOT NULL AND TRIM(\`Operación\`) != ''
       GROUP BY TRIM(\`Operación\`)
     `, [fechaDesde, fechaHasta]),
+
+    // Personas que ingresaron en el mes y se retiraron durante el periodo
+    pool.execute(`
+      SELECT
+        TRIM(\`Operación\`) AS operacion,
+        COUNT(DISTINCT \`Identificación\`) AS ingreso_retiro_periodo
+      FROM \`Maestro_Vinculación\`
+      WHERE \`Estado\` = 'Retirado'
+        AND \`Fecha de Retiro\` BETWEEN ? AND ?
+        AND \`Fecha de Ingreso\` BETWEEN ? AND ?
+        AND \`Fecha de Retiro\` >= \`Fecha de Ingreso\`
+        AND \`Operación\` IS NOT NULL AND TRIM(\`Operación\`) != ''
+      GROUP BY TRIM(\`Operación\`)
+    `, [fechaDesde, fechaHasta, fechaInicioMes, fechaHasta]),
 
     // 3. Planta activa al inicio del periodo (Planta Inicial)
     pool.execute(`
@@ -127,6 +143,9 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
 
   const mapIngresos = {};
   ingresosRows.forEach(i => { mapIngresos[i.operacion] = Number(i.total_ingresos || 0); });
+
+  const mapIngresoRetiroPeriodo = {};
+  ingresoRetiroPeriodoRows.forEach(r => { mapIngresoRetiroPeriodo[r.operacion] = Number(r.ingreso_retiro_periodo || 0); });
 
   const mapPlanta = {};
   plantaRows.forEach(p => { mapPlanta[p.operacion] = Number(p.planta_activa || 0); });
@@ -220,6 +239,7 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
       retiros: esPropia ? totalRetiros : null,
       ingresos: esPropia ? totalIngresos : null,
       balance: esPropia ? balance : null,
+      ingresoRetiroPeriodo: esPropia ? (mapIngresoRetiroPeriodo[op] || 0) : null,
       retirosTempranos: esPropia ? dataRet.retiros_tempranos : null,
       motivos: esPropia ? motivosList : motivosList.map(m => ({ motivo: m.motivo, porcentaje: totalRetiros > 0 ? Number(((m.cantidad / totalRetiros) * 100).toFixed(1)) : 0 }))
     });
@@ -264,13 +284,6 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
   const opMasOportuna = [...opsConRetiros].sort((a, b) => a.retrasoAvisoMedioDias - b.retrasoAvisoMedioDias)[0] || null;
   const opMayorFuga = [...opsConRetiros].filter(o => o.pctTemprano > 0).sort((a, b) => b.pctTemprano - a.pctTemprano)[0] || null;
 
-  const rolesHistoricoStr = paramsConfig.Roles_Historico_Mes || DEFAULTS_PARAMETROS.Roles_Historico_Mes;
-  const rolesAutorizadosHistorico = new Set(
-    rolesHistoricoStr.split(',').map(r => r.trim().toLowerCase()).filter(Boolean)
-  );
-  const rolUsuario = String(acceso?.rol || '').trim().toLowerCase();
-  const puedeVerHistorico = esCorporativo || rolesAutorizadosHistorico.has(rolUsuario);
-
   return {
     kpisGlobales: {
       totalOperaciones: listaOperaciones.length,
@@ -278,7 +291,7 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
       tiempoAvisoMedioGlobal,
       pctFugaTempranaGlobal,
       esCorporativo,
-      puedeVerHistorico,
+      puedeVerHistorico: true,
       // Solo corporativos ven totales exactos
       totalesCorporativos: esCorporativo ? {
         plantaTotal: sumaPlantaTotal,
@@ -294,6 +307,14 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
       }
     },
     parametros: paramsConfig,
+    accesoUsuario: {
+      sinFiltro: esCorporativo,
+      accesoCode: acceso?.accesoCode || (esCorporativo ? 1 : (acceso?.operacion ? 3 : 2)),
+      tipoAcceso: acceso?.tipoAcceso || (esCorporativo ? 'general' : (acceso?.accesoCode === 2 ? 'regional' : 'operacion')),
+      regional: acceso?.regional || '',
+      operacion: acceso?.operacion || (acceso?.operacionesFiltro?.length === 1 ? acceso.operacionesFiltro[0] : ''),
+      operacionesFiltro: acceso?.operacionesFiltro || []
+    },
     operaciones: listaOperaciones
   };
 }
@@ -322,7 +343,8 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
   if (operacion && operacion.trim() !== '') {
     condsComunes.push('TRIM(`Operación`) = ?');
     paramsQuery.push(operacion.trim());
-  } else if (!esCorporativo) {
+  }
+  if (!esCorporativo) {
     const ops = (acceso && acceso.operacionesFiltro) || [];
     if (ops.length === 0) {
       condsComunes.push('1 = 0');
@@ -335,41 +357,64 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
 
   const whereFiltroExtra = condsComunes.length > 0 ? ` AND ${condsComunes.join(' AND ')}` : '';
 
-  // 1. Retiros agrupados por mes
-  const [retRows] = await pool.execute(`
-    SELECT
-      MONTH(\`Fecha de Retiro\`) AS mes,
-      COUNT(*) AS total_retiros,
-      SUM(CASE WHEN DATEDIFF(\`Fecha de Retiro\`, \`Fecha de Ingreso\`) < ? THEN 1 ELSE 0 END) AS retiros_tempranos
-    FROM \`Maestro_Vinculación\`
-    WHERE \`Estado\` = 'Retirado'
-      AND YEAR(\`Fecha de Retiro\`) = ?
-      ${whereFiltroExtra}
-    GROUP BY MONTH(\`Fecha de Retiro\`)
-  `, [diasFugaTemprana, anioNum, ...paramsQuery]);
-
-  // 2. Ingresos agrupados por mes
-  const [ingRows] = await pool.execute(`
-    SELECT
-      MONTH(\`Fecha de Ingreso\`) AS mes,
-      COUNT(*) AS total_ingresos
-    FROM \`Maestro_Vinculación\`
-    WHERE YEAR(\`Fecha de Ingreso\`) = ?
-      ${whereFiltroExtra}
-    GROUP BY MONTH(\`Fecha de Ingreso\`)
-  `, [anioNum, ...paramsQuery]);
-
-  // 3. Catálogo de Regionales y Operaciones disponibles según el acceso del usuario
+  // Catálogo de Regionales y Operaciones disponibles según el acceso del usuario
   const sqlCatalogo = esCorporativo
     ? "SELECT DISTINCT OPERACIÓN as operacion, REGIONAL as regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    : (acceso.operacionesFiltro?.length
+    : (acceso?.operacionesFiltro?.length
       ? `SELECT DISTINCT OPERACIÓN as operacion, REGIONAL as regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' AND OPERACIÓN IN (${acceso.operacionesFiltro.map(() => '?').join(',')}) ORDER BY REGIONAL, OPERACIÓN`
       : "SELECT DISTINCT OPERACIÓN as operacion, REGIONAL as regional FROM Maestro_Operaciones WHERE 1=0");
 
-  const [catalogoRows] = await pool.execute(
-    sqlCatalogo,
-    esCorporativo ? [] : (acceso.operacionesFiltro || [])
-  );
+  const [
+    [retRows],
+    [ingRows],
+    [ingRetRows],
+    [catalogoRows]
+  ] = await Promise.all([
+    // 1. Retiros agrupados por mes
+    pool.execute(`
+      SELECT
+        MONTH(\`Fecha de Retiro\`) AS mes,
+        COUNT(*) AS total_retiros,
+        SUM(CASE WHEN DATEDIFF(\`Fecha de Retiro\`, \`Fecha de Ingreso\`) < ? THEN 1 ELSE 0 END) AS retiros_tempranos
+      FROM \`Maestro_Vinculación\`
+      WHERE \`Estado\` = 'Retirado'
+        AND YEAR(\`Fecha de Retiro\`) = ?
+        ${whereFiltroExtra}
+      GROUP BY MONTH(\`Fecha de Retiro\`)
+    `, [diasFugaTemprana, anioNum, ...paramsQuery]),
+
+    // 2. Ingresos agrupados por mes
+    pool.execute(`
+      SELECT
+        MONTH(\`Fecha de Ingreso\`) AS mes,
+        COUNT(*) AS total_ingresos
+      FROM \`Maestro_Vinculación\`
+      WHERE YEAR(\`Fecha de Ingreso\`) = ?
+        ${whereFiltroExtra}
+      GROUP BY MONTH(\`Fecha de Ingreso\`)
+    `, [anioNum, ...paramsQuery]),
+
+    // 3. Personas que ingresaron en el mes y se retiraron en el mismo mes
+    pool.execute(`
+      SELECT
+        MONTH(\`Fecha de Retiro\`) AS mes,
+        COUNT(DISTINCT \`Identificación\`) AS ingreso_retiro_mes
+      FROM \`Maestro_Vinculación\`
+      WHERE \`Estado\` = 'Retirado'
+        AND YEAR(\`Fecha de Retiro\`) = ?
+        AND YEAR(\`Fecha de Ingreso\`) = YEAR(\`Fecha de Retiro\`)
+        AND MONTH(\`Fecha de Ingreso\`) = MONTH(\`Fecha de Retiro\`)
+        AND \`Fecha de Retiro\` >= \`Fecha de Ingreso\`
+        ${whereFiltroExtra}
+      GROUP BY MONTH(\`Fecha de Retiro\`)
+    `, [anioNum, ...paramsQuery]),
+
+    // 4. Catálogo
+    pool.execute(
+      sqlCatalogo,
+      esCorporativo ? [] : (acceso?.operacionesFiltro || [])
+    )
+  ]);
 
   // 4. Planta activa mes a mes (corte fin de cada mes o fecha actual para el mes en curso)
   const hoy = new Date();
@@ -387,6 +432,11 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
   const mapIng = {};
   ingRows.forEach(i => {
     mapIng[i.mes] = Number(i.total_ingresos || 0);
+  });
+
+  const mapIngRet = {};
+  ingRetRows.forEach(r => {
+    mapIngRet[r.mes] = Number(r.ingreso_retiro_mes || 0);
   });
 
   const plantaPromises = [];
@@ -425,6 +475,7 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
   let totIngresos = 0;
   let totRetiros = 0;
   let totTempranos = 0;
+  let totIngresoRetiro = 0;
 
   for (let m = 1; m <= 12; m++) {
     const esFuturo = (anioNum > anioActual) || (anioNum === anioActual && m > mesActual);
@@ -440,6 +491,8 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
         ingresos: null,
         retiros: null,
         retirosTempranos: null,
+        ingresoRetiro: null,
+        pctIngresoRetiro: null,
         pctRotacion: null,
         pctFuga: null,
         balance: null
@@ -451,13 +504,16 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
     const r = mapRet[m]?.retiros || 0;
     const t = mapRet[m]?.tempranos || 0;
     const i = mapIng[m] || 0;
+    const ir = mapIngRet[m] || 0;
     const bal = i - r;
     const rotPct = p > 0 ? Number(((r / p) * 100).toFixed(1)) : 0;
     const fugPct = r > 0 ? Number(((t / r) * 100).toFixed(1)) : 0;
+    const irPct = i > 0 ? Number(((ir / i) * 100).toFixed(1)) : (ir > 0 ? 100.0 : 0.0);
 
     totIngresos += i;
     totRetiros += r;
     totTempranos += t;
+    totIngresoRetiro += ir;
 
     meses.push({
       numMes: m,
@@ -468,6 +524,8 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
       ingresos: i,
       retiros: r,
       retirosTempranos: t,
+      ingresoRetiro: ir,
+      pctIngresoRetiro: irPct,
       pctRotacion: rotPct,
       pctFuga: fugPct,
       balance: bal
@@ -479,13 +537,23 @@ async function obtenerEvolucionMensual({ anio, regional, operacion, acceso }) {
     regional: regional || '',
     operacion: operacion || '',
     catalogo: catalogoRows,
+    accesoUsuario: {
+      sinFiltro: esCorporativo,
+      accesoCode: acceso?.accesoCode || (esCorporativo ? 1 : (acceso?.operacion ? 3 : 2)),
+      tipoAcceso: acceso?.tipoAcceso || (esCorporativo ? 'general' : (acceso?.accesoCode === 2 ? 'regional' : 'operacion')),
+      regional: acceso?.regional || '',
+      operacion: acceso?.operacion || (acceso?.operacionesFiltro?.length === 1 ? acceso.operacionesFiltro[0] : ''),
+      operacionesFiltro: acceso?.operacionesFiltro || []
+    },
     meses,
     totalesAnio: {
       totalIngresos: totIngresos,
       totalRetiros: totRetiros,
       totalTempranos: totTempranos,
+      totalIngresoRetiro: totIngresoRetiro,
       balanceNeto: totIngresos - totRetiros,
-      pctFugaMedia: totRetiros > 0 ? Number(((totTempranos / totRetiros) * 100).toFixed(1)) : 0
+      pctFugaMedia: totRetiros > 0 ? Number(((totTempranos / totRetiros) * 100).toFixed(1)) : 0,
+      pctIngresoRetiroMedia: totIngresos > 0 ? Number(((totIngresoRetiro / totIngresos) * 100).toFixed(1)) : 0
     }
   };
 }

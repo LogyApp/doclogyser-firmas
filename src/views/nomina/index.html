@@ -10540,10 +10540,14 @@
     tabDestino = 'quincenaexcel';
   } else if (tabParam === 'informesdisciplinarios' || tabParam === 'informes-disciplinarios' || tabParam === 'informes') {
     tabDestino = 'informesdisciplinarios';
+  } else if (tabParam === 'reportes') {
+    tabDestino = 'reportes';
   } else if (busquedaParam) {
     tabDestino = tabs.activo ? 'activos' : 'retiros';
   } else if (idVinculacionParam) {
     tabDestino = tabs.retiro ? 'retiros' : 'activos';
+  } else if (tabs.reportes) {
+    tabDestino = 'reportes';
   } else if (tabs.activo) {
     tabDestino = 'activos';
   } else if (tabs.retiro) {
@@ -10741,7 +10745,7 @@
 <script src="/js/nomina-asistencia.js?v=20261124b"></script>
 <script src="/js/nomina-control-quincena.js?v=20261118a"></script>
 <script src="/js/nomina-informes-disciplinarios.js?v=20261120a"></script>
-<script src="/js/nomina-reportes-indicadores.js?v=20261125e"></script>
+<script src="/js/nomina-reportes-indicadores.js?v=20261126e"></script>
 <script src="/js/modal-back.js" defer></script>
 </body>
 </html>
