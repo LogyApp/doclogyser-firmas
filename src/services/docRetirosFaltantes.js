@@ -29,12 +29,19 @@ function fechaTxt(f) {
   return String(f).slice(0, 10);
 }
 
+// Quincena actual (hora Colombia) como rango por defecto
+function quincenaActual() {
+  const hoy = fechaTxt(new Date(Date.now() - 5 * 3600 * 1000));
+  const [a, m, d] = hoy.split('-').map(Number);
+  const mm = String(m).padStart(2, '0');
+  const ultimo = new Date(a, m, 0).getDate();
+  return d <= 15 ? { desde: `${a}-${mm}-01`, hasta: `${a}-${mm}-15` } : { desde: `${a}-${mm}-16`, hasta: `${a}-${mm}-${ultimo}` };
+}
+
 async function faltantesPorTrabajador({ acceso, desde, hasta, regional, operacion, buscar }) {
-  const dias = await configDocRetiros.diasFaltantes();
-  const hoy = new Date();
-  const inicio = new Date(hoy.getTime() - dias * 86400000);
-  const fDesde = /^\d{4}-\d{2}-\d{2}$/.test(desde || '') ? desde : fechaTxt(inicio);
-  const fHasta = /^\d{4}-\d{2}-\d{2}$/.test(hasta || '') ? hasta : fechaTxt(hoy);
+  const porDefecto = quincenaActual();
+  const fDesde = /^\d{4}-\d{2}-\d{2}$/.test(desde || '') ? desde : porDefecto.desde;
+  const fHasta = /^\d{4}-\d{2}-\d{2}$/.test(hasta || '') ? hasta : porDefecto.hasta;
 
   const conds = ["v.Estado = 'Retirado'", 'v.`Fecha de Retiro` BETWEEN ? AND ?'];
   const params = [fDesde, fHasta];

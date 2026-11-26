@@ -984,6 +984,13 @@
       color: var(--text-inverse);
       box-shadow: 0 4px 12px var(--accent-soft);
     }
+    /* Navegador de quincena de Doc. Retiros (‹ 11. Noviembre Q2 ›), igual al de Facturación */
+    .fq-nav { display: flex; align-items: center; gap: 6px; }
+    .fq-nav button { background: none; border: 1.5px solid var(--border); color: var(--text-muted); padding: 4px 12px; border-radius: 6px; font-size: 1rem; line-height: 1.2; font-weight: 600; cursor: pointer; }
+    .fq-nav button:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text); }
+    .fq-nav button:disabled { opacity: .35; cursor: not-allowed; }
+    .fq-txt { font-weight: 700; font-size: .95rem; min-width: 150px; text-align: center; color: var(--text); }
+
     .permisos-subtabs .btn-tab {
       background: var(--bg-elevated);
       color: var(--text-muted);
@@ -1168,6 +1175,11 @@
         <p class="tab-subtitle" id="cd-tab-subtitle">Gestión documental y archivo digital por trabajador</p>
       </div>
       <div class="tab-actions">
+        <div class="fq-nav" id="ret-quincena-nav" style="display: none;">
+          <button type="button" onclick="retCambiarQuincena(-1)" aria-label="Quincena anterior">‹</button>
+          <span id="ret-quincena-txt" class="fq-txt">—</span>
+          <button type="button" id="ret-quincena-sig" onclick="retCambiarQuincena(1)" aria-label="Quincena siguiente">›</button>
+        </div>
         <button type="button" class="btn btn-submit" id="btn-exportar-excel-cd" style="background: #16a34a; color: #ffffff; border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25); padding: 10px 18px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;" onclick="exportarExcelCloudDocs()">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Exportar Excel</span>
@@ -1182,9 +1194,6 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           ＋ Nueva Firma
         </a>
-        <button type="button" class="btn btn-submit" id="btn-faltantes-retiro" style="display: none; background: var(--primary-light); color: var(--text-inverse); border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirFaltantesRetiro()">
-          📋 Faltantes por trabajador
-        </button>
         <button type="button" class="btn btn-submit" id="btn-nuevo-tipo-doc-cd" style="display: none; background: var(--primary-light); color: var(--text-inverse); border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirModalNuevoTipoDocCD()">
           ＋ Nuevo Tipo de Documento
         </button>
@@ -1192,6 +1201,12 @@
     </div>
 
     <!-- Filters Panel -->
+    <!-- Subpestañas de Doc. Retiros -->
+    <div class="permisos-subtabs" id="docretiros-subtabs" style="display: none; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+      <button class="btn btn-tab active" id="btn-subtab-retfaltantes" onclick="switchTab('retfaltantes')">📋 Faltantes por trabajador</button>
+      <button class="btn btn-tab" id="btn-subtab-docretiros" onclick="switchTab('docretiros')">✅ Validar documentos de retiro</button>
+    </div>
+
     <section class="filters-card card-filters">
       <div class="filtros-toggle" id="main-filtros-toggle" role="button" tabindex="0" aria-controls="main-filtros-body" aria-expanded="false">
         <span class="filtros-toggle-left">Filtros <span class="filtros-badge" id="main-filtros-badge">0</span></span>
@@ -1245,6 +1260,29 @@
             <option value="Rechazado">Rechazadas</option>
             <option value="Revocado">Revocadas</option>
             <option value="">— Todas —</option>
+          </select>
+        </div>
+        <div class="field" id="filter-ret-anio-wrapper" style="display: none;">
+          <label for="filter-ret-anio">Año de retiro</label>
+          <select id="filter-ret-anio" onchange="onRetAnioChange()"></select>
+        </div>
+        <div class="field" id="filter-ret-quincena-wrapper" style="display: none;">
+          <label for="filter-ret-quincena">Quincena de retiro</label>
+          <select id="filter-ret-quincena" onchange="retPintarNavQuincena(); filtrar()"></select>
+        </div>
+        <div class="field" id="filter-ret-avance-wrapper" style="display: none;">
+          <label for="filter-ret-avance">Avance</label>
+          <select id="filter-ret-avance" onchange="aplicarFiltrosRetFaltantes()">
+            <option value="">— Todos —</option>
+            <option value="faltan" selected>Con faltantes</option>
+            <option value="completo">Completos</option>
+            <option value="sinmotivo">Sin motivo de retiro</option>
+          </select>
+        </div>
+        <div class="field" id="filter-ret-docfalta-wrapper" style="display: none;">
+          <label for="filter-ret-docfalta">Documento faltante</label>
+          <select id="filter-ret-docfalta" onchange="aplicarFiltrosRetFaltantes()">
+            <option value="">— Todos —</option>
           </select>
         </div>
         <div class="field" id="filter-regional-wrapper">
@@ -1576,49 +1614,6 @@
       <div class="modal-footer">
         <button class="btn btn-request" onclick="closeModal('modal-nuevo-tipo-doc-cd')">Cancelar</button>
         <button class="btn btn-submit" id="btn-guardar-nuevo-tipo-doc-cd" onclick="guardarNuevoTipoDocCD()">Guardar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Doc. Retiros › Faltantes por trabajador -->
-  <div class="modal-overlay" id="modal-faltantes-retiro">
-    <div class="modal-content" style="max-width: 1100px; width: 96%;">
-      <div class="modal-header">
-        <h3 class="modal-title">📋 Faltantes por trabajador retirado</h3>
-        <button class="modal-close" onclick="closeModal('modal-faltantes-retiro')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">
-          <div class="field"><label for="falt-desde">Retiro desde</label><input type="date" id="falt-desde"></div>
-          <div class="field"><label for="falt-hasta">Hasta</label><input type="date" id="falt-hasta"></div>
-          <div class="field" style="flex:1; min-width:180px;"><label for="falt-buscar">Trabajador o cédula</label><input type="text" id="falt-buscar" placeholder="🔍 Buscar..." onkeydown="if(event.key==='Enter') cargarFaltantesRetiro()"></div>
-          <label style="display:flex; align-items:center; gap:6px; font-size:.85rem; padding-bottom:8px;"><input type="checkbox" id="falt-solo-pend" checked onchange="pintarFaltantesRetiro()"> Solo con faltantes</label>
-          <button class="btn btn-submit" onclick="cargarFaltantesRetiro()">Consultar</button>
-          <button class="btn btn-request" onclick="exportarFaltantesRetiro()">⬇ CSV</button>
-        </div>
-        <div id="falt-resumen" style="font-size:.85rem; color:var(--text-muted); margin-bottom:10px;"></div>
-        <div style="max-height:60vh; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-sm);">
-          <table style="width:100%; border-collapse:collapse; font-size:.85rem;">
-            <thead style="position:sticky; top:0; background:var(--bg-elevated);">
-              <tr>
-                <th style="text-align:left; padding:8px;">Trabajador</th>
-                <th style="text-align:left; padding:8px;">Cargo</th>
-                <th style="text-align:left; padding:8px;">Operación</th>
-                <th style="text-align:left; padding:8px;">Fecha retiro</th>
-                <th style="text-align:left; padding:8px;">Motivo</th>
-                <th style="text-align:center; padding:8px;">Avance</th>
-                <th style="text-align:left; padding:8px;">Faltan</th>
-              </tr>
-            </thead>
-            <tbody id="falt-tbody"><tr><td colspan="7" style="padding:16px; text-align:center;">Presiona Consultar</td></tr></tbody>
-          </table>
-        </div>
-        <p style="font-size:.78rem; color:var(--text-muted); margin:10px 0 0;">
-          Se exigen los documentos de legalización del retiro según el motivo, los que marca Config_condicion_retiros
-          (evaluación de desempeño, aceptación de renuncia, paz y salvo) y los adicionales de Config_Parametros
-          (CloudDocs / DocRetiros). Un documento en ERROR o DESACTUALIZADO cuenta como faltante. Los filtros de
-          Regional y Operación de la pestaña también aplican.
-        </p>
       </div>
     </div>
   </div>
@@ -1978,7 +1973,8 @@
       trabajador:       { icon: '👥', title: 'Trabajadores',               subtitle: 'Gestión documental y archivo digital por trabajador' },
       documento:        { icon: '📄', title: 'Tipos de Documento',         subtitle: 'Catálogo de tipos de documento y sus registros' },
       todo:             { icon: '📦', title: 'Consolidado (Todo)',         subtitle: 'Vista consolidada de todos los documentos cargados' },
-      docretiros:       { icon: '📤', title: 'Doc Retiros',                subtitle: 'Documentos asociados a procesos de retiro' },
+      retfaltantes:     { icon: '📤', title: 'Doc Retiros',                subtitle: 'Faltantes por trabajador retirado, por quincena de retiro' },
+      docretiros:       { icon: '📤', title: 'Doc Retiros',                subtitle: 'Validar documentos de retiro (OK, PEND, ERROR)' },
       solicitudes:      { icon: '📝', title: 'Solicitudes',                subtitle: 'Solicitudes de documentos pendientes y gestionadas' },
       validarcap:       { icon: '✅', title: 'Validar Capacitación',       subtitle: 'Validación de carpetas de capacitación' },
       duplicados:       { icon: '🗂️', title: 'Duplicados',                 subtitle: 'Documentos duplicados detectados en el sistema' },
@@ -2032,6 +2028,8 @@
         ['filter-estado', 'filter-estado-wrapper'],
         ['filter-registro', 'filter-registro-wrapper'],
         ['filter-todo-validacion', 'filter-todo-validacion-wrapper'],
+        ['filter-ret-avance', 'filter-ret-avance-wrapper'],
+        ['filter-ret-docfalta', 'filter-ret-docfalta-wrapper'],
         ['filter-solicitud-estado', 'filter-solicitud-estado-wrapper'],
         ['filter-regional', 'filter-regional-wrapper'],
         ['filter-operacion', 'filter-operacion-wrapper'],
@@ -2074,6 +2072,15 @@
         { key: 'Usuario', label: 'Usuario', width: 140 },
         { key: 'Observaciones', label: 'Observaciones', width: 180 },
         { key: 'acciones', label: 'Acciones', width: 90, align: 'center' }
+      ],
+      retfaltantes: [
+        { key: 'trabajador', label: 'Trabajador', width: 280 },
+        { key: 'cargo', label: 'Cargo', width: 180 },
+        { key: 'operacion', label: 'Operación', width: 180 },
+        { key: 'fechaRetiro', label: 'Fecha Retiro', width: 120 },
+        { key: 'motivo', label: 'Motivo Retiro', width: 200 },
+        { key: 'avance', label: 'Avance', width: 100, align: 'center' },
+        { key: 'faltantesTxt', label: 'Faltan', width: 380 }
       ],
       docretiros: [
         { key: 'FechaRegistro', label: 'Registro', width: 160 },
@@ -2622,6 +2629,7 @@
     function getRowSortValueCD(row, key) {
       if (!row) return null;
       if (key === 'firmas') return Number(row.firmasCount || 0);
+      if (key === 'avance') return row.requeridos ? row.cargados / row.requeridos : 1;
       if (key === 'colaborador') return row.nombre_trabajador || row.colaborador || '';
       return row[key];
     }
@@ -2684,7 +2692,7 @@
         const tabRet = document.createElement('li');
         tabRet.className = 'nav-item';
         tabRet.id = 'tab-btn-docretiros';
-        tabRet.onclick = () => switchTab('docretiros');
+        tabRet.onclick = () => switchTab('retfaltantes');
         tabRet.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="22" y2="13"></line><line x1="22" y1="8" x2="17" y2="13"></line></svg>
           <span>Doc Retiros</span>
@@ -2817,14 +2825,15 @@
         }
       }
       const tabPorDefecto = CONFIG.soloFormatos ? 'formatos' : 'trabajador';
-      const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : tabPorDefecto;
+      const btnDeTab = tabParam === 'retfaltantes' ? 'docretiros' : tabParam;
+      const tabSolicitada = document.getElementById(`tab-btn-${btnDeTab}`) ? tabParam : tabPorDefecto;
       switchTab(tabSolicitada);
 
       // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
       if (typeof initBotonTicket === 'function') {
         const SECCION_TICKET_CLOUDDOCS = {
           trabajador: 'CloudDocs', documento: 'CloudDocs', todo: 'CloudDocs', logysign: 'CloudDocs',
-          docretiros: 'DocRetiros', solicitudes: 'Solicitudes', validarcap: 'ValidarCap',
+          docretiros: 'DocRetiros', retfaltantes: 'DocRetiros', solicitudes: 'Solicitudes', validarcap: 'ValidarCap',
           permisos: 'Permisos', duplicados: 'Duplicados', formatos: 'Formatos'
         };
         initBotonTicket({
@@ -2994,6 +3003,7 @@
     function switchTab(tab) {
       activeTab = tab;
       actualizarTabHeaderCD(tab);
+      const esDocRetiros = tab === 'retfaltantes' || tab === 'docretiros';
 
       const url = new URL(window.location.href);
       url.searchParams.set('tab', tab);
@@ -3117,8 +3127,20 @@
           btnValidar.style.display = 'none';
         }
 
+        // Filtros propios de Doc. Retiros › Faltantes por trabajador
+        ['filter-ret-anio-wrapper', 'filter-ret-quincena-wrapper', 'filter-ret-avance-wrapper', 'filter-ret-docfalta-wrapper']
+          .forEach(id => { const w = document.getElementById(id); if (w) w.style.display = tab === 'retfaltantes' ? 'flex' : 'none'; });
+
         // Reset displayed filter inputs dynamically
-        if (tab === 'todo' || tab === 'docretiros') {
+        if (tab === 'retfaltantes') {
+          prepararFiltrosQuincenaRet();
+          docSelectWrapper.style.display = 'none';
+          estadoWrapper.style.display = 'none';
+          registroWrapper.style.display = 'none';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
+          solEstadoWrapper.style.display = 'none';
+          labelBuscar.placeholder = '🔍 Buscar Trabajador o cédula...'; labelBuscar.setAttribute('aria-label', 'Buscar Trabajador o cédula');
+        } else if (tab === 'todo' || tab === 'docretiros') {
           docSelectWrapper.style.display = 'flex';
           estadoWrapper.style.display = 'flex';
           registroWrapper.style.display = tab === 'todo' ? 'flex' : 'none';
@@ -3176,16 +3198,19 @@
         if (clasificacionWrapper) clasificacionWrapper.style.display = tab === 'documento' ? 'flex' : 'none';
       }
 
-      // Update active button classes
+      // Update active button classes (las dos subpestañas de Doc. Retiros marcan el mismo botón)
+      const navId = esDocRetiros ? 'tab-btn-docretiros' : `tab-btn-${tab}`;
       document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.id === `tab-btn-${tab}`) {
-          btn.classList.add('active');
-        }
+        btn.classList.toggle('active', btn.id === navId);
       });
 
-      const btnFaltantesRetiro = document.getElementById('btn-faltantes-retiro');
-      if (btnFaltantesRetiro) btnFaltantesRetiro.style.display = tab === 'docretiros' ? 'inline-flex' : 'none';
+      // Subpestañas y navegador de quincena de Doc. Retiros
+      const subtabsRet = document.getElementById('docretiros-subtabs');
+      if (subtabsRet) subtabsRet.style.display = esDocRetiros ? 'flex' : 'none';
+      document.getElementById('btn-subtab-retfaltantes')?.classList.toggle('active', tab === 'retfaltantes');
+      document.getElementById('btn-subtab-docretiros')?.classList.toggle('active', tab === 'docretiros');
+      const navQ = document.getElementById('ret-quincena-nav');
+      if (navQ) navQ.style.display = tab === 'retfaltantes' ? 'flex' : 'none';
 
       const bulkToolbar = document.getElementById('bulk-actions-toolbar');
       if (tab === 'docretiros' && puedeValidarRetiros()) {
@@ -3250,6 +3275,8 @@
       document.getElementById('filter-documento').value = '';
       document.getElementById('filter-registro').value = '';
       document.getElementById('filter-todo-validacion').value = '';
+      document.getElementById('filter-ret-avance').value = 'faltan';
+      document.getElementById('filter-ret-docfalta').value = '';
       document.getElementById('filter-solicitud-estado').value = 'Pendiente';
       document.getElementById('filter-regional').value = '';
       document.getElementById('filter-operacion').innerHTML = '<option value="">— Todas las operaciones —</option>';
@@ -3283,6 +3310,23 @@
         });
 
         let url = '';
+        if (activeTab === 'retfaltantes') {
+          const rango = rangoQuincenaRet();
+          if (buscar) queryParams.set('buscar', buscar);
+          queryParams.set('desde', rango.desde);
+          queryParams.set('hasta', rango.hasta);
+          const resF = await fetch(`/cloud-docs/api/docretiros/faltantes?${queryParams}`);
+          const dataF = await resF.json();
+          if (!resF.ok) { showToast(dataF.error || 'Error al consultar faltantes', 'error'); return; }
+          retFaltantesTodos = (Array.isArray(dataF.filas) ? dataF.filas : []).map(f => ({
+            ...f,
+            avance: `${f.cargados}/${f.requeridos}`,
+            faltantesTxt: f.faltantes.join(', ')
+          }));
+          poblarFiltroDocFaltante();
+          aplicarFiltrosRetFaltantes();
+          return;
+        }
         if (activeTab === 'trabajador') {
           if (buscar) queryParams.set('buscar', buscar);
           if (estado) queryParams.set('estado', estado);
@@ -3598,7 +3642,22 @@
         const tr = document.createElement('tr');
         tr.className = 'clickable-row';
         
-        if (activeTab === 'trabajador') {
+        if (activeTab === 'retfaltantes') {
+          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador, null, 'Retirado');
+          const completo = !row.faltantes.length;
+          const faltan = row.sinMotivo
+            ? '<span style="color: var(--danger); font-weight: 600;">Sin motivo de retiro registrado</span>'
+            : (completo ? '<span style="color: var(--success); font-weight: 600;">Completo</span>' : esc(row.faltantesTxt));
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: var(--text);">${esc(row.trabajador || '—')}<br><span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 400;">C.C. ${esc(row.identificacion)}</span></td>
+            <td>${esc(row.cargo || '—')}</td>
+            <td>${esc(row.operacion || '—')}</td>
+            <td>${esc(row.fechaRetiro || '—')}</td>
+            <td>${esc(row.motivo || '—')}</td>
+            <td style="text-align: center; font-weight: 700; color: ${completo ? 'var(--success)' : 'var(--warning)'};">${row.cargados}/${row.requeridos}</td>
+            <td style="white-space: normal; font-size: 0.85rem;">${faltan}</td>
+          `;
+        } else if (activeTab === 'trabajador') {
           tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador, null, row.estado);
           const tienePermisoFirmas = puedeGestionarFirmas(row.estado);
           let btnFirmasHtml = '<span style="color: #cbd5e1; font-size: 0.75rem;">—</span>';
@@ -4014,91 +4073,136 @@
       }
     }
 
-    // ── Doc. Retiros › Faltantes por trabajador ──
-    let faltantesRetiroData = [];
+    // ── Doc. Retiros › Faltantes por trabajador (por quincena de retiro) ──
+    let retFaltantesTodos = [];
+    const MESES_RET = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-    function abrirFaltantesRetiro() {
-      openModal('modal-faltantes-retiro');
-      if (!faltantesRetiroData.length) cargarFaltantesRetiro();
+    function retNombreQuincena(mes, q) { return `${mes}. ${MESES_RET[mes - 1]} Q${q}`; }
+
+    /** { anio, mes, q } de la quincena de hoy (hora Colombia) */
+    function retQuincenaDeHoy() {
+      const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+      return { anio: Number(hoy.slice(0, 4)), mes: Number(hoy.slice(5, 7)), q: Number(hoy.slice(8, 10)) <= 15 ? 1 : 2 };
     }
 
-    async function cargarFaltantesRetiro() {
-      const tbody = document.getElementById('falt-tbody');
-      tbody.innerHTML = '<tr><td colspan="7" style="padding:16px; text-align:center;">Cargando...</td></tr>';
-      const q = new URLSearchParams({ usuario: CONFIG.usuarioId });
-      const desde = document.getElementById('falt-desde').value;
-      const hasta = document.getElementById('falt-hasta').value;
-      const buscar = document.getElementById('falt-buscar').value.trim();
-      const regional = document.getElementById('filter-regional')?.value;
-      const operacion = document.getElementById('filter-operacion')?.value;
-      if (desde) q.set('desde', desde);
-      if (hasta) q.set('hasta', hasta);
-      if (buscar) q.set('buscar', buscar);
-      if (regional) q.set('regional', regional);
-      if (operacion) q.set('operacion', operacion);
-      try {
-        const res = await fetch(`/cloud-docs/api/docretiros/faltantes?${q}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al consultar faltantes');
-        document.getElementById('falt-desde').value = data.desde || '';
-        document.getElementById('falt-hasta').value = data.hasta || '';
-        faltantesRetiroData = Array.isArray(data.filas) ? data.filas : [];
-        pintarFaltantesRetiro();
-      } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="padding:16px; color:var(--danger);">${esc(err.message)}</td></tr>`;
-      }
+    // Llena Año y Quincena la primera vez (por defecto, la quincena actual)
+    function prepararFiltrosQuincenaRet() {
+      const selAnio = document.getElementById('filter-ret-anio');
+      if (!selAnio || selAnio.options.length) return;
+      const hoy = retQuincenaDeHoy();
+      for (let a = hoy.anio; a >= hoy.anio - 4; a--) selAnio.insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`);
+      selAnio.value = String(hoy.anio);
+      poblarQuincenasRet(`${hoy.mes}|${hoy.q}`);
     }
 
-    function pintarFaltantesRetiro() {
-      const tbody = document.getElementById('falt-tbody');
-      const soloPend = document.getElementById('falt-solo-pend').checked;
-      const filas = soloPend ? faltantesRetiroData.filter(f => f.faltantes.length || f.sinMotivo) : faltantesRetiroData;
-
-      const conFaltantes = faltantesRetiroData.filter(f => f.faltantes.length).length;
-      const porDoc = {};
-      faltantesRetiroData.forEach(f => f.faltantes.forEach(d => { porDoc[d] = (porDoc[d] || 0) + 1; }));
-      const top = Object.entries(porDoc).sort((a, b) => b[1] - a[1]).map(([d, n]) => `${esc(d)}: <strong>${n}</strong>`).join(' · ');
-      document.getElementById('falt-resumen').innerHTML =
-        `<strong>${faltantesRetiroData.length}</strong> retirados en el rango · <strong>${conFaltantes}</strong> con documentos faltantes` +
-        (top ? `<br>${top}` : '');
-
-      if (!filas.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:16px; text-align:center;">No hay trabajadores con faltantes en este rango.</td></tr>';
-        return;
+    function poblarQuincenasRet(valorSeleccionado) {
+      const selAnio = document.getElementById('filter-ret-anio');
+      const selQ = document.getElementById('filter-ret-quincena');
+      const hoy = retQuincenaDeHoy();
+      const anio = Number(selAnio.value);
+      let opts = '<option value="">Todas las quincenas</option>';
+      for (let mes = 1; mes <= 12; mes++) {
+        for (let q = 1; q <= 2; q++) {
+          if (anio * 1000 + mes * 10 + q > hoy.anio * 1000 + hoy.mes * 10 + hoy.q) continue;
+          opts += `<option value="${mes}|${q}">${retNombreQuincena(mes, q)}</option>`;
+        }
       }
-      tbody.innerHTML = '';
-      filas.forEach(f => {
-        const tr = document.createElement('tr');
-        tr.className = 'clickable-row';
-        tr.style.borderTop = '1px solid var(--border)';
-        tr.onclick = () => { closeModal('modal-faltantes-retiro'); openWorkerModal(f.identificacion, f.trabajador, null, 'Retirado'); };
-        const completo = !f.faltantes.length;
-        const faltan = f.sinMotivo
-          ? '<span style="color:var(--danger);">Sin motivo de retiro registrado</span>'
-          : (completo ? '<span style="color:var(--success);">Completo</span>' : f.faltantes.map(esc).join(', '));
-        tr.innerHTML = `
-          <td style="padding:8px;"><strong>${esc(f.trabajador || '—')}</strong><br><span style="color:var(--text-muted); font-size:.8rem;">C.C. ${esc(f.identificacion)}</span></td>
-          <td style="padding:8px;">${esc(f.cargo || '—')}</td>
-          <td style="padding:8px;">${esc(f.operacion || '—')}</td>
-          <td style="padding:8px;">${esc(f.fechaRetiro || '—')}</td>
-          <td style="padding:8px;">${esc(f.motivo || '—')}</td>
-          <td style="padding:8px; text-align:center; font-weight:bold; color:${completo ? 'var(--success)' : 'var(--warning)'};">${f.cargados}/${f.requeridos}</td>
-          <td style="padding:8px;">${faltan}</td>`;
-        tbody.appendChild(tr);
+      selQ.innerHTML = opts;
+      selQ.value = [...selQ.options].some(o => o.value === valorSeleccionado) ? valorSeleccionado : '';
+      retPintarNavQuincena();
+    }
+
+    function onRetAnioChange() {
+      poblarQuincenasRet(document.getElementById('filter-ret-quincena').value);
+      filtrar();
+    }
+
+    // Fechas desde/hasta de la quincena escogida (o del año completo con "Todas")
+    function rangoQuincenaRet() {
+      const anio = Number(document.getElementById('filter-ret-anio').value) || retQuincenaDeHoy().anio;
+      const val = document.getElementById('filter-ret-quincena').value;
+      if (!val) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31` };
+      const [mes, q] = val.split('|').map(Number);
+      const mm = String(mes).padStart(2, '0');
+      const ultimo = new Date(anio, mes, 0).getDate();
+      return q === 1
+        ? { desde: `${anio}-${mm}-01`, hasta: `${anio}-${mm}-15` }
+        : { desde: `${anio}-${mm}-16`, hasta: `${anio}-${mm}-${ultimo}` };
+    }
+
+    function retPintarNavQuincena() {
+      const txt = document.getElementById('ret-quincena-txt');
+      if (!txt) return;
+      const anio = Number(document.getElementById('filter-ret-anio').value);
+      const val = document.getElementById('filter-ret-quincena').value;
+      const hoy = retQuincenaDeHoy();
+      if (!val) {
+        txt.textContent = `Todas las quincenas · ${anio}`;
+      } else {
+        const [mes, q] = val.split('|').map(Number);
+        txt.textContent = `${retNombreQuincena(mes, q)}${anio !== hoy.anio ? ` · ${anio}` : ''}`;
+      }
+      const sig = document.getElementById('ret-quincena-sig');
+      if (sig) sig.disabled = !!val && val === `${hoy.mes}|${hoy.q}` && anio === hoy.anio;
+    }
+
+    function retCambiarQuincena(delta) {
+      const hoy = retQuincenaDeHoy();
+      const selAnio = document.getElementById('filter-ret-anio');
+      const selQ = document.getElementById('filter-ret-quincena');
+      let anio = Number(selAnio.value) || hoy.anio;
+      let mes = hoy.mes, q = hoy.q;
+      if (selQ.value) {
+        [mes, q] = selQ.value.split('|').map(Number);
+        q += delta;
+        if (q > 2) { q = 1; mes += 1; }
+        if (q < 1) { q = 2; mes -= 1; }
+        if (mes > 12) { mes = 1; anio += 1; }
+        if (mes < 1) { mes = 12; anio -= 1; }
+      }
+      if (anio * 1000 + mes * 10 + q > hoy.anio * 1000 + hoy.mes * 10 + hoy.q) return;
+      if (![...selAnio.options].some(o => o.value === String(anio))) selAnio.insertAdjacentHTML('beforeend', `<option value="${anio}">${anio}</option>`);
+      selAnio.value = String(anio);
+      poblarQuincenasRet(`${mes}|${q}`);
+      filtrar();
+    }
+
+    function poblarFiltroDocFaltante() {
+      const sel = document.getElementById('filter-ret-docfalta');
+      const actual = sel.value;
+      const conteo = {};
+      retFaltantesTodos.forEach(f => f.faltantes.forEach(d => { conteo[d] = (conteo[d] || 0) + 1; }));
+      sel.innerHTML = '<option value="">— Todos —</option>' + Object.entries(conteo)
+        .sort((a, b) => b[1] - a[1])
+        .map(([d, n]) => `<option value="${esc(d)}">${esc(d)} (${n})</option>`).join('');
+      sel.value = conteo[actual] ? actual : '';
+    }
+
+    function aplicarFiltrosRetFaltantes() {
+      const avance = document.getElementById('filter-ret-avance').value;
+      const doc = document.getElementById('filter-ret-docfalta').value;
+      currentData = retFaltantesTodos.filter(f => {
+        if (avance === 'faltan' && !(f.faltantes.length || f.sinMotivo)) return false;
+        if (avance === 'completo' && (f.faltantes.length || f.sinMotivo)) return false;
+        if (avance === 'sinmotivo' && !f.sinMotivo) return false;
+        if (doc && !f.faltantes.includes(doc)) return false;
+        return true;
       });
+      if (mainSort.key) sortDataArray(currentData, mainSort.key, mainSort.dir);
+      actualizarBadgeFiltrosCloudDocs();
+      renderMainTable();
     }
 
     function exportarFaltantesRetiro() {
-      if (!faltantesRetiroData.length) { showToast('Primero consulta los faltantes.', 'warning'); return; }
-      const soloPend = document.getElementById('falt-solo-pend').checked;
-      const filas = soloPend ? faltantesRetiroData.filter(f => f.faltantes.length || f.sinMotivo) : faltantesRetiroData;
+      if (!currentData.length) { showToast('No hay registros para exportar', 'warning'); return; }
       const celda = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
       const lineas = [['Identificación', 'Trabajador', 'Cargo', 'Operación', 'Regional', 'Fecha ingreso', 'Fecha retiro', 'Motivo', 'Cargados', 'Requeridos', 'Faltan'].map(celda).join(';')];
-      filas.forEach(f => lineas.push([f.identificacion, f.trabajador, f.cargo, f.operacion, f.regional, f.fechaIngreso, f.fechaRetiro, f.motivo, f.cargados, f.requeridos, f.faltantes.join(', ')].map(celda).join(';')));
+      currentData.forEach(f => lineas.push([f.identificacion, f.trabajador, f.cargo, f.operacion, f.regional, f.fechaIngreso, f.fechaRetiro, f.motivo, f.cargados, f.requeridos, f.faltantes.join(', ')].map(celda).join(';')));
       const blob = new Blob(['\ufeff' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
+      const r = rangoQuincenaRet();
       a.href = URL.createObjectURL(blob);
-      a.download = `faltantes_retiro_${document.getElementById('falt-desde').value}_${document.getElementById('falt-hasta').value}.csv`;
+      a.download = `faltantes_retiro_${r.desde}_${r.hasta}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
     }
 
@@ -5943,6 +6047,10 @@ function cambiarPaginaTodo(delta) {
     }
 
     function exportarExcelCloudDocs() {
+      if (activeTab === 'retfaltantes') {
+        exportarFaltantesRetiro();
+        return;
+      }
       if (activeTab === 'logysign') {
         if (typeof logysignFiltered === 'undefined' || !logysignFiltered || !logysignFiltered.length) {
           showToast('No hay registros de firmas para exportar', 'warning');

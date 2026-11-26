@@ -15,7 +15,6 @@ const P = {
   HABILITAR:      'Habilitar notificaciones de correo en Doc. Retiros',
   AVISO_PARA:     'Aviso de documento con ERROR - Para:',
   AVISO_COPIA:    'Aviso de documento con ERROR - Copia:',
-  DIAS_FALTANTES: 'Días de retiros en Faltantes',
   DOCS_ADICIONALES: 'Documentos adicionales obligatorios en Faltantes',
 };
 
@@ -26,7 +25,6 @@ const DEFAULTS = {
   [P.HABILITAR]:     '1',
   [P.AVISO_PARA]:    'Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [P.AVISO_COPIA]:   '',
-  [P.DIAS_FALTANTES]: '90',
   [P.DOCS_ADICIONALES]: '34, 35',
 };
 
@@ -136,12 +134,7 @@ async function destinatariosAvisoError(operacion, correoQuienMarca) {
   return { para, copia };
 }
 
-// Vista "Faltantes por trabajador": días hacia atrás por defecto y documentos extra exigidos
-async function diasFaltantes() {
-  const n = parseInt(valor(await obtenerParametros(), P.DIAS_FALTANTES), 10);
-  return Number.isFinite(n) && n > 0 ? Math.min(n, 3650) : 90;
-}
-
+// Vista "Faltantes por trabajador": documentos extra exigidos a todo retirado
 async function documentosAdicionales() {
   return lista(await obtenerParametros(), P.DOCS_ADICIONALES)
     .map(x => String(parseInt(x, 10))).filter(x => x !== 'NaN');
@@ -149,7 +142,6 @@ async function documentosAdicionales() {
 
 module.exports = {
   P,
-  diasFaltantes,
   documentosAdicionales,
   DEFAULTS,
   obtenerParametros,
