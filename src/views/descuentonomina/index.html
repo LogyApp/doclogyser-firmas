@@ -261,7 +261,12 @@
     [data-theme="oscuro"] .badge-no-firma { background: rgba(249,115,22,.18); border-color: rgba(249,115,22,.45); color: #fdba74; }
     [data-theme="oscuro"] .loading-overlay { background: rgba(11,15,23,.75); }
     [data-theme="oscuro"] .spinner { border-color: #2f3b52; border-top-color: var(--primary); }
-  </style>
+    /* Botones redondos de la columna Acciones (mismo estilo de Traslados / Cesantías en Nómina) */
+  .celda-acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .btn-icon-circle { width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease; text-decoration: none; flex-shrink: 0; padding: 0; }
+  .btn-icon-circle:hover { filter: brightness(0.9); transform: scale(1.08); }
+  .btn-icon-circle svg { width: 14px; height: 14px; }
+</style>
   <!-- Ícono LogyApp: favicon e ícono de la PWA (ver public/manifest.webmanifest) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
   <link rel="icon" type="image/svg+xml" href="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/logyapp-icon.svg">
@@ -409,7 +414,7 @@
           <table id="table-pruebas">
             <thead>
               <tr>
-                <th style="width:110px;min-width:90px"><div class="th-content"><span>Documento</span></div></th>
+                <th style="width:120px;min-width:100px"><div class="th-content"><span>Acciones</span></div></th>
                 <th style="width:250px;min-width:180px" class="sortable" data-sort="nombre_trabajador"><div class="th-content"><span>Trabajador</span><span class="sort-icon">↕</span></div></th>
                 <th style="width:140px;min-width:110px" class="sortable" data-sort="fecha"><div class="th-content"><span>Fecha</span><span class="sort-icon">↕</span></div></th>
                 <th style="width:150px;min-width:120px" class="sortable" data-sort="tipo_descuento"><div class="th-content"><span>Tipo Descuento</span><span class="sort-icon">↕</span></div></th>
@@ -767,13 +772,8 @@
           detailStr = `<strong>${item.cuotas || '—'} Cuotas</strong> de <strong>${item.valor || '—'}</strong><br><span style="font-size:0.75rem; color:#64748b;">Motivo: ${item.motivo || '—'}</span>`;
         }
 
-        let docLink = '—';
-        if (item.url_doc) {
-          docLink = `<a href="${item.url_doc}" target="_blank" onclick="event.stopPropagation();" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:bold; color:var(--primary);"><span style="font-size:1.15rem;">📄</span> PDF</a>`;
-        }
-
         tr.innerHTML = `
-          <td>${docLink}</td>
+          <td><div class="celda-acciones">${accionesDescuento(item)}</div></td>
           <td>
             <strong>${item.nombre_trabajador}</strong><br>
             <span style="font-size:0.8rem; color:#64748b;">C.C. ${item.identificacion}</span>
@@ -786,6 +786,31 @@
 
         tbody.appendChild(tr);
       });
+    }
+
+    // ── Columna Acciones: PDF, Regenerar y Eliminar (permisos de Config_Parametros CloudDocs / DescuentoNomina) ──
+    const PERMISOS_DN = CONFIG.permisos || {};
+    const ICONOS_DN = {
+      pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>',
+      regenerar: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/>',
+      eliminar: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    };
+    function iconoDescuento(icono, color, titulo, onclick, href) {
+      const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_DN[icono]}</svg>`;
+      const est = `background:${color}; color:#fff;`;
+      if (href) return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" style="${est}" title="${titulo}" onclick="event.stopPropagation()">${svg}</a>`;
+      return `<button type="button" class="btn-icon-circle" style="${est}" title="${titulo}" onclick="event.stopPropagation(); ${onclick}">${svg}</button>`;
+    }
+    function accionesDescuento(item) {
+      let html = '';
+      if (item.url_doc) html += iconoDescuento('pdf', '#dc2626', 'Ver PDF', '', item.url_doc);
+      if (PERMISOS_DN.puedeRegenerar && item.url_doc && !item.no_firma) {
+        html += iconoDescuento('regenerar', '#0284c7', 'Regenerar PDF', `forzarRegenerarPDF('${item.id_descuento}')`);
+      }
+      if (PERMISOS_DN.puedeEliminar) {
+        html += iconoDescuento('eliminar', '#b91c1c', 'Eliminar autorización y PDF', `eliminarPrueba('${item.id_descuento}')`);
+      }
+      return html || '<span style="color:#94a3b8">—</span>';
     }
 
     // View detail logic
@@ -862,20 +887,18 @@
             <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${urlFirmaLink}')" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px; background: #2980b9; color: #fff;">📋 Copiar Enlace de Firma</button>
             <button class="btn btn-secondary" onclick="editarRegistroClick()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">✏️ Editar Detalles</button>
           `;
-          if (['Sistema', 'Contratación'].includes(CONFIG.rol) &&
-              (CONFIG.rol === 'Sistema' || d.tipo_descuento === 'Anticipada')) {
+          if (PERMISOS_DN.puedeNoFirma) {
             ctrlHtml += `<button class="btn btn-secondary" onclick="marcarNoFirmaDescuento()" style="width:100%; margin-bottom:8px; font-size:.85rem; padding:10px; border-color:#fdba74; color:#9a3412;">📋 No firma · generar con soporte por correo</button>`;
           }
         } else {
           ctrlHtml += `
             <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 4px;">Acciones de Control</div>
             <a href="${d.url_doc}" target="_blank" class="btn btn-success" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">📄 Abrir PDF Firmado</a>
-            ${d.no_firma ? '<div class="status-badge badge-no-firma" style="justify-content:center;margin-bottom:8px;">El PDF conserva el soporte de No firma</div>' : '<button class="btn btn-secondary" onclick="forzarRegenerarPDF()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">Forzar Regenerar PDF</button>'}
+            ${d.no_firma ? '<div class="status-badge badge-no-firma" style="justify-content:center;margin-bottom:8px;">El PDF conserva el soporte de No firma</div>' : (PERMISOS_DN.puedeRegenerar ? '<button class="btn btn-secondary" onclick="forzarRegenerarPDF()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">Forzar Regenerar PDF</button>' : '')}
           `;
         }
 
-        // Delete (role Sistema and not signed)
-        if (CONFIG.rol === 'Sistema' || (CONFIG.rol === 'Contratación' && d.tipo_descuento === 'Anticipada')) {
+        if (PERMISOS_DN.puedeEliminar) {
           ctrlHtml += `
             <button class="btn btn-danger" onclick="eliminarPrueba('${d.id_descuento}')" style="width:100%; margin-top: 8px; font-size:.85rem; padding: 10px;">✕ Eliminar autorización y PDF</button>
           `;
@@ -1073,11 +1096,13 @@
     });
 
     // Force regenerate PDF
-    async function forzarRegenerarPDF() {
-      if (!selectedPruebaId) return;
+    async function forzarRegenerarPDF(idDesdeTabla) {
+      const id = idDesdeTabla || selectedPruebaId;
+      if (!id) return;
+      if (idDesdeTabla && !confirm('¿Regenerar el PDF de esta autorización con el diseño actual? El documento en Cloud Docs quedará con el PDF nuevo.')) return;
       showLoading('Regenerando documento PDF...');
       try {
-        const res = await fetch(`${API_BASE}/prueba/${selectedPruebaId}/generar-pdf?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+        const res = await fetch(`${API_BASE}/prueba/${id}/generar-pdf?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ force: true })
@@ -1085,7 +1110,7 @@
         const data = await res.json();
         if (res.ok && data.ok) {
           showToast('PDF regenerado con éxito.');
-          verDetalle(selectedPruebaId);
+          if (selectedPruebaId === id) verDetalle(id);
           loadRecords();
         } else {
           showToast(data.error || 'Error al regenerar PDF', 'error');
@@ -1108,7 +1133,7 @@
         const data = await res.json();
         if (data.ok) {
           showToast('Autorización eliminada con éxito.');
-          cerrarDetalleUI();
+          if (selectedPruebaId === id) cerrarDetalleUI();
           loadRecords();
         } else {
           throw new Error(data.error || 'Error al eliminar');

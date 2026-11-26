@@ -345,8 +345,8 @@
     document.getElementById('input-ciudad').value = CONFIG.ciudad || '';
 
     // Configure Tipo de Descuento default value and lock based on Rol
-    const ROLES_SOLO_ANTICIPADA = ['Contratación', 'Archivo', 'Asistencial'];
-    if (ROLES_SOLO_ANTICIPADA.includes(CONFIG.rol)) {
+    // Roles que solo gestionan Anticipadas: Config_Parametros CloudDocs / DescuentoNomina
+    if (CONFIG.permisos && CONFIG.permisos.soloAnticipada) {
       selectTipoDescuento.value = 'Anticipada';
       selectTipoDescuento.disabled = true;
     } else if (CONFIG.rol !== 'Sistema') {

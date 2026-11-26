@@ -18,6 +18,7 @@ const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../ser
 const { LOGO_BASE64 } = require('../services/assets');
 const { generarPDF } = require('../services/renderer');
 const { computarAccesoCloudDocs } = require('../services/clouddocsAccess');
+const { permisosDescuentos, vigenciaEnlaceMs } = require('../services/configClouddocsDescuentos');
 
 const router = express.Router();
 
@@ -162,6 +163,8 @@ async function computarAccesoDN(usuarioId) {
     ...accesoCloudDocs,
     filtroSQL: accesoCloudDocs.sinFiltro ? [] : accesoCloudDocs.operacionesFiltro,
     ciudad,
+    // Config_Parametros CloudDocs / DescuentoNomina: regenerar, eliminar, No firma y solo Anticipadas
+    permisos: await permisosDescuentos(accesoCloudDocs.rol),
   };
 }
 
@@ -186,7 +189,7 @@ async function descuentoDentroAlcance(acceso, id) {
     [id]
   );
   if (!descuento) return true;
-  if (['Contratación', 'Archivo', 'Asistencial'].includes(acceso.rol) && descuento.tipo_descuento !== 'Anticipada') return false;
+  if (acceso.permisos?.soloAnticipada && descuento.tipo_descuento !== 'Anticipada') return false;
   return identificacionDentroAlcance(acceso, descuento.identificacion);
 }
 
@@ -297,7 +300,7 @@ router.get('/firmar', async (req, res) => {
     }
 
     if (discount.token_expira && new Date(discount.token_expira) < new Date()) {
-      return res.status(400).send('<h2>Este enlace de firma ha expirado (plazo de 48 horas superado).</h2>');
+      return res.status(400).send('<h2>Este enlace de firma ha expirado. Solicite un nuevo enlace a quien le envió la autorización.</h2>');
     }
 
     const tieneFirmaGcs = await obtenerFirmaBase64Reciente(discount.identificacion).catch(() => null);
@@ -455,8 +458,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const baseConds = [];
     const baseParams = [];
 
-    const ROLES_SOLO_ANTICIPADA = ['Contratación', 'Archivo', 'Asistencial'];
-    if (ROLES_SOLO_ANTICIPADA.includes(acceso.rol)) {
+    if (acceso.permisos?.soloAnticipada) {
       baseConds.push("a.tipo_descuento = 'Anticipada'");
     }
 
@@ -565,8 +567,7 @@ router.get('/api/pruebas', async (req, res) => {
     const conds = [];
     const params = [];
 
-    const ROLES_SOLO_ANTICIPADA = ['Contratación', 'Archivo', 'Asistencial'];
-    if (ROLES_SOLO_ANTICIPADA.includes(acceso.rol)) {
+    if (acceso.permisos?.soloAnticipada) {
       conds.push("a.tipo_descuento = 'Anticipada'");
     }
 
@@ -670,8 +671,7 @@ router.get('/api/prueba/:id', async (req, res) => {
       return res.status(404).json({ error: 'Registro no encontrado' });
     }
 
-    const ROLES_SOLO_ANTICIPADA = ['Contratación', 'Archivo', 'Asistencial'];
-    if (ROLES_SOLO_ANTICIPADA.includes(acceso.rol) && discount.tipo_descuento !== 'Anticipada') {
+    if (acceso.permisos?.soloAnticipada && discount.tipo_descuento !== 'Anticipada') {
       return res.status(403).json({ error: 'No está autorizado para ver este tipo de descuento.' });
     }
 
@@ -761,7 +761,7 @@ router.post('/api/crear', async (req, res) => {
     if (!await identificacionDentroAlcance(req.descuentoNominaAccess, identificacion)) {
       return res.status(403).json({ error: 'No tiene acceso a la operación de este trabajador.' });
     }
-    if (['Contratación', 'Archivo', 'Asistencial'].includes(req.descuentoNominaAccess.rol) && tipo_descuento !== 'Anticipada') {
+    if (req.descuentoNominaAccess.permisos?.soloAnticipada && tipo_descuento !== 'Anticipada') {
       return res.status(403).json({ error: 'Este rol solo puede crear autorizaciones anticipadas.' });
     }
 
@@ -773,7 +773,7 @@ router.post('/api/crear', async (req, res) => {
 
     const id_descuento = uuidv4();
     const token_firma = crypto.randomBytes(32).toString('hex');
-    const token_expira = new Date(Date.now() + 48 * 3600000); // 48h
+    const token_expira = new Date(Date.now() + await vigenciaEnlaceMs());
 
     await pool.execute(
       `INSERT INTO Dynamic_descuentonomina 
@@ -830,6 +830,7 @@ router.post('/api/crear-masivo', async (req, res) => {
     const creados = [];
     const errores = [];
     const acceso = req.descuentoNominaAccess;
+    const vigenciaMs = await vigenciaEnlaceMs();
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -844,7 +845,7 @@ router.post('/api/crear-masivo', async (req, res) => {
         if (!await identificacionDentroAlcance(acceso, item.identificacion)) {
           throw new Error('No tiene acceso a la operación de este trabajador.');
         }
-        if (['Contratación', 'Archivo', 'Asistencial'].includes(acceso.rol) && item.tipo_descuento !== 'Anticipada') {
+        if (acceso.permisos?.soloAnticipada && item.tipo_descuento !== 'Anticipada') {
           throw new Error('Este rol solo puede crear autorizaciones anticipadas.');
         }
 
@@ -856,7 +857,7 @@ router.post('/api/crear-masivo', async (req, res) => {
 
         const id_descuento = uuidv4();
         const token_firma = crypto.randomBytes(32).toString('hex');
-        const token_expira = new Date(Date.now() + 48 * 3600000);
+        const token_expira = new Date(Date.now() + vigenciaMs);
 
         await pool.execute(
           `INSERT INTO Dynamic_descuentonomina 
@@ -960,8 +961,11 @@ router.post('/api/firmar-asistente', async (req, res) => {
 router.post('/api/prueba/:id/no-firma', async (req, res) => {
   try {
     const acceso = req.descuentoNominaAccess;
-    if (!acceso || !['Sistema', 'Contratación'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Solo Sistema o Contratación pueden generar soporte de No firma.' });
+    if (!acceso?.permisos?.puedeNoFirma) {
+      return res.status(403).json({ error: 'Su rol no puede generar soporte de No firma.' });
+    }
+    if (!await descuentoDentroAlcance(acceso, req.params.id)) {
+      return res.status(403).json({ error: 'No tiene acceso a esta autorización de descuento.' });
     }
 
     const { id } = req.params;
@@ -1005,6 +1009,13 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
   try {
     const { id } = req.params;
     const { force } = req.body;
+    const acceso = req.descuentoNominaAccess;
+    if (!acceso?.permisos?.puedeRegenerar) {
+      return res.status(403).json({ error: 'Su rol no puede regenerar el PDF de autorizaciones.' });
+    }
+    if (!await descuentoDentroAlcance(acceso, id)) {
+      return res.status(403).json({ error: 'No tiene acceso a esta autorización de descuento.' });
+    }
 
     const [[c]] = await pool.execute(
       'SELECT * FROM Dynamic_descuentonomina WHERE id_descuento = ?',
@@ -1047,7 +1058,17 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
       [firmaUsar, urlFirma, urlDoc, id]
     );
 
-    await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 21, 'DCTO');
+    // Al regenerar, el documento de Cloud Docs pasa al PDF nuevo en vez de crear otro registro
+    let reemplazado = 0;
+    if (c.url_doc) {
+      const [upd] = await pool.execute(
+        `UPDATE Maestro_docTrabajador SET Doc = ?
+         WHERE Identificación = ? AND TipoDocumento = 21 AND Prefijo = 'DCTO' AND Doc = ?`,
+        [urlDoc, c.identificacion, c.url_doc]
+      );
+      reemplazado = upd.affectedRows;
+    }
+    if (!reemplazado) await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 21, 'DCTO');
 
     res.json({ ok: true, urlDoc });
   } catch (err) {
@@ -1073,7 +1094,7 @@ router.post('/api/prueba/:id/regenerar-token', async (req, res) => {
     }
 
     const token_firma = crypto.randomBytes(32).toString('hex');
-    const token_expira = new Date(Date.now() + 48 * 3600000);
+    const token_expira = new Date(Date.now() + await vigenciaEnlaceMs());
 
     await pool.execute(
       'UPDATE Dynamic_descuentonomina SET token_firma = ?, token_expira = ? WHERE id_descuento = ?',
@@ -1140,8 +1161,8 @@ router.delete('/api/prueba/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const acceso = req.descuentoNominaAccess;
-    if (!acceso || !['Sistema', 'Contratación'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Solo Sistema y Contratación pueden eliminar autorizaciones.' });
+    if (!acceso?.permisos?.puedeEliminar) {
+      return res.status(403).json({ error: 'Su rol no puede eliminar autorizaciones.' });
     }
     if (!await descuentoDentroAlcance(acceso, id)) {
       return res.status(403).json({ error: 'No tiene acceso a esta autorización de descuento.' });
