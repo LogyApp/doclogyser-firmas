@@ -6,7 +6,7 @@ const { Storage } = require('@google-cloud/storage');
 const { GoogleAuth } = require('google-auth-library');
 const pool = require('../services/db');
 const crypto = require('crypto');
-const { notificarBloqueoAspirante, enviarCorreoPortalAspirante } = require('../services/email');
+const { notificarBloqueoAspirante, enviarCorreoPortalAspirante, correoUsuarioPorId } = require('../services/email');
 const { notificarNuevoIngreso } = require('../services/notificacionIngreso');
 const {
   obtenerDocsFirmaParaOperacion,
@@ -16,7 +16,7 @@ const {
 } = require('../services/seleccionFirmas');
 const { obtenerDocsSeleccion, ID_HOJA_VIDA, MARCA_HV_ASPIRANTE, rutaHvAspirante, validarPasoEnProceso, validarFirmasParaContratar, puedeDesbloquearAspirante, puedeIniciarReingreso, prefijosConservarReingreso } = require('../services/docsSeleccion');
 const { motivoBloqueoFirma, regenerarDocumentoFirmado } = require('../services/seleccionFirmas');
-const { avisarFaseFirmas, avisarFirmasCompletas } = require('../services/avisosSeleccion');
+const { avisarFirmasCompletas } = require('../services/avisosSeleccion');
 const { crearNotificacionCargaDocumentosAspirante } = require('../services/notificacionesService');
 const firmaUnica = require('../services/firmaUnica');
 const { programarRelleno } = require('../services/rellenoAsistencia');
@@ -808,7 +808,7 @@ router.post('/actualizar-contacto', async (req, res) => {
 
 // Enviar correo con enlace del portal al aspirante
 router.post('/enviar-correo-portal', async (req, res) => {
-  const { id_aspirante, correo } = req.body;
+  const { id_aspirante, correo, usuario } = req.body;
   try {
     if (!id_aspirante) {
       return res.status(400).json({ ok: false, error: 'Falta id_aspirante' });
@@ -840,13 +840,18 @@ router.post('/enviar-correo-portal', async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const portalUrl = `${baseUrl}/seleccion/portal/${id_aspirante}`;
 
+    // Quien presiona "Enviar por correo" va en copia
+    const correoQuienEnvia = await correoUsuarioPorId(usuario);
+
     await enviarCorreoPortalAspirante({
       correo: destino,
       nombreAspirante: nombreCompleto,
-      portalUrl
+      portalUrl,
+      copia: correoQuienEnvia ? [correoQuienEnvia] : []
     });
 
-    res.json({ ok: true, mensaje: `Correo de acceso enviado con éxito a ${destino}` });
+    const notaCopia = correoQuienEnvia && correoQuienEnvia.toLowerCase() !== destino.toLowerCase() ? ` (copia a ${correoQuienEnvia})` : '';
+    res.json({ ok: true, mensaje: `Correo de acceso enviado con éxito a ${destino}${notaCopia}` });
   } catch (error) {
     console.error('Error al enviar correo del portal:', error);
     res.status(500).json({ ok: false, error: error.message });
@@ -1027,11 +1032,8 @@ router.post('/cambiar-estado-proceso', async (req, res) => {
       [nuevo_estado, id_aspirante]
     );
 
-    // Aviso al aspirante (si está activo en Config_Parametros) solo cuando realmente pasa a "En proceso"
-    if (nuevo_estado === 'En proceso' && estadoAnterior !== 'En proceso' && resultado.affectedRows > 0) {
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      setImmediate(() => avisarFaseFirmas({ idAspirante: id_aspirante, usuario, baseUrl }));
-    }
+    // Al pasar a "En proceso" ya no se envía correo automático: el enlace del portal se envía
+    // a mano desde el portal (copiar enlace, WhatsApp o "Enviar por correo").
 
     res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent('Estado del aspirante actualizado a ' + nuevo_estado)}`);
   } catch (error) {
@@ -3796,7 +3798,8 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id_aspirante: '${uuid}',
-              correo: cor
+              correo: cor,
+              usuario: ${JSON.stringify(String(usuario || ''))}
             })
           });
           const data = await res.json();

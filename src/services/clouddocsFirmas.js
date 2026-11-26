@@ -3,7 +3,7 @@ const path = require('path');
 const { Storage } = require('@google-cloud/storage');
 const pool = require('./db');
 const { obtenerDocsFirmaParaOperacion, obtenerDocsSeleccion, ID_HOJA_VIDA } = require('./docsSeleccion');
-const { enviarCorreoPortalAspirante } = require('./email');
+const { enviarCorreoPortalAspirante, correoUsuarioPorId } = require('./email');
 
 const storage = process.env.GCS_KEYFILE
   ? new Storage({ keyFilename: path.resolve(process.env.GCS_KEYFILE) })
@@ -289,13 +289,18 @@ async function enviarCorreoPortalTrabajador({ identificacion, correo, baseUrl, u
     await actualizarContactoTrabajador({ identificacion, telefono: detalle.telefono, correo: cor, usuario });
   }
 
+  // Quien presiona "Enviar por correo" va en copia
+  const correoQuienEnvia = await correoUsuarioPorId(usuario);
+
   await enviarCorreoPortalAspirante({
     correo: cor,
     nombreAspirante: detalle.nombreCompleto,
-    portalUrl: detalle.portalUrl
+    portalUrl: detalle.portalUrl,
+    copia: correoQuienEnvia ? [correoQuienEnvia] : []
   });
 
-  return { ok: true, mensaje: `Correo enviado exitosamente a ${cor}` };
+  const notaCopia = correoQuienEnvia && correoQuienEnvia.toLowerCase() !== cor.toLowerCase() ? ` (copia a ${correoQuienEnvia})` : '';
+  return { ok: true, mensaje: `Correo enviado exitosamente a ${cor}${notaCopia}` };
 }
 
 /**

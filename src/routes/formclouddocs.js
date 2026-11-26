@@ -11,6 +11,7 @@ const {
   registrarDocTrabajador,
   registrarDocGeneral,
 } = require('../services/documentRegistry');
+const configTrabajadores = require('../services/configClouddocsTrabajadores');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -31,8 +32,11 @@ router.get('/', async (req, res) => {
     }
 
     const html = fs.readFileSync(HTML_FORM_PATH, 'utf8');
+    // Roles que crean tipos de documento: Config_Parametros CloudDocs / Trabajadores
+    const puedeCrearTipoDoc = await configTrabajadores.puedeCrearTiposDocumento(acceso.rol);
     const config = JSON.stringify({
       ...acceso,
+      puedeCrearTipoDoc,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       prefillIdentificacion: identificacion ? String(identificacion).trim() : ''
     }).replace(/<\/script>/gi, '<\\/script>');
@@ -200,7 +204,8 @@ router.post('/api/config-doc/crear', async (req, res) => {
     const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const isSystemOrArchivo = ['Sistema', 'Archivo'].includes(acceso.rol);
+    // Roles con permiso total: Config_Parametros CloudDocs / Trabajadores "Roles que pueden crear tipos de documento"
+    const isSystemOrArchivo = await configTrabajadores.puedeCrearTiposDocumento(acceso.rol);
     const isAdministracion = acceso.operacion && ['administracion', 'administración'].includes(acceso.operacion.toLowerCase().trim());
 
     let allowed = false;
@@ -273,6 +278,25 @@ router.post('/api/subir', upload.single('documento'), async (req, res) => {
       const vinculacion = await obtenerVinculacionReciente(pool, identificacion);
       if (!vinculacion) {
         return res.status(400).json({ error: 'El trabajador no tiene vinculaciones registradas' });
+      }
+
+      // Documentos repetidos: si "Bloquear documentos repetidos al cargar" está activo
+      // (Config_Parametros CloudDocs / Trabajadores) y el tipo no admite duplicados
+      // (Config_Doc_Trabajador.duplicados <> 'SI'), no se permite un segundo archivo del
+      // mismo documento para la misma vinculación (Fecha de Ingreso).
+      if (String(docConfig.duplicados || '').trim().toUpperCase() !== 'SI' && await configTrabajadores.bloquearRepetidos()) {
+        const [existentes] = await pool.execute(
+          `SELECT DATE_FORMAT(FechaRegistro, '%Y-%m-%d') AS fecha
+           FROM Maestro_docTrabajador
+           WHERE \`Identificación\` = ? AND TipoDocumento = ? AND Fecha_Ingreso = ?
+           ORDER BY FechaRegistro DESC LIMIT 1`,
+          [identificacion, String(tipo_documento_id), vinculacion.FechaIngreso]
+        );
+        if (existentes.length) {
+          return res.status(409).json({
+            error: `El documento "${docConfig.Documento}" ya está cargado para este trabajador en su vinculación actual (registrado el ${existentes[0].fecha || 'sin fecha'}). Si debe reemplazarse, marca el actual con validación ERROR y elimínalo primero, o pide que el tipo de documento admita duplicados.`
+          });
+        }
       }
 
       // Subir a GCS

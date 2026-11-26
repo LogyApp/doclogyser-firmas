@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 async function obtenerTipoDocumentoConfig(pool, tipoDocumentoId) {
   const [rows] = await pool.execute(
-    'SELECT Id, Documento, Prefijo, tipo_doc FROM Config_Doc_Trabajador WHERE Id = ?',
+    'SELECT Id, Documento, Prefijo, tipo_doc, duplicados FROM Config_Doc_Trabajador WHERE Id = ?',
     [tipoDocumentoId]
   );
 

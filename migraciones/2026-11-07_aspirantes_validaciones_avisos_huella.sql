@@ -49,10 +49,8 @@ SELECT 'talenthub', 'Aspirantes', 'Habilitar notificaciones de correo en Aspiran
        'Interruptor general de los correos de la fase de firmas de Aspirantes. 0: no se envía ningún aviso. 1: se envían los avisos que estén en 1.' FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM Config_Parametros WHERE Modulo = 'talenthub' AND Seccion = 'Aspirantes' AND Concepto = 'Habilitar notificaciones de correo en Aspirantes');
 
-INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
-SELECT 'talenthub', 'Aspirantes', 'Aviso al aspirante al pasar a En proceso', 'Booleano', '1',
-       '1: al pasar a "En proceso" se envía al aspirante un correo con el enlace para firmar sus documentos (quien hizo el cambio va en copia). Requiere el interruptor general en 1.' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM Config_Parametros WHERE Modulo = 'talenthub' AND Seccion = 'Aspirantes' AND Concepto = 'Aviso al aspirante al pasar a En proceso');
+-- (Retirado el 2026-11-26) 'Aviso al aspirante al pasar a En proceso': el enlace del portal ya no se envía
+-- automáticamente; ver 2026-11-26_config_parametros_borrar_sin_uso.sql
 
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)
 SELECT 'talenthub', 'Aspirantes', 'Aviso a Selección cuando el aspirante completa las firmas', 'Booleano', '1',
