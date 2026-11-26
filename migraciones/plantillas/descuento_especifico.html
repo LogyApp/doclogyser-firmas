@@ -1,0 +1,130 @@
+<style>
+  /* Estilos encerrados en .rdoc (mismo diseño de los documentos recientes). */
+  .rdoc { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 9.6pt; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .rdoc * { box-sizing: border-box; }
+  .rdoc p { margin: 0 0 8px 0; text-align: justify; }
+
+  .rdoc .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; border: 1px solid #cbd5e1; }
+  .rdoc .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .rdoc .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .rdoc .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .rdoc .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px; }
+  .rdoc .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .rdoc .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .rdoc .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .rdoc .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .rdoc .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .rdoc .meta-ver { color: #334155; }
+  .rdoc .meta-date { color: #64748b; font-size: 7.5pt; }
+
+  .rdoc .letter-meta { margin: 0 0 12px 0; font-size: 9.4pt; line-height: 1.45; }
+  .rdoc .letter-meta p { margin: 0; text-align: left; }
+  .rdoc .letter-meta .city { font-weight: 700; color: #000b59; margin-bottom: 8px; }
+
+  .rdoc .section-block { margin-bottom: 14px; }
+  .rdoc .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .rdoc .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .rdoc .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 9pt; }
+  .rdoc .data-grid td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .rdoc .data-grid tr:last-child td { border-bottom: none; }
+  .rdoc .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .rdoc .data-label { width: 28%; font-weight: 700; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .rdoc .data-val { font-weight: 600; color: #0f172a; }
+
+  .rdoc .letter-body p { font-size: 9.4pt; }
+  .rdoc .letter-body strong { color: #000b59; }
+
+  .rdoc .note-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 9px 12px; margin: 4px 0 14px 0; }
+  .rdoc .note-box p { margin: 0; font-size: 9pt; color: #334155; }
+  .rdoc .note-box strong { color: #000b59; }
+
+  .rdoc .sig-single { width: 55%; margin: 10px auto 0 auto; text-align: center; page-break-inside: avoid; }
+  .rdoc .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px; }
+  .rdoc .sig-img-wrap { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
+  .rdoc .sig-img-wrap img { max-height: 84px; max-width: 230px; margin: 0 auto !important; }
+  .rdoc .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .rdoc .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .rdoc .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  .rdoc .doc-footer { margin-top: 22px; text-align: center; }
+  .rdoc .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px; }
+  .rdoc .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px; }
+  .rdoc .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px; }
+
+  .rdoc .ref-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #f55400; border-radius: 6px; padding: 7px 12px; margin: 0 0 12px 0; font-size: 9pt; }
+  .rdoc .ref-box strong { color: #000b59; text-transform: uppercase; letter-spacing: 0.3px; font-size: 8pt; }
+
+  .rdoc .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 4px 0 14px 0; }
+  .rdoc .metric-item { display: table-cell; padding: 10px 14px; border-right: 1px solid #e2e8f0; vertical-align: top; }
+  .rdoc .metric-item:last-child { border-right: none; }
+  .rdoc .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .rdoc .metric-value { font-size: 10pt; font-weight: 700; color: #000b59; }
+  .rdoc .metric-value-primary { font-size: 10pt; font-weight: 800; color: #f55400; }
+</style>
+
+
+<div class="rdoc">
+
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Formato autorización de descuento por nómina</div>
+        <div class="doc-subtitle">Gestión de Talento Humano</div>
+        <div class="doc-subdetail">Descuento específico por cuotas</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="letter-meta">
+    <p class="city">{{ciudad}}, {{fecha}}</p>
+    <p>Señores:</p>
+    <p><strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong></p>
+    <p>NIT: 900.318.733-1</p>
+  </div>
+
+  <div class="ref-box"><strong>Asunto:</strong> Autorización de descuento por nómina</div>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Número de cuotas</div>
+      <div class="metric-value">{{cuotas}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Valor</div>
+      <div class="metric-value-primary">{{valor}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Concepto</div>
+      <div class="metric-value">{{motivo}}</div>
+    </div>
+  </div>
+
+  <div class="letter-body">
+    <p>Yo, <strong>{{nombre_trabajador}}</strong>, mayor de edad, identificado con documento de identidad No. <strong>{{identificacion}}</strong>, en mi calidad de trabajador con el cargo de <strong>{{cargo}}</strong> de la empresa <strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong>, autorizo expresa e irrevocablemente para que, de mi salario, bonificaciones, prestaciones sociales, o de cualquier suma de dinero que se vaya generando a mi favor, me sean descontados en <strong>{{cuotas}}</strong> cuotas, por valor de <strong>{{valor}}</strong> para el pago de <strong>{{motivo}}</strong>, aun en el evento de encontrarme disfrutando de vacaciones o licencias.</p>
+    <p>Igualmente autorizo expresa e irrevocablemente a <strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong>, a descontar de mi salario, sueldo, bonificaciones, prestaciones sociales e indemnizaciones a que tengo derecho, las cuotas que se estén adeudando si se llegare a terminar mi contrato de trabajo por cualquier causa.</p>
+  </div>
+
+  <p style="margin-bottom:2px">Atentamente,</p>
+
+  <div class="sig-single">
+    <div class="sig-role">Autoriza</div>
+    <div class="sig-img-wrap">{{firma_trabajador}}</div>
+    <div class="sig-line"></div>
+    <div class="sig-name">{{nombre_trabajador}}</div>
+    <div class="sig-details">CC {{identificacion}} · {{cargo}}</div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="line"></div>
+    <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+    <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+  </div>
+
+</div>

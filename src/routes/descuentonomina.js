@@ -14,7 +14,8 @@ const {
   notificarFirmaDescuentoNomina,
   notificarDescuentoNominaFirmada
 } = require('../services/email');
-const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
+const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
+const { LOGO_BASE64 } = require('../services/assets');
 const { generarPDF } = require('../services/renderer');
 const { computarAccesoCloudDocs } = require('../services/clouddocsAccess');
 
@@ -103,6 +104,44 @@ function construirSoporteNoFirmaDescuento(anotacion) {
     html: `<div style="border:1.5px dashed #c0392b;border-radius:4px;padding:8px 12px;color:#c0392b;font-size:8pt;font-weight:bold;line-height:1.4;display:inline-block;text-align:center;font-family:Arial,sans-serif;">${lineas}<br><span style="font-size:7pt;color:#555;font-weight:normal;">Fecha soporte: ${fecha}</span></div>`,
     fecha,
   };
+}
+
+// ── HTML del documento (Maestro_Plantillas: descuento_anticipado / descuento_especifico) ──
+// Mismo diseño de los documentos recientes: el encabezado toma código, versión y fecha del
+// formato de la fila de Maestro_Plantillas (obtenerPlantilla). firmaHtml va en el recuadro de firma.
+const MESES_DESCUENTO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+async function htmlDocumentoDescuento(c, firmaHtml) {
+  const proceso = c.tipo_descuento === 'Anticipada' ? 'descuento_anticipado' : 'descuento_especifico';
+  const plantilla = await obtenerPlantilla(proceso);
+
+  const dateObj = new Date(c.fecha);
+  const diaVal = dateObj.getDate();
+  const mesVal = MESES_DESCUENTO[dateObj.getMonth()];
+  const anioVal = dateObj.getFullYear();
+  let nombre = String(c.nombre_trabajador || '');
+  if (nombre.includes(' ** ')) nombre = nombre.split(' ** ').pop();
+
+  return reemplazarVariables(plantilla.contenido_html, {
+    logo_src:          LOGO_BASE64,
+    ciudad:            escaparHtml(c.ciudad || ''),
+    fecha:             `${diaVal} de ${mesVal} de ${anioVal}`,
+    dia:               diaVal,
+    mes:               mesVal,
+    anio:              anioVal,
+    nombre_trabajador: escaparHtml(nombre.trim().toUpperCase()),
+    identificacion:    escaparHtml(String(c.identificacion)),
+    cargo:             escaparHtml(c.cargo || ''),
+    tipo_descuento:    escaparHtml(c.tipo_descuento || ''),
+    cuotas:            escaparHtml(c.cuotas || '—'),
+    valor:             escaparHtml(c.valor || '—'),
+    motivo:            escaparHtml(c.motivo || '—'),
+    firma_trabajador:  firmaHtml,
+  });
+}
+
+function firmaTrabajadorDescuento(urlFirma) {
+  return firmaConFecha(`<img src="${urlFirma}" alt="Firma del trabajador">`, new Date());
 }
 
 async function computarAccesoDN(usuarioId) {
@@ -878,49 +917,7 @@ router.post('/api/firmar-asistente', async (req, res) => {
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const urlFirma = await subirFirma(c.identificacion, buffer);
 
-    // Obtener plantilla HTML correspondiente
-    const templateName = (c.tipo_descuento === 'Anticipada') ? 'descuento_anticipado' : 'descuento_especifico';
-    const [plantillaRows] = await pool.execute(
-      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? LIMIT 1',
-      [templateName]
-    );
-
-    if (!plantillaRows.length) {
-      return res.status(500).json({ error: `Plantilla del proceso ${templateName} no configurada en la base de datos` });
-    }
-    const plantilla = plantillaRows[0];
-
-    // Formatear fechas
-    const dateObj = new Date(c.fecha);
-    const diaVal = dateObj.getDate();
-    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const mesVal = mesesNombres[dateObj.getMonth()];
-    const anioVal = dateObj.getFullYear();
-    const fechaFmt = `${diaVal} de ${mesVal} de ${anioVal}`;
-
-    let cleanNombre = String(c.nombre_trabajador || '');
-    if (cleanNombre.includes(' ** ')) {
-      cleanNombre = cleanNombre.split(' ** ')[1] || cleanNombre;
-    }
-    cleanNombre = cleanNombre.toUpperCase().trim();
-
-    const datos = {
-      ciudad:            c.ciudad || '',
-      fecha:             fechaFmt,
-      dia:               diaVal,
-      mes:               mesVal,
-      anio:              anioVal,
-      nombre_trabajador: cleanNombre,
-      identificacion:    String(c.identificacion),
-      cargo:             c.cargo || '',
-      tipo_descuento:    c.tipo_descuento,
-      cuotas:            c.cuotas || '',
-      valor:             c.valor || '',
-      motivo:            c.motivo || '',
-      firma_trabajador:  `<img src="${urlFirma}" style="height:80px;display:block;margin-bottom:4px">`
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
+    const htmlFinal = await htmlDocumentoDescuento(c, firmaTrabajadorDescuento(urlFirma));
     const pdfBuffer = await generarPDF(htmlFinal);
 
     // Guardar PDF en el bucket
@@ -981,37 +978,7 @@ router.post('/api/prueba/:id/no-firma', async (req, res) => {
     }
 
     const soporte = construirSoporteNoFirmaDescuento(anotacion);
-    const templateName = discount.tipo_descuento === 'Anticipada' ? 'descuento_anticipado' : 'descuento_especifico';
-    const [plantillaRows] = await pool.execute(
-      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? LIMIT 1',
-      [templateName]
-    );
-    if (!plantillaRows.length) return res.status(500).json({ error: `Plantilla ${templateName} no configurada.` });
-
-    const dateObj = new Date(discount.fecha);
-    const diaVal = dateObj.getDate();
-    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const mesVal = mesesNombres[dateObj.getMonth()];
-    const anioVal = dateObj.getFullYear();
-    let cleanNombre = String(discount.nombre_trabajador || '');
-    if (cleanNombre.includes(' ** ')) cleanNombre = cleanNombre.split(' ** ').pop();
-
-    const datos = {
-      ciudad: discount.ciudad || '',
-      fecha: `${diaVal} de ${mesVal} del año ${anioVal}`,
-      dia: diaVal,
-      mes: mesVal,
-      anio: anioVal,
-      nombre_trabajador: cleanNombre.trim().toUpperCase(),
-      identificacion: String(discount.identificacion),
-      cargo: discount.cargo || '',
-      tipo_descuento: discount.tipo_descuento,
-      cuotas: discount.cuotas || '',
-      valor: discount.valor || '',
-      motivo: discount.motivo || '',
-      firma_trabajador: soporte.html,
-    };
-    const htmlFinal = reemplazarVariables(plantillaRows[0].contenido_html, datos);
+    const htmlFinal = await htmlDocumentoDescuento(discount, soporte.html);
     const pdfBuffer = await generarPDF(htmlFinal);
     const timestamp = formatTimestamp();
     const urlDoc = await subirPDFDescuentoNomina(discount.identificacion, timestamp, pdfBuffer);
@@ -1067,47 +1034,7 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
       urlFirma = await subirFirma(c.identificacion, buffer);
     }
 
-    const templateName = (c.tipo_descuento === 'Anticipada') ? 'descuento_anticipado' : 'descuento_especifico';
-    const [plantillaRows] = await pool.execute(
-      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? LIMIT 1',
-      [templateName]
-    );
-
-    if (!plantillaRows.length) {
-      return res.status(500).json({ error: `Plantilla del proceso ${templateName} no configurada en BD` });
-    }
-    const plantilla = plantillaRows[0];
-
-    const dateObj = new Date(c.fecha);
-    const diaVal = dateObj.getDate();
-    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const mesVal = mesesNombres[dateObj.getMonth()];
-    const anioVal = dateObj.getFullYear();
-    const fechaFmt = `${diaVal} de ${mesVal} de ${anioVal}`;
-
-    let cleanNombre = String(c.nombre_trabajador || '');
-    if (cleanNombre.includes(' ** ')) {
-      cleanNombre = cleanNombre.split(' ** ')[1] || cleanNombre;
-    }
-    cleanNombre = cleanNombre.toUpperCase().trim();
-
-    const datos = {
-      ciudad:            c.ciudad || '',
-      fecha:             fechaFmt,
-      dia:               diaVal,
-      mes:               mesVal,
-      anio:              anioVal,
-      nombre_trabajador: cleanNombre,
-      identificacion:    String(c.identificacion),
-      cargo:             c.cargo || '',
-      tipo_descuento:    c.tipo_descuento,
-      cuotas:            c.cuotas || '',
-      valor:             c.valor || '',
-      motivo:            c.motivo || '',
-      firma_trabajador:  `<img src="${urlFirma}" style="height:80px;display:block;margin-bottom:4px">`
-    };
-
-    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
+    const htmlFinal = await htmlDocumentoDescuento(c, firmaTrabajadorDescuento(urlFirma));
     const pdfBuffer = await generarPDF(htmlFinal);
 
     const timestamp = formatTimestamp();
