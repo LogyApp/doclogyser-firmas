@@ -8,7 +8,8 @@ const { storage, obtenerFirmaBase64Reciente, subirFirma, subirArchivoCloudDocs }
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { guardarEmpleadoFirma, asegurarFirmaPngActual } = require('../services/firmaSyncService');
 const { notificarCreacionRequisicion } = require('../services/email');
-const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
+const { calcularSlaRequisiciones, calcularAnsSeleccion } = require('../services/slaRequisiciones');
+const { obtenerReporteAnsSeleccion } = require('../services/reportesSeleccionService');
 const { obtenerPermisosActivos } = require('../services/configActivos');
 const { programarRellenoVinculacion } = require('../services/rellenoAsistencia');
 const {
@@ -958,6 +959,40 @@ async function obtenerParametrosTalenthub() {
   cacheParametrosTalenthub = { t: Date.now(), data: mapa };
   return { ...mapa };
 }
+// Reporte interactivo de ANS Selección: monitoreo de cumplimiento y tiempos sobre datos reales
+router.get('/api/ans-seleccion', async (req, res) => {
+  try {
+    const acceso = await computarAccesoTalenthub(req.query.usuario, 'AnsSeleccion');
+    if (!acceso) return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar ANS Selección.' });
+
+    const { desde, hasta, regional, operacion, responsable, analista } = req.query;
+    const regexFecha = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+    if (desde && !regexFecha.test(String(desde))) {
+      return res.status(400).json({ ok: false, error: 'Indica una fecha inicial válida (AAAA-MM-DD).' });
+    }
+    if (hasta && !regexFecha.test(String(hasta))) {
+      return res.status(400).json({ ok: false, error: 'Indica una fecha final válida (AAAA-MM-DD).' });
+    }
+    if (desde && hasta && desde > hasta) {
+      return res.status(400).json({ ok: false, error: 'La fecha inicial no puede ser posterior a la fecha final.' });
+    }
+
+    const data = await obtenerReporteAnsSeleccion({
+      fechaDesde: desde,
+      fechaHasta: hasta,
+      regional,
+      operacion,
+      responsable: responsable || analista,
+      acceso
+    });
+
+    res.json({ ok: true, ...data });
+  } catch (error) {
+    console.error('[talenthub] GET /api/ans-seleccion:', error);
+    res.status(500).json({ ok: false, error: 'No se pudo consultar el reporte de ANS Selección.' });
+  }
+});
+
 
 function rolPermitidoEnParametro(rolUsuario, parametroStr) {
   if (!rolUsuario || !parametroStr) return false;

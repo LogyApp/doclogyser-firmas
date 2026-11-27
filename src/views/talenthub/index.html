@@ -2040,6 +2040,7 @@
     </div>
 
     <!-- ── SECCIÓN: REQUISICIONES DE PERSONAL ────────────────────────────────── -->
+    <div id="tabContentAnsSeleccion" style="display:none;"></div>
     <div id="tabContentRequisiciones" style="display: none;">
       <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Inventario) -->
       <div class="filter-panel" id="panelFiltrosRequisiciones">
@@ -4178,11 +4179,13 @@
   <!-- ── SCRIPTS ───────────────────────────────────────────────────────────── -->
   <script>
     const CONFIG = __CONFIG__;
+    window.CONFIG = CONFIG;
     const TALENTHUB_FOTO_DEFAULT = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
 
     const TAB_META = {
       Requisiciones:    { icon: '📋', title: 'Requisiciones de Personal', subtitle: 'Solicitudes y seguimiento de vacantes laborales' },
       Aspirantes:       { icon: '👥', title: 'Aspirantes & Hojas de Vida', subtitle: 'Catálogo de aspirantes, fases y pruebas de selección' },
+      AnsSeleccion:     { icon: '⏱️', title: 'ANS Selección', nav: 'ANS Selección', subtitle: 'Monitoreo de tiempos de atención, vacantes y cumplimiento SLA por responsable' },
       Sociodemografica: { icon: '📊', title: 'Sociodemografica', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
       RegistroAsistencia: { icon: '📝', title: 'Registro de Participación', nav: 'Registro Participación', subtitle: 'Registro y firma de asistentes a formaciones, con evaluación de eficacia' },
       Integridad:      { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
@@ -4266,6 +4269,7 @@
     const TITULOS_TALENTHUB = {
       Requisiciones: 'Requisiciones',
       Aspirantes: 'Aspirantes & Hojas de Vida',
+      AnsSeleccion: 'ANS Selección',
       Sociodemografica: 'Sociodemografica',
       RegistroAsistencia: 'Registro Participación',
       Integridad: 'Integridad',
@@ -4392,6 +4396,7 @@
       document.getElementById('tabContentIntegridad').style.display = 'none';
       document.getElementById('tabContentRequisiciones').style.display = 'none';
       document.getElementById('tabContentAspirantes').style.display = 'none';
+      document.getElementById('tabContentAnsSeleccion').style.display = 'none';
       document.getElementById('tabContentSociodemografica').style.display = 'none';
       document.getElementById('tabContentRegistroAsistencia').style.display = 'none';
       const elTabParam = document.getElementById('tabContentParametros');
@@ -4422,6 +4427,8 @@
         inicializarRequisiciones();
       } else if (tabName === 'Aspirantes') {
         inicializarAspirantes();
+      } else if (tabName === 'AnsSeleccion') {
+        if (typeof window.inicializarAnsSeleccion === 'function') window.inicializarAnsSeleccion();
       } else if (tabName === 'Sociodemografica') {
         inicializarSociodemografica();
       } else if (tabName === 'RegistroAsistencia') {
@@ -8106,6 +8113,7 @@
       }
       const recargas = {
         Requisiciones: () => cargarRequisiciones(),
+        AnsSeleccion: () => window.recargarAnsSeleccion(),
         Sociodemografica: () => cargarDatosSociodemografica(),
         RegistroAsistencia: () => cargarRegistroAsistencia(),
         Integridad: () => cargarHistorialAuditoria(),
@@ -11722,5 +11730,6 @@
   <script src="/js/modal-back.js" defer></script>
   <script src="/js/talenthub-cargos.js?v=20261113a" defer></script>
   <script src="/js/talenthub-entrevistas.js?v=20261119a" defer></script>
+  <script src="/js/talenthub-ans-seleccion.js?v=20261127e" defer></script>
 </body>
 </html>

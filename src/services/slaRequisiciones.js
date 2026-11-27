@@ -286,8 +286,36 @@ async function calcularSlaRequisiciones(requisiciones, aspirantesPorReq, paramsC
   return { porRequisicion: resultado, config: cfg };
 }
 
+async function calcularAnsSeleccion(registros, paramsConfig) {
+  const cfg = leerConfigSla(paramsConfig || {});
+  const festivos = await obtenerFestivos();
+  const ids = [...new Set(registros.map(r => r.id_requisicion).filter(id => id != null))];
+  const suspensiones = await obtenerSuspensiones(ids);
+  const hoy = aDia(hoyBogota());
+  const evaluaciones = registros.map(r => {
+    if (!r.fecha_requisicion || !r.fecha_registro) {
+      return { estado: 'revisar', dias: null, diasSuspendidos: 0 };
+    }
+    const inicioConteo = calcularInicioConteo(r.fecha_requisicion, cfg.horaCorte, cfg.diasPermitidos, festivos, cfg.sumarFestivos);
+    if (inicioConteo === null) return { estado: 'revisar', dias: null, diasSuspendidos: 0 };
+    return evaluarAspirante({
+      fechaRequisicion: r.fecha_requisicion,
+      inicioConteo,
+      fechaIngreso: r.fecha_registro,
+      suspensiones: suspensiones.get(r.id_requisicion) || [],
+      limite: cfg.limite,
+      diasPermitidosSet: cfg.diasPermitidos,
+      festivosSet: festivos,
+      sumarFestivos: cfg.sumarFestivos,
+      hoy
+    });
+  });
+  return { evaluaciones, limite: cfg.limite, umbrales: cfg.umbrales };
+}
+
 module.exports = {
   calcularSlaRequisiciones,
+  calcularAnsSeleccion,
   leerConfigSla,
   parsearDiasPermitidos,
   esDiaDeProceso,
