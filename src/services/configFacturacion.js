@@ -358,6 +358,31 @@ async function obtenerOpsDesgloseResumen() {
 const SECCION_WHATSAPP = 'WhatsApp';
 const PREFIJO_WA_PENDIENTE = 'Texto adicional del WhatsApp del recibo pendiente · ';
 
+// ── Pestaña Impuestos (Seccion = 'Impuestos') ──────────────────────────────
+// Quién ve la pestaña: Maestro_Menu (facturacion / Impuestos).
+// Quién puede agregar/editar impuestos: Config_Parametros (facturacion / Impuestos).
+const SECCION_IMPUESTOS = 'Impuestos';
+const PI = {
+  ROLES_AGREGAR: 'Roles que pueden agregar impuestos',
+};
+const DEFAULTS_IMPUESTOS = {
+  [PI.ROLES_AGREGAR]: 'Sistema, Facturación, Contabilidad',
+};
+
+async function puedeAgregarImpuestos(rol) {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      [MODULO, SECCION_IMPUESTOS, PI.ROLES_AGREGAR]
+    );
+    const parametro = (rows.length && rows[0].Parametro != null) ? rows[0].Parametro : DEFAULTS_IMPUESTOS[PI.ROLES_AGREGAR];
+    return enLista(parametro, rol);
+  } catch (err) {
+    console.error('[configFacturacion] Error leyendo permisos de Impuestos:', err.message);
+    return enLista(DEFAULTS_IMPUESTOS[PI.ROLES_AGREGAR], rol);
+  }
+}
+
 // { 'Operación': 'texto', ... }
 async function obtenerTextosWhatsAppPendiente() {
   const textos = {};
@@ -394,6 +419,8 @@ module.exports = {
   puedeGestionarMaestros,
   puedeEditarRetenciones,
   puedeEliminarClientes,
+  puedeAgregarImpuestos,
+  PARAMETROS_FACTURACION_IMPUESTOS: PI,
   PARAMETROS_FACTURACION_CLIENTES: PC,
   normalizarTexto,
   PARAMETROS_FACTURACION_SERVICIOS: P,

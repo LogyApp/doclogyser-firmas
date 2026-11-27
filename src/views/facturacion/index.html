@@ -1634,6 +1634,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
         <span>Ajustes Servicios</span>
       </li>
+      <li class="nav-item" id="navImpuestos" onclick="switchMainTab('impuestos')" style="display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
+        <span>Impuestos</span>
+      </li>
     </ul>
 
     <div class="sidebar-user" id="sidebarUser">
@@ -2343,6 +2347,58 @@
           </thead>
           <tbody id="tabla-ajustes-body">
             <tr><td colspan="14" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando ajustes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA: IMPUESTOS (Config_Impuestos — IVA, retenciones, bases mínimas y salario mínimo)
+    ────────────────────────────────────────────────────────── -->
+    <div id="tab-content-impuestos" style="display: none;">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Facturación · Impuestos</div>
+          <div class="page-sub">Porcentajes y valores base con que se calculan el IVA y las retenciones de los servicios y recibos</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-primary imp-agregar" onclick="abrirModalImpuesto()" style="display:none;">➕ Nuevo Impuesto</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 12px 14px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+        Sin operación, el valor aplica a <strong>todas las operaciones</strong>. ReteICA se configura por operación.
+        La retención se aplica cuando el valor del servicio llega al <strong>Valor Base</strong>.
+        Los cambios se aplican a los servicios y recibos que se registren o recalculen desde ahora.
+      </div>
+
+      <div class="card">
+        <div class="filtros-grid">
+          <div class="filtro-field">
+            <label>Concepto</label>
+            <select id="imp-f-concepto" onchange="renderImpuestosTable()"><option value="">Todos</option></select>
+          </div>
+          <div class="filtro-field">
+            <label>Buscar</label>
+            <input type="text" id="imp-f-texto" placeholder="Concepto, operación..." oninput="renderImpuestosTable()">
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="tabla-impuestos">
+          <thead>
+            <tr>
+              <th style="width:160px">Concepto</th>
+              <th style="width:180px">Operación</th>
+              <th style="width:140px; text-align:right">Valor Base</th>
+              <th style="width:110px; text-align:right">Porcentaje</th>
+              <th style="width:150px">Usuario</th>
+              <th style="width:130px">Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-impuestos-body">
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando impuestos...</td></tr>
           </tbody>
         </table>
       </div>
@@ -4273,6 +4329,43 @@
     </div>
   </div>
 
+  <!-- MODAL: IMPUESTO (Config_Impuestos) -->
+  <div class="modal-overlay" id="modal-impuesto-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span id="imp-titulo">➕ Nuevo Impuesto</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalImpuesto()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Concepto *</label>
+          <input type="text" id="imp-concepto" maxlength="50" list="imp-conceptos-lista" placeholder="Ej: ReteICA">
+          <datalist id="imp-conceptos-lista"></datalist>
+          <small style="color: var(--text-muted); font-size: 0.76rem;">Los cálculos usan estos nombres exactos: IVA, ReteFuente, ReteIVA, ReteICA y Salario Minimo.</small>
+        </div>
+        <div class="form-group">
+          <label>Operación</label>
+          <select id="imp-operacion"></select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Valor Base ($)</label>
+            <input type="number" id="imp-valor-base" min="0" step="1" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Porcentaje (%)</label>
+            <input type="number" id="imp-porcentaje" min="0" max="100" step="any" placeholder="Ej: 0.966">
+          </div>
+        </div>
+        <small id="imp-info" style="color: var(--text-muted); font-size: 0.76rem; display:block;"></small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalImpuesto()">Cancelar</button>
+        <button type="button" class="btn-primary" id="imp-btn-guardar" onclick="guardarImpuesto()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: COPIAR AJUSTES DE OTRA OPERACIÓN -->
   <div class="modal-overlay" id="modal-copiar-ajustes-overlay">
     <div class="modal-card" style="max-width: 520px;">
@@ -5015,6 +5108,7 @@
         if (navTicketsEl) navTicketsEl.style.display = 'none';
       }
       if (CONFIG.tabs?.ajustes) document.getElementById('navAjustes').style.display = '';
+      if (CONFIG.tabs?.impuestos) document.getElementById('navImpuestos').style.display = '';
       if (CONFIG.tabs?.resumen) document.getElementById('navResumen').style.display = '';
       if (!CONFIG.tabs?.bloqueo) {
         const navBloqueoEl = document.getElementById('navBloqueo');
@@ -5040,7 +5134,7 @@
           clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
           clientes_credito: 'clientescredito', credito: 'clientescredito',
           bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets', ajustes: 'ajustes',
-          resumen: 'resumen',
+          resumen: 'resumen', impuestos: 'impuestos',
         };
         if (!p.get('idservicio') && !p.get('idrecibo')) {
           // Conservar la subpestaña pedida (?subtab=...), que esta vista inicial escribe en la dirección
@@ -5285,6 +5379,8 @@
         switchMainTab('ajustes');
       } else if (tabParam === 'resumen') {
         switchMainTab('resumen');
+      } else if (tabParam === 'impuestos') {
+        switchMainTab('impuestos');
       } else {
         switchMainTab('recibos');
       }
@@ -5395,6 +5491,7 @@
       if (tab === 'bloqueo' && !CONFIG.tabs?.bloqueo) tab = 'servicios';
       if (tab === 'ajustes' && !CONFIG.tabs?.ajustes) tab = 'servicios';
       if (tab === 'resumen' && !CONFIG.tabs?.resumen) tab = 'servicios';
+      if (tab === 'impuestos' && !CONFIG.tabs?.impuestos) tab = 'servicios';
       if ((tab === 'clientescredito' || tab === 'clientes') && !subTabsClientesPermitidas().length) tab = 'servicios';
 
       if (tab === 'clientescredito') {
@@ -5409,6 +5506,7 @@
       document.getElementById('navTickets')?.classList.toggle('active', tab === 'tickets');
       document.getElementById('navAjustes')?.classList.toggle('active', tab === 'ajustes');
       document.getElementById('navResumen')?.classList.toggle('active', tab === 'resumen');
+      document.getElementById('navImpuestos')?.classList.toggle('active', tab === 'impuestos');
 
       document.getElementById('tab-content-servicios').style.display = tab === 'servicios' ? 'block' : 'none';
       document.getElementById('tab-content-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
@@ -5417,6 +5515,7 @@
       document.getElementById('tab-content-tickets').style.display = tab === 'tickets' ? 'block' : 'none';
       document.getElementById('tab-content-ajustes').style.display = tab === 'ajustes' ? 'block' : 'none';
       document.getElementById('tab-content-resumen').style.display = tab === 'resumen' ? 'block' : 'none';
+      document.getElementById('tab-content-impuestos').style.display = tab === 'impuestos' ? 'block' : 'none';
 
       const tabTitles = {
         servicios: 'Servicios',
@@ -5425,7 +5524,8 @@
         bloqueo: 'Bloqueo de Datos',
         tickets: 'Tickets',
         ajustes: 'Ajustes Servicios',
-        resumen: 'Resumen'
+        resumen: 'Resumen',
+        impuestos: 'Impuestos'
       };
       const mobileHeaderTitle = document.getElementById('mobileHeaderTitle');
       if (mobileHeaderTitle) {
@@ -5479,6 +5579,8 @@
         if (typeof window.inicializarResumenFacturacion === 'function') window.inicializarResumenFacturacion();
       } else if (tab === 'ajustes') {
         cargarAjustes();
+      } else if (tab === 'impuestos') {
+        cargarImpuestos();
       } else if (tab === 'tickets') {
         makeTableResizable(document.getElementById('tabla-tickets'));
         if (!allTickets || !allTickets.length) {
@@ -10027,10 +10129,10 @@
       clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
       clientes_credito: 'clientescredito', credito: 'clientescredito',
       bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets', ajustes: 'ajustes',
-      resumen: 'resumen',
+      resumen: 'resumen', impuestos: 'impuestos',
     };
     function pestanaVisible() {
-      return ['servicios', 'recibos', 'clientes', 'bloqueo', 'tickets', 'ajustes', 'resumen']
+      return ['servicios', 'recibos', 'clientes', 'bloqueo', 'tickets', 'ajustes', 'resumen', 'impuestos']
         .find(t => document.getElementById('tab-content-' + t)?.style.display === 'block');
     }
 
@@ -10509,6 +10611,8 @@
           await Promise.all([cargarTickets(), cargarMetricasTickets()]);
         } else if (visible('tab-content-ajustes')) {
           await cargarAjustes();
+        } else if (visible('tab-content-impuestos')) {
+          await cargarImpuestos();
         } else {
           window.location.reload();
           return;
@@ -12050,6 +12154,118 @@
     // ══════════════════════════════════════════════════════════
     // PESTAÑA AJUSTES SERVICIOS (Config_Servicios)
     // ══════════════════════════════════════════════════════════
+    // ── Pestaña Impuestos (Config_Impuestos) ──────────────────────────────
+    let allImpuestos = [];
+    let impOperaciones = [];
+    let impPuedeAgregar = false;
+    let impEditando = null; // fila en edición o null al agregar
+    const impUrl = (ruta = '') => `/facturacion/api/impuestos${ruta}?${new URLSearchParams({ usuario: CONFIG.usuario })}`;
+    const impPorcentajeTxt = (p) => p == null ? '' : String(Number((p * 100).toPrecision(6)));
+
+    async function cargarImpuestos() {
+      try {
+        const resp = await fetch(impUrl());
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'No se pudieron cargar los impuestos.');
+        allImpuestos = data.impuestos || [];
+        impOperaciones = data.operaciones || [];
+        impPuedeAgregar = !!data.puedeAgregar;
+      } catch (e) {
+        document.getElementById('tabla-impuestos-body').innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger-dark); padding:24px;">${esc(e.message)}</td></tr>`;
+        return;
+      }
+      document.querySelectorAll('.imp-agregar').forEach(b => { b.style.display = impPuedeAgregar ? '' : 'none'; });
+      const sel = document.getElementById('imp-f-concepto');
+      const actual = sel.value;
+      const conceptos = [...new Set(allImpuestos.map(i => i.concepto))].sort();
+      sel.innerHTML = '<option value="">Todos</option>' + conceptos.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      if (conceptos.includes(actual)) sel.value = actual;
+      document.getElementById('imp-conceptos-lista').innerHTML = conceptos.map(c => `<option value="${esc(c)}">`).join('');
+      renderImpuestosTable();
+    }
+
+    function renderImpuestosTable() {
+      const concepto = document.getElementById('imp-f-concepto').value;
+      const texto = normalizarBusquedaImp(document.getElementById('imp-f-texto').value);
+      const filas = allImpuestos.filter(i => (!concepto || i.concepto === concepto)
+        && (!texto || normalizarBusquedaImp(`${i.concepto} ${i.operacion}`).includes(texto)));
+      const body = document.getElementById('tabla-impuestos-body');
+      if (!filas.length) {
+        body.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">${allImpuestos.length ? 'Ningún impuesto coincide con los filtros.' : 'Aún no hay impuestos registrados.'}</td></tr>`;
+        return;
+      }
+      body.innerHTML = filas.map(i => `
+        <tr style="cursor:${impPuedeAgregar ? 'pointer' : 'default'};" ${impPuedeAgregar ? `onclick="abrirModalImpuesto(${Number(i.id)})" title="Editar"` : ''}>
+          <td style="font-weight:600;">${esc(i.concepto)}</td>
+          <td>${i.operacion ? esc(i.operacion) : '<span style="color:var(--text-muted)">Todas</span>'}</td>
+          <td style="text-align:right;">${i.valorBase == null ? '—' : '$ ' + Number(i.valorBase).toLocaleString('es-CO')}</td>
+          <td style="text-align:right;">${i.porcentaje == null ? '—' : esc(impPorcentajeTxt(i.porcentaje).replace('.', ',')) + ' %'}</td>
+          <td>${esc(i.usuario || '')}</td>
+          <td>${esc(i.fechaRegistro || '')}</td>
+        </tr>`).join('');
+    }
+
+    function normalizarBusquedaImp(t) {
+      return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    }
+
+    function abrirModalImpuesto(id) {
+      if (!impPuedeAgregar) return;
+      impEditando = id ? allImpuestos.find(i => Number(i.id) === Number(id)) || null : null;
+      const i = impEditando || {};
+      const ops = impOperaciones.slice();
+      if (i.operacion && !ops.includes(i.operacion)) ops.unshift(i.operacion);
+      const opSel = document.getElementById('imp-operacion');
+      opSel.innerHTML = '<option value="">Todas las operaciones</option>' + ops.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+      opSel.value = i.operacion || '';
+      document.getElementById('imp-concepto').value = i.concepto || '';
+      document.getElementById('imp-valor-base').value = i.valorBase ?? '';
+      document.getElementById('imp-porcentaje').value = impPorcentajeTxt(i.porcentaje);
+      document.getElementById('imp-info').textContent = impEditando && i.usuario
+        ? `Última modificación: ${i.usuario}${i.fechaRegistro ? ' · ' + i.fechaRegistro : ''}` : '';
+      document.getElementById('imp-titulo').textContent = impEditando ? `✏️ Editar Impuesto — ${i.concepto}` : '➕ Nuevo Impuesto';
+      const overlay = document.getElementById('modal-impuesto-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalImpuesto());
+    }
+
+    function cerrarModalImpuesto() {
+      const overlay = document.getElementById('modal-impuesto-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
+
+    async function guardarImpuesto() {
+      const payload = {
+        concepto: document.getElementById('imp-concepto').value.trim(),
+        operacion: document.getElementById('imp-operacion').value,
+        valorBase: document.getElementById('imp-valor-base').value,
+        porcentaje: document.getElementById('imp-porcentaje').value,
+      };
+      if (!payload.concepto) return alert('Escriba el Concepto.');
+      if (impEditando) {
+        const antes = `${impEditando.concepto} / ${impEditando.operacion || 'Todas'}: base ${impEditando.valorBase ?? '—'}, ${impPorcentajeTxt(impEditando.porcentaje) || '—'} %`;
+        const despues = `${payload.concepto} / ${payload.operacion || 'Todas'}: base ${payload.valorBase || '—'}, ${payload.porcentaje || '—'} %`;
+        if (antes !== despues && !confirm(`¿Guardar el cambio?\n\nAntes:   ${antes}\nAhora:   ${despues}\n\nAfecta los cálculos de IVA y retenciones desde este momento.`)) return;
+      }
+      const btn = document.getElementById('imp-btn-guardar');
+      btn.disabled = true;
+      try {
+        const resp = await fetch(impEditando ? impUrl(`/${impEditando.id}`) : impUrl(), {
+          method: impEditando ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) return alert('Error: ' + (data.error || 'No se pudo guardar el impuesto.'));
+        cerrarModalImpuesto();
+        await cargarImpuestos();
+      } catch (e) {
+        alert('Error de conexión al guardar el impuesto.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     let allAjustes = [];
     let ajOpciones = null; // { operaciones, roles }
     let ajEditando = null; // fila en edición o null al crear

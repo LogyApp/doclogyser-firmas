@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, puedeEliminarClientes, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto, obtenerTextosWhatsAppPendiente } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones, puedeEliminarClientes, obtenerTopeValorBaseServicio, obtenerPermisosRecibos, obtenerNitsRetencionObligatoria, obtenerAreaUsuarioServicio, obtenerAreasUsuarioServicio, obtenerOpsFiltroBodega, obtenerOpsDesgloseResumen, normalizarTexto, obtenerTextosWhatsAppPendiente, puedeAgregarImpuestos } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig } = require('../services/documentRegistry');
 const { servicioYaAnulado } = require('../../public/js/servicio-anulacion');
@@ -130,19 +130,19 @@ router.get('/', async (req, res) => {
     // Subpestañas de la pestaña Clientes: Clientes, Clientes_credito, Proveedor, Transportadora, Placas.
     const [
       accesoServicios, accesoRecibos, accesoBloqueo, accesoClientes, accesoTickets,
-      accesoMaestroClientes, accesoProveedor, accesoTransportadora, accesoPlacas, accesoAjustes, accesoResumen
+      accesoMaestroClientes, accesoProveedor, accesoTransportadora, accesoPlacas, accesoAjustes, accesoResumen, accesoImpuestos
     ] = await Promise.all([
       'Servicios', 'Recibos', 'Bloqueo_datos', 'Clientes_credito', 'Tickets',
-      'Clientes', 'Proveedor', 'Transportadora', 'Placas', 'Ajustes_Servicios', 'Resumen'
+      'Clientes', 'Proveedor', 'Transportadora', 'Placas', 'Ajustes_Servicios', 'Resumen', 'Impuestos'
     ].map(seccion => computarAccesoFacturacion(usuario, seccion)));
     const accesoPestanaClientes = accesoMaestroClientes || accesoClientes || accesoProveedor
       || accesoTransportadora || accesoPlacas;
 
-    if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes && !accesoResumen) {
+    if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes && !accesoResumen && !accesoImpuestos) {
       return res.status(403).send(paginaError('Usuario no autorizado para el módulo de Facturación'));
     }
 
-    const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoPestanaClientes || accesoResumen;
+    const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoPestanaClientes || accesoResumen || accesoImpuestos;
     const template = fs.readFileSync(FACTURACION_HTML, 'utf8');
 
     // Quincena actual de hoy
@@ -217,6 +217,10 @@ router.get('/', async (req, res) => {
         placas: resumenAcceso(accesoPlacas),
         ajustes: resumenAcceso(accesoAjustes),
         resumen: resumenAcceso(accesoResumen),
+        impuestos: resumenAcceso(accesoImpuestos),
+      },
+      permisosImpuestos: {
+        puedeAgregar: await puedeAgregarImpuestos(base.rol),
       },
       // Pestaña Resumen: operaciones (de las que ve el usuario) con los interruptores "Por Área" y "Por Bodega"
       resumenDesglose: opsDesgloseResumen ? {
@@ -7721,6 +7725,104 @@ router.delete('/api/ajustes-servicios/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── PESTAÑA IMPUESTOS (Config_Impuestos) ─────────────────────────────────────
+// Quién ve la pestaña: Maestro_Menu (facturacion / Impuestos).
+// Quién agrega y edita: Config_Parametros (facturacion / Impuestos · Roles que pueden agregar impuestos).
+// El Porcentaje se guarda como fracción (0.19) y la pantalla lo muestra en % (19).
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function accesoImpuestos(req, res, editar = false) {
+  const usuario = req.query.usuario || req.body?.usuario;
+  if (!usuario) { res.status(400).json({ error: 'usuario requerido' }); return null; }
+  const acceso = await computarAccesoFacturacion(usuario, 'Impuestos');
+  if (!acceso) { res.status(403).json({ error: 'No autorizado para la pestaña Impuestos.' }); return null; }
+  if (editar && !(await puedeAgregarImpuestos(acceso.rol))) {
+    res.status(403).json({ error: 'Su rol no puede agregar ni editar impuestos.' });
+    return null;
+  }
+  return acceso;
+}
+
+// ── GET /api/impuestos (listado, operaciones y permiso de agregar) ──────────
+router.get('/api/impuestos', async (req, res) => {
+  try {
+    const acceso = await accesoImpuestos(req, res);
+    if (!acceso) return;
+    const [rows] = await pool.query(
+      `SELECT IdImpuesto AS id, Concepto AS concepto, COALESCE(\`Operación\`, '') AS operacion, \`Valor Base\` AS valorBase,
+              Porcentaje AS porcentaje, Usuario AS usuario, DATE_FORMAT(Fecha_Registro, '%Y-%m-%d %H:%i') AS fechaRegistro
+       FROM Config_Impuestos ORDER BY Concepto, COALESCE(\`Operación\`, ''), IdImpuesto`
+    );
+    const [ops] = await pool.query("SELECT `OPERACIÓN` AS operacion FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
+    res.json({
+      // float de MySQL: se redondea para no mostrar 0.009660000354
+      impuestos: rows.map(r => ({ ...r, porcentaje: r.porcentaje == null ? null : Number(Number(r.porcentaje).toPrecision(6)) })),
+      operaciones: ops.map(o => o.operacion),
+      puedeAgregar: await puedeAgregarImpuestos(acceso.rol),
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/impuestos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/impuestos (agregar) y PUT /api/impuestos/:id (editar) ─────────
+async function guardarImpuesto(req, res, id) {
+  try {
+    const acceso = await accesoImpuestos(req, res, true);
+    if (!acceso) return;
+    const b = req.body || {};
+    const concepto = String(b.concepto || '').trim();
+    const operacion = String(b.operacion || '').trim() || null;
+    const valorBase = b.valorBase === '' || b.valorBase == null ? null : Number(b.valorBase);
+    const porcentajeTxt = b.porcentaje === '' || b.porcentaje == null ? null : Number(b.porcentaje);
+    if (!concepto) return res.status(400).json({ error: 'El Concepto es obligatorio.' });
+    if (concepto.length > 50) return res.status(400).json({ error: 'El Concepto admite máximo 50 caracteres.' });
+    if (valorBase != null && (!Number.isInteger(valorBase) || valorBase < 0)) {
+      return res.status(400).json({ error: 'El Valor Base debe ser un número entero en pesos, sin decimales.' });
+    }
+    if (porcentajeTxt != null && (!Number.isFinite(porcentajeTxt) || porcentajeTxt < 0 || porcentajeTxt > 100)) {
+      return res.status(400).json({ error: 'El Porcentaje debe estar entre 0 y 100.' });
+    }
+    const porcentaje = porcentajeTxt == null ? null : Number((porcentajeTxt / 100).toPrecision(6));
+    if (operacion) {
+      const [op] = await pool.execute('SELECT 1 FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1', [operacion]);
+      if (!op.length) return res.status(400).json({ error: `La operación "${operacion}" no existe en Maestro_Operaciones.` });
+    }
+    // Un solo registro por Concepto y Operación (los cálculos toman el primero que encuentran)
+    const [repetido] = await pool.execute(
+      "SELECT IdImpuesto FROM Config_Impuestos WHERE TRIM(Concepto) = ? AND COALESCE(`Operación`, '') = ? AND NOT (IdImpuesto <=> ?) LIMIT 1",
+      [concepto, operacion || '', id]
+    );
+    if (repetido.length) {
+      return res.status(409).json({ error: `Ya existe "${concepto}" para ${operacion || 'todas las operaciones'}. Edítelo en lugar de agregar otro.` });
+    }
+    const usuarioVal = acceso.usuarioId || req.query.usuario;
+    if (id) {
+      const [r] = await pool.execute(
+        'UPDATE Config_Impuestos SET Concepto = ?, `Operación` = ?, `Valor Base` = ?, Porcentaje = ?, Usuario = ?, Fecha_Registro = ? WHERE IdImpuesto = ?',
+        [concepto, operacion, valorBase, porcentaje, usuarioVal, formatearAhoraBogota(), id]
+      );
+      if (!r.affectedRows) return res.status(404).json({ error: 'Impuesto no encontrado.' });
+    } else {
+      await pool.execute(
+        `INSERT INTO Config_Impuestos (IdImpuesto, Concepto, \`Operación\`, \`Valor Base\`, Porcentaje, Usuario, Fecha_Registro)
+         SELECT COALESCE(MAX(IdImpuesto), 0) + 1, ?, ?, ?, ?, ?, ? FROM Config_Impuestos`,
+        [concepto, operacion, valorBase, porcentaje, usuarioVal, formatearAhoraBogota()]
+      );
+    }
+    cachedImpuestos = null; // los cálculos de Facturación toman el cambio de inmediato
+    console.log(`[facturacion] ${usuarioVal} ${id ? 'editó' : 'agregó'} impuesto ${concepto} / ${operacion || 'Todas'}: base ${valorBase}, ${porcentajeTxt}%`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[facturacion] guardar impuesto:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.post('/api/impuestos', (req, res) => guardarImpuesto(req, res, null));
+router.put('/api/impuestos/:id', (req, res) => guardarImpuesto(req, res, parseInt(req.params.id, 10) || -1));
 
 // ── POST /api/ajustes-servicios/copiar (copiar los ajustes de una operación a otra) ──
 // Área y Actividad guardan IDs que son propios de cada operación: se copian sus reglas
