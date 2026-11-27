@@ -343,10 +343,44 @@
 
     @media (max-width: 768px) {
       .pdf-container-wrapper {
-        padding: 8px !important;
+        padding: 6px !important;
         min-height: 300px !important;
+        max-height: 72vh;
       }
     }
+
+    /* Visor continuo: todas las páginas una debajo de otra; con zoom se desplaza también a lo ancho
+       (min-width: 0 evita que la columna se estire con la página ampliada) */
+    .grid > * { min-width: 0; }
+    .pdf-container-wrapper { display: block; text-align: center; max-width: 100%; }
+    @media (max-width: 600px) {
+      #visor-card { padding: 10px; }
+      #visor-card .card-title { margin-bottom: 10px; padding-bottom: 10px; }
+      .pdf-controls { padding: 8px 10px; margin-bottom: 8px; }
+      .visor-ayuda { font-size: 0.76rem !important; }
+    }
+    .pdf-pages { display: inline-flex; flex-direction: column; align-items: center; gap: 12px; min-width: 100%; }
+    .pdf-page { position: relative; background: #fff; box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
+    .pdf-page canvas { max-width: none; }
+    .visor-herramientas { display: flex; align-items: center; gap: 6px; }
+    .btn-zoom { min-width: 34px; padding: 6px 10px; }
+    .zoom-valor { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); min-width: 42px; text-align: center; }
+
+    /* Pantalla completa: el visor ocupa toda la pantalla para leer cómodamente en el celular */
+    .visor-completo { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; padding: 10px !important; display: flex !important; flex-direction: column; background: var(--card-bg); }
+    .visor-completo .card-title { display: none; }
+    .visor-completo .pdf-workspace { flex: 1; min-height: 0; }
+    .visor-completo .pdf-container-wrapper { flex: 1; max-height: none !important; min-height: 0 !important; }
+    .visor-completo .pdf-controls { margin-bottom: 8px; }
+    body.visor-abierto { overflow: hidden; }
+
+    /* Firma: un solo recuadro con la firma registrada (si existe) o para dibujar una nueva */
+    .sig-ayuda { font-size: 0.86rem; color: var(--text-muted); margin: 0 0 10px; line-height: 1.45; }
+    .firma-guardada { position: absolute; inset: 0; margin: auto; max-width: 90%; max-height: 85%; object-fit: contain; pointer-events: none; }
+    .sig-etiqueta { position: absolute; top: 6px; left: 8px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--success); background: var(--success-soft); padding: 2px 8px; border-radius: 999px; pointer-events: none; }
+    .sig-acciones { display: flex; gap: 10px; margin-top: 12px; }
+    .sig-acciones .btn-clear { align-self: stretch; padding: 12px 18px; font-size: 0.9rem; }
+    .sig-acciones .btn-submit { flex: 1; margin-top: 0; }
 
     /* Sign Options Card */
     .sig-options {
@@ -629,7 +663,7 @@
     <!-- Main Workspace (Hidden on success) -->
     <div class="grid" id="main-workspace">
       <!-- Left side: PDF Viewer -->
-      <div class="card" style="display: flex; flex-direction: column;">
+      <div class="card" id="visor-card" style="display: flex; flex-direction: column;">
         <h2 class="card-title">
           <span class="icon-chip">
             <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.1 3.89,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M7,17H17V15H7V17M7,13H17V11H7V13M7,9H14V7H7V9Z"/></svg>
@@ -639,20 +673,20 @@
 
         <div class="pdf-workspace">
           <div class="pdf-controls">
-            <div class="pdf-page-nav">
-              <button type="button" class="btn-nav" id="btn-prev" disabled>&lt; Anterior</button>
-              <span style="font-weight: 500;" id="page-indicator">Página: 0 / 0</span>
-              <button type="button" class="btn-nav" id="btn-next" disabled>Siguiente &gt;</button>
+            <span style="font-weight: 600;" id="page-indicator">Página 0 de 0</span>
+            <div class="visor-herramientas">
+              <button type="button" class="btn-nav btn-zoom" id="btn-zoom-menos" title="Alejar" aria-label="Alejar">−</button>
+              <span class="zoom-valor" id="zoom-valor">100%</span>
+              <button type="button" class="btn-nav btn-zoom" id="btn-zoom-mas" title="Acercar" aria-label="Acercar">+</button>
+              <button type="button" class="btn-nav" id="btn-pantalla-completa" title="Ver el documento en pantalla completa">⛶ Pantalla completa</button>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">
-              Revise detenidamente todo el documento.
+            <div class="visor-ayuda" style="font-size: 0.82rem; color: var(--text-muted); width: 100%;">
+              Deslice para leer todas las páginas. Puede acercar con los botones o con los dedos.
             </div>
           </div>
 
-          <div class="pdf-container-wrapper">
-            <div class="pdf-shadow-container">
-              <canvas id="pdf-canvas"></canvas>
-            </div>
+          <div class="pdf-container-wrapper" id="pdf-wrapper">
+            <div class="pdf-pages" id="pdf-pages"></div>
           </div>
         </div>
       </div>
@@ -667,38 +701,16 @@
         </h2>
 
         <div class="sig-options">
-          <!-- Option 1: Use recent signature -->
-          <div class="option-card" id="option-existing-card" style="display: none;">
-            <div class="option-header">
-              <input type="radio" name="sig-method" value="existing" id="radio-existing" class="option-radio">
-              <label for="radio-existing" style="margin: 0; cursor: pointer;">Utilizar firma del sistema</label>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Se utilizará la firma más reciente que usted tiene registrada en nuestra base de datos.</p>
-            <div class="signature-preview-container">
-              <img id="existing-sig-img" src="" alt="Firma registrada">
-            </div>
+          <p class="sig-ayuda" id="sig-ayuda">Dibuje su firma con el dedo o el mouse dentro del recuadro.</p>
+          <div class="drawing-canvas-wrapper" id="drawing-area">
+            <canvas class="drawing-canvas" id="drawing-canvas"></canvas>
+            <img id="firma-guardada" class="firma-guardada" alt="Su firma registrada" style="display: none;">
+            <span class="sig-etiqueta" id="sig-etiqueta" style="display: none;">Firma registrada</span>
           </div>
-
-          <!-- Option 2: Draw new signature -->
-          <div class="option-card" id="option-draw-card">
-            <div class="option-header">
-              <input type="radio" name="sig-method" value="draw" id="radio-draw" class="option-radio" checked>
-              <label for="radio-draw" style="margin: 0; cursor: pointer;">Dibujar una nueva firma</label>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Use el mouse o la pantalla táctil de su dispositivo en el recuadro blanco para dibujar su firma.</p>
-            
-            <div class="drawing-container" id="drawing-area">
-              <div class="drawing-canvas-wrapper">
-                <canvas class="drawing-canvas" id="drawing-canvas"></canvas>
-              </div>
-              <button type="button" class="btn-clear" id="btn-clear-sig">Borrar Trazo</button>
-            </div>
+          <div class="sig-acciones">
+            <button type="button" class="btn-clear" id="btn-clear-sig">Limpiar</button>
+            <button type="button" class="btn-submit" id="btn-confirm-sign">Aceptar y firmar</button>
           </div>
-
-          <!-- Confirm button -->
-          <button type="button" class="btn-submit" id="btn-confirm-sign">
-            Firmar Documento Oficial
-          </button>
         </div>
       </div>
     </div>
@@ -725,25 +737,22 @@
 
     // Globals
     let pdfDoc = null;
-    let currentPageNum = 1;
-    let canvas = document.getElementById('pdf-canvas');
-    let ctx = canvas.getContext('2d');
+    let zoom = 1; // 1 = ancho del visor
+    const ZOOMS = [1, 1.5, 2, 2.5, 3];
     let drawCanvas = document.getElementById('drawing-canvas');
     let drawCtx = drawCanvas.getContext('2d');
-    let drawingActive = false;
 
     // DOM Elements
     const workerNameBadge = document.getElementById('worker-name-badge');
     const docNombre = document.getElementById('document-nombre');
     const pageIndicator = document.getElementById('page-indicator');
-    const btnPrev = document.getElementById('btn-prev');
-    const btnNext = document.getElementById('btn-next');
-    const optionExistingCard = document.getElementById('option-existing-card');
-    const existingSigImg = document.getElementById('existing-sig-img');
-    const radioExisting = document.getElementById('radio-existing');
-    const radioDraw = document.getElementById('radio-draw');
-    const optionDrawCard = document.getElementById('option-draw-card');
-    const drawingArea = document.getElementById('drawing-area');
+    const pdfWrapper = document.getElementById('pdf-wrapper');
+    const pdfPages = document.getElementById('pdf-pages');
+    const visorCard = document.getElementById('visor-card');
+    const btnPantallaCompleta = document.getElementById('btn-pantalla-completa');
+    const firmaGuardadaImg = document.getElementById('firma-guardada');
+    const sigEtiqueta = document.getElementById('sig-etiqueta');
+    const sigAyuda = document.getElementById('sig-ayuda');
     const btnClearSig = document.getElementById('btn-clear-sig');
     const btnConfirmSign = document.getElementById('btn-confirm-sign');
     const headerPanel = document.getElementById('header-panel');
@@ -796,13 +805,12 @@
       }];
     }
 
-    // Load PDF Document
+    // Carga el documento y muestra todas sus páginas una debajo de otra
     async function loadPDF() {
       showLoading('Cargando documento original...');
       try {
         pdfDoc = await pdfjsLib.getDocument(CONFIG.originalPdfUrl).promise;
-        currentPageNum = 1;
-        await renderPage(currentPageNum);
+        await renderPages();
       } catch (err) {
         showToast('Error al cargar PDF: ' + err.message, 'error');
       } finally {
@@ -810,161 +818,137 @@
       }
     }
 
-    async function renderPage(pageNum) {
+    // Dibuja todas las páginas al ancho del visor multiplicado por el zoom. Usa devicePixelRatio para
+    // que el texto se vea nítido en celulares; con zoom > 100% el visor se desplaza también a lo ancho.
+    let renderEnCurso = 0;
+    async function renderPages() {
       if (!pdfDoc) return;
-      showLoading('Renderizando página ' + pageNum + '...');
-      try {
-        const page = await pdfDoc.getPage(pageNum);
-
-        // Escala dinámica: antes era fija (1.2, pensada para escritorio),
-        // así que en móvil el canvas ya nacía angosto y el CSS lo encogía
-        // todavía más para caber en el contenedor, dejando el texto
-        // diminuto (solo legible haciendo zoom). Ahora se calcula para que
-        // el documento ocupe el ancho disponible del contenedor, y se usa
-        // devicePixelRatio para que se vea nítido también en pantallas de
-        // alta densidad (la mayoría de celulares).
-        const wrapperEl = document.querySelector('.pdf-container-wrapper');
-        const wrapperStyles = getComputedStyle(wrapperEl);
-        const horizontalPadding = parseFloat(wrapperStyles.paddingLeft) + parseFloat(wrapperStyles.paddingRight);
-        const availableWidth = Math.max(240, wrapperEl.clientWidth - horizontalPadding);
-
-        const baseViewport = page.getViewport({ scale: 1 });
-        const fitScale = availableWidth / baseViewport.width;
-        const dpr = window.devicePixelRatio || 1;
-        const viewport = page.getViewport({ scale: fitScale * dpr });
-
+      const turno = ++renderEnCurso;
+      const estilos = getComputedStyle(pdfWrapper);
+      const anchoVisor = Math.max(240, pdfWrapper.clientWidth - parseFloat(estilos.paddingLeft) - parseFloat(estilos.paddingRight) - 2);
+      const dpr = window.devicePixelRatio || 1;
+      // Mantiene la posición de lectura (proporción del desplazamiento) al cambiar el zoom o el tamaño
+      const proporcion = pdfWrapper.scrollHeight > pdfWrapper.clientHeight ? pdfWrapper.scrollTop / pdfWrapper.scrollHeight : 0;
+      const fragmento = document.createDocumentFragment();
+      for (let n = 1; n <= pdfDoc.numPages; n++) {
+        const page = await pdfDoc.getPage(n);
+        if (turno !== renderEnCurso) return; // hubo otro zoom mientras tanto
+        const escala = (anchoVisor / page.getViewport({ scale: 1 }).width) * zoom;
+        const viewport = page.getViewport({ scale: escala * dpr });
+        const pagina = document.createElement('div');
+        pagina.className = 'pdf-page';
+        pagina.dataset.pagina = n;
+        const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         canvas.style.width = (viewport.width / dpr) + 'px';
-
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: viewport
-        };
-        await page.render(renderContext).promise;
-
-        // Update controls
-        pageIndicator.innerText = `Página: ${pageNum} / ${pdfDoc.numPages}`;
-        btnPrev.disabled = pageNum <= 1;
-        btnNext.disabled = pageNum >= pdfDoc.numPages;
-
-        // Clear all previous signature placeholders
-        document.querySelectorAll('.sig-placeholder-box').forEach(el => el.remove());
-
-        // Draw signature placeholders for the current page
-        const currentPageBoxes = signatureBoxes.filter(b => b.page === pageNum);
-        currentPageBoxes.forEach(box => {
+        canvas.style.height = (viewport.height / dpr) + 'px';
+        pagina.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        if (turno !== renderEnCurso) return;
+        // Recuadros "Firma aquí" de esta página
+        const anchoCss = viewport.width / dpr;
+        const altoCss = viewport.height / dpr;
+        signatureBoxes.filter(b => Number(b.page) === n).forEach(box => {
           const boxEl = document.createElement('div');
           boxEl.className = 'sig-placeholder-box';
-
-          // Calculate display absolute pixels from relative coords
-          const containerW = canvas.clientWidth;
-          const containerH = canvas.clientHeight;
-
-          boxEl.style.left = `${box.x * containerW}px`;
-          boxEl.style.top = `${box.y * containerH}px`;
-          boxEl.style.width = `${box.w * containerW}px`;
-          boxEl.style.height = `${box.h * containerH}px`;
-
+          boxEl.style.left = `${box.x * anchoCss}px`;
+          boxEl.style.top = `${box.y * altoCss}px`;
+          boxEl.style.width = `${box.w * anchoCss}px`;
+          boxEl.style.height = `${box.h * altoCss}px`;
           boxEl.innerHTML = `<span class="sig-placeholder-text">Firma aquí</span>`;
-          canvas.parentNode.appendChild(boxEl);
+          pagina.appendChild(boxEl);
         });
-
-      } catch (err) {
-        showToast('Error al renderizar página: ' + err.message, 'error');
-      } finally {
-        hideLoading();
+        fragmento.appendChild(pagina);
       }
+      pdfPages.innerHTML = '';
+      pdfPages.appendChild(fragmento);
+      pdfWrapper.scrollTop = proporcion * pdfWrapper.scrollHeight;
+      document.getElementById('zoom-valor').innerText = `${Math.round(zoom * 100)}%`;
+      document.getElementById('btn-zoom-menos').disabled = zoom <= ZOOMS[0];
+      document.getElementById('btn-zoom-mas').disabled = zoom >= ZOOMS[ZOOMS.length - 1];
+      actualizarPaginaVisible();
     }
 
-    // Si el usuario rota el dispositivo o cambia el tamaño de la ventana,
-    // re-renderiza para recalcular la escala al nuevo ancho disponible.
+    // "Página X de N" según la página que se está viendo en el visor
+    function actualizarPaginaVisible() {
+      if (!pdfDoc) return;
+      const centro = pdfWrapper.scrollTop + pdfWrapper.clientHeight / 2;
+      let actual = 1;
+      pdfPages.querySelectorAll('.pdf-page').forEach(el => { if (el.offsetTop <= centro) actual = Number(el.dataset.pagina); });
+      pageIndicator.innerText = `Página ${actual} de ${pdfDoc.numPages}`;
+    }
+    pdfWrapper.addEventListener('scroll', actualizarPaginaVisible, { passive: true });
+
+    function cambiarZoom(paso) {
+      const i = ZOOMS.indexOf(zoom) + paso;
+      if (i < 0 || i >= ZOOMS.length) return;
+      zoom = ZOOMS[i];
+      renderPages();
+    }
+    document.getElementById('btn-zoom-menos').addEventListener('click', () => cambiarZoom(-1));
+    document.getElementById('btn-zoom-mas').addEventListener('click', () => cambiarZoom(1));
+
+    // Pantalla completa (el botón atrás del celular también la cierra)
+    function ponerPantallaCompleta(activa) {
+      visorCard.classList.toggle('visor-completo', activa);
+      document.body.classList.toggle('visor-abierto', activa);
+      btnPantallaCompleta.innerText = activa ? '✕ Cerrar' : '⛶ Pantalla completa';
+      renderPages();
+    }
+    btnPantallaCompleta.addEventListener('click', () => {
+      if (visorCard.classList.contains('visor-completo')) {
+        if (history.state && history.state.visorCompleto) history.back(); else ponerPantallaCompleta(false);
+      } else {
+        history.pushState({ visorCompleto: true }, '');
+        ponerPantallaCompleta(true);
+      }
+    });
+    window.addEventListener('popstate', () => {
+      if (visorCard.classList.contains('visor-completo')) ponerPantallaCompleta(false);
+    });
+
+    // Al girar el celular o cambiar el ancho de la ventana se recalcula el ancho de las páginas
+    let anchoAnterior = window.innerWidth;
     let resizeRenderTimeout = null;
     window.addEventListener('resize', () => {
-      if (!pdfDoc) return;
+      if (!pdfDoc || window.innerWidth === anchoAnterior) return; // la barra del navegador también dispara resize
+      anchoAnterior = window.innerWidth;
       clearTimeout(resizeRenderTimeout);
-      resizeRenderTimeout = setTimeout(() => renderPage(currentPageNum), 250);
-    });
-
-    btnPrev.addEventListener('click', () => {
-      if (currentPageNum > 1) {
-        currentPageNum--;
-        renderPage(currentPageNum);
-      }
-    });
-
-    btnNext.addEventListener('click', () => {
-      if (currentPageNum < pdfDoc.numPages) {
-        currentPageNum++;
-        renderPage(currentPageNum);
-      }
+      resizeRenderTimeout = setTimeout(renderPages, 250);
     });
 
     loadPDF();
 
-    // Check GCS for recent signature
+    // Firma registrada: se muestra en el recuadro; "Aceptar" la usa y "Limpiar" deja el recuadro para dibujar
+    let usandoGuardada = false;
+    function mostrarFirmaGuardada(base64) {
+      usandoGuardada = true;
+      firmaGuardadaImg.src = base64;
+      firmaGuardadaImg.style.display = 'block';
+      sigEtiqueta.style.display = 'inline-block';
+      sigAyuda.innerHTML = 'Esta es su <strong>firma registrada</strong>. Presione <strong>Aceptar y firmar</strong> para usarla, o <strong>Limpiar</strong> para dibujar una nueva.';
+    }
+    function prepararFirmaNueva() {
+      usandoGuardada = false;
+      firmaGuardadaImg.style.display = 'none';
+      sigEtiqueta.style.display = 'none';
+      sigAyuda.innerText = 'Dibuje su firma con el dedo o el mouse dentro del recuadro.';
+      resizeDrawCanvas();
+    }
+
     async function checkRecentSignature() {
+      resizeDrawCanvas();
       try {
         const res = await fetch(`/logysign/api/firma-reciente?token=${encodeURIComponent(CONFIG.token)}`);
         if (!res.ok) throw new Error('Error al cargar firma');
         const data = await res.json();
-        
-        if (data.base64) {
-          existingSigImg.src = data.base64;
-          optionExistingCard.style.display = 'block';
-          
-          // Default selection to existing signature
-          radioExisting.checked = true;
-          selectOption('existing');
-        } else {
-          // Force drawing option if no recent signature found
-          radioDraw.checked = true;
-          selectOption('draw');
-        }
+        if (data.base64) mostrarFirmaGuardada(data.base64);
       } catch (err) {
         console.warn('No se pudo verificar firma registrada:', err.message);
-        radioDraw.checked = true;
-        selectOption('draw');
       }
     }
-
     checkRecentSignature();
-
-    // Selection cards click listeners
-    optionExistingCard.addEventListener('click', () => {
-      radioExisting.checked = true;
-      selectOption('existing');
-    });
-
-    optionDrawCard.addEventListener('click', () => {
-      radioDraw.checked = true;
-      selectOption('draw');
-    });
-
-    // Stop event propagation inside the drawing area so clicks/taps don't trigger optionDrawCard listeners
-    drawingArea.addEventListener('click', (e) => e.stopPropagation());
-    drawingArea.addEventListener('touchstart', (e) => e.stopPropagation());
-    drawingArea.addEventListener('mousedown', (e) => e.stopPropagation());
-
-    function selectOption(method) {
-      if (method === 'existing') {
-        optionExistingCard.classList.add('selected');
-        optionDrawCard.classList.remove('selected');
-        drawingArea.style.opacity = '0.5';
-        drawingActive = false;
-      } else {
-        const alreadySelected = optionDrawCard.classList.contains('selected');
-        optionDrawCard.classList.add('selected');
-        optionExistingCard.classList.remove('selected');
-        drawingArea.style.opacity = '1';
-        drawingActive = true;
-        
-        // Only resize (which clears the canvas) if option wasn't already selected
-        if (!alreadySelected) {
-          resizeDrawCanvas();
-        }
-      }
-    }
 
     // Signature Pad canvas drawing implementation
     let isDrawing = false;
@@ -984,9 +968,12 @@
       drawCtx.lineJoin = 'round';
     }
 
-    // Handle window resize for canvas drawing area
+    // Si cambia el ancho (girar el celular) se ajusta el recuadro; la barra del navegador no lo borra
+    let anchoFirma = window.innerWidth;
     window.addEventListener('resize', () => {
-      if (radioDraw.checked) resizeDrawCanvas();
+      if (window.innerWidth === anchoFirma) return;
+      anchoFirma = window.innerWidth;
+      if (!usandoGuardada) resizeDrawCanvas();
     });
 
     // Draw events on Canvas
@@ -1001,7 +988,11 @@
     }
 
     function startDraw(e) {
-      if (!drawingActive) return;
+      if (usandoGuardada) {
+        showToast('Para dibujar una firma nueva, presione Limpiar.', 'success');
+        e.preventDefault();
+        return;
+      }
       isDrawing = true;
       const coords = getCoords(e);
       lastX = coords.x;
@@ -1010,7 +1001,7 @@
     }
 
     function draw(e) {
-      if (!isDrawing || !drawingActive) return;
+      if (!isDrawing || usandoGuardada) return;
       const coords = getCoords(e);
       
       drawCtx.beginPath();
@@ -1038,19 +1029,18 @@
     drawCanvas.addEventListener('touchend', stopDraw);
 
     // Clear Canvas
-    btnClearSig.addEventListener('click', (e) => {
-      e.stopPropagation(); // prevent card select trigger
-      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    btnClearSig.addEventListener('click', () => {
+      if (usandoGuardada) prepararFirmaNueva();
+      else drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     });
 
     // Submit signature
     btnConfirmSign.addEventListener('click', async () => {
-      const sigMethod = document.querySelector('input[name="sig-method"]:checked').value;
       const payload = {
         token: CONFIG.token
       };
 
-      if (sigMethod === 'existing') {
+      if (usandoGuardada) {
         payload.usarFirmaReciente = true;
       } else {
         // Check if drawing canvas is empty

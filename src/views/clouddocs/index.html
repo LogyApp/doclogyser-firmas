@@ -645,6 +645,10 @@
     .badge-pendiente { background: var(--warning-soft); border: 1px solid var(--warning-soft); color: var(--warning-dark); }
     .badge-cancelado { background: var(--border); border: 1px solid var(--border); color: var(--text-muted); }
     .badge-nofirma { background: #ffedd5; border: 1px solid #fed7aa; color: #9a3412; }
+    /* Nueva Firma de LogySign dentro de la pestaña */
+    .ls-nueva-frame { display: block; width: 100%; height: calc(100vh - 150px); min-height: 640px; border: 0; border-radius: var(--radius-sm); background: transparent; transition: opacity 0.2s ease-in-out; }
+    .ls-spinner { width: 38px; height: 38px; border: 3.5px solid var(--accent-soft); border-top-color: var(--accent); border-radius: 50%; animation: lsGirar 0.75s linear infinite; margin: 0 auto 16px; }
+    @keyframes lsGirar { to { transform: rotate(360deg); } }
 
     /* Filtros plegables (pestaña LogySign) */
     .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
@@ -1182,6 +1186,7 @@
           <span id="ret-quincena-txt" class="fq-txt">—</span>
           <button type="button" id="ret-quincena-sig" onclick="retCambiarQuincena(1)" aria-label="Quincena siguiente">›</button>
         </div>
+        <button type="button" class="btn btn-request" id="btn-volver-ls" style="display: none; padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer; font-weight: 600;" onclick="cerrarNuevaFirmaLogysign()">⬅️ Volver al listado</button>
         <button type="button" class="btn btn-submit" id="btn-exportar-excel-cd" style="background: #16a34a; color: #ffffff; border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25); padding: 10px 18px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;" onclick="exportarExcelCloudDocs()">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Exportar Excel</span>
@@ -1450,6 +1455,16 @@
 
     <!-- LogySign: Registros de firma integrados nativamente (mismo patrón que Trabajadores/Consolidado) -->
     <section id="logysign-container" style="display: none;">
+      <!-- NUEVA FIRMA: formulario de LogySign dentro de la pestaña (reemplaza el listado, como el Panel Admin de Aspirantes) -->
+      <div id="lsVistaNueva" style="display: none;">
+        <div id="lsNuevaLoader" style="display:none; padding:60px 20px; text-align:center; background:var(--card-bg); border-radius:var(--radius-sm); border:1px solid var(--border); margin-bottom:16px;">
+          <div class="ls-spinner"></div>
+          <div style="font-size:0.95rem; font-weight:700; color:var(--text);">Cargando formulario de firma...</div>
+        </div>
+        <iframe id="lsFrameNueva" class="ls-nueva-frame" title="Nueva firma LogySign"></iframe>
+      </div>
+
+      <div id="lsVistaListado">
       <section class="filters-card">
         <div class="filtros-toggle" id="logysignFiltrosToggle">
           <span class="filtros-toggle-left">
@@ -1474,12 +1489,16 @@
               </select>
             </div>
             <div class="field">
-              <label for="logysign-filter-desde">Desde</label>
-              <input type="date" id="logysign-filter-desde" onchange="filtrarLogysign()">
+              <label for="logysign-filter-mes">Mes</label>
+              <select id="logysign-filter-mes" onchange="filtrarLogysign()">
+                <option value="">— Todos —</option>
+              </select>
             </div>
             <div class="field">
-              <label for="logysign-filter-hasta">Hasta</label>
-              <input type="date" id="logysign-filter-hasta" onchange="filtrarLogysign()">
+              <label for="logysign-filter-documento">Documento</label>
+              <select id="logysign-filter-documento" onchange="filtrarLogysign()">
+                <option value="">— Todos —</option>
+              </select>
             </div>
             <div class="field">
               <label for="logysign-filter-regional">Regional</label>
@@ -1518,6 +1537,7 @@
           </table>
         </div>
       </main>
+      </div>
     </section>
 
     <section id="descuento-nomina-container" style="display:none;width:100%;height:calc(100vh - 110px);min-height:680px;">
@@ -2688,7 +2708,13 @@
       if (mobileBadge) mobileBadge.innerText = CONFIG.rol;
       sincronizarPerfilMovil();
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      document.getElementById('btn-nueva-firma').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      const btnNuevaFirmaCD = document.getElementById('btn-nueva-firma');
+      btnNuevaFirmaCD.href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      btnNuevaFirmaCD.addEventListener('click', (e) => {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; // abrir en otra pestaña sigue funcionando
+        e.preventDefault();
+        abrirNuevaFirmaLogysign();
+      });
 
       // Pestañas gateadas vía Maestro_Menu (clouddocs) (CONFIG.secciones = Secciones
       // configuradas para el Rol del usuario, ver computarAccesoCloudDocs)
@@ -2834,6 +2860,13 @@
       const btnDeTab = tabParam === 'retfaltantes' ? 'docretiros' : tabParam;
       const tabSolicitada = document.getElementById(`tab-btn-${btnDeTab}`) ? tabParam : tabPorDefecto;
       switchTab(tabSolicitada);
+      // Enlace o recarga en Nueva Firma de LogySign: el listado queda como paso anterior del historial
+      if (tabSolicitada === 'logysign' && urlParamsInit.get('subtab') === 'nueva') {
+        const urlListado = new URL(window.location.href);
+        urlListado.searchParams.delete('subtab');
+        history.replaceState(null, '', urlListado);
+        abrirNuevaFirmaLogysign();
+      }
 
       // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
       if (typeof initBotonTicket === 'function') {
@@ -3007,6 +3040,7 @@
 
     // Switch between tabs
     function switchTab(tab) {
+      if (tab !== 'logysign') ocultarNuevaFirmaLogysign();
       activeTab = tab;
       actualizarTabHeaderCD(tab);
       const esDocRetiros = tab === 'retfaltantes' || tab === 'docretiros';
@@ -5120,6 +5154,8 @@
     let logysignUniqueRegionales = [];
     let logysignUniqueOperaciones = [];
     let logysignUniqueCausas = [];
+    let logysignUniqueMeses = [];
+    let logysignUniqueDocumentos = [];
     let logysignCargado = false;
     let logysignSort = { key: 'fecha_registro', dir: 'desc' };
     let logysignCols = [];
@@ -5183,8 +5219,8 @@
       let n = 0;
       if (document.getElementById('logysign-filter-buscar').value.trim()) n++;
       if (document.getElementById('logysign-filter-estado').value) n++;
-      if (document.getElementById('logysign-filter-desde').value) n++;
-      if (document.getElementById('logysign-filter-hasta').value) n++;
+      if (document.getElementById('logysign-filter-mes').value) n++;
+      if (document.getElementById('logysign-filter-documento').value) n++;
       if (document.getElementById('logysign-filter-regional').value) n++;
       if (document.getElementById('logysign-filter-operacion').value) n++;
       const filterCausa = document.getElementById('logysign-filter-causa');
@@ -5197,8 +5233,8 @@
     function resetFiltrosLogysign() {
       document.getElementById('logysign-filter-buscar').value = '';
       document.getElementById('logysign-filter-estado').value = '';
-      document.getElementById('logysign-filter-desde').value = '';
-      document.getElementById('logysign-filter-hasta').value = '';
+      document.getElementById('logysign-filter-mes').value = '';
+      document.getElementById('logysign-filter-documento').value = '';
       document.getElementById('logysign-filter-regional').value = '';
       document.getElementById('logysign-filter-operacion').value = '';
       const filterCausa = document.getElementById('logysign-filter-causa');
@@ -5225,11 +5261,14 @@
           colaborador: r.nombre_trabajador || '',
           documento: r.nombre_documento || r.prefijo || '',
           creador: r.nombre_creador || r.usuario_creador || '',
+          mes_registro: logysignMesDe(r.fecha_registro),
         }));
 
         logysignUniqueRegionales = [...new Set(logysignRecords.map(r => r.regional).filter(Boolean))].sort();
         logysignUniqueOperaciones = [...new Set(logysignRecords.map(r => r.operacion).filter(Boolean))].sort();
         logysignUniqueCausas = [...new Set(logysignRecords.map(r => r.causa).filter(Boolean))].sort();
+        logysignUniqueMeses = [...new Set(logysignRecords.map(r => r.mes_registro).filter(Boolean))].sort().reverse();
+        logysignUniqueDocumentos = [...new Set(logysignRecords.map(r => r.documento).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'es'));
 
         if (logysignParams && logysignParams.verCausa) {
           document.getElementById('logysign-filter-causa-wrapper').style.display = 'flex';
@@ -5246,72 +5285,71 @@
       }
     }
 
+    // Mes (AAAA-MM, hora de Bogotá) de la fecha de registro y su nombre para el filtro
+    const LOGYSIGN_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    function logysignMesDe(fecha) {
+      if (!fecha) return '';
+      const d = new Date(fecha);
+      if (isNaN(d)) return '';
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).format(d).slice(0, 7);
+    }
+    const logysignNombreMes = (mes) => `${LOGYSIGN_MESES[Number(mes.slice(5, 7)) - 1]} ${mes.slice(0, 4)}`;
+
+    // Llena un select con sus opciones y el conteo de cada una, conservando lo elegido
+    function logysignLlenarSelect(el, opciones, conteos, etiquetaTodos, etiqueta = (v) => v) {
+      if (!el) return;
+      const actual = el.value;
+      el.innerHTML = `<option value="">${etiquetaTodos}</option>` + opciones.map(v =>
+        `<option value="${esc(v)}"${v === actual ? ' selected' : ''}>${esc(etiqueta(v))} (${conteos[v] || 0})</option>`).join('');
+    }
+
     function filtrarLogysign() {
       actualizarBadgeFiltrosLogysign();
 
       const q = norm(document.getElementById('logysign-filter-buscar').value.trim());
-      const status = document.getElementById('logysign-filter-estado').value;
-      const desde = document.getElementById('logysign-filter-desde').value;
-      const hasta = document.getElementById('logysign-filter-hasta').value;
-      const regionalVal = document.getElementById('logysign-filter-regional').value;
-      const operacionVal = document.getElementById('logysign-filter-operacion').value;
-      const filterCausaEl = document.getElementById('logysign-filter-causa');
-      const causaVal = filterCausaEl ? filterCausaEl.value : '';
+      // Filtros de lista: cada uno cuenta sus opciones con los demás filtros aplicados (sin el propio)
+      const filtros = [
+        { clave: 'estado', el: document.getElementById('logysign-filter-estado'), valor: (it) => it.estado_vista },
+        { clave: 'mes', el: document.getElementById('logysign-filter-mes'), valor: (it) => it.mes_registro },
+        { clave: 'documento', el: document.getElementById('logysign-filter-documento'), valor: (it) => it.documento },
+        { clave: 'regional', el: document.getElementById('logysign-filter-regional'), valor: (it) => it.regional },
+        { clave: 'operacion', el: document.getElementById('logysign-filter-operacion'), valor: (it) => it.operacion },
+        { clave: 'causa', el: document.getElementById('logysign-filter-causa'), valor: (it) => it.causa },
+      ];
+      filtros.forEach(f => { f.elegido = f.el ? f.el.value : ''; });
 
-      const matchBase = (item) => {
-        if (q) {
-          const textMatch =
-            norm(item.nombre_trabajador || '').includes(q) ||
-            norm(String(item.identificacion || '')).includes(q) ||
-            norm(item.documento || '').includes(q);
-          if (!textMatch) return false;
-        }
-        if (status && item.estado_vista !== status) return false;
-        if (item.fecha_registro) {
-          const itemDate = String(item.fecha_registro).split('T')[0];
-          if (desde && itemDate < desde) return false;
-          if (hasta && itemDate > hasta) return false;
-        }
-        return true;
-      };
+      const pasaTexto = (item) => !q ||
+        norm(item.nombre_trabajador || '').includes(q) ||
+        norm(String(item.identificacion || '')).includes(q) ||
+        norm(item.documento || '').includes(q);
+      const pasa = (item, excepto) => pasaTexto(item) &&
+        filtros.every(f => f.clave === excepto || !f.elegido || f.valor(item) === f.elegido);
 
-      // Conteos dinámicos por select, excluyendo únicamente el filtro propio de cada uno
-      const regCounts = {}, opCounts = {}, causaCounts = {};
-      logysignRecords.forEach(item => {
-        if (matchBase(item) && (!operacionVal || item.operacion === operacionVal) && (!causaVal || item.causa === causaVal) && item.regional) {
-          regCounts[item.regional] = (regCounts[item.regional] || 0) + 1;
-        }
-        if (matchBase(item) && (!regionalVal || item.regional === regionalVal) && (!causaVal || item.causa === causaVal) && item.operacion) {
-          opCounts[item.operacion] = (opCounts[item.operacion] || 0) + 1;
-        }
-        if (matchBase(item) && (!regionalVal || item.regional === regionalVal) && (!operacionVal || item.operacion === operacionVal) && item.causa) {
-          causaCounts[item.causa] = (causaCounts[item.causa] || 0) + 1;
-        }
+      const conteos = {};
+      filtros.forEach(f => {
+        conteos[f.clave] = {};
+        logysignRecords.forEach(item => {
+          const v = f.valor(item);
+          if (v && pasa(item, f.clave)) conteos[f.clave][v] = (conteos[f.clave][v] || 0) + 1;
+        });
       });
 
-      const selReg = document.getElementById('logysign-filter-regional');
-      const curReg = selReg.value;
-      selReg.innerHTML = '<option value="">— Todas —</option>' +
-        logysignUniqueRegionales.map(r => `<option value="${esc(r)}"${r === curReg ? ' selected' : ''}>${esc(r)} (${regCounts[r] || 0})</option>`).join('');
-
-      const selOp = document.getElementById('logysign-filter-operacion');
-      const curOp = selOp.value;
-      selOp.innerHTML = '<option value="">— Todas —</option>' +
-        logysignUniqueOperaciones.map(o => `<option value="${esc(o)}"${o === curOp ? ' selected' : ''}>${esc(o)} (${opCounts[o] || 0})</option>`).join('');
-
-      if (filterCausaEl) {
-        const curCausa = filterCausaEl.value;
-        filterCausaEl.innerHTML = '<option value="">— Todas —</option>' +
-          logysignUniqueCausas.map(c => `<option value="${esc(c)}"${c === curCausa ? ' selected' : ''}>${esc(c)} (${causaCounts[c] || 0})</option>`).join('');
+      // Estado: opciones fijas con su conteo
+      const selEstado = filtros[0].el;
+      if (selEstado) {
+        [...selEstado.options].forEach(opt => {
+          if (!opt.value) return;
+          if (!opt.dataset.base) opt.dataset.base = opt.textContent;
+          opt.textContent = `${opt.dataset.base} (${conteos.estado[opt.value] || 0})`;
+        });
       }
+      logysignLlenarSelect(filtros[1].el, logysignUniqueMeses, conteos.mes, '— Todos —', logysignNombreMes);
+      logysignLlenarSelect(filtros[2].el, logysignUniqueDocumentos, conteos.documento, '— Todos —');
+      logysignLlenarSelect(filtros[3].el, logysignUniqueRegionales, conteos.regional, '— Todas —');
+      logysignLlenarSelect(filtros[4].el, logysignUniqueOperaciones, conteos.operacion, '— Todas —');
+      logysignLlenarSelect(filtros[5].el, logysignUniqueCausas, conteos.causa, '— Todas —');
 
-      const filtered = logysignRecords.filter(item => {
-        if (!matchBase(item)) return false;
-        if (regionalVal && item.regional !== regionalVal) return false;
-        if (operacionVal && item.operacion !== operacionVal) return false;
-        if (causaVal && item.causa !== causaVal) return false;
-        return true;
-      });
+      const filtered = logysignRecords.filter(item => pasa(item, null));
 
       renderTableHeader('logysign-thead', logysignCols, logysignSort, () => {
         sortDataArray(filtered, logysignSort.key, logysignSort.dir);
@@ -5502,6 +5540,68 @@
         hideLoader();
       }
     }
+
+    // Nueva Firma dentro de la pestaña: el formulario de LogySign en un iframe (como el Panel Admin de
+    // Aspirantes). Se agrega una entrada al historial para que "atrás" vuelva al listado.
+    function abrirNuevaFirmaLogysign(opciones = {}) {
+      if (activeTab !== 'logysign') switchTab('logysign');
+      document.getElementById('lsVistaListado').style.display = 'none';
+      document.getElementById('lsVistaNueva').style.display = 'block';
+      document.getElementById('btn-volver-ls').style.display = 'inline-flex';
+      const loader = document.getElementById('lsNuevaLoader');
+      const frame = document.getElementById('lsFrameNueva');
+      loader.style.display = 'block';
+      frame.style.opacity = '0';
+      frame.onload = () => {
+        try { if (frame.contentWindow.location.href === 'about:blank') return; } catch (e) {}
+        loader.style.display = 'none';
+        frame.style.opacity = '1';
+      };
+      frame.src = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      if (!opciones.sinHistorial) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'logysign');
+        url.searchParams.set('subtab', 'nueva');
+        history.pushState({ lsNueva: true }, '', url);
+      }
+      window.scrollTo(0, 0);
+    }
+
+    // Oculta la vista y muestra el listado (sin tocar el historial)
+    function ocultarNuevaFirmaLogysign() {
+      const vista = document.getElementById('lsVistaNueva');
+      if (!vista || vista.style.display === 'none') return;
+      const frame = document.getElementById('lsFrameNueva');
+      frame.onload = null;
+      frame.src = 'about:blank';
+      vista.style.display = 'none';
+      document.getElementById('lsVistaListado').style.display = 'block';
+      document.getElementById('btn-volver-ls').style.display = 'none';
+    }
+
+    // Botón "Volver al listado"
+    function cerrarNuevaFirmaLogysign() {
+      if (history.state && history.state.lsNueva) { history.back(); return; } // popstate oculta la vista
+      ocultarNuevaFirmaLogysign();
+      const url = new URL(window.location.href);
+      url.searchParams.delete('subtab');
+      history.replaceState(null, '', url);
+    }
+
+    window.addEventListener('popstate', (ev) => {
+      const vista = document.getElementById('lsVistaNueva');
+      const visible = vista && vista.style.display !== 'none';
+      if (ev.state && ev.state.lsNueva && !visible) abrirNuevaFirmaLogysign({ sinHistorial: true });
+      else if (!(ev.state && ev.state.lsNueva) && visible) ocultarNuevaFirmaLogysign();
+    });
+
+    // El formulario avisa cuando el documento quedó enviado o programado: se vuelve al listado actualizado
+    window.addEventListener('message', (ev) => {
+      if (ev.origin !== window.location.origin || !ev.data || ev.data.tipo !== 'logysignEnviado') return;
+      cerrarNuevaFirmaLogysign();
+      showToast(ev.data.programado ? 'Envío programado con éxito.' : 'Documento enviado a firma con éxito.', 'success');
+      fetchLogysignRecords();
+    });
 
     async function regenerarSoporteLogysign(id) {
       if (!confirm('¿Generar el soporte de solicitud de firma digital de este registro? Quedará en los documentos del trabajador en Cloud Docs.')) return;
