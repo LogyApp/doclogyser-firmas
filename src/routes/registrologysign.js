@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
 const pool = require('../services/db');
 const { transporter, LOGO_HEADER_ATTACHMENT } = require('../services/email');
 const { storage } = require('../services/storage');
@@ -67,38 +65,15 @@ async function borrarArchivoGcs(url, { excluirDocId, excluirLogysignId }) {
   }
 }
 
-// Servir la vista principal de registros
-router.get('/', async (req, res) => {
-  try {
-    const { usuario } = req.query;
-    if (!usuario) {
-      return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
-    }
-
-    const u = await usuarioLogysign(usuario);
-    if (!u) {
-      return res.status(403).send('<h2>Error: Usuario sin acceso a LogySign</h2>');
-    }
-    const uRows = [u];
-
-    const pathTemplate = path.join(__dirname, '../views/logysign/registros.html');
-    const html = fs.readFileSync(pathTemplate, 'utf8');
-
-    const config = JSON.stringify({
-      usuarioId: uRows[0].ID,
-      usuarioNombre: uRows[0].Nombre,
-      usuarioRol: uRows[0].Rol || ''
-    }).replace(/<\/script>/gi, '<\\/script>');
-
-    res.send(html.replace('__CONFIG__', config));
-  } catch (err) {
-    console.error('[registrologysign] Error serving records page:', err);
-    res.status(500).send('<h2>Error interno del servidor</h2>');
-  }
+// La página aparte de registros ya no existe: los registros están en Cloud Docs › LogySign.
+// Los enlaces viejos (/registrologysign y /registroslogysign) llevan a esa pestaña con el mismo usuario.
+router.get('/', (req, res) => {
+  const { usuario } = req.query;
+  res.redirect(usuario ? `/cloud-docs?usuario=${encodeURIComponent(usuario)}&tab=logysign` : '/cloud-docs');
 });
 
 // API: Parámetros de pantalla de Registros según el rol (Config_Parametros CloudDocs / LogySign).
-// Los usan /registrologysign y la pestaña LogySign de Cloud Docs.
+// Los usa la pestaña LogySign de Cloud Docs.
 router.get('/api/parametros', async (req, res) => {
   try {
     const { usuario } = req.query;
