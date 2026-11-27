@@ -1344,6 +1344,14 @@
       max-height: 90vh;
       overflow-y: auto;
     }
+    #modalFormRequisicion .modal-hdr {
+      position: sticky;
+      top: -1px;
+      z-index: 2;
+      background: var(--card-bg);
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
     .req-section-hdr {
       font-size: 0.8rem;
       font-weight: 800;
@@ -4082,6 +4090,10 @@
           <!-- 6. Gestión de Selección (Campos de Control) -->
           <div class="req-section-hdr" id="hdrReqControl"><span>⚙️</span> Gestión y Seguimiento de Selección</div>
           <div class="req-form-grid">
+            <div class="req-field" id="boxReqFechaRequisicion" style="display:none;">
+              <label>Fecha y hora de requisición <span id="lockFechaRequisicion" style="color:var(--text-muted); font-size:0.7rem;">🔒 Solo lectura</span></label>
+              <input type="datetime-local" step="1" id="formReqFechaRequisicion" class="req-input">
+            </div>
             <div class="req-field" id="boxReqEstado">
               <label>Estado de la Requisición <span id="lockEstado" style="color:var(--text-muted); font-size:0.7rem;">🔒 Selección / Sistema</span></label>
               <select id="formReqEstado">
@@ -5829,6 +5841,8 @@
         await cargarCatalogosRequisiciones();
       }
       _reqFormModo = 'crear';
+      document.getElementById('boxReqFechaRequisicion').style.display = 'none';
+      document.getElementById('formReqFechaRequisicion').value = '';
       document.getElementById('formReqTitle').innerHTML = '<span>➕</span> Nueva Requisición de Personal';
       document.getElementById('formReqSubtitle').textContent = 'Completa los campos requeridos para radicar la vacante en el sistema.';
       document.getElementById('formReqId').value = '';
@@ -6097,16 +6111,28 @@
     }
 
     async function abrirModalEditarRequisicion(req) {
-      cerrarModales();
       if (!_reqCatalogos) {
         await cargarCatalogosRequisiciones();
       }
+      const detalle = document.getElementById('modalDetalleRequisicion');
+      const entradaDetalle = detalle && detalle._backEntry;
+      if (entradaDetalle) {
+        detalle.style.display = 'none';
+        detalle._backEntry = null;
+      }
+      cerrarModales();
       _reqFormModo = 'editar';
 
       const codigo = req['Requisición'] || ('#' + req.IdRequisicion);
       document.getElementById('formReqTitle').innerHTML = `<span>✏️</span> Editar Requisición ${esc(codigo)}`;
       document.getElementById('formReqSubtitle').textContent = 'Modifica los parámetros de la requisición según tus permisos.';
       document.getElementById('formReqId').value = req.IdRequisicion;
+      const fechaReq = document.getElementById('formReqFechaRequisicion');
+      fechaReq.value = req.fechaRequisicionEditable || '';
+      fechaReq.dataset.original = fechaReq.value;
+      fechaReq.disabled = !_reqCatalogos?.permisos?.puedeModificarFechaRequisicion;
+      document.getElementById('boxReqFechaRequisicion').style.display = 'block';
+      document.getElementById('lockFechaRequisicion').style.display = fechaReq.disabled ? 'inline' : 'none';
 
       // Asignar campos: Regional primero, luego Operación y Ciudad
       const formReg = document.getElementById('formReqRegional');
@@ -6216,7 +6242,7 @@
 
       const elFormReq = document.getElementById('modalFormRequisicion');
       elFormReq.style.display = 'flex';
-      elFormReq._backEntry = registrarModalBack(() => cerrarModales());
+      elFormReq._backEntry = entradaDetalle || registrarModalBack(() => cerrarModales());
     }
 
     async function guardarRequisicion(event) {
@@ -6256,6 +6282,14 @@
           'Responsable de Selección': document.getElementById('formReqResponsable').value || null,
           'Fecha de Finalización': document.getElementById('formReqFechaFin').value || null
         };
+        const fechaReq = document.getElementById('formReqFechaRequisicion');
+        if (modo === 'editar' && !fechaReq.disabled && fechaReq.value !== fechaReq.dataset.original) {
+          if (!fechaReq.value) {
+            showToast('Indica la fecha y hora de requisición.', 'error');
+            return;
+          }
+          payload['Fecha Requisición'] = fechaReq.value;
+        }
 
         // Validaciones obligatorias
         if (!payload['Operación'] || !payload['Cargo Requerido']) {

@@ -959,6 +959,7 @@ async function obtenerParametrosTalenthub() {
   cacheParametrosTalenthub = { t: Date.now(), data: mapa };
   return { ...mapa };
 }
+
 // Reporte interactivo de ANS Selección: monitoreo de cumplimiento y tiempos sobre datos reales
 router.get('/api/ans-seleccion', async (req, res) => {
   try {
@@ -993,11 +994,30 @@ router.get('/api/ans-seleccion', async (req, res) => {
   }
 });
 
-
 function rolPermitidoEnParametro(rolUsuario, parametroStr) {
   if (!rolUsuario || !parametroStr) return false;
   const roles = parametroStr.split(',').map(s => s.trim().toLowerCase());
   return roles.includes(rolUsuario.trim().toLowerCase());
+}
+
+function rolPermitidoNormalizado(rol, parametro) {
+  const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const rolNormalizado = normalizar(rol);
+  return !!rolNormalizado && typeof parametro === 'string' && parametro.split(',').some(item => normalizar(item) === rolNormalizado);
+}
+
+function puedeModificarFechaRequisicion(rol, paramsConfig) {
+  return rolPermitidoNormalizado(rol, paramsConfig['Requisiciones:Modificar Fecha de Requisición']);
+}
+
+function fechaHoraRequisicionValida(valor) {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(valor)) return false;
+  const [fecha, hora] = valor.split('T');
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  const [hh, mm, ss = 0] = hora.split(':').map(Number);
+  if (anio < 1000 || hh > 23 || mm > 59 || ss > 59) return false;
+  const comprobacion = new Date(Date.UTC(anio, mes - 1, dia));
+  return comprobacion.getUTCFullYear() === anio && comprobacion.getUTCMonth() === mes - 1 && comprobacion.getUTCDate() === dia;
 }
 
 // 1. GET /api/requisiciones/catalogos
@@ -1018,7 +1038,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     const paramsConfig = await obtenerParametrosTalenthub();
 
     // Permisos basados en parámetros de configuración
-    const puedeEditarDespuesDeGuardar = rolPermitidoEnParametro(rol, paramsConfig['Editar Requisición despues de guardar']);
+    const puedeEditarDespuesDeGuardar = rolPermitidoNormalizado(rol, paramsConfig['Editar Requisición despues de guardar']);
     const puedeVerSalario = rolPermitidoEnParametro(rol, paramsConfig['Editar y ver Salario en Requisición']);
     const puedeModificarSalario = puedeVerSalario;
     const tiempoLimiteRequisicion = parseInt(paramsConfig['Tiempo limite de Requisición']) || 8;
@@ -1136,6 +1156,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       puedeEditarParametros,
       puedeModificarEstado: puedeEditarEstado,
       puedeModificarFechaFin: puedeEditarFechaFin,
+      puedeModificarFechaRequisicion: puedeModificarFechaRequisicion(rol, paramsConfig),
       puedeReabrirRequisicion,
       puedeTodosLosCargos,
       puedeCargosAdministrativos,
@@ -1672,6 +1693,7 @@ router.get('/api/requisiciones/:id', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT *,
               DATE_FORMAT(\`Fecha Requisición\`, '%Y-%m-%d %H:%i') as fechaRequisicionFormatted,
+              DATE_FORMAT(\`Fecha Requisición\`, '%Y-%m-%dT%H:%i:%s') as fechaRequisicionEditable,
               DATE_FORMAT(\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacionFormatted,
               DATE_FORMAT(\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacionFormatted
        FROM \`Dynamic_Requisiciones\`
@@ -2086,7 +2108,7 @@ router.put('/api/requisiciones/:id', async (req, res) => {
     const rol = acceso.rol || '';
 
     // Permiso de editar después de guardar según Config_Parametros
-    const puedeEditarDespues = rolPermitidoEnParametro(rol, paramsConfig['Editar Requisición despues de guardar']);
+    const puedeEditarDespues = rolPermitidoNormalizado(rol, paramsConfig['Editar Requisición despues de guardar']);
     if (!puedeEditarDespues) {
       return res.status(403).json({ error: 'No tienes permiso para editar requisiciones después de guardadas.' });
     }
@@ -2102,6 +2124,16 @@ router.put('/api/requisiciones/:id', async (req, res) => {
 
     const cargoUsuario = (acceso.cargo || '').toUpperCase().trim();
     const b = req.body;
+
+    const modificaFechaRequisicion = Object.prototype.hasOwnProperty.call(b, 'Fecha Requisición');
+    if (modificaFechaRequisicion) {
+      if (!puedeModificarFechaRequisicion(rol, paramsConfig)) {
+        return res.status(403).json({ error: 'No tienes permiso para modificar la fecha de requisición.' });
+      }
+      if (!fechaHoraRequisicionValida(b['Fecha Requisición'])) {
+        return res.status(400).json({ error: 'Indica una fecha y hora de requisición válidas.' });
+      }
+    }
 
     // Permisos especiales según Config_Parametros
     const puedeEditarEstado = rolPermitidoEnParametro(rol, paramsConfig['Modificar Estado en Requisición'] || 'Sistema, CoorSelección, Selección Centro');
@@ -2176,6 +2208,7 @@ router.put('/api/requisiciones/:id', async (req, res) => {
         \`EPP Requeridos\` = ?,
         \`Fecha de Finalización\` = ?,
         \`Responsable de Selección\` = ?,
+        ${modificaFechaRequisicion ? '`Fecha Requisición` = ?,' : ''}
         \`usuario_actualizacion\` = ?,
         \`Fecha Actualización\` = CONVERT_TZ(NOW(),'SYSTEM','-05:00')
       WHERE \`IdRequisicion\` = ?`,
@@ -2204,6 +2237,7 @@ router.put('/api/requisiciones/:id', async (req, res) => {
         b['EPP Requeridos'] !== undefined ? b['EPP Requeridos'] : current['EPP Requeridos'],
         nuevaFechaFin,
         nuevoResponsable,
+        ...(modificaFechaRequisicion ? [b['Fecha Requisición'].replace('T', ' ')] : []),
         acceso.usuarioId,
         id
       ]
@@ -4745,5 +4779,3 @@ router.use(require('./cargosFunciones'));
 router.use(require('./entrevistasRetiro'));
 
 module.exports = router;
-
-
