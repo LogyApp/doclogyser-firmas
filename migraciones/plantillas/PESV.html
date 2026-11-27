@@ -1,0 +1,142 @@
+<style>
+  /* Estilos encerrados en .pesv (mismo diseño de los documentos recientes). Datos del trabajador y firmas los llena src/services/pesv.js. */
+  .pesv { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif; color: #0f172a; font-size: 8.9pt; line-height: 1.4; -webkit-font-smoothing: antialiased }
+  .pesv * { box-sizing: border-box }
+  .pesv p { margin: 0 0 5px 0; text-align: justify }
+  .pesv .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 9px; border: 1px solid #cbd5e1 }
+  .pesv .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle }
+  .pesv .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff }
+  .pesv .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto }
+  .pesv .header-title-cell { width: 56%; background: #e6edf7; text-align: center; padding: 10px 14px }
+  .pesv .doc-title { font-size: 10.5pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25 }
+  .pesv .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px }
+  .pesv .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px }
+  .pesv .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35 }
+  .pesv .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt }
+  .pesv .meta-ver { color: #334155 }
+  .pesv .meta-date { color: #64748b; font-size: 7.5pt }
+  .pesv .metrics-card { display: table; width: 100%; table-layout: fixed; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 0 0 9px 0 }
+  .pesv .metric-item { display: table-cell; padding: 7px 12px; border-right: 1px solid #e2e8f0; vertical-align: top }
+  .pesv .metric-item:last-child { border-right: none }
+  .pesv .metric-label { font-size: 7.3pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px }
+  .pesv .metric-value { font-size: 9.6pt; font-weight: 700; color: #000b59 }
+  .pesv .metric-sub { font-size: 8pt; color: #64748b; font-weight: 600 }
+  .pesv .section-block { margin-bottom: 8px }
+  .pesv .section-title { font-size: 8.3pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 3px; border-bottom: 1px solid #e2e8f0; margin-bottom: 5px; page-break-after: avoid; break-after: avoid }
+  .pesv .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; margin-right: 6px; vertical-align: -1px }
+  .pesv ol.pasos { margin: 0; padding-left: 18px }
+  .pesv ol.pasos li { margin-bottom: 2px; font-size: 8.6pt; text-align: justify }
+  .pesv ol.pasos li strong { color: #000b59 }
+  .pesv .nota-box { background: #fff7ed; border: 1px solid #fed7aa; border-left: 3.5px solid #f55400; border-radius: 6px; padding: 6px 12px; font-size: 8.2pt; color: #7c2d12 }
+  .pesv .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 7px 12px; font-size: 8.6pt; color: #1e293b }
+  .pesv .info-box p:last-child { margin-bottom: 0 }
+  .pesv .sig-table { width: 100%; border-collapse: collapse; margin-top: 4px; page-break-inside: avoid; break-inside: avoid }
+  .pesv .sig-table td { width: 50%; vertical-align: top; text-align: center; padding: 0 14px }
+  .pesv .sig-table td:first-child { padding-left: 0 }
+  .pesv .sig-table td:last-child { padding-right: 0 }
+  .pesv .sig-role { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; margin-bottom: 4px }
+  .pesv .sig-img-wrap { height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 4px }
+  .pesv .sig-img { max-height: 58px; max-width: 210px; display: block; margin: 0 auto }
+  .pesv .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px }
+  .pesv .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase }
+  .pesv .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35 }
+  .pesv .firma-nota { font-size: 7.5pt; color: #94a3b8 }
+  .pesv .doc-footer { margin-top: 8px; text-align: center }
+  .pesv .doc-footer .line { height: 2px; background: #f55400; border-radius: 1px; margin-bottom: 7px }
+  .pesv .doc-footer .addr { color: #000b59; font-size: 7.5pt; line-height: 1.4; letter-spacing: 0.3px }
+  .pesv .doc-footer .legal { color: #94a3b8; font-size: 6.8pt; margin-top: 2px }
+</style>
+
+<div class="pesv">
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell"><img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img"></td>
+      <td class="header-title-cell">
+        <div class="doc-title">Declaración de cumplimiento de las recomendaciones del Plan Estratégico de Seguridad Vial</div>
+        <div class="doc-subtitle">Seguridad y Salud en el Trabajo</div>
+        <div class="doc-subdetail">Resolución 40595 de 2022 &bull; Plan Estratégico de Seguridad Vial (PESV)</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Trabajador(a)</div>
+      <div class="metric-value">{{nombre_trabajador}}</div>
+      <div class="metric-sub">C.C. {{identificacion}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Cargo · Operación</div>
+      <div class="metric-value" style="font-size:9pt">{{cargo}}</div>
+      <div class="metric-sub">{{operacion}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Fecha de la declaración</div>
+      <div class="metric-value" style="color:#f55400">{{fecha_notificacion}}</div>
+      <div class="metric-sub">Radicado {{radicado}}</div>
+    </div>
+  </div>
+
+  <section class="section-block">
+    <div class="section-title">Propósito</div>
+    <p>Con el propósito de proteger la vida, la integridad y la salud de sus colaboradores, <strong>APOYO LOGÍSTICO Y OPERATIVO S.A.S.</strong>, en cumplimiento de la Resolución 40595 de 2022 y de las acciones de su Plan Estratégico de Seguridad Vial, recuerda la importancia de adoptar conductas seguras en todos los desplazamientos que el trabajador realice en vehículo particular o en transporte público, en especial cuando se dirige a exámenes médicos ocupacionales, valoraciones médicas, capacitaciones, reuniones o a otra operación o actividad relacionada con la empresa, incluidos los traslados de sede ordenados en ejercicio del <em>ius variandi</em> locativo.</p>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Compromisos del trabajador en cada desplazamiento</div>
+    <p style="margin-bottom:5px">Antes de iniciar el recorrido y durante todo el trayecto, el trabajador se compromete a:</p>
+    <ol class="pasos">
+      <li>Conducir respetando los <strong>límites de velocidad</strong> y las normas de tránsito.</li>
+      <li>Usar en todo momento el <strong>cinturón de seguridad</strong> y los elementos de protección exigidos por la ley.</li>
+      <li>En motocicleta, portar <strong>casco certificado</strong> y los elementos de protección personal obligatorios, también cuando se desplace a otra operación dentro de la jornada laboral.</li>
+      <li>No conducir bajo los efectos del <strong>alcohol, sustancias psicoactivas</strong> o medicamentos que afecten la capacidad para conducir.</li>
+      <li>No usar el <strong>teléfono celular</strong> ni otros dispositivos electrónicos mientras conduce.</li>
+      <li>Verificar antes de salir el <strong>buen estado mecánico</strong> del vehículo y tener su documentación vigente.</li>
+      <li>Conducir solo en adecuadas <strong>condiciones físicas y mentales</strong>, y abstenerse de hacerlo en caso de fatiga, sueño o malestar de salud.</li>
+      <li>Mantener una <strong>conducción preventiva</strong> y respetuosa con los demás actores viales.</li>
+      <li>Reportar de inmediato a la empresa cualquier <strong>incidente o accidente de tránsito</strong> ocurrido durante el desplazamiento.</li>
+      <li>Enviar <strong>evidencia fotográfica</strong> del evento siempre que sea posible.</li>
+    </ol>
+  </section>
+
+  <div class="nota-box" style="margin-bottom:8px"><strong>Reporte de eventos:</strong> todo incidente o accidente de tránsito ocurrido durante un desplazamiento relacionado con el trabajo debe informarse de inmediato a su jefe directo y al área de Seguridad y Salud en el Trabajo, con las fotografías y los datos disponibles.</div>
+
+  <section class="section-block">
+    <div class="section-title">Declaración del trabajador</div>
+    <div class="info-box">
+      <p>Yo, <strong>{{nombre_trabajador}}</strong>, identificado(a) con cédula de ciudadanía No. <strong>{{identificacion}}</strong>, en el cargo de <strong>{{cargo}}</strong>, manifiesto que he leído y comprendido las recomendaciones de seguridad vial descritas en este documento. De manera voluntaria me comprometo a cumplirlas en los desplazamientos que realice en vehículo particular o en transporte público, entendiendo que estas medidas buscan proteger mi vida, mi salud y la de los demás actores viales.</p>
+    </div>
+  </section>
+
+  <section class="section-block" style="page-break-inside: avoid; break-inside: avoid">
+    <div class="section-title">Firmas</div>
+    <table class="sig-table">
+      <tr>
+        <td>
+          <div class="sig-role">Trabajador(a)</div>
+          <div class="sig-img-wrap">{{firma_trabajador_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_trabajador}}</div>
+          <div class="sig-details">C.C. {{identificacion}}<br>{{cargo}}</div>
+        </td>
+        <td>
+          <div class="sig-role">Líder SST</div>
+          <div class="sig-img-wrap">{{firma_sst_html}}</div>
+          <div class="sig-line"></div>
+          <div class="sig-name">{{nombre_sst}}</div>
+          <div class="sig-details">{{cargo_sst}}</div>
+        </td>
+      </tr>
+    </table>
+    <div class="doc-footer">
+      <div class="line"></div>
+      <div class="addr">DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN</div>
+      <div class="legal">Apoyo Logístico y Operativo S.A.S. &bull; Documento electrónico — Ley 527 de 1999</div>
+    </div>
+  </section>
+</div>

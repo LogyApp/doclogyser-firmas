@@ -188,6 +188,14 @@ async function subirPDFARO(identificacion, idAro, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+// PESV (SST): un archivo por declaración en la carpeta del trabajador; regenerarlo lo reemplaza sin cambiar la URL.
+async function subirPDFPESV(identificacion, idPesv, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.PESV.${idPesv}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: CACHE_DOC_REGENERABLE } });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 // EVIN (SST): un archivo por evaluación en la carpeta del trabajador; regenerarlo lo reemplaza sin cambiar la URL.
 async function subirPDFEVIN(identificacion, idEvin, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.EVIN.${idEvin}.pdf`;
@@ -484,6 +492,7 @@ async function subirComprobanteConsignacion(idConsignacion, buffer, originalName
 
 module.exports = {
   subirPDFARO,
+  subirPDFPESV,
   subirPDFEVIN,
   subirPDFINGE,
   subirPDFInformeDisciplinario,

@@ -3231,7 +3231,8 @@
     </section>
 
     <!-- PESTAÑA DOCUMENTOS DE INDUCCIÓN (antes Documentación Inicial). Cada subpestaña se ve según Maestro_Menu
-         (sst / ARO, EVIN, INGE, Prueba de Consumo, Compromiso SST). ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js · INGE: /js/sst-inge.js.
+         (sst / ARO, EVIN, INGE, PESV, Prueba de Consumo, Compromiso SST). ARO: /js/sst-aro.js · EVIN: /js/sst-evin.js · INGE: /js/sst-inge.js
+         · PESV (Declaración del Plan Estratégico de Seguridad Vial): /js/sst-pesv.js.
          Prueba de Consumo y Compromiso SST conservan su propio pane (pane-pruebaconsumo, pane-compromiso); la barra se
          pasa a ese pane al abrirlas (colocarBarraDocInicial). -->
     <section class="tab-pane" id="pane-docinicial" style="display: none;">
@@ -3239,12 +3240,14 @@
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-aro" data-subtab-docinicial="aro" role="tab" onclick="switchDocInicialSubtab('aro')">Análisis de Riesgo</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-evin" data-subtab-docinicial="evin" role="tab" onclick="switchDocInicialSubtab('evin')">Evaluación de Inducción</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-inge" data-subtab-docinicial="inge" role="tab" onclick="switchDocInicialSubtab('inge')">Comprobante de Inducción</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-docinicial-pesv" data-subtab-docinicial="pesv" role="tab" onclick="switchDocInicialSubtab('pesv')">Seguridad Vial</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-pruebaconsumo" data-subtab-docinicial="pruebaconsumo" role="tab" onclick="switchDocInicialSubtab('pruebaconsumo')">Prueba de Consumo</button>
         <button type="button" class="subtab-btn" id="subtab-btn-docinicial-compromiso" data-subtab-docinicial="compromiso" role="tab" onclick="switchDocInicialSubtab('compromiso')">Compromisos SST</button>
       </div>
       <div id="pane-aro" role="tabpanel" style="display: none;"></div>
       <div id="pane-evin" role="tabpanel" style="display: none;"></div>
       <div id="pane-inge" role="tabpanel" style="display: none;"></div>
+      <div id="pane-pesv" role="tabpanel" style="display: none;"></div>
       <!-- Campana de Notificaciones de Documentación Inicial (se ubica en el encabezado de la subpestaña visible) -->
       <div style="display: none;" id="notif-bell-holder-doc">
         <div class="notif-bell-container" id="notif-bell-container-doc">
@@ -4997,6 +5000,7 @@
       { id: 'aro', seccion: 'ARO', titulo: etiquetaSeccionSst('ARO', 'Análisis de Riesgo'), buscar: 'buscarAroSst' },
       { id: 'evin', seccion: 'EVIN', titulo: etiquetaSeccionSst('EVIN', 'Evaluación de Inducción'), buscar: 'buscarEvinSst' },
       { id: 'inge', seccion: 'INGE', titulo: etiquetaSeccionSst('INGE', 'Comprobante de Inducción'), buscar: 'buscarIngeSst' },
+      { id: 'pesv', seccion: 'PESV', titulo: etiquetaSeccionSst('PESV', 'Seguridad Vial'), buscar: 'buscarPesvSst' },
       // Con "tab": siguen siendo pestañas por dentro (su pane, datos y URL ?tab=...), solo se muestran como subpestañas
       { id: 'pruebaconsumo', seccion: 'Prueba de Consumo', titulo: etiquetaSeccionSst('Prueba de Consumo', 'Prueba de Consumo'), tab: 'pruebaconsumo' },
       { id: 'compromiso', seccion: 'Compromiso SST', titulo: etiquetaSeccionSst('Compromiso SST', 'Compromisos SST'), tab: 'compromiso' }
@@ -5404,10 +5408,11 @@
         targetSubtab = ['temas', 'tema'].includes(rawSubtab) ? 'temas' : 'evals';
       } else if (['pruebaconsumo', 'prueba', 'consumo', 'pc'].includes(rawTab)) {
         targetTab = 'pruebaconsumo';
-      } else if (['docinicial', 'documentacioninicial', 'documentosinduccion', 'aro', 'analisisriesgo', 'evin', 'inge'].includes(rawTab)) {
+      } else if (['docinicial', 'documentacioninicial', 'documentosinduccion', 'aro', 'analisisriesgo', 'evin', 'inge', 'pesv', 'seguridadvial'].includes(rawTab)) {
         targetTab = 'docinicial';
         const subtabsDoc = SUBTABS_DOC_INICIAL.map(s => s.id);
-        targetSubtab = subtabsDoc.includes(rawTab) ? rawTab : (subtabsDoc.includes(rawSubtab) ? rawSubtab : null);
+        const tabDoc = rawTab === 'seguridadvial' ? 'pesv' : rawTab;
+        targetSubtab = subtabsDoc.includes(tabDoc) ? tabDoc : (subtabsDoc.includes(rawSubtab) ? rawSubtab : null);
       } else if (['participacion', 'asistencia', 'part'].includes(rawTab)) {
         targetTab = 'participacion';
       } else if (['compromiso', 'compromisosst', 'csst'].includes(rawTab)) {
@@ -5640,7 +5645,7 @@
       } else if (tipo === 'cm-apertura' || tipo === 'cm-cierre') {
         if (identificacion && String(currentExpedienteTrabajadorId) === String(identificacion)) await abrirExpedienteTrabajador(identificacion, false);
       } else {
-        const recargar = { aro: window.recargarAroSst, evin: window.recargarEvinSst, inge: window.recargarIngeSst }[tipo];
+        const recargar = { aro: window.recargarAroSst, evin: window.recargarEvinSst, inge: window.recargarIngeSst, pesv: window.recargarPesvSst }[tipo];
         if (recargar) await recargar();
       }
     }
@@ -6491,6 +6496,7 @@
       if (actual.id === 'aro' && typeof window.inicializarAroSst === 'function') window.inicializarAroSst();
       if (actual.id === 'evin' && typeof window.inicializarEvinSst === 'function') window.inicializarEvinSst();
       if (actual.id === 'inge' && typeof window.inicializarIngeSst === 'function') window.inicializarIngeSst();
+      if (actual.id === 'pesv' && typeof window.inicializarPesvSst === 'function') window.inicializarPesvSst();
       const acciones = document.querySelector(`#pane-${actual.id} .tab-actions`);
       const campana = document.getElementById('notif-bell-container-doc');
       if (acciones && campana && campana.parentElement !== acciones) {
@@ -6592,7 +6598,7 @@
     function actualizarVistaActual() {
       if (currentTab === 'ats') return cargarAts();
       if (currentTab === 'docinicial') {
-        const recargar = { aro: window.recargarAroSst, evin: window.recargarEvinSst, inge: window.recargarIngeSst }[subtabDocInicial];
+        const recargar = { aro: window.recargarAroSst, evin: window.recargarEvinSst, inge: window.recargarIngeSst, pesv: window.recargarPesvSst }[subtabDocInicial];
         cargarNotificacionesSST('doc');
         return typeof recargar === 'function' ? recargar() : null;
       }
@@ -11752,5 +11758,6 @@
   <script src="/js/sst-aro.js?v=20261124b"></script>
   <script src="/js/sst-evin.js?v=20261124c"></script>
   <script src="/js/sst-inge.js?v=20261124c"></script>
+  <script src="/js/sst-pesv.js?v=20261127a"></script>
 </body>
 </html>

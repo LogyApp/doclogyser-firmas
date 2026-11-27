@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Declaración Plan Estratégico de Seguridad Vial — LOG&amp;SER</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f1f5f9; color: #1e293b; line-height: 1.5; padding: 16px; }
+    .wrapper { max-width: 860px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+    .header { background: #1B2A5E; color: #ffffff; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .header h2 { font-size: 1.05rem; font-weight: 700; }
+    .header small { display: block; font-size: .78rem; opacity: .8; font-weight: 400; }
+    .header img { height: 34px; background: #fff; border-radius: 6px; padding: 3px 6px; }
+    .content { padding: 22px 24px; }
+    .intro { font-size: .92rem; color: #475569; margin-bottom: 16px; }
+    .documento { border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 22px; overflow-x: auto; }
+    .firma-box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; background: #fafbfc; }
+    .firma-box h3 { font-size: .95rem; color: #1B2A5E; margin-bottom: 4px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; margin: 10px 0 14px; cursor: pointer; }
+    .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+    .ayuda { font-size: .86rem; color: #64748b; margin-bottom: 10px; }
+    /* Un solo recuadro: la firma registrada (si existe) o el lienzo para dibujar una nueva */
+    .recuadro { position: relative; border: 2px dashed #cbd5e1; border-radius: 8px; background: #ffffff; touch-action: none; }
+    canvas { display: block; width: 100%; height: 170px; cursor: crosshair; }
+    .firma-guardada { position: absolute; inset: 0; margin: auto; max-width: 90%; max-height: 85%; object-fit: contain; pointer-events: none; }
+    .etiqueta { position: absolute; top: 6px; left: 8px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #15803d; background: #f0fdf4; padding: 2px 8px; border-radius: 999px; pointer-events: none; }
+    .acciones { display: flex; gap: 10px; margin-top: 12px; }
+    .btn { padding: 12px 18px; font-size: .95rem; font-weight: 700; border-radius: 7px; border: none; cursor: pointer; }
+    .btn-limpiar { background: #ffffff; color: #dc2626; border: 1px solid #e2e8f0; }
+    .btn-firmar { flex: 1; background: #F55400; color: #fff; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .exito { display: none; padding: 44px 24px; text-align: center; }
+    .exito .icono { font-size: 3.4rem; color: #10b981; }
+    .exito h3 { font-size: 1.35rem; color: #0f172a; margin: 8px 0; }
+    .exito p { color: #64748b; }
+    .cargando { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 1000; font-weight: 700; color: #475569; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: #1B2A5E; border-radius: 50%; animation: giro 1s linear infinite; }
+    @keyframes giro { to { transform: rotate(360deg); } }
+    /* El documento en celular: columnas una debajo de otra */
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .wrapper { border-radius: 0; }
+      .content { padding: 16px; }
+      .documento { padding: 10px; }
+      .documento .pesv .metrics-card, .documento .pesv .metric-item { display: block; border-right: none; }
+      .documento .pesv .doc-header-table td { display: block; width: auto; }
+      .documento .pesv .sig-table td { display: block; width: auto; padding: 0 0 14px 0; }
+    }
+  </style>
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/logyapp-icon-32.png">
+  <meta name="theme-color" content="#1B2A5E">
+</head>
+<body>
+  <div class="cargando" id="cargando"><div class="spinner"></div>Guardando su firma…</div>
+  <div class="wrapper">
+    <div class="header">
+      <h2>Declaración Plan Estratégico de Seguridad Vial<small>SST-F-025 · Seguridad y Salud en el Trabajo</small></h2>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+    </div>
+
+    <div class="content" id="panelFirma">
+      <p class="intro">Hola, <strong id="nombre"></strong>. Lea completa la declaración de cumplimiento de las recomendaciones del Plan Estratégico de Seguridad Vial. Al final encontrará el espacio para firmarla.</p>
+      <div class="documento">__DOCUMENTO__</div>
+
+      <div class="firma-box">
+        <h3>Firma del trabajador</h3>
+        <label class="check"><input type="checkbox" id="leido"> He leído las recomendaciones de seguridad vial y me comprometo a cumplirlas en mis desplazamientos.</label>
+        <p class="ayuda" id="ayuda">Dibuje su firma con el dedo o el mouse dentro del recuadro.</p>
+        <div class="recuadro">
+          <canvas id="lienzo"></canvas>
+          <img id="firmaGuardada" class="firma-guardada" alt="Su firma registrada" style="display:none">
+          <span class="etiqueta" id="etiqueta" style="display:none">Firma registrada</span>
+        </div>
+        <div class="acciones">
+          <button type="button" class="btn btn-limpiar" onclick="limpiar()">Limpiar</button>
+          <button type="button" class="btn btn-firmar" onclick="firmar()">Aceptar y firmar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="exito" id="panelExito">
+      <div class="icono">✓</div>
+      <h3>Declaración firmada</h3>
+      <p>Su firma quedó registrada y el documento se guardó en su hoja de vida. Ya puede cerrar esta ventana.</p>
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG_FIRMA__;
+    const $ = (id) => document.getElementById(id);
+    $('nombre').textContent = CONFIG.nombre;
+    const lienzo = $('lienzo');
+    const ctx = lienzo.getContext('2d');
+    let dibujando = false, usado = false, usandoGuardada = false;
+
+    function ajustarLienzo() {
+      const r = lienzo.getBoundingClientRect();
+      lienzo.width = r.width; lienzo.height = r.height;
+      ctx.strokeStyle = '#111827'; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      usado = false;
+    }
+    // Firma registrada en el recuadro: "Aceptar" la usa y "Limpiar" deja el recuadro para dibujar
+    function mostrarGuardada() {
+      usandoGuardada = true;
+      $('firmaGuardada').src = CONFIG.firmaBase64;
+      $('firmaGuardada').style.display = 'block';
+      $('etiqueta').style.display = 'inline-block';
+      $('ayuda').innerHTML = 'Esta es su <strong>firma registrada</strong>. Presione <strong>Aceptar y firmar</strong> para usarla, o <strong>Limpiar</strong> para dibujar una nueva.';
+    }
+    function limpiar() {
+      if (usandoGuardada) {
+        usandoGuardada = false;
+        $('firmaGuardada').style.display = 'none';
+        $('etiqueta').style.display = 'none';
+        $('ayuda').textContent = 'Dibuje su firma con el dedo o el mouse dentro del recuadro.';
+      }
+      ajustarLienzo();
+    }
+
+    const pos = (e) => { const r = lienzo.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: (p.clientX - r.left) * (lienzo.width / r.width), y: (p.clientY - r.top) * (lienzo.height / r.height) }; };
+    const iniciar = (e) => {
+      e.preventDefault();
+      if (usandoGuardada) { alert('Para dibujar una firma nueva, presione Limpiar.'); return; }
+      dibujando = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    };
+    const mover = (e) => { if (!dibujando) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); usado = true; };
+    const terminar = () => { dibujando = false; };
+    lienzo.addEventListener('mousedown', iniciar); lienzo.addEventListener('mousemove', mover);
+    lienzo.addEventListener('mouseup', terminar); lienzo.addEventListener('mouseleave', terminar);
+    lienzo.addEventListener('touchstart', iniciar, { passive: false }); lienzo.addEventListener('touchmove', mover, { passive: false });
+    lienzo.addEventListener('touchend', terminar);
+    // Si cambia el ancho (girar el celular) se ajusta el recuadro; la barra del navegador no lo borra
+    let anchoAnterior = window.innerWidth;
+    window.addEventListener('resize', () => {
+      if (window.innerWidth === anchoAnterior) return;
+      anchoAnterior = window.innerWidth;
+      if (!usandoGuardada) ajustarLienzo();
+    });
+
+    setTimeout(ajustarLienzo, 0);
+    if (CONFIG.firmaBase64) mostrarGuardada();
+
+    async function firmar() {
+      if (!$('leido').checked) { alert('Marque la casilla para confirmar que leyó la declaración.'); $('leido').focus(); return; }
+      if (!usandoGuardada && !usado) { alert('Dibuje su firma en el recuadro.'); return; }
+      $('cargando').style.display = 'flex';
+      try {
+        const r = await fetch('/pesv/api/firmar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(usandoGuardada ? { token: CONFIG.token, usarFirmaRegistrada: true } : { token: CONFIG.token, firmaBase64: lienzo.toDataURL('image/png') }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.ok) throw new Error(d.error || 'No se pudo guardar la firma.');
+        $('panelFirma').style.display = 'none';
+        $('panelExito').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (e) { alert(e.message); }
+      finally { $('cargando').style.display = 'none'; }
+    }
+  </script>
+</body>
+</html>

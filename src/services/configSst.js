@@ -40,6 +40,14 @@ const PERMISOS_SST = {
     editarFirmado: 'Roles que pueden editar y regenerar PDF de ARO firmados',
     eliminarFirmado: 'Roles que pueden eliminar ARO firmados',
   },
+  // PESV (Declaración del Plan Estratégico de Seguridad Vial): src/routes/pesv.js
+  PESV: {
+    clave: 'pesv',
+    crear: 'Roles que pueden crear declaraciones PESV',
+    eliminar: 'Roles que pueden eliminar declaraciones PESV',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de declaraciones PESV firmadas',
+    eliminarFirmado: 'Roles que pueden eliminar declaraciones PESV firmadas',
+  },
   // EVIN (Evaluación de Inducción Corporativa): src/routes/evin.js
   EVIN: {
     clave: 'evin',

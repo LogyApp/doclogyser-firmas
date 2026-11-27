@@ -29,6 +29,10 @@ const TIPOS = {
     seccion: 'ARO', permiteCreador: true,
     consulta: 'SELECT identificacion, usuario, operacion, url_doc, url_firma AS firma_trabajador FROM Dynamic_aro WHERE id_aro = ? FOR UPDATE',
   },
+  pesv: {
+    seccion: 'PESV', permiteCreador: true,
+    consulta: 'SELECT identificacion, usuario, operacion, url_doc, url_firma AS firma_trabajador FROM Dynamic_pesv WHERE id_pesv = ? FOR UPDATE',
+  },
   evin: {
     seccion: 'EVIN', permiteCreador: true,
     consulta: 'SELECT identificacion, usuario, operacion, url_doc, url_firma AS firma_trabajador FROM Dynamic_evin WHERE id_evin = ? FOR UPDATE',
