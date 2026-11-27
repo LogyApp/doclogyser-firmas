@@ -190,14 +190,96 @@ async function verificarEnviosProgramados() {
   }
 }
 
+// Hora actual de Bogotá (0-23)
+function horaBogota() {
+  return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Bogota', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+}
+
+/**
+ * Recordatorio automático a los documentos pendientes (Config_Parametros CloudDocs / LogySign):
+ * 'Días entre recordatorios automáticos' desde el envío o el último recordatorio (también el
+ * manual), hasta 'Máximo de recordatorios automáticos', solo dentro del 'Horario de recordatorios
+ * automáticos' y con el enlace vigente. Va al trabajador con copia a quien creó el registro.
+ */
+async function verificarRecordatorios() {
+  try {
+    const cfg = await obtenerConfigLogysign();
+    if (!cfg.notificaciones || !cfg.diasRecordatorio || !cfg.maxRecordatorios) return;
+    const hora = horaBogota();
+    if (hora < cfg.horaInicioRecordatorios || hora >= cfg.horaFinRecordatorios) return;
+
+    const [rows] = await pool.execute(
+      `SELECT dl.*, cdt.Documento AS nombre_documento
+       FROM Dynamic_Logysign dl
+       LEFT JOIN Config_Doc_Trabajador cdt ON cdt.Id = dl.id_config_doc
+       WHERE dl.estado = 'PENDIENTE'
+         AND (dl.token_expira IS NULL OR dl.token_expira > NOW())
+         AND dl.recordatorios_enviados < ?
+         AND COALESCE(dl.ultimo_recordatorio, dl.fecha_envio_programado, dl.fecha_registro) <= NOW() - INTERVAL ? HOUR
+         AND dl.email_trabajador IS NOT NULL AND dl.email_trabajador <> ''
+         AND dl.base_url IS NOT NULL AND dl.base_url <> ''`,
+      [cfg.maxRecordatorios, Math.round(cfg.diasRecordatorio * 24)]
+    );
+
+    for (const doc of rows) {
+      // Se reclama el registro antes de enviar (dos servicios de Cloud Run revisan a la vez)
+      const [claim] = await pool.execute(
+        `UPDATE Dynamic_Logysign SET ultimo_recordatorio = NOW(), recordatorios_enviados = recordatorios_enviados + 1
+         WHERE id = ? AND estado = 'PENDIENTE' AND recordatorios_enviados = ?`,
+        [doc.id, doc.recordatorios_enviados]
+      );
+      if (!claim.affectedRows) continue;
+      try {
+        const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [doc.usuario_creador]);
+        const correo = correoSolicitudFirma({
+          nombreTrabajador: doc.nombre_trabajador,
+          identificacion: doc.identificacion,
+          nombreDocumento: doc.nombre_documento || doc.prefijo,
+          cargo: doc.cargo,
+          operacion: doc.operacion,
+          linkFirma: `${doc.base_url}/logysign/sign/${doc.token}`,
+          linkDescuento: await enlaceDescuentoPendiente(doc.base_url, doc.id_descuento_auto),
+          recordatorio: true,
+        });
+        await transporter.sendMail({
+          from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
+          to: doc.email_trabajador,
+          cc: uRows.length && uRows[0].Email ? uRows[0].Email : undefined,
+          subject: correo.subject,
+          html: correo.html,
+          attachments: [LOGO_HEADER_ATTACHMENT],
+        });
+        console.log(`[logysignScheduler] Recordatorio automático ${doc.recordatorios_enviados + 1} enviado para id=${doc.id}`);
+      } catch (errEnvio) {
+        console.error(`[logysignScheduler] Falló el recordatorio automático de id=${doc.id}:`, errEnvio.message);
+        // Se deshace el reclamo para reintentar en el próximo ciclo
+        await pool.execute(
+          'UPDATE Dynamic_Logysign SET ultimo_recordatorio = ?, recordatorios_enviados = ? WHERE id = ?',
+          [doc.ultimo_recordatorio, doc.recordatorios_enviados, doc.id]
+        ).catch(() => {});
+      }
+    }
+  } catch (err) {
+    if (err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+      console.warn(`[logysignScheduler] Recordatorios: BD no disponible (${err.code}), se reintenta en el próximo ciclo.`);
+    } else {
+      console.error('[logysignScheduler] Error revisando recordatorios automáticos:', err);
+    }
+  }
+}
+
 function iniciarProgramadorEnvios() {
   console.log('[logysignScheduler] Scheduled send checking interval started.');
   // Check every 1 minute
   setInterval(verificarEnviosProgramados, 60 * 1000);
+  // Recordatorios automáticos: cada hora (el primero a los 5 minutos del arranque)
+  setTimeout(verificarRecordatorios, 5 * 60 * 1000);
+  setInterval(verificarRecordatorios, 60 * 60 * 1000);
 }
 
 module.exports = {
   obtenerCcEmails,
   verificarEnviosProgramados,
+  verificarRecordatorios,
   iniciarProgramadorEnvios
 };

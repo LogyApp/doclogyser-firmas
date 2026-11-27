@@ -5558,6 +5558,7 @@
         <p><strong>Creador:</strong> ${esc(item.creador || '—')}</p>
         <p><strong>Estado:</strong> ${logysignBadgeEstado(item)}</p>
         ${expiraHtml}
+        ${item.estado === 'PENDIENTE' ? `<p><strong>Recordatorios automáticos:</strong> ${item.recordatorios_enviados || 0}${item.ultimo_recordatorio ? ` (último aviso: ${logysignFechaHora(item.ultimo_recordatorio)})` : ''}</p>` : ''}
       `;
 
       document.getElementById('logysign-contacto-email').value = item.email_trabajador || '';

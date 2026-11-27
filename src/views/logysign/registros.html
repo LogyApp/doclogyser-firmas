@@ -345,6 +345,12 @@
       border: 1px solid rgba(2, 132, 199, 0.18);
     }
 
+    /* Botones redondos de la columna Acciones (mismo estilo de la pestaña LogySign de Cloud Docs) */
+    .celda-acciones { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .btn-icon-circle { width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease; text-decoration: none; flex-shrink: 0; padding: 0; }
+    .btn-icon-circle:hover { filter: brightness(0.9); transform: scale(1.08); }
+    .btn-icon-circle svg { width: 15px; height: 15px; }
+
     .badge-nofirma {
       background: rgba(234, 88, 12, 0.1);
       color: #9a3412;
@@ -728,7 +734,7 @@
       if (PARAMS_LS.verCreador) columns.push({ key: 'creador', label: 'Creado por', width: 150 });
       if (PARAMS_LS.verCausa) columns.push({ key: 'causa', label: 'Causa', width: 180 });
       columns.push({ key: 'estado', label: 'Estado', width: 120 });
-      columns.push({ key: 'acciones', label: 'Acciones', width: 260 });
+      columns.push({ key: 'acciones', label: 'Acciones', width: 200 });
     }
 
     // Etiqueta del estado (estado_vista viene del servidor: PENDIENTE con enlace vencido = VENCIDO)
@@ -740,7 +746,68 @@
       CANCELADO:  ['badge-cancelled', 'Cancelado'],
       NO_FIRMA:   ['badge-nofirma', 'No firma'],
     };
-    // Soporte de solicitud de firma digital de los registros cerrados como No firma
+    // ── Columna Acciones con iconos redondos (mismo estilo de la pestaña LogySign de Cloud Docs) ──
+    const ICONOS_LS = {
+      ver: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>',
+      whatsapp: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+      copiar: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>',
+      enviar: '<line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>',
+      renovar: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/>',
+      nofirma: '<circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>',
+      pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>',
+      soporte: '<path d="M4 4h16v16H4z"></path><polyline points="4 6 12 13 20 6"></polyline>',
+    };
+    function iconoLs(icono, color, titulo, { onclick, href } = {}) {
+      const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_LS[icono]}</svg>`;
+      const est = `background:${color}; color:#fff;`;
+      if (href) return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn-icon-circle" style="${est}" title="${titulo}">${svg}</a>`;
+      return `<button type="button" class="btn-icon-circle" style="${est}" title="${titulo}" onclick="${onclick}">${svg}</button>`;
+    }
+    // Enlace de WhatsApp con el mensaje de firma (el contrato con Autorización de Descuento lleva los dos enlaces)
+    function waUrlRegistro(item) {
+      const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
+      let texto = `Hola, por favor ingresa al siguiente enlace para firmar tu documento: ${linkFirma}`;
+      if (item.con_descuento) {
+        const linkFirmaDescuento = `${window.location.origin}/descuentonomina/firmar?item=${item.auto_id_descuento}&token=${item.auto_token_firma}`;
+        texto = `¡Hola! Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo \n\nPara completar tu proceso de ingreso de forma rápida, puedes firmar tus documentos directamente desde aquí o revisarlos en el correo electrónico que te acabamos de enviar (donde también encontrarás los mismos enlaces por si prefieres gestionarlos desde allí):\n\n📄 1. Contrato de Trabajo:\n👉 ${linkFirma}\n(Por favor verifica que tus datos personales estén correctos y lee las condiciones antes de firmar).\n\n📝 2. Autorización de Descuento:\n👉 ${linkFirmaDescuento}\n(Este formato es un requisito estándar de la compañía que se firma de manera preventiva para respaldar los activos y herramientas de trabajo frente a daños o pérdidas).\n\nUna vez firmes ambos documentos, el sistema enviará los respaldos directamente a nuestro soporte legal.\n\nPor ultimo si deseas afiliar beneficiarios a la caja de compensación, dime qué beneficiario deseas afiliar y te indicaré los documentos que me debes enviar para su respectiva afiliación.\n\nAvísanos por este medio si tienes alguna duda o cuando hayas terminado. ¡Muchos éxitos en esta nueva etapa con nosotros!`;
+      }
+      let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+      if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+      return cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${encodeURIComponent(texto)}` : `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    }
+    function accionesTabla(item) {
+      const id = item.id;
+      const vistaPrevia = iconoLs('ver', '#0284c7', 'Ver documento con el cuadro de firma (aún sin firmar)',
+        { href: `/registrologysign/api/vista-previa/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}` });
+      const noFirma = item.puede_no_firma ? iconoLs('nofirma', '#e67e22', 'Marcar como No firma (genera soporte)', { onclick: `marcarNoFirma('${id}')` }) : '';
+      let html = '';
+      if (item.estado_vista === 'VENCIDO') {
+        html = vistaPrevia + iconoLs('renovar', '#16a34a', 'Enlace vencido: renovar el plazo y reenviar el correo', { onclick: `reenviarCorreo('${id}')` }) + noFirma;
+      } else if (item.estado_vista === 'PROGRAMADO') {
+        return `<span style="font-size: 0.8rem; color: var(--text-muted);">Se envía el ${fechaHora(item.fecha_envio_programado)}</span>`;
+      } else if (item.estado_vista === 'CANCELADO') {
+        return `<span style="font-size: 0.8rem; color: var(--text-muted);">Reemplazado por un envío nuevo</span>`;
+      } else if (item.estado === 'PENDIENTE') {
+        const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
+        html = vistaPrevia
+          + iconoLs('whatsapp', '#25d366', 'Enviar por WhatsApp', { href: waUrlRegistro(item) })
+          + iconoLs('copiar', '#64748b', 'Copiar enlace de firma', { onclick: `copiarAlPortapapeles('${linkFirma}')` })
+          + iconoLs('enviar', '#16a34a', 'Reenviar notificación por correo', { onclick: `reenviarCorreo('${id}')` })
+          + noFirma;
+      } else {
+        html = iconoLs('pdf', '#dc2626', 'Ver PDF firmado', { href: `/logysign/api/signed-pdf/${id}` });
+        if (item.no_firma && item.soporte_existe) {
+          html += iconoLs('soporte', '#ea580c', 'Ver soporte de solicitud de firma digital',
+            { href: `/registrologysign/api/soporte/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}` });
+        }
+        if (item.no_firma && item.puede_no_firma) {
+          html += iconoLs('renovar', '#0284c7', `${item.soporte_existe ? 'Regenerar' : 'Generar'} soporte de solicitud de firma digital`, { onclick: `regenerarSoporte('${id}')` });
+        }
+      }
+      return `<div class="celda-acciones">${html}</div>`;
+    }
+
+    // Soporte de solicitud de firma digital de los registros cerrados como No firma (panel de detalle)
     function soporteAccionesHtml(item, ancho) {
       if (!item.no_firma) return '';
       const est = ancho ? 'width: 100%; margin-bottom: 8px;' : 'padding: 7px 10px;';
@@ -1148,67 +1215,8 @@
             case 'estado': {
               return `<td>${badgeEstado(item)}</td>`;
             }
-            case 'acciones': {
-              let actionsHtml = '';
-              if (item.estado_vista === 'VENCIDO') {
-                // Enlace vencido: no se comparte; Renovar lo reactiva (y reenvía el correo si está habilitado)
-                actionsHtml = `
-                  <div style="display: flex; gap: 6px; justify-content: center;">
-                    <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="padding: 7px 10px;" title="Renueva el plazo del enlace y reenvía el correo">
-                      Renovar enlace
-                    </button>
-                    ${item.puede_no_firma ? `<button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
-                      No Firma
-                    </button>` : ''}
-                  </div>
-                `;
-              } else if (item.estado_vista === 'PROGRAMADO') {
-                actionsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted);">Se envía el ${fechaHora(item.fecha_envio_programado)}</span>`;
-              } else if (item.estado_vista === 'CANCELADO') {
-                actionsHtml = `<span style="font-size: 0.8rem; color: var(--text-muted);">Reemplazado por un envío nuevo</span>`;
-              } else if (item.estado === 'PENDIENTE') {
-                const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
-                let msgWaText = '';
-                if (item.con_descuento) {
-                  const linkFirmaDescuento = `${window.location.origin}/descuentonomina/firmar?item=${item.auto_id_descuento}&token=${item.auto_token_firma}`;
-                  msgWaText = encodeURIComponent(`¡Hola! Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo \n\nPara completar tu proceso de ingreso de forma rápida, puedes firmar tus documentos directamente desde aquí o revisarlos en el correo electrónico que te acabamos de enviar (donde también encontrarás los mismos enlaces por si prefieres gestionarlos desde allí):\n\n📄 1. Contrato de Trabajo:\n👉 ${linkFirma}\n(Por favor verifica que tus datos personales estén correctos y lee las condiciones antes de firmar).\n\n📝 2. Autorización de Descuento:\n👉 ${linkFirmaDescuento}\n(Este formato es un requisito estándar de la compañía que se firma de manera preventiva para respaldar los activos y herramientas de trabajo frente a daños o pérdidas).\n\nUna vez firmes ambos documentos, el sistema enviará los respaldos directamente a nuestro soporte legal.\n\nPor ultimo si deseas afiliar beneficiarios a la caja de compensación, dime qué beneficiario deseas afiliar y te indicaré los documentos que me debes enviar para su respectiva afiliación.\n\nAvísanos por este medio si tienes alguna duda o cuando hayas terminado. ¡Muchos éxitos en esta nueva etapa con nosotros!`);
-                } else {
-                  msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu documento: ${linkFirma}`);
-                }
-                let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
-                if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
-                const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
-
-                actionsHtml = `
-                  <div style="display: flex; gap: 6px; justify-content: center;">
-                    <a href="${waUrl}" target="_blank" class="btn btn-success" style="background: #25d366; border-color: #25d366; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 7px 10px;">
-                      WhatsApp
-                    </a>
-                    <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')" style="padding: 7px 10px;">
-                      Copiar
-                    </button>
-                    <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="padding: 7px 10px;">
-                      Reenviar
-                    </button>
-                    ${item.puede_no_firma ? `<button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
-                      No Firma
-                    </button>` : ''}
-                  </div>
-                `;
-              } else {
-                const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
-                actionsHtml = `
-                  <div style="display: flex; gap: 6px; justify-content: center;">
-                    <a href="${viewPdfUrl}" target="_blank" class="btn btn-success" style="width: 100%;">
-                      <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,3H14.82C14.4,1.84 13.3,1 12,1C10.7,1 9.6,1.84 9.18,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M12,3A1,1 0 0,1 13,4A1,1 0 0,1 12,5A1,1 0 0,1 11,4A1,1 0 0,1 12,3M14,17H7V15H14V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
-                      Ver PDF Firmado
-                    </a>
-                    ${soporteAccionesHtml(item)}
-                  </div>
-                `;
-              }
-              return `<td style="text-align: center;">${actionsHtml}</td>`;
-            }
+            case 'acciones':
+              return `<td style="text-align: center;">${accionesTabla(item)}</td>`;
             default:
               return '<td></td>';
           }
@@ -1217,7 +1225,7 @@
         tr.innerHTML = htmlCells;
         tr.style.cursor = 'pointer';
         tr.onclick = (e) => {
-          if (e.target.closest('.causa-editable') || e.target.closest('.btn') || e.target.closest('a') || e.target.closest('svg') || e.target.closest('path')) {
+          if (e.target.closest('.causa-editable') || e.target.closest('.btn') || e.target.closest('button') || e.target.closest('a') || e.target.closest('svg') || e.target.closest('path')) {
             return;
           }
           abrirDetalle(item.id);
@@ -1489,6 +1497,7 @@
         <p><strong>Creador:</strong> <span>${item.nombre_creador || item.usuario_creador || '—'}</span></p>
         <p><strong>Estado:</strong> <span>${badgeEstado(item)}</span></p>
         ${expiraHtml}
+        ${item.estado === 'PENDIENTE' ? `<p><strong>Recordatorios automáticos:</strong> <span>${item.recordatorios_enviados || 0}${item.ultimo_recordatorio ? ` (último aviso: ${fechaHora(item.ultimo_recordatorio)})` : ''}</span></p>` : ''}
       `;
 
       // Set input fields for updating contact

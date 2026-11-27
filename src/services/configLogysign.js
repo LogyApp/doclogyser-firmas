@@ -12,6 +12,9 @@ const P = {
   HABILITAR:           'Habilitar notificaciones de correo en LogySign',
   DIAS_ENLACE:         'Días de vigencia del enlace de firma',
   DIAS_DESCUENTO:      'Días de vigencia del enlace de la Autorización de Descuento del contrato',
+  DIAS_RECORDATORIO:   'Días entre recordatorios automáticos',
+  MAX_RECORDATORIOS:   'Máximo de recordatorios automáticos',
+  HORARIO_RECORDATORIOS: 'Horario de recordatorios automáticos',
   DOCS_CAUSA:          'Documentos que piden Causa',
   DOCS_CAUSA_EDITABLE: 'Documentos con Causa editable en Registros',
   DOCS_CON_DESCUENTO:  'Documentos que se envían con la Autorización de Descuento',
@@ -35,6 +38,9 @@ const DEFAULTS = {
   [P.HABILITAR]:             '1',
   [P.DIAS_ENLACE]:           '30',
   [P.DIAS_DESCUENTO]:        '30',
+  [P.DIAS_RECORDATORIO]:     '3',
+  [P.MAX_RECORDATORIOS]:     '3',
+  [P.HORARIO_RECORDATORIOS]: '7-19',
   [P.DOCS_CAUSA]:            'CR, TCR, TCRP',
   [P.DOCS_CAUSA_EDITABLE]:   'CR',
   [P.DOCS_CON_DESCUENTO]:    'CONT',
@@ -123,6 +129,8 @@ async function obtenerConfigLogysign() {
     notificaciones: ['1', 'si', 'true', 'yes'].includes(normalizar(valor(p, P.HABILITAR))),
     diasEnlace: dias(p, P.DIAS_ENLACE),
     diasDescuento: dias(p, P.DIAS_DESCUENTO),
+    // Recordatorio automático: cada N días (0 o vacío = apagado), hasta un máximo y en un horario (horas de Bogotá)
+    ...recordatorios(p),
     docsCausa: prefijos(P.DOCS_CAUSA),
     docsCausaEditable: prefijos(P.DOCS_CAUSA_EDITABLE),
     docsConDescuento: prefijos(P.DOCS_CON_DESCUENTO),
@@ -154,6 +162,20 @@ function alcanceRegistros(cfg, rol) {
 }
 
 const diasMs = d => Math.round(d * 24 * 3600000);
+
+function recordatorios(p) {
+  const n = parseFloat(String(valor(p, P.DIAS_RECORDATORIO) || '').replace(',', '.'));
+  const max = parseInt(String(valor(p, P.MAX_RECORDATORIOS) || ''), 10);
+  const horas = String(valor(p, P.HORARIO_RECORDATORIOS) || '').match(/(\d{1,2})\D+(\d{1,2})/);
+  const inicio = horas ? Math.min(+horas[1], 23) : 7;
+  const fin = horas ? Math.min(+horas[2], 24) : 19;
+  return {
+    diasRecordatorio: Number.isFinite(n) && n > 0 ? Math.min(n, 60) : 0,
+    maxRecordatorios: Number.isFinite(max) && max > 0 ? Math.min(max, 20) : 0,
+    horaInicioRecordatorios: inicio < fin ? inicio : 7,
+    horaFinRecordatorios: inicio < fin ? fin : 19,
+  };
+}
 
 // Usuario con acceso a Cloud Docs › LogySign en Maestro_Menu ({ ID, Nombre, Rol, Email }) o null
 async function usuarioLogysign(usuarioId) {

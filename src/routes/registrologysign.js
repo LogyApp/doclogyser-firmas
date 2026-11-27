@@ -308,7 +308,8 @@ router.post('/api/reenviar', async (req, res) => {
     const logysign = rows[0];
     const cfg = await obtenerConfigLogysign();
     const nuevaExpira = new Date(Date.now() + diasMs(cfg.diasEnlace));
-    await pool.execute('UPDATE Dynamic_Logysign SET token_expira = ? WHERE id = ?', [nuevaExpira, id]);
+    // ultimo_recordatorio: el recordatorio automático vuelve a contar los días desde este reenvío
+    await pool.execute('UPDATE Dynamic_Logysign SET token_expira = ?, ultimo_recordatorio = NOW() WHERE id = ?', [nuevaExpira, id]);
     if (logysign.id_descuento_auto) {
       await pool.execute(
         "UPDATE Dynamic_descuentonomina SET token_expira = ? WHERE id_descuento = ? AND (url_doc IS NULL OR url_doc = '')",
