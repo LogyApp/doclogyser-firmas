@@ -96,7 +96,8 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
     pool.execute(`
       SELECT
         TRIM(\`Operación\`) AS operacion,
-        COUNT(DISTINCT \`Identificación\`) AS ingreso_retiro_periodo
+        COUNT(DISTINCT \`Identificación\`) AS ingreso_retiro_periodo,
+        COUNT(DISTINCT CASE WHEN LOWER(TRIM(\`Motivo del Retiro\`)) LIKE '%no tom%cargo%' THEN \`Identificación\` END) AS no_tomaron_cargo
       FROM \`Maestro_Vinculación\`
       WHERE \`Estado\` = 'Retirado'
         AND \`Fecha de Retiro\` BETWEEN ? AND ?
@@ -145,7 +146,12 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
   ingresosRows.forEach(i => { mapIngresos[i.operacion] = Number(i.total_ingresos || 0); });
 
   const mapIngresoRetiroPeriodo = {};
-  ingresoRetiroPeriodoRows.forEach(r => { mapIngresoRetiroPeriodo[r.operacion] = Number(r.ingreso_retiro_periodo || 0); });
+  ingresoRetiroPeriodoRows.forEach(r => {
+    mapIngresoRetiroPeriodo[r.operacion] = {
+      total: Number(r.ingreso_retiro_periodo || 0),
+      noCargo: Number(r.no_tomaron_cargo || 0)
+    };
+  });
 
   const mapPlanta = {};
   plantaRows.forEach(p => { mapPlanta[p.operacion] = Number(p.planta_activa || 0); });
@@ -239,7 +245,8 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
       retiros: esPropia ? totalRetiros : null,
       ingresos: esPropia ? totalIngresos : null,
       balance: esPropia ? balance : null,
-      ingresoRetiroPeriodo: esPropia ? (mapIngresoRetiroPeriodo[op] || 0) : null,
+      ingresoRetiroPeriodo: esPropia ? (mapIngresoRetiroPeriodo[op]?.total || 0) : null,
+      noTomaronCargo: esPropia ? (mapIngresoRetiroPeriodo[op]?.noCargo || 0) : null,
       retirosTempranos: esPropia ? dataRet.retiros_tempranos : null,
       motivos: esPropia ? motivosList : motivosList.map(m => ({ motivo: m.motivo, porcentaje: totalRetiros > 0 ? Number(((m.cantidad / totalRetiros) * 100).toFixed(1)) : 0 }))
     });
@@ -274,9 +281,17 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
   Object.values(mapPlanta).forEach(p => { sumaPlantaTotal += p; });
   Object.values(mapIngresos).forEach(i => { sumaIngresosTotal += i; });
 
+  let sumaIngresoRetiroTotal = 0;
+  let sumaNoTomaronCargoTotal = 0;
+  Object.values(mapIngresoRetiroPeriodo).forEach(item => {
+    sumaIngresoRetiroTotal += item.total;
+    sumaNoTomaronCargoTotal += item.noCargo;
+  });
+
   const rotacionMediaGlobal = sumaPlantaTotal > 0 ? Number(((sumaRetirosTotal / sumaPlantaTotal) * 100).toFixed(1)) : 0;
   const tiempoAvisoMedioGlobal = sumaRetirosTotal > 0 ? Number((sumaAviso / sumaRetirosTotal).toFixed(1)) : 0;
   const pctFugaTempranaGlobal = sumaRetirosTotal > 0 ? Number(((sumaTempranosTotal / sumaRetirosTotal) * 100).toFixed(1)) : 0;
+  const pctIngresoRetiroGlobal = sumaIngresosTotal > 0 ? Number(((sumaIngresoRetiroTotal / sumaIngresosTotal) * 100).toFixed(1)) : 0;
 
   // Operaciones destacadas para tarjetas resumen
   const opsConRetiros = listaOperaciones.filter(o => (o.retiros !== null ? o.retiros > 0 : true));
@@ -290,6 +305,7 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
       rotacionMediaGlobal,
       tiempoAvisoMedioGlobal,
       pctFugaTempranaGlobal,
+      pctIngresoRetiroGlobal,
       esCorporativo,
       puedeVerHistorico: true,
       // Solo corporativos ven totales exactos
@@ -299,6 +315,8 @@ async function obtenerIndicadoresOperaciones({ fechaDesde, fechaHasta, acceso })
         ingresosTotal: sumaIngresosTotal,
         balanceNeto: sumaIngresosTotal - sumaRetirosTotal,
         retirosTempranosTotal: sumaTempranosTotal,
+        ingresoRetiroTotal: sumaIngresoRetiroTotal,
+        noTomaronCargoTotal: sumaNoTomaronCargoTotal,
       } : null,
       destacados: {
         menorRotacion: opMenorRotacion ? { operacion: opMenorRotacion.operacion, regional: opMenorRotacion.regional, pctRotacion: opMenorRotacion.pctRotacion } : null,

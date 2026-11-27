@@ -203,7 +203,68 @@
         from { opacity: 0; transform: scale(0.97) translateY(8px); }
         to { opacity: 1; transform: scale(1) translateY(0); }
       }
+      .rep-mini-stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        background-color: var(--card-bg, #fff);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        min-width: 140px;
+        overflow: hidden;
+      }
+      .rep-mini-stat-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+      }
+      .rep-mini-stat-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+        flex: 1;
+        min-width: 0;
+      }
+      .rep-mini-stat-lbl {
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
+      }
+      .rep-mini-stat-val {
+        font-weight: 800;
+        font-size: 1.15rem;
+        margin: 1px 0;
+        white-space: nowrap;
+      }
+      .rep-mini-stat-sub {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       @media (max-width: 768px) {
+        .rep-mini-stat {
+          padding: 6px 10px !important;
+          gap: 6px !important;
+          min-width: 0 !important;
+        }
+        .rep-mini-stat-icon {
+          font-size: 1.05rem !important;
+        }
+        .rep-mini-stat-val {
+          font-size: 1rem !important;
+        }
+        .rep-mini-stat-sub {
+          font-size: 0.68rem !important;
+        }
         .rep-module-header > div {
           flex-direction: column;
           align-items: stretch !important;
@@ -269,8 +330,8 @@
             <button type="button" id="btnRepAbrirModal" class="btn btn-outline" onclick="window.repAbrirModalEvolucion()" style="display:none; align-items:center; gap:6px; font-weight:700; padding:6px 14px; font-size:0.84rem; cursor:pointer; background:var(--card-bg, #fff); border:1.5px solid var(--accent, #2563eb); color:var(--accent, #2563eb); border-radius:8px;">
               <span>📈</span> Evolución Mensual
             </button>
-            <button type="button" class="btn btn-outline" onclick="window.cargarDatosReportes()" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:6px 14px; font-size:0.84rem; cursor:pointer; border-radius:8px;">
-              <span>🔄</span> Actualizar
+            <button type="button" id="btnRepSync" class="bsync" onclick="window.cargarDatosReportes()" title="Sincronizar" aria-label="Sincronizar" style="display:inline-flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:8px; border:1.5px solid var(--border); background:var(--card-bg, #fff); color:var(--accent, #f55400); cursor:pointer;">
+              <svg class="icono-sync" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>
             </button>
           </div>
         </div>
@@ -307,9 +368,9 @@
         </div>
       </section>
 
-      <!-- KPIs Globales / Dinámicos -->
-      <section id="repKpisResumen" class="rep-kpis-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:18px;">
-        <div style="background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; color:var(--text-muted);">Cargando indicadores...</div>
+      <!-- KPIs Globales / Dinámicos (Estilo mini-stat-card compacto como Inventario) -->
+      <section id="repKpisResumen" class="rep-kpis-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:10px; margin-bottom:14px;">
+        <div style="background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center; color:var(--text-muted); font-size:0.8rem;">Cargando indicadores...</div>
       </section>
 
       <!-- Barra de Navegación de Vistas y Filtros en Cascada (Regional -> Operación) -->
@@ -363,6 +424,12 @@
     const rango = calcularRangoFechas();
     const badgePeriodo = document.getElementById('repPeriodoBadge');
     if (badgePeriodo) badgePeriodo.textContent = `📅 Periodo: ${rango.label}`;
+
+    const btnSync = document.getElementById('btnRepSync');
+    if (btnSync) {
+      btnSync.disabled = true;
+      if (btnSync.classList) btnSync.classList.add('girando');
+    }
 
     const contenedor = document.getElementById('repContenedorOperaciones');
     if (contenedor) {
@@ -425,6 +492,11 @@
           <div style="padding:30px; text-align:center; color:var(--danger, #dc2626); background:var(--card-bg); border:1px solid var(--border); border-radius:12px;">
             ⚠️ No se pudieron cargar los indicadores: ${esc(err.message)}
           </div>`;
+      }
+    } finally {
+      if (btnSync) {
+        btnSync.disabled = false;
+        if (btnSync.classList) btnSync.classList.remove('girando');
       }
     }
   };
@@ -546,6 +618,8 @@
     let sumIngresos = 0;
     let sumPlanta = 0;
     let sumAvisoPonderado = 0;
+    let sumIngresoRetiro = 0;
+    let sumNoTomaronCargo = 0;
     let puedeVerCantidades = esCorp;
 
     opsFiltradas.forEach(o => {
@@ -556,20 +630,27 @@
         sumIngresos += (o.ingresos || 0);
         sumPlanta += (o.planta || 0);
         sumAvisoPonderado += ((o.retrasoAvisoMedioDias || 0) * o.retiros);
+        sumIngresoRetiro += (o.ingresoRetiroPeriodo || 0);
+        sumNoTomaronCargo += (o.noTomaronCargo || 0);
       }
     });
 
     const rotacionDinamica = sumPlanta > 0 ? Number(((sumRetiros / sumPlanta) * 100).toFixed(1)) : 0;
     const tiempoAvisoDinamico = sumRetiros > 0 ? Number((sumAvisoPonderado / sumRetiros).toFixed(1)) : 0;
     const pctFugaDinamico = sumRetiros > 0 ? Number(((sumTempranos / sumRetiros) * 100).toFixed(1)) : 0;
+    const pctIngresoRetiroDinamico = sumIngresos > 0 ? Number(((sumIngresoRetiro / sumIngresos) * 100).toFixed(1)) : 0;
 
     const rotacionMostrar = hayFiltro ? rotacionDinamica : kGlobal.rotacionMediaGlobal;
     const tiempoAvisoMostrar = hayFiltro ? tiempoAvisoDinamico : kGlobal.tiempoAvisoMedioGlobal;
     const pctFugaMostrar = hayFiltro ? pctFugaDinamico : kGlobal.pctFugaTempranaGlobal;
+    const pctIngresoRetiroMostrar = hayFiltro ? pctIngresoRetiroDinamico : (kGlobal.pctIngresoRetiroGlobal || 0);
 
     const retirosTotalMostrar = hayFiltro ? sumRetiros : (kGlobal.totalesCorporativos ? kGlobal.totalesCorporativos.retirosTotal : sumRetiros);
     const tempranosTotalMostrar = hayFiltro ? sumTempranos : (kGlobal.totalesCorporativos ? kGlobal.totalesCorporativos.retirosTempranosTotal : sumTempranos);
     const ingresosTotalMostrar = hayFiltro ? sumIngresos : (kGlobal.totalesCorporativos ? kGlobal.totalesCorporativos.ingresosTotal : sumIngresos);
+    const ingresoRetiroTotalMostrar = hayFiltro ? sumIngresoRetiro : (kGlobal.totalesCorporativos ? kGlobal.totalesCorporativos.ingresoRetiroTotal : sumIngresoRetiro);
+    const noTomaronCargoMostrar = hayFiltro ? sumNoTomaronCargo : (kGlobal.totalesCorporativos ? kGlobal.totalesCorporativos.noTomaronCargoTotal : sumNoTomaronCargo);
+    const retirosEfectivosMostrar = Math.max(0, ingresoRetiroTotalMostrar - noTomaronCargoMostrar);
 
     // Semáforo Rotación
     let colorRot = '#16a34a';
@@ -586,16 +667,17 @@
     if (pctFugaMostrar > 30) colorFuga = '#dc2626';
     else if (pctFugaMostrar > 15) colorFuga = '#f59e0b';
 
+    // Semáforo Ingresaron y Salieron
+    let colorIR = '#16a34a';
+    if (pctIngresoRetiroMostrar > 30) colorIR = '#dc2626';
+    else if (pctIngresoRetiroMostrar > 15) colorIR = '#d97706';
+
     let subtituloFiltro = '';
     if (_repState.filtroOperacion) {
-      subtituloFiltro = `<span style="font-size:0.75rem; color:var(--accent); font-weight:700;">📍 ${esc(_repState.filtroOperacion)}</span>`;
+      subtituloFiltro = `<span style="font-size:0.68rem; color:var(--accent); font-weight:700;" title="${esc(_repState.filtroOperacion)}">📍 ${esc(_repState.filtroOperacion)}</span>`;
     } else if (_repState.filtroRegional) {
-      subtituloFiltro = `<span style="font-size:0.75rem; color:var(--accent); font-weight:700;">🗺️ Reg. ${esc(_repState.filtroRegional)} (${opsFiltradas.length} ops)</span>`;
+      subtituloFiltro = `<span style="font-size:0.68rem; color:var(--accent); font-weight:700;">🗺️ ${esc(_repState.filtroRegional)}</span>`;
     }
-
-    const subtextoFuga = puedeVerCantidades
-      ? `<b>${tempranosTotalMostrar} retiros &lt; 60d</b> de ${retirosTotalMostrar} retiros`
-      : `Promedio ponderado del periodo`;
 
     let htmlBalanceCard = '';
     if (puedeVerCantidades) {
@@ -606,60 +688,87 @@
       const tituloBalance = hayFiltro ? 'Balance Filtro' : 'Balance Corporativo';
 
       htmlBalanceCard = `
-        <div class="card" style="background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:12px; padding:14px; position:relative; overflow:hidden;">
-          <div style="font-size:0.74rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between;">
-            <span>⚖️ ${tituloBalance}</span>
-            ${subtituloFiltro}
-          </div>
-          <div style="font-size:1.65rem; font-weight:800; color:var(--text); margin-bottom:2px;">
-            ${plantaFinalCalc} <span style="font-size:1.05rem; color:${balanceColor}; font-weight:700;">(${balanceSign})</span>
-          </div>
-          <div style="font-size:0.76rem; color:var(--text-muted);">
-            Planta activa final | <b>${ingresosTotalMostrar}</b> ingresos | <b style="color:#dc2626;">${retirosTotalMostrar}</b> retiros
-          </div>
-          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
-            <b style="color:#d97706;">${tempranosTotalMostrar}</b> retiros en prueba (&lt;60d)
+        <div class="rep-mini-stat">
+          <span class="rep-mini-stat-icon">⚖️</span>
+          <div class="rep-mini-stat-info">
+            <div class="rep-mini-stat-lbl">
+              <span>${tituloBalance}</span>
+              ${subtituloFiltro}
+            </div>
+            <div class="rep-mini-stat-val" style="color:var(--text);">
+              ${plantaFinalCalc} <small style="font-size:0.82rem; color:${balanceColor}; font-weight:700;">(${balanceSign})</small>
+            </div>
+            <div class="rep-mini-stat-sub">
+              <b>${ingresosTotalMostrar}</b> ingresos | <b style="color:#dc2626;">${retirosTotalMostrar}</b> retiros
+            </div>
           </div>
         </div>
       `;
     }
 
     el.innerHTML = `
-      <div class="card" style="background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:12px; padding:14px; position:relative; overflow:hidden;">
-        <div style="font-size:0.74rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between;">
-          <span>📉 Tasa de Rotación Media</span>
-          ${subtituloFiltro}
-        </div>
-        <div style="font-size:1.65rem; font-weight:800; color:${colorRot}; margin-bottom:2px;">
-          ${rotacionMostrar}%
-        </div>
-        <div style="font-size:0.76rem; color:var(--text-muted);">
-          ${puedeVerCantidades ? `<b>${retirosTotalMostrar}</b> retiros sobre <b>${sumPlanta || '—'}</b> planta inicial` : 'Porcentaje medio ponderado'}
-        </div>
-      </div>
-
-      <div class="card" style="background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:12px; padding:14px; position:relative; overflow:hidden;">
-        <div style="font-size:0.74rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between;">
-          <span>⏱️ Oportunidad de Aviso</span>
-          ${subtituloFiltro}
-        </div>
-        <div style="font-size:1.65rem; font-weight:800; color:${colorAviso}; margin-bottom:2px;">
-          ${tiempoAvisoMostrar} <span style="font-size:0.95rem; font-weight:600;">días</span>
-        </div>
-        <div style="font-size:0.76rem; color:var(--text-muted);">
-          Meta óptima: &le; ${params.Dias_Aviso_Oportuno || 2} días
+      <div class="rep-mini-stat">
+        <span class="rep-mini-stat-icon">📉</span>
+        <div class="rep-mini-stat-info">
+          <div class="rep-mini-stat-lbl">
+            <span>Rotación</span>
+            ${subtituloFiltro}
+          </div>
+          <div class="rep-mini-stat-val" style="color:${colorRot};">
+            ${rotacionMostrar}%
+          </div>
+          <div class="rep-mini-stat-sub">
+            ${puedeVerCantidades ? `<b>${retirosTotalMostrar}</b> ret. / <b>${sumPlanta || '—'}</b> planta` : 'Promedio ponderado'}
+          </div>
         </div>
       </div>
 
-      <div class="card" style="background:var(--card-bg, #fff); border:1px solid var(--border); border-radius:12px; padding:14px; position:relative; overflow:hidden;">
-        <div style="font-size:0.74rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:flex; justify-content:space-between;">
-          <span>💸 Fuga en Prueba (&lt;60d)</span>
-          ${subtituloFiltro}
+      <div class="rep-mini-stat">
+        <span class="rep-mini-stat-icon">⏱️</span>
+        <div class="rep-mini-stat-info">
+          <div class="rep-mini-stat-lbl">
+            <span>Oportunidad Aviso</span>
+            ${subtituloFiltro}
+          </div>
+          <div class="rep-mini-stat-val" style="color:${colorAviso};">
+            ${tiempoAvisoMostrar} <small style="font-size:0.75rem; font-weight:600;">días</small>
+          </div>
+          <div class="rep-mini-stat-sub">
+            Meta: &le; ${params.Dias_Aviso_Oportuno || 2} días
+          </div>
         </div>
-        <div style="font-size:1.65rem; font-weight:800; color:${colorFuga}; margin-bottom:2px;">
-          ${pctFugaMostrar}%
+      </div>
+
+      <div class="rep-mini-stat">
+        <span class="rep-mini-stat-icon">💸</span>
+        <div class="rep-mini-stat-info">
+          <div class="rep-mini-stat-lbl">
+            <span>Fuga &lt; 60 días</span>
+            ${subtituloFiltro}
+          </div>
+          <div class="rep-mini-stat-val" style="color:${colorFuga};">
+            ${pctFugaMostrar}%
+          </div>
+          <div class="rep-mini-stat-sub">
+            ${puedeVerCantidades ? `<b>${tempranosTotalMostrar}</b> de <b>${retirosTotalMostrar}</b> retiros` : 'Promedio ponderado'}
+          </div>
         </div>
-        <div style="font-size:0.76rem; color:var(--text-muted);">${subtextoFuga}</div>
+      </div>
+
+      <div class="rep-mini-stat">
+        <span class="rep-mini-stat-icon">🔄</span>
+        <div class="rep-mini-stat-info">
+          <div class="rep-mini-stat-lbl">
+            <span>Ingresaron y salieron</span>
+            ${subtituloFiltro}
+          </div>
+          <div class="rep-mini-stat-val" style="color:${colorIR};">
+            ${pctIngresoRetiroMostrar}% <small style="font-size:0.8rem; font-weight:700; color:var(--text);">(${ingresoRetiroTotalMostrar})</small>
+          </div>
+          <div class="rep-mini-stat-sub">
+            <b>${retirosEfectivosMostrar}</b> retiros | <b>${noTomaronCargoMostrar}</b> no tomaron cargo
+          </div>
+        </div>
       </div>
 
       ${htmlBalanceCard}

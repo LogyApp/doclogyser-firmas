@@ -60,19 +60,19 @@ test('la consulta cuenta personas en los límites del corte y excluye fechas fue
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(':memory:');
   try {
-    db.exec('CREATE TABLE `Maestro_Vinculación` (`Identificación` TEXT, `Operación` TEXT, `Estado` TEXT, `Fecha de Ingreso` TEXT, `Fecha de Retiro` TEXT)');
-    const insertar = db.prepare('INSERT INTO `Maestro_Vinculación` VALUES (?, ?, ?, ?, ?)');
+    db.exec('CREATE TABLE `Maestro_Vinculación` (`Identificación` TEXT, `Operación` TEXT, `Estado` TEXT, `Fecha de Ingreso` TEXT, `Fecha de Retiro` TEXT, `Motivo del Retiro` TEXT)');
+    const insertar = db.prepare('INSERT INTO `Maestro_Vinculación` VALUES (?, ?, ?, ?, ?, ?)');
     [
-      ['1', 'A', 'Retirado', '2026-11-01', '2026-11-15'],
-      ['1', 'A', 'Retirado', '2026-11-01', '2026-11-15'],
-      ['2', 'A', 'Retirado', '2026-11-15', '2026-11-15'],
-      ['3', 'A', 'Retirado', '2026-11-15', '2026-11-16'],
-      ['4', 'A', 'Retirado', '2026-11-16', '2026-11-30'],
-      ['5', 'A', 'Retirado', '2026-10-31', '2026-11-01'],
-      ['6', 'A', 'Retirado', '2026-11-30', '2026-12-01'],
-      ['7', 'A', 'Retirado', '2026-11-10', '2026-11-09'],
-      ['8', 'A', 'Activo', '2026-11-01', '2026-11-15'],
-      ['9', 'B', 'Retirado', '2026-11-01', '2026-11-15']
+      ['1', 'A', 'Retirado', '2026-11-01', '2026-11-15', 'Renuncia'],
+      ['1', 'A', 'Retirado', '2026-11-01', '2026-11-15', 'Renuncia'],
+      ['2', 'A', 'Retirado', '2026-11-15', '2026-11-15', 'Renuncia'],
+      ['3', 'A', 'Retirado', '2026-11-15', '2026-11-16', 'Renuncia'],
+      ['4', 'A', 'Retirado', '2026-11-16', '2026-11-30', 'Renuncia'],
+      ['5', 'A', 'Retirado', '2026-10-31', '2026-11-01', 'Renuncia'],
+      ['6', 'A', 'Retirado', '2026-11-30', '2026-12-01', 'Renuncia'],
+      ['7', 'A', 'Retirado', '2026-11-10', '2026-11-09', 'Renuncia'],
+      ['8', 'A', 'Activo', '2026-11-01', '2026-11-15', null],
+      ['9', 'B', 'Retirado', '2026-11-01', '2026-11-15', 'Renuncia']
     ].forEach(row => insertar.run(...row));
 
     let sqlPeriodo;
@@ -303,4 +303,55 @@ test('la ventana emergente de Evolución Mensual renderiza la columna Ingresaron
   assert.match(html, /<th[^>]*>Ingresaron y salieron<\/th>/);
   assert.match(html, /<b>28<\/b> <span style="font-size:0.75rem; color:#d97706; font-weight:700;\">\(25.9%\)<\/span>/);
   assert.match(html, /TOTAL AÑO 2026[\s\S]*?<td style="text-align:right;">28 \(25.9%\)<\/td>/);
+});
+
+test('renderiza las 5 tarjetas de resumen estilo mini-stat con Ingresaron y salieron y botón sync', () => {
+  const { elementos } = prepararFrontend();
+  const contenedorKpis = { innerHTML: '' };
+  elementos.set('repKpisResumen', contenedorKpis);
+
+  const codigoKpis = frontend.replace(/\}\)\(\);\s*$/, 'window.__renderizarKpis = renderizarKpis; window.__repState = _repState; })();');
+  const contexto = { window: {}, document: { getElementById: id => elementos.get(id) || null }, console, URLSearchParams, Date };
+  vm.runInNewContext(codigoKpis, contexto);
+
+  contexto.window.__repState.data = {
+    kpisGlobales: {
+      rotacionMediaGlobal: 10.4,
+      tiempoAvisoMedioGlobal: 2.1,
+      pctFugaTempranaGlobal: 52.1,
+      pctIngresoRetiroGlobal: 25.7,
+      esCorporativo: true,
+      totalesCorporativos: {
+        plantaTotal: 919,
+        retirosTotal: 96,
+        ingresosTotal: 113,
+        balanceNeto: 17,
+        retirosTempranosTotal: 50,
+        ingresoRetiroTotal: 29,
+        noTomaronCargoTotal: 7
+      }
+    },
+    parametros: { Dias_Aviso_Oportuno: 2, Dias_Fuga_Temprana: 60 },
+    operaciones: []
+  };
+
+  contexto.window.__renderizarKpis();
+  const html = contenedorKpis.innerHTML;
+
+  // 1. Debe usar la clase .rep-mini-stat
+  assert.match(html, /class="rep-mini-stat"/);
+
+  // 2. 4ta tarjeta: Ingresaron y salieron con retiros y no tomaron cargo
+  assert.match(html, /<span>Ingresaron y salieron<\/span>/);
+  assert.match(html, /25\.7% <small[^>]*>\(29\)<\/small>/);
+  assert.match(html, /<b>22<\/b> retiros \| <b>7<\/b> no tomaron cargo/);
+
+  // 3. 5ta tarjeta: Balance sin "Planta activa final" ni "<60d", solo ingresos y retiros
+  assert.match(html, /<span>Balance(?: Corporativo| Filtro)?<\/span>/);
+  assert.doesNotMatch(html, /Planta activa final/);
+  assert.doesNotMatch(html, /retiros &lt; 60d/);
+  assert.match(html, /<b>113<\/b> ingresos \| <b style="color:#dc2626;">96<\/b> retiros/);
+
+  // 4. Botón sincronizar en el HTML principal del frontend
+  assert.match(frontend, /id="btnRepSync" class="bsync"/);
 });
