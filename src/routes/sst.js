@@ -265,7 +265,24 @@ router.post('/api/inspecciones/guardar', async (req, res) => {
       return res.status(403).json({ error: 'El trabajador seleccionado está fuera de su alcance de operación.' });
     }
 
-    const result = await crearInspeccionVehiculo(infoTrab.colaborador, req.body || {});
+    const body = req.body || {};
+    const payload = {
+      type: body.type,
+      subtype: body.subtype,
+      plate: body.placa,
+      equipmentId: body.equipoInterno,
+      meter: body.odometro,
+      reportTo: body.reportaA,
+      generalObservations: body.generalObservations,
+      actionPlan: body.actionPlan,
+      items: Array.isArray(body.items)
+        ? body.items.map(item => ({ id: item.id, result: item.answer, observation: item.observation }))
+        : body.items,
+      photos: body.photos,
+      usarFirmaPrevia: body.signatureMode === 'saved',
+      firmaBase64: body.signatureDataUrl,
+    };
+    const result = await crearInspeccionVehiculo(payload, infoTrab.colaborador);
     res.json(result);
   } catch (err) {
     console.error('[sst] Error en POST /api/inspecciones/guardar:', err);

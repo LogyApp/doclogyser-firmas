@@ -597,7 +597,6 @@ function construirHTMLPDFInspeccion({
         <td style="padding:3.5px 6px;border:1px solid #cbd5e1;font-size:7.6pt;color:#0A315D;font-weight:700;">${escHtml(it.section)}</td>
         <td style="padding:3.5px 6px;border:1px solid #cbd5e1;font-size:7.8pt;color:#1e293b;">
           ${idx + 1}. ${escHtml(it.text)}
-          ${it.critical ? '<span style="color:#dc2626;font-weight:700;font-size:6.8pt;"> [CRÍTICO]</span>' : ''}
         </td>
         <td style="padding:3.5px 6px;border:1px solid #cbd5e1;text-align:center;font-weight:700;font-size:7.8pt;background:${resBg};color:${resColor};">${escHtml(textoResultadoItem(it.result))}</td>
         <td style="padding:3.5px 6px;border:1px solid #cbd5e1;font-size:7.5pt;color:#334155;">${escHtml(it.observation || '')}</td>
@@ -1106,7 +1105,7 @@ async function generarFormatoBlancoPDF(type, subtype) {
   const rowsHtml = template.items.map((it, idx) => `
     <tr>
       <td style="padding:6px 7px;border:1px solid #cbd5e1;font-weight:700;color:#0A315D;font-size:8pt;">${escHtml(it.section)}</td>
-      <td style="padding:6px 7px;border:1px solid #cbd5e1;font-size:8pt;">${idx + 1}. ${escHtml(it.text)}${it.critical ? ' <strong style="color:#dc2626;font-size:7pt;">[CRÍTICO]</strong>' : ''}</td>
+      <td style="padding:6px 7px;border:1px solid #cbd5e1;font-size:8pt;">${idx + 1}. ${escHtml(it.text)}</td>
       <td style="padding:6px;border:1px solid #cbd5e1;width:48px;"></td>
       <td style="padding:6px;border:1px solid #cbd5e1;width:54px;"></td>
       <td style="padding:6px;border:1px solid #cbd5e1;width:52px;"></td>
