@@ -69,6 +69,17 @@ function hoyBogotaYmd() {
  * - Maestro_Segmentación (Sociodemográfica)
  * - Maestro_Vinculación
  */
+// Resuelve la fecha efectiva de cierre del aspirante según la Opción B:
+// Menor fecha entre ingreso laboral y sociodemográfica (o la que esté disponible)
+function resolverFechaFinAspirante(a) {
+  const fSocio = a.fecha_socio ? a.fecha_socio.slice(0, 10) : null;
+  const fIngreso = a.fecha_ingreso_laboral ? a.fecha_ingreso_laboral.slice(0, 10) : null;
+  if (fSocio && fIngreso) {
+    return fSocio < fIngreso ? fSocio : fIngreso;
+  }
+  return fIngreso || fSocio || (a.fecha_act_asp ? a.fecha_act_asp.slice(0, 10) : null);
+}
+
 async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, operacion, responsable, acceso }) {
   const hoyStr = hoyBogotaYmd();
   const esCorporativo = !!(acceso && acceso.sinFiltro);
@@ -156,10 +167,14 @@ async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, op
         a.Usuario AS usuario_gestion,
         DATE_FORMAT(s.\`Fecha de Actualización\`, '%Y-%m-%d %H:%i') AS fecha_socio,
         COALESCE(NULLIF(TRIM(s.\`usuarioactualiza\`), ''), s.\`Usuario\`) AS usuario_socio,
-        DATE_FORMAT(v.\`Fecha de Ingreso\`, '%Y-%m-%d') AS fecha_ingreso_laboral
+        DATE_FORMAT(v.max_ingreso, '%Y-%m-%d') AS fecha_ingreso_laboral
       FROM \`Dynamic_hv_aspirante\` a
       LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = a.identificacion
-      LEFT JOIN \`Maestro_Vinculación\` v ON v.Identificación = a.identificacion
+      LEFT JOIN (
+        SELECT \`Identificación\` AS id_vinc, MAX(\`Fecha de Ingreso\`) AS max_ingreso
+        FROM \`Maestro_Vinculación\`
+        GROUP BY \`Identificación\`
+      ) v ON CAST(v.id_vinc AS CHAR) = CAST(a.identificacion AS CHAR)
       WHERE a.IdRequisicion IN (${ph})
       ORDER BY a.fecha_registro ASC
     `, reqIds);
@@ -202,8 +217,8 @@ async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, op
 
     // Evaluar cada aspirante contratado
     const evaluacionesAspirantes = contratados.map(a => {
-      // Fecha en que llegó a sociodemográfica o fecha laboral
-      const fechaFinAspirante = a.fecha_socio ? a.fecha_socio.slice(0, 10) : (a.fecha_ingreso_laboral || (a.fecha_act_asp ? a.fecha_act_asp.slice(0, 10) : null));
+      // Opción B: Menor fecha entre ingreso laboral y sociodemográfica
+      const fechaFinAspirante = resolverFechaFinAspirante(a);
       const ev = evaluarAspirante({
         fechaRequisicion: r.fechaRequisicion,
         inicioConteo,
@@ -222,6 +237,7 @@ async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, op
         fecha_socio: a.fecha_socio,
         usuario_socio: a.usuario_socio,
         fecha_ingreso_laboral: a.fecha_ingreso_laboral,
+        fecha_cierre_efectiva: fechaFinAspirante,
         dias: ev.dias,
         estadoSla: ev.estado
       };
@@ -231,7 +247,19 @@ async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, op
     let diasProceso = null;
     let slaEstado = 'en_tiempo'; // 'cumple', 'nocumple', 'en_tiempo', 'vencido', 'suspendido', 'cancelado'
 
-    const fechaCorteFin = r.fecha_fin || (contratados.length >= r.vacantes_req && contratados[contratados.length - 1]?.fecha_socio?.slice(0, 10));
+    // Fechas de cierre de contratados ordenadas cronológicamente (Opción B)
+    const fechasFinContratados = contratados
+      .map(a => resolverFechaFinAspirante(a))
+      .filter(Boolean)
+      .sort();
+
+    let fechaCorteFin = r.fecha_fin;
+    if (contratados.length >= r.vacantes_req && fechasFinContratados.length >= r.vacantes_req) {
+      const fechaCubierta = fechasFinContratados[r.vacantes_req - 1];
+      fechaCorteFin = fechaCorteFin ? (fechaCubierta < fechaCorteFin ? fechaCubierta : fechaCorteFin) : fechaCubierta;
+    } else if (!fechaCorteFin && fechasFinContratados.length > 0) {
+      fechaCorteFin = fechasFinContratados[fechasFinContratados.length - 1];
+    }
 
     if (r.estado === 'FINALIZADO') {
       const fechaFinEval = fechaCorteFin || r.fechaRequisicionCorta;

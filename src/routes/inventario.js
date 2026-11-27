@@ -1884,11 +1884,20 @@ router.get('/api/articulos/elementos', async (req, res) => {
 
     const [uniqueElements] = await pool.execute(`
       SELECT Elemento, COUNT(*) AS total, MAX(Categoria) AS Categoria, MAX(ClaseArticulo) AS ClaseArticulo,
-             MAX(Costo) AS costoMax, MIN(Costo) AS costoMin, COUNT(DISTINCT Costo) AS distinctCostos
+             MAX(Costo) AS costoMax, MIN(Costo) AS costoMin, COUNT(DISTINCT Costo) AS distinctCostos,
+             MAX(NULLIF(TRIM(Proveedor), '')) AS proveedorMax, COUNT(DISTINCT NULLIF(TRIM(Proveedor), '')) AS distinctProveedores
       FROM Dynamic_Articulos 
       GROUP BY Elemento 
       ORDER BY Elemento
     `);
+
+    const [proveedoresRows] = await pool.execute(`
+      SELECT DISTINCT TRIM(Proveedor) AS proveedor
+      FROM Dynamic_Articulos
+      WHERE Proveedor IS NOT NULL AND TRIM(Proveedor) != ''
+      ORDER BY Proveedor
+    `);
+    const catalogoProveedores = proveedoresRows.map(r => r.proveedor).filter(Boolean);
 
     const [allImages] = await pool.execute(`
       SELECT Elemento, Imagen, \`Fecha Registro\` AS fechaRegistro 
@@ -1923,6 +1932,9 @@ router.get('/api/articulos/elementos', async (req, res) => {
       const costoVal = el.costoMax != null ? parseFloat(el.costoMax) : null;
       const costoMinVal = el.costoMin != null ? parseFloat(el.costoMin) : null;
 
+      const tieneVariosProveedores = (el.distinctProveedores || 0) > 1;
+      const proveedorVal = el.proveedorMax || null;
+
       return {
         elemento: el.Elemento,
         total: el.total,
@@ -1933,13 +1945,15 @@ router.get('/api/articulos/elementos', async (req, res) => {
         costoMin: costoMinVal,
         costoMax: costoVal,
         tieneVariosCostos,
+        proveedor: proveedorVal,
+        tieneVariosProveedores,
         tieneMultiplesUrls,
         distinctCount: distinctUrls.length,
         sugerencia
       };
     });
 
-    res.json({ results });
+    res.json({ results, proveedores: catalogoProveedores });
   } catch (err) {
     console.error('[inventario] GET /api/articulos/elementos error:', err);
     res.status(500).json({ error: 'Error al obtener los elementos únicos' });
@@ -2132,6 +2146,42 @@ router.post('/api/articulos/elementos/editar-costo', async (req, res) => {
   } catch (err) {
     console.error('[inventario] POST /api/articulos/elementos/editar-costo error:', err);
     res.status(500).json({ error: 'Error al actualizar el costo del elemento: ' + err.message });
+  }
+});
+
+// 11. POST /api/articulos/elementos/editar-proveedor - Actualiza el Proveedor de todos los artículos con ese Elemento
+router.post('/api/articulos/elementos/editar-proveedor', async (req, res) => {
+  try {
+    const { elemento, nuevoProveedor, usuario } = req.body;
+
+    const errAcceso = await validarGestorImagenes(usuario);
+    if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
+
+    if (!elemento || !String(elemento).trim()) {
+      return res.status(400).json({ error: 'El nombre del elemento es requerido.' });
+    }
+
+    const cleanElemento = String(elemento).trim();
+    const proveedorStr = (nuevoProveedor == null || String(nuevoProveedor).trim() === '') ? null : String(nuevoProveedor).trim();
+
+    // Actualizar Proveedor en Dynamic_Articulos para todos los registros del Elemento
+    const [result] = await pool.execute(
+      'UPDATE Dynamic_Articulos SET Proveedor = ? WHERE Elemento = ? OR Elemento = ?',
+      [proveedorStr, cleanElemento, cleanElemento.toUpperCase()]
+    );
+
+    cachedLookupsBase = null; // invalidar cache de kardex-lookups
+
+    const provTexto = proveedorStr ? `"${proveedorStr}"` : '(Sin Proveedor)';
+    res.json({
+      success: true,
+      message: `Proveedor actualizado exitosamente a ${provTexto} en ${result.affectedRows} artículo(s).`,
+      nuevoProveedor: proveedorStr,
+      articulosActualizados: result.affectedRows
+    });
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/elementos/editar-proveedor error:', err);
+    res.status(500).json({ error: 'Error al actualizar el proveedor del elemento: ' + err.message });
   }
 });
 

@@ -248,3 +248,81 @@ test('Requisiciones incluye filtros de Año, Mes, Quincena, Cumplimiento ANS y c
   assert.match(htmlIndex, /actualizarFiltrosConConteos/);
   assert.match(htmlIndex, /window\._reqFiltros\s*=/);
 });
+
+test('Opción B evalúa la menor fecha entre fecha_ingreso_laboral y fecha_socio', async () => {
+  const pool = {
+    async execute(sql) {
+      if (sql.includes('FROM `Config_Parametros`')) {
+        return [[
+          { Modulo: 'talenthub', Seccion: 'Requisiciones', Concepto: 'Tiempo limite de Requisición', Condicion: null, Parametro: '8' }
+        ]];
+      }
+      if (sql.includes('FROM `Maestro_Fechas`') || sql.includes('FROM `Dynamic_Requisiciones_Suspension`')) {
+        return [[]];
+      }
+      if (sql.includes('FROM `Dynamic_Requisiciones`')) {
+        return [[
+          {
+            IdRequisicion: 201,
+            requisicion: 'RQ00201',
+            fechaRequisicion: '2026-08-04 09:00',
+            fechaRequisicionCorta: '2026-08-04',
+            estado: 'FINALIZADO',
+            responsable: 'Jose Agudelo',
+            regional: 'CENTRO',
+            operacion: 'Cedi Av 68',
+            cargo: 'AUXILIAR LOGISTICO',
+            solicitante: 'Jefe C',
+            vacantes_req: 1,
+            fecha_fin: null
+          }
+        ]];
+      }
+      if (sql.includes('FROM `Dynamic_hv_aspirante`')) {
+        return [[
+          {
+            id_aspirante: 'asp-201',
+            IdRequisicion: 201,
+            identificacion: '1075675333',
+            aspirante: 'Jenniffer Castellanos',
+            estado_proceso: 'contratado',
+            fecha_registro_asp: '2026-08-04 10:00',
+            fecha_act_asp: '2026-10-10 15:44',
+            usuario_gestion: 'Jose Agudelo',
+            fecha_socio: '2026-08-19 16:00', // 9 días hábiles (tarde)
+            usuario_socio: 'Santiago Jaramillo',
+            fecha_ingreso_laboral: '2026-08-06' // 2 días hábiles (a tiempo)
+          }
+        ]];
+      }
+      throw new Error(`Consulta no simulada: ${sql}`);
+    }
+  };
+
+  const slaReqModule = require('../src/services/slaRequisiciones');
+  const ctx = {
+    require: (mod) => {
+      if (mod === './db' || mod.endsWith('/db')) return pool;
+      if (mod === './slaRequisiciones' || mod.endsWith('/slaRequisiciones')) return slaReqModule;
+      return require(mod);
+    },
+    module: { exports: {} },
+    Intl,
+    Date,
+    console
+  };
+
+  const servicioActual = fs.readFileSync(path.join(raiz, 'src/services/reportesSeleccionService.js'), 'utf8');
+  vm.runInNewContext(servicioActual, ctx);
+  const resultado = await ctx.module.exports.obtenerReporteAnsSeleccion({
+    fechaDesde: '2026-08-01',
+    fechaHasta: '2026-08-31',
+    acceso: { sinFiltro: true }
+  });
+
+  assert.equal(resultado.kpis.cumpleTiempo, 1);
+  assert.equal(resultado.kpis.fueraTiempo, 0);
+  assert.equal(resultado.requisiciones[0].slaEstado, 'cumple');
+  assert.equal(resultado.requisiciones[0].aspirantes[0].fecha_cierre_efectiva, '2026-08-06');
+  assert.equal(resultado.requisiciones[0].aspirantes[0].estadoSla, 'cumple');
+});

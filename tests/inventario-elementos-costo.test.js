@@ -35,3 +35,37 @@ test('backend inventario expone endpoint para editar costo de todos los artícul
   assert.match(routeFile, /router\.post\('\/api\/articulos\/elementos\/editar-costo'/);
   assert.match(routeFile, /UPDATE Dynamic_Articulos SET Costo = \? WHERE Elemento = \? OR Elemento = \?/);
 });
+
+test('frontend inventario incluye columna de Proveedor editable, datalist y handlers en el modal de elementos', () => {
+  const htmlIndex = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'inventario', 'index.html'), 'utf8');
+
+  // 1. Cabecera y datalist en el modal
+  assert.match(htmlIndex, /Proveedor \(Editable ✏️\)/);
+  assert.match(htmlIndex, /id="elementos-proveedores-datalist"/);
+
+  // 2. Columna en el grid
+  assert.match(htmlIndex, /class="col-proveedor-td"/);
+  assert.match(htmlIndex, /class="prov-view"/);
+  assert.match(htmlIndex, /class="prov-form"/);
+  assert.match(htmlIndex, /class="prov-input"/);
+
+  // 3. Handlers de JavaScript
+  assert.match(htmlIndex, /window\.startEditProveedor\s*=/);
+  assert.match(htmlIndex, /window\.cancelEditProveedor\s*=/);
+  assert.match(htmlIndex, /window\.handleProveedorKeydown\s*=/);
+  assert.match(htmlIndex, /window\.saveEditProveedor\s*=/);
+  assert.match(htmlIndex, /\/inventario\/api\/articulos\/elementos\/editar-proveedor/);
+});
+
+test('backend inventario expone endpoint para editar proveedor de todos los artículos de un elemento', () => {
+  const routeFile = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'inventario.js'), 'utf8');
+
+  // 1. Consulta en GET /api/articulos/elementos incluye Proveedor
+  assert.match(routeFile, /MAX\(NULLIF\(TRIM\(Proveedor\), ''\)\) AS proveedorMax/);
+  assert.match(routeFile, /proveedor:\s*proveedorVal/);
+  assert.match(routeFile, /SELECT DISTINCT TRIM\(Proveedor\) AS proveedor/);
+
+  // 2. Endpoint POST /api/articulos/elementos/editar-proveedor
+  assert.match(routeFile, /router\.post\('\/api\/articulos\/elementos\/editar-proveedor'/);
+  assert.match(routeFile, /UPDATE Dynamic_Articulos SET Proveedor = \? WHERE Elemento = \? OR Elemento = \?/);
+});

@@ -822,7 +822,10 @@
               👤 <b>${esc(a.aspirante)}</b> (CC: ${esc(a.identificacion)})
             </td>
             <td style="padding:6px 10px; font-size:0.78rem;" colspan="2">
-              Envío Sociodemográfica: <b>${esc(a.fecha_socio || a.fecha_ingreso_laboral || '—')}</b>
+              F. Cierre ANS: <b>${esc(a.fecha_cierre_efectiva || a.fecha_socio || a.fecha_ingreso_laboral || '—')}</b>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+                Ingreso: ${esc(a.fecha_ingreso_laboral || '—')} | Socio: ${esc(a.fecha_socio ? a.fecha_socio.slice(0, 10) : '—')}
+              </div>
             </td>
             <td style="padding:6px 10px; font-size:0.78rem;">
               Por: ${esc(a.usuario_socio || '—')}

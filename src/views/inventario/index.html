@@ -6001,16 +6001,18 @@
         <div id="elementos-loader" class="loader" style="display: none; margin: 40px auto;"></div>
 
         <!-- Table Container -->
+        <datalist id="elementos-proveedores-datalist"></datalist>
         <div id="elementos-table-wrapper" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: none;">
           <div style="max-height: 50vh; overflow-y: auto;">
             <table class="kardex-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
               <thead>
                 <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
                   <th style="padding: 10px; font-weight: 600; width: 60px; text-align: center;">Imagen</th>
-                  <th style="padding: 10px; font-weight: 600; min-width: 210px;">Elemento (Editable ✏️)</th>
-                  <th style="padding: 10px; font-weight: 600; width: 150px; text-align: right;">Costo (Editable ✏️)</th>
+                  <th style="padding: 10px; font-weight: 600; min-width: 190px;">Elemento (Editable ✏️)</th>
+                  <th style="padding: 10px; font-weight: 600; width: 140px; text-align: right;">Costo (Editable ✏️)</th>
+                  <th style="padding: 10px; font-weight: 600; min-width: 170px;">Proveedor (Editable ✏️)</th>
                   <th style="padding: 10px; font-weight: 600; width: 80px; text-align: center;">Artículos</th>
-                  <th style="padding: 10px; font-weight: 600; width: 280px;">Gestión de Imagen (GCS)</th>
+                  <th style="padding: 10px; font-weight: 600; width: 260px;">Gestión de Imagen (GCS)</th>
                 </tr>
               </thead>
               <tbody id="elementos-grid-body">
@@ -16141,6 +16143,10 @@
         if (!res.ok) throw new Error(data.error || 'Error al obtener elementos');
 
         allElementosList = data.results || [];
+        const datalistProv = document.getElementById('elementos-proveedores-datalist');
+        if (datalistProv && Array.isArray(data.proveedores)) {
+          datalistProv.innerHTML = data.proveedores.map(p => `<option value="${(window.escapeHtml || escapeHtml)(p)}"></option>`).join('');
+        }
         
         renderElementosChips();
         applyElementosLocalFiltersAndRender();
@@ -16267,7 +16273,7 @@
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">No hay elementos que coincidan con los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">No hay elementos que coincidan con los filtros seleccionados.</td></tr>';
         return;
       }
 
@@ -16305,6 +16311,17 @@
           costoValInput = el.costoMax != null ? el.costoMax : '';
         }
 
+        let provDisplay = '<span style="color:var(--text-muted);">—</span>';
+        let provValInput = '';
+        if (el.tieneVariosProveedores) {
+          const provEsc = (window.escapeHtml || escapeHtml)(el.proveedor || '');
+          provDisplay = `<span style="font-size:0.75rem; color:var(--warning-dark);" title="Hay diferentes proveedores en los artículos de este elemento">Varios (${provEsc})</span>`;
+          provValInput = el.proveedor || '';
+        } else if (el.proveedor) {
+          provDisplay = (window.escapeHtml || escapeHtml)(el.proveedor);
+          provValInput = el.proveedor;
+        }
+
         tr.innerHTML = `
           <td style="padding: 10px; text-align: center; vertical-align: middle;">
             ${imgHtml}
@@ -16334,6 +16351,19 @@
               <input type="number" step="any" min="0" class="costo-input" value="${costoValInput}" placeholder="0" style="width: 85px; padding: 4px 6px; font-size: 0.8rem; font-weight: 600; border: 1.5px solid var(--primary); border-radius: 4px; background: var(--card-bg); color: var(--text); text-align: right;" onkeydown="handleCostoKeydown(event, this, '${elemEnc}', ${el.total})">
               <button type="button" class="btn btn-save-costo" style="background: var(--primary); color: #fff; border: none; border-radius: 4px; padding: 4px 6px; cursor: pointer; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;" title="Guardar costo" onclick="saveEditCosto(this, '${elemEnc}', ${el.total})">✓</button>
               <button type="button" class="btn btn-cancel-costo" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; cursor: pointer; font-size: 0.75rem; flex-shrink: 0;" title="Cancelar" onclick="cancelEditCosto(this, '${elemEnc}')">✕</button>
+            </div>
+          </td>
+          <td class="col-proveedor-td" style="padding: 10px; font-weight: 500; font-size: 0.8rem; color: var(--text-dark); vertical-align: middle;">
+            <div class="prov-view" style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+              <span class="prov-label" style="word-break: break-word; font-size: 0.8rem;">${provDisplay}</span>
+              <button type="button" class="btn-prov-edit" style="background: none; border: 1px solid transparent; cursor: pointer; padding: 2px 4px; font-size: 0.85rem; border-radius: 4px; color: var(--text-muted); flex-shrink: 0;" title="Editar proveedor de todos los artículos" onclick="startEditProveedor(this, '${elemEnc}', ${el.total})">
+                ✏️
+              </button>
+            </div>
+            <div class="prov-form" style="display: none; align-items: center; gap: 4px;">
+              <input type="text" list="elementos-proveedores-datalist" class="prov-input" value="${(window.escapeHtml || escapeHtml)(provValInput)}" placeholder="Proveedor..." style="flex: 1; min-width: 140px; padding: 4px 6px; font-size: 0.8rem; font-weight: 500; border: 1.5px solid var(--primary); border-radius: 4px; background: var(--card-bg); color: var(--text);" onkeydown="handleProveedorKeydown(event, this, '${elemEnc}', ${el.total})">
+              <button type="button" class="btn btn-save-prov" style="background: var(--primary); color: #fff; border: none; border-radius: 4px; padding: 4px 6px; cursor: pointer; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;" title="Guardar proveedor" onclick="saveEditProveedor(this, '${elemEnc}', ${el.total})">✓</button>
+              <button type="button" class="btn btn-cancel-prov" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; cursor: pointer; font-size: 0.75rem; flex-shrink: 0;" title="Cancelar" onclick="cancelEditProveedor(this, '${elemEnc}')">✕</button>
             </div>
           </td>
           <td style="padding: 10px; text-align: center; font-weight: 500; font-size: 0.8rem; color: var(--text-muted); vertical-align: middle;">${el.total}</td>
@@ -16370,13 +16400,13 @@
       const td = btn.closest('.col-elemento-td');
       if (!td) return;
 
-      // Cerrar cualquier otra fila en edición
-      document.querySelectorAll('#elementos-grid-body .elem-form').forEach(f => {
+      // Cerrar cualquier otra fila en edición (nombre, costo o proveedor)
+      document.querySelectorAll('#elementos-grid-body .elem-form, #elementos-grid-body .costo-form, #elementos-grid-body .prov-form').forEach(f => {
         if (f !== td.querySelector('.elem-form')) {
           f.style.display = 'none';
-          const pTd = f.closest('.col-elemento-td');
+          const pTd = f.closest('td');
           if (pTd) {
-            const v = pTd.querySelector('.elem-view');
+            const v = pTd.querySelector('.elem-view, .costo-view, .prov-view');
             if (v) v.style.display = 'flex';
           }
         }
@@ -16494,13 +16524,13 @@
       const td = btn.closest('.col-costo-td');
       if (!td) return;
 
-      // Cerrar otros formularios de costo o de elemento en edición
-      document.querySelectorAll('#elementos-grid-body .costo-form').forEach(f => {
+      // Cerrar otros formularios en edición (costo, nombre o proveedor)
+      document.querySelectorAll('#elementos-grid-body .elem-form, #elementos-grid-body .costo-form, #elementos-grid-body .prov-form').forEach(f => {
         if (f !== td.querySelector('.costo-form')) {
           f.style.display = 'none';
-          const pTd = f.closest('.col-costo-td');
+          const pTd = f.closest('td');
           if (pTd) {
-            const v = pTd.querySelector('.costo-view');
+            const v = pTd.querySelector('.elem-view, .costo-view, .prov-view');
             if (v) v.style.display = 'flex';
           }
         }
@@ -16601,6 +16631,115 @@
           btnSave.textContent = '✓';
         }
         if (btnCancel) btnCancel.disabled = false;
+      }
+    };
+
+    // Edición de Proveedor en el Modal de Elementos
+    window.startEditProveedor = function(btn, encodedElemento, total) {
+      const td = btn.closest('.col-proveedor-td');
+      if (!td) return;
+
+      // Cerrar otros formularios abiertos (nombre, costo o proveedor)
+      document.querySelectorAll('#elementos-grid-body .elem-form, #elementos-grid-body .costo-form, #elementos-grid-body .prov-form').forEach(f => {
+        if (f !== td.querySelector('.prov-form')) {
+          f.style.display = 'none';
+          const pTd = f.closest('td');
+          if (pTd) {
+            const v = pTd.querySelector('.elem-view, .costo-view, .prov-view');
+            if (v) v.style.display = 'flex';
+          }
+        }
+      });
+
+      const view = td.querySelector('.prov-view');
+      const form = td.querySelector('.prov-form');
+      const input = td.querySelector('.prov-input');
+
+      if (view && form && input) {
+        view.style.display = 'none';
+        form.style.display = 'flex';
+        input.focus();
+        input.select();
+      }
+    };
+
+    window.cancelEditProveedor = function(btnOrInput, encodedElemento) {
+      const td = btnOrInput.closest('.col-proveedor-td');
+      if (!td) return;
+      const view = td.querySelector('.prov-view');
+      const form = td.querySelector('.prov-form');
+      if (view && form) {
+        form.style.display = 'none';
+        view.style.display = 'flex';
+      }
+    };
+
+    window.handleProveedorKeydown = function(e, input, encodedElemento, total) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        window.saveEditProveedor(input, encodedElemento, total);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        window.cancelEditProveedor(input, encodedElemento);
+      }
+    };
+
+    window.saveEditProveedor = async function(btnOrInput, encodedElemento, total) {
+      const td = btnOrInput.closest('.col-proveedor-td');
+      if (!td) return;
+
+      const elementoActual = decodeURIComponent(encodedElemento).trim();
+      const input = td.querySelector('.prov-input');
+      const btnSave = td.querySelector('.btn-save-prov');
+      const btnCancel = td.querySelector('.btn-cancel-prov');
+
+      if (!input) return;
+      const nuevoProveedor = input.value.trim();
+      const provTexto = nuevoProveedor ? `"${nuevoProveedor}"` : '(Sin Proveedor)';
+
+      const confirmMsg = `¿Estás seguro de que deseas actualizar el proveedor a ${provTexto} para todos los ${total} artículo(s) del elemento:\n"${elementoActual}"?`;
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+
+      input.disabled = true;
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.textContent = '⏳';
+      }
+      if (btnCancel) btnCancel.disabled = true;
+
+      try {
+        const res = await fetch('/inventario/api/articulos/elementos/editar-proveedor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            elemento: elementoActual,
+            nuevoProveedor,
+            usuario: CONFIG.usuarioId
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al actualizar el proveedor del elemento');
+
+        alert(data.message || 'Proveedor actualizado exitosamente.');
+
+        // Recargar vista de elementos y catálogo de artículos de fondo
+        await fetchAndRenderElementos();
+        if (typeof fetchArticlesData === 'function') {
+          fetchArticlesData();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error al guardar el proveedor: ' + err.message);
+        input.disabled = false;
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.textContent = '✓';
+        }
+        if (btnCancel) btnCancel.disabled = false;
+        input.focus();
       }
     };
 
