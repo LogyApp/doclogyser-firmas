@@ -4415,6 +4415,8 @@ router.get('/api/sociodemografica/reporte', async (req, res) => {
         COALESCE(v.Estado, s.Estado) AS estado,
         v.Cargo AS cargo,
         ca.AREA AS area,
+        s.\`Centro de costos\` AS centro_costos,
+        ${SQL_CONTRATO_FIRMADO} AS contrato_firmado,
         v.\`Fecha de Ingreso\` AS fecha_ingreso,
         v.\`Fecha de Retiro\` AS fecha_retiro,
         s.\`Tipo de Documento\` AS tipo_documento,
@@ -4507,6 +4509,8 @@ router.get('/api/sociodemografica/reporte', async (req, res) => {
           estado: item.estado || estadoNorm,
           cargo: item.cargo || '',
           area: item.area || '',
+          centro_costos: item.centro_costos ?? '',
+          contrato_firmado: item.contrato_firmado ? 'Sí' : 'No',
           fecha_ingreso: formatearFechaYMD(item.fecha_ingreso),
           fecha_retiro: formatearFechaYMD(item.fecha_retiro),
           tipo_documento: item.tipo_documento || '',
@@ -4572,17 +4576,16 @@ router.get('/api/sociodemografica/reporte', async (req, res) => {
 
     const DEFINICION_COLUMNAS_POR_OPCION = {
       colaboradores: [
-        { key: 'identificacion', header: 'Identificación', width: 16 },
-        { key: 'regional', header: 'Regional', width: 18 },
-        { key: 'operacion', header: 'Operación', width: 22 },
         { key: 'trabajador', header: 'Trabajador', width: 36 },
         { key: 'estado', header: 'Estado', width: 12 },
         { key: 'cargo', header: 'Cargo', width: 26 },
+        { key: 'regional', header: 'Regional', width: 18 },
+        { key: 'operacion', header: 'Operación', width: 22 },
         { key: 'area', header: 'Área', width: 20 },
+        { key: 'centro_costos', header: 'Centro de costos', width: 22 },
         { key: 'fecha_ingreso', header: 'Fecha de Ingreso', width: 16 },
         { key: 'fecha_retiro', header: 'Fecha de Retiro', width: 16 },
-        { key: 'usuario_actualiza', header: 'Usuario Actualiza', width: 24 },
-        { key: 'fecha_actualizacion', header: 'Fecha de Actualización', width: 20 }
+        { key: 'contrato_firmado', header: 'Contrato firmado', width: 18 }
       ],
       datos_generales: [
         { key: 'identificacion', header: 'Identificación', width: 16 },
@@ -4694,6 +4697,10 @@ router.get('/api/sociodemografica/reporte', async (req, res) => {
     let columnasFinales = [];
     if (alcance === 'sabana_completa') {
       const vistasKeys = new Set();
+      if (mapaVer.colaboradores) {
+        vistasKeys.add('identificacion');
+        columnasFinales.push({ key: 'identificacion', header: 'Identificación', width: 16 });
+      }
       const ordenOpciones = ['colaboradores', 'datos_generales', 'info_personal', 'dotacion', 'info_bancaria', 'seguridad_social', 'examenes'];
       for (const opKey of ordenOpciones) {
         if (!mapaVer[opKey]) continue;
