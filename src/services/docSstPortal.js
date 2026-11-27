@@ -1,5 +1,6 @@
-// Habilitar Doc. SST desde Aspirantes (Panel Admin) y Cloud-Docs: Selección, Archivo o SST habilitan la Prueba de
-// Consumo, el ARO, la EVIN y el INGE para un aspirante (o trabajador de Cloud-Docs), y él los responde y firma desde
+// Habilitar Doc. SST desde Aspirantes (Panel Admin) y Cloud-Docs: Selección, Archivo o SST habilitan los documentos de
+// la pestaña Documentos de Inducción (Prueba de Consumo, ARO, EVIN, INGE, Compromiso SST y Declaración de Seguridad
+// Vial) para un aspirante (o trabajador de Cloud-Docs), y él los responde y firma desde
 // su portal (/seleccion/portal/:id) con las mismas páginas de firma de SST. Los registros quedan en las mismas
 // tablas de SST con id_aspirante (migraciones/2026-11-22_doc_sst_aspirantes.sql) y se ven en sus pestañas.
 // Datos: del aspirante sin vincular salen de su requisición (sin requisición no se habilita); del trabajador, de
@@ -12,6 +13,8 @@ const pool = require('./db');
 const aro = require('./aro');
 const evin = require('./evin');
 const inge = require('./inge');
+const pesv = require('./pesv');
+const { analistaCompromiso } = require('./compromisoSst');
 const { puedeProcesarRetiradosSst } = require('./configSst');
 const { urlFirmaRegistrada } = require('./firmaUsuario');
 
@@ -21,13 +24,21 @@ const ROLES_DEFECTO = 'Selección, CoorSelección, Selección Centro, Directorth
 // Prueba de Consumo: documento 19 (CPC), como en routes/pruebaconsumo.js
 const CPC_TIPO = 19;
 const CPC_PREFIJO = 'CPC';
+// Compromiso SST: documento 72 (CSST), como en routes/compromisosst.js
+const CSST_TIPO = 72;
+const CSST_PREFIJO = 'CSST';
 
 const DOCS = [
   { clave: 'CPC', nombre: 'Prueba de Consumo', accion: 'Leer y firmar', icono: '🧪' },
   { clave: 'ARO', nombre: 'Análisis de Riesgo por Oficio', accion: 'Leer y firmar', icono: '⚠️' },
   { clave: 'EVIN', nombre: 'Evaluación de Inducción Corporativa', accion: 'Responder y firmar', icono: '📝' },
   { clave: 'INGE', nombre: 'Compromiso de Inducción General', accion: 'Responder y firmar', icono: '✅' },
+  { clave: 'CSST', nombre: 'Compromiso SST', accion: 'Leer y firmar', icono: '🤝' },
+  { clave: 'PESV', nombre: 'Declaración Plan Estratégico de Seguridad Vial', accion: 'Leer y firmar', icono: '🚦' },
 ];
+
+// Firmado para el aspirante: con PDF o, en el Compromiso SST, apenas él firma (la firma del responsable viene después)
+const firmado = (r) => !!(r && (r.url_doc || Number(r.firmo) === 1));
 
 function normalizar(v) {
   return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -132,6 +143,9 @@ async function clienteDeOperacion(operacion) {
 function enlace(req, clave, fila) {
   const base = urlBase(req);
   if (clave === 'CPC') return `${base}/pruebaconsumo/firmar?item=${encodeURIComponent(fila.idprueba)}&desde=portal`;
+  if (clave === 'CSST') {
+    return fila.token_firma ? `${base}/compromisosst/firmar-trabajador?item=${encodeURIComponent(fila.idcsst)}&token=${encodeURIComponent(fila.token_firma)}&desde=portal` : '';
+  }
   return fila.token_firma ? `${base}/${clave.toLowerCase()}/firmar?t=${encodeURIComponent(fila.token_firma)}&desde=portal` : '';
 }
 
@@ -145,19 +159,24 @@ function htmlVolverPortal(req, fila) {
 // Último registro de cada documento habilitado desde el portal de este aspirante
 async function registros(idAspirante) {
   const consulta = (sql) => pool.execute(sql, [idAspirante]).then(([rows]) => rows[0] || null);
-  const [cpc, aroF, evinF, ingeF] = await Promise.all([
+  const [cpc, aroF, evinF, ingeF, csst, pesvF] = await Promise.all([
     consulta('SELECT idprueba, token_firma, url_doc, fecha_firma, fecha_registro AS fecha_creacion FROM Dynamic_pruebaconsumo WHERE id_aspirante = ? ORDER BY fecha_registro DESC LIMIT 1'),
     consulta('SELECT id_aro, token_firma, url_doc, fecha_firma, fecha_creacion FROM Dynamic_aro WHERE id_aspirante = ? ORDER BY fecha_creacion DESC LIMIT 1'),
     consulta('SELECT id_evin, token_firma, url_doc, fecha_firma, fecha_creacion, porcentaje, aprobado FROM Dynamic_evin WHERE id_aspirante = ? ORDER BY fecha_creacion DESC LIMIT 1'),
     consulta('SELECT id_inge, token_firma, url_doc, fecha_firma, fecha_creacion, temas_no FROM Dynamic_inge WHERE id_aspirante = ? ORDER BY fecha_creacion DESC LIMIT 1'),
+    consulta(`SELECT idcsst, token_trabajador AS token_firma, url_doc, (firma_trabajador IS NOT NULL) AS firmo,
+                     fecha_firma_trabajador AS fecha_firma, fecha_registro AS fecha_creacion
+                FROM Dynamic_compromisosst WHERE id_aspirante = ? ORDER BY fecha_registro DESC LIMIT 1`),
+    consulta('SELECT id_pesv, token_firma, url_doc, fecha_firma, fecha_creacion FROM Dynamic_pesv WHERE id_aspirante = ? ORDER BY fecha_creacion DESC LIMIT 1'),
   ]);
-  return { CPC: cpc, ARO: aroF, EVIN: evinF, INGE: ingeF };
+  return { CPC: cpc, ARO: aroF, EVIN: evinF, INGE: ingeF, CSST: csst, PESV: pesvF };
 }
 
 async function aplica(clave, cargo) {
   if (clave === 'ARO') return aro.cargoPermitido((await aro.configuracion()).cargos, cargo);
   if (clave === 'EVIN') return evin.cargoPermitido((await evin.configuracion()).cargos, cargo);
   if (clave === 'INGE') return inge.cargoPermitido((await inge.configuracion()).cargos, cargo);
+  if (clave === 'PESV') return pesv.cargoPermitido((await pesv.configuracion()).cargos, cargo);
   return true;
 }
 
@@ -172,11 +191,11 @@ async function estado(idAspirante, usuarioId, req) {
     opciones.push({
       ...d,
       aplica: persona.error ? false : await aplica(d.clave, persona.cargo),
-      estado: r ? (r.url_doc ? 'firmado' : 'pendiente') : null,
+      estado: r ? (firmado(r) ? 'firmado' : 'pendiente') : null,
       fechaCreacion: r ? r.fecha_creacion : null,
       fechaFirma: r ? r.fecha_firma : null,
       urlDoc: r && r.url_doc ? r.url_doc : '',
-      enlace: r && !r.url_doc ? enlace(req, d.clave, r) : '',
+      enlace: r && !firmado(r) ? enlace(req, d.clave, r) : '',
     });
   }
   return {
@@ -252,7 +271,40 @@ async function crearInge(p, usuarioId) {
   );
 }
 
-const CREAR = { CPC: crearCpc, ARO: crearAro, EVIN: crearEvin, INGE: crearInge };
+// Compromiso SST: si ya tiene uno sin firmar del trabajador se reutiliza. Desde el portal el enlace no vence
+// (el aspirante puede firmar días después); quien habilita firma como responsable al completar el compromiso.
+async function crearCsst(p, usuarioId) {
+  const [[pend]] = await pool.execute(
+    'SELECT idcsst FROM Dynamic_compromisosst WHERE identificaciontrabajador = ? AND firma_trabajador IS NULL AND token_trabajador IS NOT NULL LIMIT 1',
+    [p.identificacion]
+  );
+  if (pend) {
+    await pool.execute('UPDATE Dynamic_compromisosst SET id_aspirante = ?, token_trabajador_expira = NULL WHERE idcsst = ?', [p.idAspirante, pend.idcsst]);
+    return;
+  }
+  const an = await analistaCompromiso(usuarioId);
+  await pool.execute(
+    `INSERT INTO Dynamic_compromisosst (habilitado_portal, idcsst, identificaciontrabajador, nombre_trabajador, cargo_trabajador,
+                                        identificacionanalista, nombre_analista, cargo_analista, observaciones,
+                                        token_trabajador, token_trabajador_expira, usuario, id_aspirante)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, '', ?, NULL, ?, ?)`,
+    [uuidv4(), p.identificacion, p.nombre, p.cargo || '', an.cc, an.nombre, an.cargo,
+      crypto.randomBytes(32).toString('hex'), usuarioId, p.idAspirante]
+  );
+}
+
+async function crearPesv(p, usuarioId) {
+  if (await reutilizarPendiente('Dynamic_pesv', 'id_pesv', p)) return;
+  await pool.execute(
+    `INSERT INTO Dynamic_pesv (habilitado_portal, id_pesv, identificacion, id_vinculacion, nombre_trabajador, cargo, operacion, regional, version_formato,
+                               token_firma, usuario, fecha_creacion, id_aspirante)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [uuidv4(), p.identificacion, p.idVinculacion, p.nombre, p.cargo, p.operacion, p.regional, await versionPlantilla('PESV', '03'),
+      crypto.randomBytes(24).toString('hex'), usuarioId, ahoraBogota(), p.idAspirante]
+  );
+}
+
+const CREAR = { CPC: crearCpc, ARO: crearAro, EVIN: crearEvin, INGE: crearInge, CSST: crearCsst, PESV: crearPesv };
 
 // Habilita los documentos escogidos. Los que ya tiene habilitados (pendientes o firmados) no se repiten.
 async function habilitar(idAspirante, claves, usuarioId, req) {
@@ -280,11 +332,14 @@ async function habilitar(idAspirante, claves, usuarioId, req) {
 
 // Deshabilitar: solo los que el aspirante aún no ha firmado. Los creados por el portal se borran (como si no hubiera
 // pasado nada); un pendiente que SST ya tenía y el portal reutilizó solo sale del portal y sigue en SST.
+const SIN_PDF = 'url_doc IS NULL';
 const TABLAS = {
-  CPC: { tabla: 'Dynamic_pruebaconsumo', id: 'idprueba', propio: '1' },
-  ARO: { tabla: 'Dynamic_aro', id: 'id_aro', propio: 'habilitado_portal' },
-  EVIN: { tabla: 'Dynamic_evin', id: 'id_evin', propio: 'habilitado_portal' },
-  INGE: { tabla: 'Dynamic_inge', id: 'id_inge', propio: 'habilitado_portal' },
+  CPC: { tabla: 'Dynamic_pruebaconsumo', id: 'idprueba', propio: '1', sinFirmar: SIN_PDF },
+  ARO: { tabla: 'Dynamic_aro', id: 'id_aro', propio: 'habilitado_portal', sinFirmar: SIN_PDF },
+  EVIN: { tabla: 'Dynamic_evin', id: 'id_evin', propio: 'habilitado_portal', sinFirmar: SIN_PDF },
+  INGE: { tabla: 'Dynamic_inge', id: 'id_inge', propio: 'habilitado_portal', sinFirmar: SIN_PDF },
+  CSST: { tabla: 'Dynamic_compromisosst', id: 'idcsst', propio: 'habilitado_portal', sinFirmar: 'url_doc IS NULL AND firma_trabajador IS NULL' },
+  PESV: { tabla: 'Dynamic_pesv', id: 'id_pesv', propio: 'habilitado_portal', sinFirmar: SIN_PDF },
 };
 
 async function deshabilitar(idAspirante, claves, usuarioId, req) {
@@ -295,15 +350,15 @@ async function deshabilitar(idAspirante, claves, usuarioId, req) {
   const deshabilitados = [];
   const omitidos = [];
   for (const clave of escogidos) {
-    const { tabla, id, propio } = TABLAS[clave];
+    const { tabla, id, propio, sinFirmar } = TABLAS[clave];
     const nombre = DOCS.find(d => d.clave === clave).nombre;
-    const [filas] = await pool.execute(`SELECT ${id} AS id, url_doc, ${propio} AS propio FROM ${tabla} WHERE id_aspirante = ?`, [idAspirante]);
+    const [filas] = await pool.execute(`SELECT ${id} AS id, NOT (${sinFirmar}) AS firmado, ${propio} AS propio FROM ${tabla} WHERE id_aspirante = ?`, [idAspirante]);
     if (!filas.length) { omitidos.push(`${nombre} (no estaba habilitado)`); continue; }
-    if (filas.some(r => r.url_doc)) { omitidos.push(`${nombre} (ya fue firmado)`); continue; }
+    if (filas.some(r => Number(r.firmado) === 1)) { omitidos.push(`${nombre} (ya fue firmado)`); continue; }
     for (const r of filas) {
       const sql = Number(r.propio) === 1
-        ? `DELETE FROM ${tabla} WHERE ${id} = ? AND id_aspirante = ? AND url_doc IS NULL`
-        : `UPDATE ${tabla} SET id_aspirante = NULL WHERE ${id} = ? AND id_aspirante = ? AND url_doc IS NULL`;
+        ? `DELETE FROM ${tabla} WHERE ${id} = ? AND id_aspirante = ? AND ${sinFirmar}`
+        : `UPDATE ${tabla} SET id_aspirante = NULL WHERE ${id} = ? AND id_aspirante = ? AND ${sinFirmar}`;
       await pool.execute(sql, [r.id, idAspirante]);
     }
     deshabilitados.push(nombre);
@@ -316,8 +371,8 @@ async function enlacesPortal(idAspirante, req) {
   const regs = await registros(idAspirante);
   return DOCS.filter(d => regs[d.clave]).map(d => ({
     clave: d.clave, nombre: d.nombre, accion: d.accion, icono: d.icono,
-    firmado: !!regs[d.clave].url_doc, fechaFirma: regs[d.clave].fecha_firma,
-    enlace: regs[d.clave].url_doc ? '' : enlace(req, d.clave, regs[d.clave]),
+    firmado: firmado(regs[d.clave]), fechaFirma: regs[d.clave].fecha_firma,
+    enlace: firmado(regs[d.clave]) ? '' : enlace(req, d.clave, regs[d.clave]),
   }));
 }
 
@@ -327,6 +382,22 @@ async function registroDiferido(idAspirante) {
   if (!idAspirante) return false;
   const [[a]] = await pool.execute('SELECT estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ? LIMIT 1', [idAspirante]);
   return !!a && a.estado_proceso !== 'contratado';
+}
+
+// Compromiso SST firmado (con PDF) de un aspirante que se vincula: documento 72 (CSST)
+async function registrarCsst(c) {
+  const [[v]] = await pool.execute(
+    'SELECT Regional, `Operación`, Estado, `Fecha de Ingreso` FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+    [c.identificaciontrabajador]
+  );
+  const [[ya]] = await pool.execute('SELECT 1 FROM Maestro_docTrabajador WHERE `Identificación` = ? AND Prefijo = ? AND Doc = ? LIMIT 1', [c.identificaciontrabajador, CSST_PREFIJO, c.url_doc]);
+  if (ya) return;
+  await pool.execute(
+    `INSERT INTO Maestro_docTrabajador (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Usuario, FechaRegistro)
+     VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [uuidv4(), (v && v.Regional) || null, (v && v['Operación']) || null, c.identificaciontrabajador,
+      (v && v.Estado) || null, (v && v['Fecha de Ingreso']) || null, CSST_TIPO, CSST_PREFIJO, c.url_doc, c.usuario]
+  );
 }
 
 async function registrarCpc(c) {
@@ -347,7 +418,7 @@ async function registrarCpc(c) {
 // Al insertar al aspirante en la Sociodemográfica: los registros quedan con su vinculación, el INGE toma la fecha de
 // ingreso (si ya estaba firmado se regenera su PDF) y los firmados pasan a la carpeta digital.
 async function alVincular({ idAspirante, idVinculacion, fechaIngreso }) {
-  for (const t of ['Dynamic_aro', 'Dynamic_evin', 'Dynamic_inge']) {
+  for (const t of ['Dynamic_aro', 'Dynamic_evin', 'Dynamic_inge', 'Dynamic_pesv']) {
     await pool.execute(`UPDATE ${t} SET id_vinculacion = ? WHERE id_aspirante = ? AND id_vinculacion IS NULL`, [idVinculacion, idAspirante]);
   }
   await pool.execute('UPDATE Dynamic_inge SET fecha_ingreso = ? WHERE id_aspirante = ? AND fecha_ingreso IS NULL', [fechaIngreso, idAspirante]);
@@ -363,6 +434,15 @@ async function alVincular({ idAspirante, idVinculacion, fechaIngreso }) {
       if (!ya) await aro.registrarDocumentoTrabajador(a, a.url_doc, null);
     });
   }
+  const [pesvs] = await pool.execute('SELECT * FROM Dynamic_pesv WHERE id_aspirante = ? AND url_doc IS NOT NULL', [idAspirante]);
+  for (const d of pesvs) {
+    await paso('Seguridad Vial', async () => {
+      const [[ya]] = await pool.execute('SELECT 1 FROM Maestro_docTrabajador WHERE `Identificación` = ? AND Prefijo = ? AND Doc = ? LIMIT 1', [d.identificacion, pesv.PREFIJO_DOC, d.url_doc]);
+      if (!ya) await pesv.registrarDocumentoTrabajador(d, d.url_doc, null);
+    });
+  }
+  const [cssts] = await pool.execute('SELECT idcsst, identificaciontrabajador, url_doc, usuario FROM Dynamic_compromisosst WHERE id_aspirante = ? AND url_doc IS NOT NULL', [idAspirante]);
+  for (const c of cssts) await paso('Compromiso SST', () => registrarCsst(c));
   const [[ev]] = await pool.execute('SELECT * FROM Dynamic_evin WHERE id_aspirante = ? AND url_doc IS NOT NULL ORDER BY fecha_firma DESC LIMIT 1', [idAspirante]);
   if (ev) await paso('EVIN', () => evin.registrarDocumentoTrabajador(ev, ev.url_doc));
   const [[ig]] = await pool.execute('SELECT * FROM Dynamic_inge WHERE id_aspirante = ? AND url_doc IS NOT NULL ORDER BY fecha_firma DESC LIMIT 1', [idAspirante]);

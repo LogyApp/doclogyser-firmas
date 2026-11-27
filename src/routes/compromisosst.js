@@ -1,4 +1,6 @@
 const express = require('express');
+const { analistaCompromiso } = require('../services/compromisoSst');
+const { registroDiferido, htmlVolverPortal } = require('../services/docSstPortal');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -231,7 +233,8 @@ async function regenerarPdfCompromiso(c) {
     );
     reemplazado = upd.affectedRows;
   }
-  if (!reemplazado) await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
+  // Aspirante sin vincular (Doc. SST desde Aspirantes): pasa a la carpeta al vincularlo (docSstPortal.alVincular)
+  if (!reemplazado && !(await registroDiferido(c.id_aspirante))) await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
   pool.execute(
     "UPDATE Maestro_notificaciones SET url_doc = ? WHERE modulo = 'csst' AND referencia_id = ? AND url_doc IS NOT NULL",
     [urlDoc, c.idcsst]
@@ -274,7 +277,10 @@ async function completarCompromiso(c, resp) {
       firmaLiderBase64, urlFirmaLider, fechaFirma, nombreLiderSst, urlDoc, fechaDoc, c.idcsst]
   );
 
-  await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
+  // Aspirante sin vincular (Doc. SST desde Aspirantes): pasa a la carpeta al vincularlo (docSstPortal.alVincular)
+  if (!(await registroDiferido(c.id_aspirante))) {
+    await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
+  }
 
   pool.execute(
     `UPDATE Maestro_notificaciones
@@ -376,7 +382,7 @@ router.get('/firmar-trabajador', async (req, res) => {
     }).replace(/<\/script>/gi, '<\\/script>');
 
     const html = fs.readFileSync(HTML_SIGN_TRAB_PATH, 'utf8');
-    res.send(html.replace('__CONFIG_FIRMA__', config));
+    res.send(html.replace('__CONFIG_FIRMA__', config).replace('</body>', () => htmlVolverPortal(req, c) + '</body>'));
   } catch (err) {
     console.error('[compromisosst] Error serving worker sign page:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
@@ -760,62 +766,8 @@ router.post('/api/crear', async (req, res) => {
     }
     cleanNombreTrabajador = cleanNombreTrabajador.trim();
 
-    // Resolving Analyst metadata
-    const [userRows] = await pool.execute('SELECT Colaborador, Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
-    let analystCC = '';
-    let analystName = '';
-    let analystCargo = '';
-    
-    if (userRows.length) {
-      const u = userRows[0];
-      const colaborador = u.Colaborador || '';
-      let parsedCC = '';
-      if (colaborador.includes(' ** ')) {
-        parsedCC = colaborador.split(' ** ')[0].trim();
-      }
-
-      let vinRows = [];
-      if (parsedCC) {
-        const [rows] = await pool.execute(
-          `SELECT Identificación, Trabajador, Cargo 
-           FROM \`Maestro_Vinculación\` 
-           WHERE Identificación = ? 
-           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-          [parsedCC]
-        );
-        vinRows = rows;
-      }
-
-      if (!vinRows.length && colaborador) {
-        // Fallback to name search
-        const [rows] = await pool.execute(
-          `SELECT Identificación, Trabajador, Cargo 
-           FROM \`Maestro_Vinculación\` 
-           WHERE Trabajador = ? 
-           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-          [colaborador]
-        );
-        vinRows = rows;
-      }
-
-      if (vinRows.length) {
-        analystCC = vinRows[0].Identificación;
-        analystName = vinRows[0].Trabajador;
-        if (analystName.includes(' ** ')) {
-          analystName = analystName.split(' ** ')[1];
-        }
-        analystCargo = vinRows[0].Cargo;
-      } else {
-        // Fallback for admin/system users not in Maestro_Vinculación
-        analystCC = '0000000000';
-        analystName = u.Nombre || usuario;
-        analystCargo = 'SST ADMINISTRADOR/SISTEMA';
-      }
-    } else {
-      analystCC = '0000000000';
-      analystName = usuario;
-      analystCargo = 'SST ADMINISTRADOR/SISTEMA';
-    }
+    // Quien crea firma como responsable (analista): services/compromisoSst.js
+    const { cc: analystCC, nombre: analystName, cargo: analystCargo } = await analistaCompromiso(usuario);
 
     const idcsst = uuidv4();
     const tokenTrab = crypto.randomBytes(32).toString('hex');
@@ -894,54 +846,8 @@ router.post('/api/crear-masivo', async (req, res) => {
     }
     const puedeRetiradosMasivo = await puedeProcesarRetiradosSst(accesoCrearMasivo.rol);
 
-    // Resolving Analyst metadata
-    const [userRows] = await conn.execute('SELECT Colaborador, Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
-    let analystCC = '0000000000';
-    let analystName = usuario;
-    let analystCargo = 'SST ADMINISTRADOR/SISTEMA';
-
-    if (userRows.length) {
-      const u = userRows[0];
-      const colaborador = u.Colaborador || '';
-      let parsedCC = '';
-      if (colaborador.includes(' ** ')) {
-        parsedCC = colaborador.split(' ** ')[0].trim();
-      }
-
-      let vinRows = [];
-      if (parsedCC) {
-        const [rows] = await conn.execute(
-          `SELECT Identificación, Trabajador, Cargo 
-           FROM \`Maestro_Vinculación\` 
-           WHERE Identificación = ? 
-           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-          [parsedCC]
-        );
-        vinRows = rows;
-      }
-
-      if (!vinRows.length && colaborador) {
-        const [rows] = await conn.execute(
-          `SELECT Identificación, Trabajador, Cargo 
-           FROM \`Maestro_Vinculación\` 
-           WHERE Trabajador = ? 
-           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-          [colaborador]
-        );
-        vinRows = rows;
-      }
-
-      if (vinRows.length) {
-        analystCC = vinRows[0].Identificación;
-        analystName = vinRows[0].Trabajador;
-        if (analystName.includes(' ** ')) {
-          analystName = analystName.split(' ** ')[1];
-        }
-        analystCargo = vinRows[0].Cargo;
-      } else {
-        analystName = u.Nombre || usuario;
-      }
-    }
+    // Quien crea firma como responsable (analista): services/compromisoSst.js
+    const { cc: analystCC, nombre: analystName, cargo: analystCargo } = await analistaCompromiso(usuario, conn);
 
     const protocol = req.secure ? 'https' : 'http';
     const host = req.get('host');
@@ -1440,7 +1346,10 @@ router.post('/api/compromiso/:id/regenerar-token', async (req, res) => {
       [token, expira, id]
     );
 
-    res.json({ ok: true, token, token_trabajador_expira: expira });
+    // La pestaña de SST (regenerarEnlace) copia este enlace; sin él mostraba "No se pudo regenerar el enlace"
+    // aunque el token sí se renovaba
+    const urlFirma = `${req.secure ? 'https' : 'http'}://${req.get('host')}/compromisosst/firmar-trabajador?item=${encodeURIComponent(id)}&token=${token}`;
+    res.json({ ok: true, urlFirma, token, token_trabajador_expira: expira });
   } catch (err) {
     console.error('[compromisosst] POST /api/compromiso/:id/regenerar-token:', err);
     res.status(500).json({ error: err.message });

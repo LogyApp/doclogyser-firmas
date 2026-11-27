@@ -107,7 +107,7 @@
     if (mensaje) html += mensaje;
     if (estado.error) html += `<div class="dsst-aviso err">${esc(estado.error)}</div>`;
     else if (!estado.puede) html += '<div class="dsst-aviso err">Su rol no puede habilitar documentos SST.</div>';
-    else if (!estado.tieneFirma) html += '<div class="dsst-aviso warn">No tiene una firma registrada: en la EVIN y el INGE su firma saldría en blanco. Regístrela en su perfil antes de habilitarlos.</div>';
+    else if (!estado.tieneFirma) html += '<div class="dsst-aviso warn">No tiene una firma registrada: en la EVIN y el INGE su firma saldría en blanco, y el Compromiso SST quedaría esperando su firma manual. Regístrela en su perfil antes de habilitarlos.</div>';
     html += `<div class="dsst-aviso info"><strong>${esc(p.nombre || '')}</strong> · C.C. ${esc(p.identificacion || '')}<br>
       Cargo: ${esc(p.cargo || '—')} · Operación: ${esc(p.operacion || '—')}<br>
       Lo que habilite aparece en su portal: el mismo enlace que usa para subir sus documentos y firmar.

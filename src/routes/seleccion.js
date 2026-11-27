@@ -3571,7 +3571,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
               <button type="button" onclick="enviarCorreoPortal()" id="btnEnviarCorreo" class="portal-ico" style="background:#4f46e5;color:#fff"
                       title="Enviar enlace por correo" aria-label="Enviar enlace por correo"><span id="txtCorreo">✉️</span></button>
               <button type="button" onclick="abrirDocSst()" id="btnDocSst" class="portal-ico portal-ico-sst" style="display:none"
-                      title="Habilitar Doc. SST: Prueba de Consumo, ARO, EVIN e INGE para firmar desde el portal" aria-label="Habilitar Doc. SST">🦺</button>
+                      title="Habilitar Doc. SST: Prueba de Consumo, ARO, EVIN, INGE, Compromiso SST y Seguridad Vial para firmar desde el portal" aria-label="Habilitar Doc. SST">🦺</button>
             </div>
           </div>
         </div>
@@ -3683,7 +3683,7 @@ function generarHtmlAdmin(uuid, asp, docsAsp, docsTec, docsFir, mapa, bloqueado,
       </div>
     </div>
 
-    <script src="/js/doc-sst-habilitar.js?v=20261122b"></script>
+    <script src="/js/doc-sst-habilitar.js?v=20261127a"></script>
     <script>
       // Habilitar Doc. SST: el botón solo sale a los roles del parámetro sst / General
       const ID_ASPIRANTE_SST = ${JSON.stringify(uuid)};

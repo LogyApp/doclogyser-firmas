@@ -121,6 +121,8 @@ async function generarPdf(a) {
 
 // Documento 96 (PESV) en Maestro_docTrabajador: lo reemplaza si ya estaba (regenerar)
 async function registrarDocumentoTrabajador(a, urlDoc, urlAnterior) {
+  // Aspirante aún sin vincular (Doc. SST desde Aspirantes): pasa a la carpeta al vincularlo (docSstPortal.alVincular)
+  if (await require('./docSstPortal').registroDiferido(a.id_aspirante)) return;
   if (urlAnterior) {
     const [upd] = await pool.execute(
       'UPDATE Maestro_docTrabajador SET Doc = ? WHERE `Identificación` = ? AND Prefijo = ? AND Doc = ?',

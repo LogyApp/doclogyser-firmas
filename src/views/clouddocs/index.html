@@ -2341,7 +2341,7 @@
       }
     }
 
-    // Documentos SST (Prueba de Consumo, ARO, EVIN, INGE) que el trabajador firma desde el mismo portal
+    // Documentos SST (Prueba de Consumo, ARO, EVIN, INGE, Compromiso SST y Seguridad Vial) que el trabajador firma desde el mismo portal
     function pintarDocSstCloudDocs(estado) {
       const habilitados = (estado.opciones || []).filter(o => o.estado);
       document.getElementById('firmas-sec-sst').style.display = (estado.puede || habilitados.length) ? '' : 'none';
@@ -6308,6 +6308,6 @@ function cambiarPaginaTodo(delta) {
   <script src="/js/app-launcher-profile.js?v=20261120e" defer></script>
   <script src="/js/ticket-boton.js?v=20261121b" defer></script>
   <script src="/js/modal-back.js" defer></script>
-  <script src="/js/doc-sst-habilitar.js?v=20261122b" defer></script>
+  <script src="/js/doc-sst-habilitar.js?v=20261127a" defer></script>
 </body>
 </html>
