@@ -1883,7 +1883,8 @@ router.get('/api/articulos/elementos', async (req, res) => {
     if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
 
     const [uniqueElements] = await pool.execute(`
-      SELECT Elemento, COUNT(*) AS total, MAX(Categoria) AS Categoria, MAX(ClaseArticulo) AS ClaseArticulo
+      SELECT Elemento, COUNT(*) AS total, MAX(Categoria) AS Categoria, MAX(ClaseArticulo) AS ClaseArticulo,
+             MAX(Costo) AS costoMax, MIN(Costo) AS costoMin, COUNT(DISTINCT Costo) AS distinctCostos
       FROM Dynamic_Articulos 
       GROUP BY Elemento 
       ORDER BY Elemento
@@ -1918,12 +1919,20 @@ router.get('/api/articulos/elementos', async (req, res) => {
         sugerencia = imagesList[0].url;
       }
 
+      const tieneVariosCostos = (el.distinctCostos || 0) > 1;
+      const costoVal = el.costoMax != null ? parseFloat(el.costoMax) : null;
+      const costoMinVal = el.costoMin != null ? parseFloat(el.costoMin) : null;
+
       return {
         elemento: el.Elemento,
         total: el.total,
         categoria: el.Categoria || 'OTRO',
         claseArticulo: el.ClaseArticulo || 'OTRO',
         imagen: distinctUrls.length === 1 ? distinctUrls[0] : (sugerencia || null),
+        costo: costoVal,
+        costoMin: costoMinVal,
+        costoMax: costoVal,
+        tieneVariosCostos,
         tieneMultiplesUrls,
         distinctCount: distinctUrls.length,
         sugerencia
@@ -2083,6 +2092,46 @@ router.post('/api/articulos/elementos/editar-nombre', async (req, res) => {
   } catch (err) {
     console.error('[inventario] POST /api/articulos/elementos/editar-nombre error:', err);
     res.status(500).json({ error: 'Error al actualizar el nombre del elemento: ' + err.message });
+  }
+});
+
+// 10. POST /api/articulos/elementos/editar-costo - Actualiza el Costo de todos los artículos con ese Elemento
+router.post('/api/articulos/elementos/editar-costo', async (req, res) => {
+  try {
+    const { elemento, nuevoCosto, usuario } = req.body;
+
+    const errAcceso = await validarGestorImagenes(usuario);
+    if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
+
+    if (!elemento || !String(elemento).trim()) {
+      return res.status(400).json({ error: 'El nombre del elemento es requerido.' });
+    }
+
+    const cleanElemento = String(elemento).trim();
+    const costoNum = (nuevoCosto === '' || nuevoCosto == null) ? null : parseFloat(nuevoCosto);
+
+    if (costoNum !== null && (isNaN(costoNum) || costoNum < 0)) {
+      return res.status(400).json({ error: 'El costo debe ser un número válido mayor o igual a cero.' });
+    }
+
+    // Actualizar Costo en Dynamic_Articulos para todos los registros del Elemento
+    const [result] = await pool.execute(
+      'UPDATE Dynamic_Articulos SET Costo = ? WHERE Elemento = ? OR Elemento = ?',
+      [costoNum, cleanElemento, cleanElemento.toUpperCase()]
+    );
+
+    cachedLookupsBase = null; // invalidar cache de kardex-lookups
+
+    const costoTexto = costoNum != null ? `$ ${costoNum.toLocaleString('es-CO')}` : '$ 0';
+    res.json({
+      success: true,
+      message: `Costo actualizado exitosamente a ${costoTexto} en ${result.affectedRows} artículo(s).`,
+      nuevoCosto: costoNum,
+      articulosActualizados: result.affectedRows
+    });
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/elementos/editar-costo error:', err);
+    res.status(500).json({ error: 'Error al actualizar el costo del elemento: ' + err.message });
   }
 });
 
