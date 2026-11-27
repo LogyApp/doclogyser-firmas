@@ -6,7 +6,7 @@ const pool = require('../services/db');
 const { programarRelleno } = require('../services/rellenoAsistencia');
 const { aplicarTrasladoEnVinculacion } = require('../services/trasladoVinculacion');
 const { obtenerParametrosTraslados, documentoTraslado } = require('../services/configTraslados');
-const { obtenerPlantilla, preprocesarDatos, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
+const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const {
   obtenerFirmaBase64Reciente,
@@ -25,7 +25,7 @@ const {
 } = require('../services/actas');
 const {
   construirDatosPlantillaCasoMedico,
-  registrarDocumentoTrabajadorCasoMedico,
+  generarPdfActaCasoMedico,
 } = require('../services/casosmedicos_actas');
 
 const router = express.Router();
@@ -45,12 +45,23 @@ const TITULOS_PROCESO = {
   acta_cierre_cm: 'ACTA DE CIERRE CASO MÉDICO',
 };
 
-function buildConfig(token, proceso, id, firmaPrevia, documentoHtml) {
-  const titulo = TITULOS_PROCESO[proceso.toLowerCase()] || 'DOCUMENTO';
+function buildConfig(token, proceso, id, firmaPrevia, documentoHtml, sufijoTitulo = '') {
+  const titulo = (TITULOS_PROCESO[proceso.toLowerCase()] || 'DOCUMENTO') + sufijoTitulo;
   return JSON.stringify({ token, proceso, id, firmaPrevia, documentoHtml, titulo }).replace(
     /<\/script>/gi,
     '<\\/script>'
   );
+}
+
+// Actas de casos médicos: el token dice quién firma ('trabajador' o 'jefe' inmediato); null si no es un acta
+// de caso médico o el token no es válido para ninguno de los dos.
+async function firmanteActaCm(proc, token, plantilla, id) {
+  if (proc !== 'acta_apertura_cm' && proc !== 'acta_cierre_cm') return null;
+  const tipo = proc === 'acta_apertura_cm' ? 'apertura' : 'cierre';
+  const t = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, `token_${tipo}`, `token_${tipo}_expira`);
+  if (t.valido) return 'trabajador';
+  const j = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, `token_jefe_${tipo}`, `token_jefe_${tipo}_expira`);
+  return j.valido ? 'jefe' : null;
 }
 
 router.get('/:proceso/:id', async (req, res) => {
@@ -72,7 +83,10 @@ router.get('/:proceso/:id', async (req, res) => {
     }
 
     const plantilla = await obtenerPlantilla(proceso);
-    const resultado = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, colToken, colExpira);
+    const firmante = await firmanteActaCm(proc, token, plantilla, id);
+    const resultado = firmante
+      ? { valido: true }
+      : await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, colToken, colExpira);
 
     if (!resultado.valido) return res.status(401).send(paginaError('Token inválido o expirado'));
 
@@ -89,8 +103,13 @@ router.get('/:proceso/:id', async (req, res) => {
     if (proc === 'acta_entrega') {
       const { datos: datosPlantilla } = await construirDatosPlantilla(id, { firmaHtml: '' });
       documentoHtml = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
-    } else if (proc === 'acta_apertura_cm' || proc === 'acta_cierre_cm') {
-      const { datos: datosPlantilla } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml: '' });
+    } else if (firmante) {
+      const tipoActa = proc === 'acta_apertura_cm' ? 'apertura' : 'cierre';
+      if (datos[firmante === 'jefe' ? `firma_jefe_${tipoActa}` : `firma_${tipoActa}`]) {
+        return res.status(409).send(paginaError(`Esta acta ya fue firmada por ${firmante === 'jefe' ? 'el jefe inmediato' : 'el trabajador'}.`));
+      }
+      // El jefe ve el acta con la firma del trabajador si ya firmó; el trabajador la ve sin la suya
+      const { datos: datosPlantilla } = await construirDatosPlantillaCasoMedico(id, proc, firmante === 'jefe' ? {} : { firmaHtml: '' });
       documentoHtml = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
     } else {
       let htmlDoc = plantilla.contenido_html || '';
@@ -101,13 +120,16 @@ router.get('/:proceso/:id', async (req, res) => {
       documentoHtml = reemplazarVariables(htmlDoc, preprocesarDatos(datos));
     }
 
+    // La firma guardada es la del trabajador: al jefe inmediato no se le ofrece
     let firmaPrevia = null;
-    try {
-      firmaPrevia = await obtenerFirmaBase64Reciente(datos['Identificación'] || datos['identificacion']);
-    } catch {}
+    if (firmante !== 'jefe') {
+      try {
+        firmaPrevia = await obtenerFirmaBase64Reciente(datos['Identificación'] || datos['identificacion']);
+      } catch {}
+    }
 
     const template = fs.readFileSync(DOCUMENTO_HTML, 'utf8');
-    const config = buildConfig(token, proceso, id, firmaPrevia, documentoHtml);
+    const config = buildConfig(token, proceso, id, firmaPrevia, documentoHtml, firmante === 'jefe' ? ' — FIRMA DEL JEFE INMEDIATO' : '');
     res.send(template.replace('__CONFIG__', config));
   } catch (err) {
     console.error(err);
@@ -132,7 +154,10 @@ router.post('/:proceso/:id', async (req, res) => {
     }
 
     const plantilla = await obtenerPlantilla(proceso);
-    const resultado = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, colToken, colExpira);
+    const firmante = await firmanteActaCm(proc, token, plantilla, id);
+    const resultado = firmante
+      ? { valido: true }
+      : await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, colToken, colExpira);
 
     if (!resultado.valido) return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
 
@@ -145,65 +170,40 @@ router.post('/:proceso/:id', async (req, res) => {
 
     const t = rows[0];
 
-    if (proc === 'acta_apertura_cm' || proc === 'acta_cierre_cm') {
-      const esApertura = proc === 'acta_apertura_cm';
-      const urlActaExistente = esApertura ? t.url_acta_apertura : t.url_acta_cierre;
-      if (urlActaExistente) {
-        return res.status(409).json({ ok: false, error: `El acta de ${esApertura ? 'apertura' : 'cierre'} ya fue firmada previamente` });
+    if (firmante) {
+      // Acta de caso médico: firma el trabajador o el jefe inmediato (cada uno con su enlace). El PDF se
+      // genera con las firmas que haya y se reemplaza cuando firma el otro (generarPdfActaCasoMedico).
+      const tipo = proc === 'acta_apertura_cm' ? 'apertura' : 'cierre';
+      if (!firma_base64 || !/^data:image\/png;base64,/.test(firma_base64)) {
+        return res.status(400).json({ ok: false, error: 'Firma no válida' });
       }
-
-      let urlFirma;
-      if (es_nueva_firma) {
-        const base64Data = firma_base64.replace(/^data:image\/png;base64,/, '');
-        const bufferPng = Buffer.from(base64Data, 'base64');
-        urlFirma = await subirFirma(t.identificacion, bufferPng);
-      } else {
-        urlFirma = await obtenerUrlFirmaReciente(t.identificacion);
-      }
-
-      // Firma con "Firmado: dd/mm/aaaa hh:mm" debajo (como en LogySign y los demás PDF de SST)
       const fechaFirma = new Date();
-      const firmaHtml = firmaConFecha(
-        `<img src="${firma_base64}" class="sig-img" style="max-height:65px;max-width:240px;display:block;margin:0 auto;" alt="Firma colaborador"/>`,
-        fechaFirma
-      );
 
-      const { datos: datosPlantilla } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml });
-      const htmlFinal = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
-
-      const pdfBuffer = await generarPDFDesdeHTML(htmlFinal);
-
-      const prefijo = esApertura ? 'AACM' : 'ACCM';
-      const tipoDocumento = esApertura ? '94' : '95';
-      const urlActa = await subirPDFActa(t.identificacion, prefijo, id, pdfBuffer);
-
-      if (esApertura) {
+      if (firmante === 'jefe') {
+        if (t[`firma_jefe_${tipo}`]) return res.status(409).json({ ok: false, error: 'El jefe inmediato ya firmó esta acta' });
+        // La firma del jefe queda solo en el caso (no es la firma registrada del trabajador)
         await pool.execute(
-          `UPDATE Maestro_casosmedicos
-           SET url_firma_apertura = ?, firma_apertura = ?, url_acta_apertura = ?, fecha_firma_apertura = ?,
-               token_apertura = NULL, token_apertura_expira = NULL
-           WHERE id = ?`,
-          [urlFirma, firma_base64, urlActa, fechaFirma, id]
+          `UPDATE Maestro_casosmedicos SET firma_jefe_${tipo} = ?, fecha_firma_jefe_${tipo} = ?,
+             token_jefe_${tipo} = NULL, token_jefe_${tipo}_expira = NULL WHERE id = ?`,
+          [firma_base64, fechaFirma, id]
         );
       } else {
+        if (t[`firma_${tipo}`]) return res.status(409).json({ ok: false, error: `El acta de ${tipo} ya fue firmada previamente` });
+        let urlFirma;
+        if (es_nueva_firma) {
+          const bufferPng = Buffer.from(firma_base64.replace(/^data:image\/png;base64,/, ''), 'base64');
+          urlFirma = await subirFirma(t.identificacion, bufferPng);
+        } else {
+          urlFirma = await obtenerUrlFirmaReciente(t.identificacion);
+        }
         await pool.execute(
-          `UPDATE Maestro_casosmedicos
-           SET url_firma_cierre = ?, firma_cierre = ?, url_acta_cierre = ?, fecha_firma_cierre = ?,
-               token_cierre = NULL, token_cierre_expira = NULL
-           WHERE id = ?`,
-          [urlFirma, firma_base64, urlActa, fechaFirma, id]
+          `UPDATE Maestro_casosmedicos SET url_firma_${tipo} = ?, firma_${tipo} = ?, fecha_firma_${tipo} = ?,
+             token_${tipo} = NULL, token_${tipo}_expira = NULL WHERE id = ?`,
+          [urlFirma, firma_base64, fechaFirma, id]
         );
       }
 
-      await registrarDocumentoTrabajadorCasoMedico({
-        caso: t,
-        tipoDocumento,
-        prefijo,
-        urlActa,
-        usuario: t.usuario,
-        tipoActa: esApertura ? 'apertura' : 'cierre',
-      });
-
+      const urlActa = await generarPdfActaCasoMedico(id, tipo, { usuario: t.usuario });
       return res.json({ ok: true, url_doc: urlActa });
     }
 

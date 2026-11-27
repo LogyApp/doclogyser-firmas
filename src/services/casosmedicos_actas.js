@@ -2,6 +2,10 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('./db');
 const { transporter, EMAIL_FROM, FOOTER, encabezadoLogo, LOGO_HEADER_ATTACHMENT, COLOR_ENCABEZADO_AZUL } = require('./email');
 const { LOGO_BASE64 } = require('./assets');
+const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('./plantilla');
+const { generarPDFDesdeHTML } = require('./renderer');
+const { subirPDFActa } = require('./storage');
+const { firmanteSstActas, estadoCompromiso } = require('./casosMedicosMatriz');
 
 function esc(v) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -36,7 +40,54 @@ function formatFechaCorta(fecha) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = '' } = {}) {
+function recortar(texto, max) {
+  const s = String(texto || '').replace(/\s+/g, ' ').trim();
+  return s.length > max ? `${s.slice(0, max).replace(/\s+\S*$/, '').replace(/[\s.,;:]+$/, '')}…` : s;
+}
+
+// Bloque de firma: imagen con "Firmado: dd/mm/aaaa hh:mm" debajo, o el aviso si aún no firma
+function bloqueFirma(src, fecha, aviso) {
+  return src
+    ? firmaConFecha(`<img src="${esc(src)}" class="sig-img" style="max-height:60px;max-width:200px;display:block;margin:0 auto;" alt="Firma"/>`, fecha)
+    : `<span class="firma-nota">${aviso}</span>`;
+}
+
+// Restricciones vigentes o sin fecha fin del caso (tabla de la matriz); si no hay, las recomendaciones del caso
+async function htmlRestricciones(caso) {
+  const [rows] = await pool.execute(
+    `SELECT tipo_concepto, descripcion, temporalidad, fecha_inicio, fecha_fin FROM Maestro_cm_restricciones
+     WHERE idcaso = ? AND deleted_at IS NULL AND (fecha_fin IS NULL OR fecha_fin >= CURDATE() OR ? = 2)
+     ORDER BY COALESCE(fecha_inicio, fecha_concepto) DESC, id DESC LIMIT 6`,
+    [caso.id, Number(caso.estado_general_id)]
+  );
+  if (!rows.length) return `<p class="statement-text">${esc(caso.recomendaciones || 'Ninguna registrada.')}</p>`;
+  return `<table class="mini-table"><tr><th style="width:16%">Vigencia</th><th>Restricción / recomendación funcional</th><th style="width:15%">Tipo</th></tr>${rows.map(r => `
+    <tr><td>${r.fecha_inicio ? formatFechaCorta(r.fecha_inicio) : '—'}<br>${r.fecha_fin ? `al ${formatFechaCorta(r.fecha_fin)}` : esc(r.temporalidad || 'Sin fecha fin')}</td>
+    <td>${esc(r.descripcion || '—')}</td><td>${esc(r.tipo_concepto || '—')}</td></tr>`).join('')}</table>`;
+}
+
+// Compromisos del caso (como la sección 5 del acta de la matriz) y su % de cumplimiento
+async function htmlCompromisos(caso) {
+  const [rows] = await pool.execute(
+    `SELECT compromiso, responsable, fecha_inicial, fecha_vigente, fecha_cumplimiento FROM Maestro_cm_compromisos
+     WHERE idcaso = ? AND deleted_at IS NULL ORDER BY COALESCE(fecha_vigente, fecha_inicial), id`, [caso.id]);
+  const total = rows.length;
+  const cumplidos = rows.filter(r => r.fecha_cumplimiento).length;
+  if (!total) return { html: '<p class="statement-text">Sin compromisos registrados.</p>', resumen: 'Sin compromisos registrados' };
+  // En el acta (una hoja) van los 6 más recientes; el resumen cuenta todos
+  const lista = rows.slice(-6).map(r => {
+    const estado = estadoCompromiso(r);
+    return `<tr><td>${esc(r.compromiso || '—')}</td><td>${esc(r.responsable || '—')}</td>
+      <td>${formatFechaCorta(r.fecha_vigente || r.fecha_inicial)}</td><td>${esc(estado)}</td></tr>`;
+  }).join('');
+  return {
+    html: `<table class="mini-table"><tr><th>Compromiso</th><th style="width:16%">Responsable</th><th style="width:13%">Fecha vigente</th><th style="width:15%">Estado</th></tr>${lista}</table>`,
+    resumen: `${total} registrado${total === 1 ? '' : 's'} · ${cumplidos} cumplido${cumplidos === 1 ? '' : 's'} · ${Math.round((cumplidos / total) * 100)}% de cumplimiento${total > 6 ? ' (se muestran los 6 más recientes)' : ''}`,
+  };
+}
+
+// opciones.firmaHtml: firma del trabajador ya armada (vista para firmar: ''); sin ella se usa la guardada.
+async function construirDatosPlantillaCasoMedico(idCaso, proceso, opciones = {}) {
   const sql = `
     SELECT
       cm.*,
@@ -44,14 +95,12 @@ async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = 
       eg.nombre AS estado_general_nombre,
       pr.nombre AS prioridad_nombre,
       te.nombre AS tipo_evento_nombre,
-      diag.Descripción AS diagnostico_desc,
       u.Nombre AS usuario_nombre
     FROM Maestro_casosmedicos cm
     LEFT JOIN Config_Tipo_Caso tc ON cm.tipo_caso_id = tc.id
     LEFT JOIN Config_Estado_General eg ON cm.estado_general_id = eg.id
     LEFT JOIN Config_Prioridad pr ON cm.prioridad_id = pr.id
     LEFT JOIN Config_Tipo_Evento te ON cm.tipo_evento_id = te.id
-    LEFT JOIN Config_Diagnostico diag ON cm.diagnostico = diag.Cod
     LEFT JOIN Maestro_Usuarios u ON cm.usuario = u.ID
     WHERE cm.id = ?
     LIMIT 1
@@ -76,7 +125,7 @@ async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = 
   const partes = trabajadorRaw.split(' ** ');
   const nombreTrabajador = partes.length > 1 ? partes[1].trim() : (trabajadorRaw || String(caso.identificacion));
 
-  const cargo = (vinc && vinc.Cargo) || '—';
+  const cargo = (vinc && vinc.Cargo) || caso.cargo || '—';
   const regional = caso.regional_id || (vinc && vinc.Regional) || 'CENTRO';
   const operacion = caso.operacion || (vinc && vinc['Operación']) || '—';
   const fechaIngreso = caso.fecha_ingreso ? formatFechaCorta(caso.fecha_ingreso) : (vinc && vinc['Fecha de Ingreso'] ? formatFechaCorta(vinc['Fecha de Ingreso']) : '—');
@@ -108,11 +157,25 @@ async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = 
     dias_incapacidad: caso.dias_incapacidad != null ? String(caso.dias_incapacidad) : '0',
     pcl_porcentaje: caso.pcl_porcentaje != null ? `${caso.pcl_porcentaje}%` : '0%',
     periodo_recomendaciones: periodoRecomendaciones,
-    diagnostico_cod: caso.diagnostico || '—',
-    diagnostico_desc: caso.diagnostico_desc || (caso.diagnostico ? 'Diagnóstico médico' : 'Sin diagnóstico específico'),
+    // Sin diagnóstico: el acta solo lleva la restricción funcional (Res. 1843/2025, Ley 1581 de 2012)
     recomendaciones: caso.recomendaciones || 'Ninguna registrada.',
     responsable_sst: caso.responsable_sst || 'Área de Seguridad y Salud en el Trabajo',
     responsable_operacion: caso.responsable_operacion || '—',
+    jefe_inmediato: caso.responsable_operacion || '—',
+    area: caso.area || '—',
+    origen: caso.origen || '—',
+    estado_laboral: caso.estado_laboral || '—',
+    tipo_concepto: caso.tipo_concepto || '—',
+    fecha_ultimo_concepto: formatFechaCorta(caso.fecha_ultimo_concepto),
+    incapacidad: [
+      caso.fecha_inicio_incap ? `${formatFechaCorta(caso.fecha_inicio_incap)}${caso.fecha_fin_incap ? ` al ${formatFechaCorta(caso.fecha_fin_incap)}` : ''}` : '',
+      Number(caso.dias_incapacidad) > 0 ? `${caso.dias_incapacidad} días acumulados` : '',
+    ].filter(Boolean).join(' · ') || '—',
+    adaptacion: [caso.adaptacion_implementada ? `Implementada: ${caso.adaptacion_implementada}` : '', caso.estado_adaptacion || '',
+      caso.fecha_limite_adaptacion ? `límite ${formatFechaCorta(caso.fecha_limite_adaptacion)}` : ''].filter(Boolean).join(' · ') || '—',
+    proceso_calificacion: caso.proceso_calificacion || '—',
+    // Corta: el acta es de una hoja y la observación completa queda en el expediente
+    observacion_administrativa: recortar(caso.observacion_administrativa, 400) || 'Sin observaciones.',
     actividad_actual: caso.actividad_actual || 'Labor asignada',
     fecha_cierre: formatFechaCorta(caso.fecha_cierre || new Date()),
     motivo_cierre: caso.motivo_cierre || 'Finalización satisfactoria y reintegro laboral',
@@ -121,8 +184,25 @@ async function construirDatosPlantillaCasoMedico(idCaso, proceso, { firmaHtml = 
     fecha_registro: formatFechaLarga(caso.fecha_registro || new Date()),
   };
   const datos = Object.fromEntries(Object.entries(datosTexto).map(([k, v]) => [k, esc(v)]));
+
+  // Firmas: trabajador, jefe inmediato (cada uno con su enlace) y Líder SST (firma registrada)
+  const tipo = proceso === 'acta_cierre_cm' ? 'cierre' : 'apertura';
+  const firmaTrab = caso[`firma_${tipo}`] || caso[`url_firma_${tipo}`];
+  const fechaTrab = caso[`fecha_firma_${tipo}`];
+  const fechaJefe = caso[`fecha_firma_jefe_${tipo}`];
+  const sst = await firmanteSstActas();
+  const fechaSst = [fechaTrab, fechaJefe].filter(Boolean).map(f => new Date(f)).sort((a, b) => a - b).pop() || null;
+  const compromisos = await htmlCompromisos(caso);
+
   Object.assign(datos, {
-    firma_trabajador: firmaHtml,
+    firma_trabajador: opciones.firmaHtml !== undefined ? opciones.firmaHtml : (firmaTrab ? bloqueFirma(firmaTrab, fechaTrab) : ''),
+    firma_jefe: bloqueFirma(caso[`firma_jefe_${tipo}`], fechaJefe, 'Firma pendiente'),
+    firma_sst: (firmaTrab || caso[`firma_jefe_${tipo}`]) && sst.urlFirma ? bloqueFirma(sst.urlFirma, fechaSst) : `<span class="firma-nota">${sst.urlFirma ? 'Se firma con el acta' : 'Sin firma registrada'}</span>`,
+    nombre_sst: esc(sst.nombre || caso.responsable_sst || 'Líder SST'),
+    cargo_sst: esc(sst.cargo || 'Líder SST'),
+    restricciones_html: await htmlRestricciones(caso),
+    compromisos_html: compromisos.html,
+    compromisos_resumen: esc(compromisos.resumen),
     // Diseño moderno
     logo_src: LOGO_BASE64,
     fecha_generacion: fechaHoraBogotaTexto(),
@@ -170,6 +250,26 @@ async function registrarDocumentoTrabajadorCasoMedico({ caso, tipoDocumento, pre
   );
 }
 
+// Genera el PDF del acta con las firmas guardadas y lo deja en la misma ruta del bucket (reemplaza el
+// anterior). La primera vez lo registra en Maestro_docTrabajador (doc 94 apertura / 95 cierre).
+async function generarPdfActaCasoMedico(idCaso, tipo, { usuario } = {}) {
+  const esApertura = tipo === 'apertura';
+  const proc = esApertura ? 'acta_apertura_cm' : 'acta_cierre_cm';
+  const plantilla = await obtenerPlantilla(proc);
+  const { caso, datos } = await construirDatosPlantillaCasoMedico(idCaso, proc);
+  const pdf = await generarPDFDesdeHTML(reemplazarVariables(plantilla.contenido_html || '', datos));
+  const prefijo = esApertura ? 'AACM' : 'ACCM';
+  const urlActa = await subirPDFActa(caso.identificacion, prefijo, idCaso, pdf);
+  const colUrl = esApertura ? 'url_acta_apertura' : 'url_acta_cierre';
+  if (!caso[colUrl]) {
+    await pool.execute(`UPDATE Maestro_casosmedicos SET ${colUrl} = ? WHERE id = ?`, [urlActa, idCaso]);
+    await registrarDocumentoTrabajadorCasoMedico({
+      caso, tipoDocumento: esApertura ? '94' : '95', prefijo, urlActa, usuario: usuario || caso.usuario, tipoActa: tipo,
+    });
+  }
+  return urlActa;
+}
+
 async function notificarActaCasoMedico({ email, nombreTrabajador, tipoActa, codigoCaso, urlFirma }) {
   if (!email || !urlFirma) return false;
 
@@ -209,6 +309,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 module.exports = {
   construirDatosPlantillaCasoMedico,
   registrarDocumentoTrabajadorCasoMedico,
+  generarPdfActaCasoMedico,
   notificarActaCasoMedico,
   formatFechaCorta,
   formatFechaLarga,

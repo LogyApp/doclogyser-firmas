@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Acta de Apertura de Caso Médico — LOG&SER</title>
+<title>Acta De Inicio De Seguimiento A Caso De Salud — LOG&amp;SER</title>
 <style>
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -88,6 +88,28 @@
   .statement-box { padding: 8px 12px; margin-bottom: 8px; }
   .signature-container { margin-top: 10px; }
   .doc-footer { margin-top: 10px; }
+
+  /* v2: tablas pequeñas de restricciones y compromisos, tres firmas */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 7.8pt; margin-top: 2px; }
+  .mini-table th { background: #e6edf7; color: #000b59; font-weight: 700; text-align: left; padding: 3px 6px; border: 1px solid #cbd5e1; }
+  .mini-table td { padding: 3px 6px; border: 1px solid #e2e8f0; vertical-align: top; color: #1e293b; }
+  .resumen { font-size: 7.8pt; color: #475569; margin-top: 3px; font-weight: 600; }
+  .data-grid.dos td.data-label { width: 18%; }
+  .signature-row .signature-card { width: 31%; }
+  .sig-img-wrap { height: 56px; }
+  /* v2 en una hoja: más compacto */
+  body { font-size: 8.4pt; line-height: 1.35; }
+  .doc-header-table { margin-bottom: 8px; }
+  .logo-img { height: 40px; }
+  .header-title-cell { padding: 7px 12px; }
+  .section-block { margin-bottom: 6px; }
+  .section-title { margin-bottom: 4px; padding-bottom: 3px; }
+  .data-grid { font-size: 8pt; }
+  .data-grid td { padding: 2.5px 8px; }
+  .statement-box { padding: 6px 10px; margin-bottom: 6px; }
+  .statement-text { font-size: 8pt; line-height: 1.4; }
+  .signature-container { margin-top: 8px; }
+  .doc-footer { margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -98,9 +120,9 @@
         <img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img">
       </td>
       <td class="header-title-cell">
-        <div class="doc-title">ACTA DE APERTURA DE CASO MÉDICO</div>
+        <div class="doc-title">ACTA DE INICIO DE SEGUIMIENTO A CASO DE SALUD</div>
         <div class="doc-subtitle">SEGURIDAD Y SALUD EN EL TRABAJO</div>
-        <div class="doc-subdetail">SISTEMA DE GESTIÓN DE SEGURIDAD Y SALUD EN EL TRABAJO</div>
+        <div class="doc-subdetail">SEGUIMIENTO A CASOS DE SALUD</div>
       </td>
       <td class="header-meta-cell">
         <div class="meta-code">{{codigo_formato}}</div>
@@ -111,76 +133,69 @@
     </tr>
   </table>
 
-  <div class="metrics-card">
-    <div class="metric-item">
-      <div class="metric-label">Caso médico</div>
-      <div class="metric-value">{{codigo_caso}}</div>
-      <div class="metric-sub">Código del caso</div>
-    </div>
-    <div class="metric-item">
-      <div class="metric-label">Fecha del evento</div>
-      <div class="metric-value">{{fecha_evento}}</div>
-      <div class="metric-sub">Tipo: {{tipo_evento}}</div>
-    </div>
-    <div class="metric-item">
-      <div class="metric-label">Tipo de caso</div>
-      <div class="metric-value">{{tipo_caso}}</div>
-      <div class="metric-sub">Clasificación SST</div>
-    </div>
-  </div>
-
   <section class="section-block">
-    <div class="section-title">Información del Colaborador</div>
-    <table class="data-grid">
-      <tr><td class="data-label">Nombre del colaborador:</td><td class="data-val"><strong>{{nombre_trabajador}}</strong></td></tr>
-      <tr><td class="data-label">Cédula de ciudadanía:</td><td class="data-val">{{identificacion}}</td></tr>
-      <tr><td class="data-label">Cargo:</td><td class="data-val">{{cargo}}</td></tr>
-      <tr><td class="data-label">Regional / Operación:</td><td class="data-val">{{regional}} / {{operacion}}</td></tr>
-      <tr><td class="data-label">Fecha de ingreso:</td><td class="data-val">{{fecha_ingreso}}</td></tr>
+    <div class="section-title">1. Datos del colaborador</div>
+    <table class="data-grid dos">
+      <tr><td class="data-label">Colaborador:</td><td class="data-val"><strong>{{nombre_trabajador}}</strong></td><td class="data-label">Cédula:</td><td class="data-val">{{identificacion}}</td></tr>
+      <tr><td class="data-label">Cargo:</td><td class="data-val">{{cargo}}</td><td class="data-label">Área:</td><td class="data-val">{{area}}</td></tr>
+      <tr><td class="data-label">Regional / Operación:</td><td class="data-val">{{regional}} / {{operacion}}</td><td class="data-label">Fecha de ingreso:</td><td class="data-val">{{fecha_ingreso}}</td></tr>
+      <tr><td class="data-label">Jefe inmediato:</td><td class="data-val">{{jefe_inmediato}}</td><td class="data-label">Responsable SST:</td><td class="data-val">{{responsable_sst}}</td></tr>
     </table>
   </section>
 
   <section class="section-block">
-    <div class="section-title">Información del Caso</div>
-    <table class="data-grid">
-      <tr><td class="data-label">EPS / AFP:</td><td class="data-val">{{eps}} / {{afp}}</td></tr>
-      <tr><td class="data-label">Días de incapacidad:</td><td class="data-val">{{dias_incapacidad}}</td></tr>
-      <tr><td class="data-label">% PCL:</td><td class="data-val">{{pcl_porcentaje}}</td></tr>
-      <tr><td class="data-label">Vigencia recomendaciones:</td><td class="data-val">{{periodo_recomendaciones}}</td></tr>
+    <div class="section-title">2. Información del evento y seguimiento laboral</div>
+    <table class="data-grid dos">
+      <tr><td class="data-label">Tipo de evento:</td><td class="data-val">{{tipo_evento}}</td><td class="data-label">Origen:</td><td class="data-val">{{origen}}</td></tr>
+      <tr><td class="data-label">Incapacidad:</td><td class="data-val">{{incapacidad}}</td><td class="data-label">Estado laboral:</td><td class="data-val">{{estado_laboral}}</td></tr>
+      <tr><td class="data-label">Último concepto:</td><td class="data-val">{{fecha_ultimo_concepto}} · {{tipo_concepto}}</td><td class="data-label">Calificación:</td><td class="data-val">{{proceso_calificacion}}</td></tr>
+      <tr><td class="data-label">Adaptación del puesto:</td><td class="data-val" colspan="3">{{adaptacion}}</td></tr>
     </table>
-  </section>
-
-  <section class="statement-box">
-    <div class="statement-header">Diagnóstico principal (CIE-10)</div>
-    <p class="statement-text"><strong>[{{diagnostico_cod}}]</strong> {{diagnostico_desc}}</p>
   </section>
 
   <section class="statement-box autoriza">
-    <div class="statement-header">Recomendaciones y restricciones médicas / laborales</div>
-    <p class="statement-text">{{recomendaciones}}</p>
+    <div class="statement-header">3. Restricciones y recomendaciones funcionales</div>
+    {{restricciones_html}}
   </section>
 
   <section class="statement-box">
-    <div class="statement-header">Compromiso y notificación de apertura</div>
-    <p class="statement-text">Por medio de la presente, el colaborador y el área de Seguridad y Salud en el Trabajo (SST) de LOG&amp;SER dejan constancia formal de la apertura del presente caso médico, así como del pleno conocimiento y acatamiento de las indicaciones y restricciones médicas emitidas por los profesionales tratantes. El colaborador se compromete a asistir puntualmente a sus valoraciones médicas, cumplir los tratamientos indicados, abstenerse de realizar labores contrarias a sus recomendaciones ocupacionales y reportar cualquier novedad en su estado de salud de manera oportuna a su jefatura inmediata y al área de SST.</p>
+    <div class="statement-header">4. Objeto del acta</div>
+    <p class="statement-text">El colaborador, su jefe inmediato y el área de Seguridad y Salud en el Trabajo (SST) de LOG&amp;SER dejan constancia del inicio del seguimiento a este caso de salud y del conocimiento de las restricciones y recomendaciones funcionales descritas. El colaborador se compromete a asistir a sus valoraciones y controles médicos, cumplir las indicaciones recibidas, abstenerse de realizar labores contrarias a sus recomendaciones y reportar oportunamente cualquier novedad a su jefe inmediato y al área de SST. El jefe inmediato se compromete a asignar las tareas conforme a dichas restricciones y a facilitar la adaptación del puesto. Este documento no contiene información clínica.</p>
   </section>
 
   <section class="section-block">
-    <div class="section-title">Responsables del caso</div>
-    <table class="data-grid">
-      <tr><td class="data-label">Responsable SST:</td><td class="data-val">{{responsable_sst}}</td></tr>
-      <tr><td class="data-label">Responsable operación:</td><td class="data-val">{{responsable_operacion}}</td></tr>
-    </table>
+    <div class="section-title">5. Compromisos del caso</div>
+    {{compromisos_html}}
+    <div class="resumen">{{compromisos_resumen}}</div>
+  </section>
+
+  <section class="statement-box">
+    <div class="statement-header">6. Observaciones</div>
+    <p class="statement-text">{{observacion_administrativa}}</p>
   </section>
 
   <div class="signature-container">
-    <div class="signature-row" style="justify-content:center;">
+    <div class="signature-row">
       <div class="signature-card">
         <div class="sig-img-wrap">{{firma_trabajador}}</div>
         <div class="sig-line"></div>
         <div class="sig-role">Colaborador</div>
         <div class="sig-name">{{nombre_trabajador}}</div>
-        <div class="sig-details">C.C. {{identificacion}}<br>{{cargo}}</div>
+        <div class="sig-details">C.C. {{identificacion}}</div>
+      </div>
+      <div class="signature-card">
+        <div class="sig-img-wrap">{{firma_jefe}}</div>
+        <div class="sig-line"></div>
+        <div class="sig-role">Jefe inmediato</div>
+        <div class="sig-name">{{jefe_inmediato}}</div>
+        <div class="sig-details">{{operacion}}</div>
+      </div>
+      <div class="signature-card">
+        <div class="sig-img-wrap">{{firma_sst}}</div>
+        <div class="sig-line"></div>
+        <div class="sig-role">Líder SST</div>
+        <div class="sig-name">{{nombre_sst}}</div>
+        <div class="sig-details">{{cargo_sst}}</div>
       </div>
     </div>
   </div>

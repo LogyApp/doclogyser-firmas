@@ -5,11 +5,10 @@ const { generarToken, validarToken } = require('../services/token');
 const {
   construirDatosPlantillaCasoMedico,
   notificarActaCasoMedico,
+  generarPdfActaCasoMedico,
 } = require('../services/casosmedicos_actas');
-const { obtenerPlantilla, reemplazarVariables, firmaConFecha } = require('../services/plantilla');
-const { generarPDFDesdeHTML } = require('../services/renderer');
-const { subirPDFActa } = require('../services/storage');
 const { rolPuedeSst, puedeProcesarRetiradosSst } = require('../services/configSst');
+const matriz = require('../services/casosMedicosMatriz');
 
 // Permisos de la pestaña en Config_Parametros (sst / Casos Medicos), ver configSst.js.
 // Quien creó el caso siempre puede editarlo, eliminarlo y gestionar sus actas.
@@ -485,7 +484,7 @@ router.get('/api/casos-trabajador/:identificacion', async (req, res) => {
           b.fecha_compromiso,
           COALESCE(cr.resultado, b.resultado) AS resultado,
           b.resultado AS resultado_id,
-          b.actividad_actual,
+          b.actividad_actual, b.responsable, b.responsable_compromiso, b.fecha_cumplimiento, b.evidencia, b.proxima_gestion,
           b.usuario,
           b.fecha_registro,
           u.Nombre AS usuario_nombre
@@ -535,6 +534,9 @@ router.get('/api/catalogos', async (req, res) => {
     const [resultadosBitacora] = await pool.execute('SELECT id, resultado FROM Config_Resultados ORDER BY id');
 
     res.json({
+      // Campos y registros de la matriz de casos médicos (services/casosMedicosMatriz.js)
+      listas: await matriz.listas(),
+      matriz: matriz.definicionPantalla(),
       tiposCaso,
       estados,
       prioridades,
@@ -918,6 +920,9 @@ router.post('/api/crear', async (req, res) => {
     // trg_casos_bi asigna NEW.codigo_caso = NULL, se actualiza post-insert con el ID autoincremental
     codigo_caso = `CM-${String(result.insertId).padStart(4, '0')}`;
     await pool.execute('UPDATE Maestro_casosmedicos SET codigo_caso = ? WHERE id = ?', [codigo_caso, result.insertId]);
+    // Campos de la matriz (estado laboral, adaptación, calificación, APT...)
+    const camposMatriz = await matriz.camposCasoDesde(req.body);
+    if (Object.keys(camposMatriz).length) await pool.query('UPDATE Maestro_casosmedicos SET ? WHERE id = ?', [camposMatriz, result.insertId]);
 
     res.json({
       ok: true,
@@ -1125,6 +1130,8 @@ router.put('/api/caso/:id', async (req, res) => {
       motivoCierreFinal,
       id
     ]);
+    const camposMatriz = await matriz.camposCasoDesde(req.body);
+    if (Object.keys(camposMatriz).length) await pool.query('UPDATE Maestro_casosmedicos SET ? WHERE id = ?', [camposMatriz, id]);
 
     res.json({
       ok: true,
@@ -1320,22 +1327,11 @@ router.post('/api/caso/:id/regenerar-acta', async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para regenerar las actas de este caso médico' });
     }
 
-    const esApertura = tipo === 'apertura';
-    const urlActa = esApertura ? caso.url_acta_apertura : caso.url_acta_cierre;
+    const urlActa = tipo === 'apertura' ? caso.url_acta_apertura : caso.url_acta_cierre;
     if (!urlActa) return res.status(400).json({ error: `El acta de ${tipo} aún no está firmada.` });
 
-    const firmaSrc = (esApertura ? (caso.firma_apertura || caso.url_firma_apertura) : (caso.firma_cierre || caso.url_firma_cierre)) || '';
-    const fechaFirma = esApertura ? caso.fecha_firma_apertura : caso.fecha_firma_cierre;
-    const firmaHtml = firmaSrc
-      ? firmaConFecha(`<img src="${firmaSrc}" class="sig-img" style="max-height:65px;max-width:240px;display:block;margin:0 auto;" alt="Firma colaborador"/>`, fechaFirma)
-      : '';
-
-    const proc = esApertura ? 'acta_apertura_cm' : 'acta_cierre_cm';
-    const plantilla = await obtenerPlantilla(proc);
-    const { datos } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml });
-    const pdfBuffer = await generarPDFDesdeHTML(reemplazarVariables(plantilla.contenido_html || '', datos));
-    const nuevaUrl = await subirPDFActa(caso.identificacion, esApertura ? 'AACM' : 'ACCM', id, pdfBuffer);
-
+    // Mismas firmas guardadas (trabajador, jefe inmediato y Líder SST), datos y plantilla actuales
+    const nuevaUrl = await generarPdfActaCasoMedico(id, tipo, { usuario });
     res.json({ ok: true, url_doc: nuevaUrl });
   } catch (err) {
     console.error('[casosmedicos] POST /api/caso/:id/regenerar-acta:', err);
@@ -1403,7 +1399,7 @@ router.get('/api/bitacoras/:idcaso', async (req, res) => {
         b.fecha_compromiso,
         COALESCE(cr.resultado, b.resultado) AS resultado,
         b.resultado AS resultado_id,
-        b.actividad_actual,
+        b.actividad_actual, b.responsable, b.responsable_compromiso, b.fecha_cumplimiento, b.evidencia, b.proxima_gestion,
         b.usuario,
         b.fecha_registro,
         u.Nombre AS usuario_nombre
@@ -1438,7 +1434,12 @@ router.post('/api/bitacora/crear', async (req, res) => {
       compromiso_accion,
       fecha_compromiso,
       resultado,
-      actividad_actual
+      actividad_actual,
+      responsable,
+      responsable_compromiso,
+      fecha_cumplimiento,
+      evidencia,
+      proxima_gestion
     } = req.body;
 
     if (!usuario) {
@@ -1494,12 +1495,14 @@ router.post('/api/bitacora/crear', async (req, res) => {
       (
         idcaso, fecha_seguimiento, tipo_contacto, seguimiento_objetivo,
         compromiso_accion, fecha_compromiso, resultado, actividad_actual,
+        responsable, responsable_compromiso, fecha_cumplimiento, evidencia, proxima_gestion,
         usuario, fecha_registro
       )
       VALUES
       (
         ?, ?, ?, ?,
         ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
         ?, NOW()
       )
     `;
@@ -1513,6 +1516,11 @@ router.post('/api/bitacora/crear', async (req, res) => {
       fecha_compromiso || null,
       validResultado,
       actividad_actual || null,
+      responsable ? String(responsable).trim().slice(0, 200) : null,
+      responsable_compromiso ? String(responsable_compromiso).trim().slice(0, 60) : null,
+      fecha_cumplimiento || null,
+      evidencia ? String(evidencia).trim().slice(0, 500) : null,
+      proxima_gestion || null,
       validUsuario
     ]);
 
@@ -1526,7 +1534,7 @@ router.post('/api/bitacora/crear', async (req, res) => {
         actividad_actual = COALESCE(?, actividad_actual),
         fecha_actualizacion = NOW()
       WHERE id = ?
-    `, [fechaSeg, compromiso_accion || null, fecha_compromiso || null, actividad_actual || null, idcaso]);
+    `, [fechaSeg, compromiso_accion || null, proxima_gestion || fecha_compromiso || null, actividad_actual || null, idcaso]);
     await recalcularAlertasCasos(true); // el nuevo seguimiento cambia los días sin seguimiento
 
     res.json({
@@ -1573,6 +1581,125 @@ router.delete('/api/bitacora/:id', async (req, res) => {
     res.json({ ok: true, message: 'Registro de bitácora eliminado exitosamente' });
   } catch (err) {
     console.error('[casosmedicos] Error en DELETE /api/bitacora/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// Registros de la matriz por caso: restricciones, compromisos (con reprogramaciones),
+// calificación y revisiones (services/casosMedicosMatriz.js).
+// Registrar o editar: quien puede registrar seguimientos en la bitácora, editar el caso o lo creó.
+// Eliminar (borrado lógico): rol con permiso de eliminar o quien creó el registro.
+// ══════════════════════════════════════════════════════════════
+async function casoParaMatriz(req, res, idcaso, accion) {
+  const usuario = (req.body && req.body.usuario) || req.query.usuario;
+  if (!usuario) { res.status(400).json({ error: 'Parámetro usuario requerido' }); return null; }
+  const acceso = await computarAccesoSST(usuario);
+  if (!acceso) { res.status(403).json({ error: 'Usuario no autorizado en el módulo SST' }); return null; }
+  const [[caso]] = await pool.execute('SELECT id, usuario FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [idcaso]);
+  if (!caso) { res.status(404).json({ error: 'Caso médico no encontrado' }); return null; }
+  if (accion === 'registrar' && !(await rolPuedeSst(acceso.rol, SECCION_CM, 'bitacora')) && !(await puedeEnCaso(acceso, usuario, caso, 'editar'))) {
+    res.status(403).json({ error: 'No tienes permisos para registrar información en este caso médico' });
+    return null;
+  }
+  return { usuario, acceso, caso };
+}
+
+router.get('/api/caso/:id/matriz', async (req, res) => {
+  try {
+    if (!(await casoParaMatriz(req, res, req.params.id, 'ver'))) return;
+    res.json(await matriz.registrosCaso(req.params.id));
+  } catch (err) {
+    console.error('[casosmedicos] GET /api/caso/:id/matriz:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/caso/:id/matriz/:entidad', async (req, res) => {
+  try {
+    const { id, entidad } = req.params;
+    if (!matriz.ENTIDADES[entidad]) return res.status(400).json({ error: 'Tipo de registro no válido' });
+    const ctx = await casoParaMatriz(req, res, id, 'registrar');
+    if (!ctx) return;
+    const idRegistro = await matriz.guardarRegistro(entidad, id, req.body.id || null, req.body, ctx.usuario);
+    res.json({ ok: true, id: idRegistro });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[casosmedicos] POST /api/caso/:id/matriz/:entidad:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/api/caso/:id/matriz/:entidad/:idRegistro', async (req, res) => {
+  try {
+    const { id, entidad, idRegistro } = req.params;
+    const e = matriz.ENTIDADES[entidad];
+    if (!e) return res.status(400).json({ error: 'Tipo de registro no válido' });
+    const ctx = await casoParaMatriz(req, res, id, 'ver');
+    if (!ctx) return;
+    const [[reg]] = await pool.query(`SELECT id, usuario FROM ${e.tabla} WHERE id = ? AND idcaso = ? AND deleted_at IS NULL`, [idRegistro, id]);
+    if (!reg) return res.status(404).json({ error: 'Registro no encontrado' });
+    if (!(await puedeEnCaso(ctx.acceso, ctx.usuario, reg, 'eliminar'))) {
+      return res.status(403).json({ error: 'No tienes permisos para eliminar este registro' });
+    }
+    await pool.query(`UPDATE ${e.tabla} SET deleted_at = NOW() WHERE id = ?`, [idRegistro]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[casosmedicos] DELETE /api/caso/:id/matriz:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reprograma un compromiso: conserva la fecha inicial y deja la nueva en el historial
+router.post('/api/caso/:id/compromiso/:idCompromiso/reprogramar', async (req, res) => {
+  try {
+    const ctx = await casoParaMatriz(req, res, req.params.id, 'registrar');
+    if (!ctx) return;
+    const [[c]] = await pool.query('SELECT idcaso FROM Maestro_cm_compromisos WHERE id = ?', [req.params.idCompromiso]);
+    if (!c || String(c.idcaso) !== String(req.params.id)) return res.status(404).json({ error: 'Compromiso no encontrado' });
+    await matriz.reprogramarCompromiso(req.params.idCompromiso, req.body, ctx.usuario);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[casosmedicos] POST reprogramar compromiso:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// API: POST /api/caso/:id/generar-acta-jefe  { usuario, tipo: 'apertura' | 'cierre' }
+// Enlace para que el jefe inmediato firme el acta (misma página de firma, con su propio token).
+// El acta se completa con las firmas que existan: trabajador, jefe inmediato y Líder SST.
+// ══════════════════════════════════════════════════════════════
+router.post('/api/caso/:id/generar-acta-jefe', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, tipo } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    if (!['apertura', 'cierre'].includes(tipo)) return res.status(400).json({ error: 'Tipo de acta inválido' });
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [[caso]] = await pool.execute('SELECT * FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!caso) return res.status(404).json({ error: 'Caso médico no encontrado' });
+    if (!(await puedeEnCaso(acceso, usuario, caso, 'actas'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para generar enlaces de firma de actas' });
+    }
+    const esApertura = tipo === 'apertura';
+    if (Number(caso.estado_general_id) !== (esApertura ? 1 : 2)) {
+      return res.status(400).json({ error: `El acta de ${tipo} solo puede firmarse con el caso ${esApertura ? 'ABIERTO' : 'CERRADO'}` });
+    }
+    if (!String(caso.responsable_operacion || '').trim()) {
+      return res.status(400).json({ error: 'Registre el nombre del jefe inmediato en el caso antes de generar su enlace' });
+    }
+    if (caso[`firma_jefe_${tipo}`]) return res.status(409).json({ error: `El jefe inmediato ya firmó el acta de ${tipo}` });
+
+    const token = await generarToken('Maestro_casosmedicos', 'id', id, `token_jefe_${tipo}`, `token_jefe_${tipo}_expira`);
+    const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_${tipo}_cm/${id}?token=${encodeURIComponent(token)}`;
+    res.json({ ok: true, url, jefe: caso.responsable_operacion });
+  } catch (err) {
+    console.error('[casosmedicos] POST /api/caso/:id/generar-acta-jefe:', err);
     res.status(500).json({ error: err.message });
   }
 });

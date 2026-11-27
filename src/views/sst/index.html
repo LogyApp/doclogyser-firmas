@@ -4751,6 +4751,9 @@
             </div>
           </div>
 
+          <!-- 4b. SEGUIMIENTO LABORAL, ADAPTACIÓN Y CALIFICACIÓN (public/js/sst-casos-matriz.js) -->
+          <div id="cm-matriz-campos"></div>
+
           <!-- 5. GESTIÓN, RESPONSABLES Y SEGUIMIENTO -->
           <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
             <div style="font-weight: 700; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
@@ -4772,8 +4775,8 @@
                 <input type="text" class="form-control" id="cm-input-resp-sst" placeholder="Nombre profesional SST">
               </div>
               <div class="form-group">
-                <label class="form-label">Responsable Operación</label>
-                <input type="text" class="form-control" id="cm-input-resp-operacion" placeholder="Líder o jefe de operación">
+                <label class="form-label">Jefe Inmediato</label>
+                <input type="text" class="form-control" id="cm-input-resp-operacion" placeholder="Nombre del jefe inmediato (firma las actas)">
               </div>
               <div class="form-group">
                 <label class="form-label">Estado de Gestión</label>
@@ -4866,6 +4869,21 @@
           <div class="form-group" style="margin-bottom: 14px;">
             <label class="form-label">Compromiso / Acción Acordada</label>
             <textarea class="form-control" id="cm-bitacora-compromiso" rows="2" placeholder="Acciones requeridas, radicación de documentos, citas programadas..."></textarea>
+          </div>
+
+          <div class="filters-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div class="form-group">
+              <label class="form-label">Responsable de la gestión</label>
+              <input type="text" class="form-control" id="cm-bitacora-responsable" placeholder="Quién hizo la gestión">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Evidencia / ubicación</label>
+              <input type="text" class="form-control" id="cm-bitacora-evidencia" placeholder="Acta, correo, enlace...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Próxima gestión</label>
+              <input type="date" class="form-control" id="cm-bitacora-proxima-gestion">
+            </div>
           </div>
 
           <div class="form-group" style="margin-bottom: 18px;">
@@ -9552,6 +9570,13 @@
                       <strong>Actividad Laboral Reportada:</strong> ${b.actividad_actual}
                     </div>
                   ` : ''}
+                  ${(b.responsable || b.evidencia || b.proxima_gestion) ? `
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:5px; display:flex; gap:12px; flex-wrap:wrap;">
+                      ${b.responsable ? `<span><strong>Responsable:</strong> ${b.responsable}</span>` : ''}
+                      ${b.evidencia ? `<span><strong>Evidencia:</strong> ${b.evidencia}</span>` : ''}
+                      ${b.proxima_gestion ? `<span><strong>Próxima gestión:</strong> ${b.proxima_gestion.slice(0, 10).split('-').reverse().join('/')}</span>` : ''}
+                    </div>
+                  ` : ''}
                 </div>
               `;
             }).join('');
@@ -9563,7 +9588,7 @@
             <details class="cm-case-card" style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;">
               <summary class="cm-case-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:12px; cursor:pointer; list-style:none;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span style="font-weight:800; font-size:1.05rem; color:var(--text);">${c.codigo_caso}</span>
+                  <span style="font-weight:800; font-size:1.05rem; color:var(--text);">${c.codigo_caso || ('CM-' + String(c.id).padStart(4, '0'))}</span>
                   ${estadoBadge}
                   ${prioBadge}
                   ${tipoCasoBadge}
@@ -9621,7 +9646,7 @@
                 <!-- Gestión y Seguimiento -->
                 <div class="cm-info-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px 12px; border-top:1px dashed var(--border); padding-top:10px; margin-top:8px; font-size:0.82rem;">
                   <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Responsable SST</span> <span class="val" style="font-weight:600;">${c.responsable_sst || '—'}</span></div>
-                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Responsable Operación</span> <span class="val" style="font-weight:600;">${c.responsable_operacion || '—'}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Jefe Inmediato</span> <span class="val" style="font-weight:600;">${c.responsable_operacion || '—'}</span></div>
                   <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Estado Gestión</span> <span class="val badge ${c.estado_gestion === 'AL DÍA' ? 'badge-success' : c.estado_gestion === 'EN GESTIÓN' ? 'badge-warning' : 'badge-danger'}" style="font-size:0.72rem;">${c.estado_gestion || 'REQUIERE ACCIÓN'}</span></div>
                   <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Próxima Acción</span> <span class="val" style="font-weight:600;">${c.proxima_accion || '—'}</span></div>
                   <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Fecha Compromiso</span> <span class="val" style="font-weight:600;">${fCompromisoFmt}</span></div>
@@ -9630,6 +9655,9 @@
                     <span class="val" style="font-weight:600;">${fUltimoSegFmt} ${alertaSegBadge}</span>
                   </div>
                 </div>
+
+                <!-- Seguimiento laboral, adaptación y calificación (matriz) -->
+                ${CmMatriz.htmlResumenCaso(c)}
 
                 <!-- Sección de Gestión Documental y Actas SST -->
                 <div class="cm-actas-container" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:12px;">
@@ -9698,6 +9726,7 @@
                           El acta de apertura solo puede emitirse cuando el caso se encuentra en estado ABIERTO.
                         </div>
                       `}
+                      ${CmMatriz.htmlFirmaJefe(c, 'apertura', puedeActasCaso)}
                     </div>
 
                     <!-- Bloque 2: Acta de Cierre (Doc 95 - ACCM) -->
@@ -9760,9 +9789,13 @@
                           El acta de cierre solo puede emitirse cuando el caso se encuentra en estado CERRADO.
                         </div>
                       `}
+                      ${CmMatriz.htmlFirmaJefe(c, 'cierre', puedeActasCaso)}
                     </div>
                   </div>
                 </div>
+
+                <!-- Restricciones, compromisos, calificación y revisiones (matriz) -->
+                ${CmMatriz.htmlSecciones(c)}
 
                 <!-- Sección Integrada de Bitácora -->
                 ${bitacoraHtml}
@@ -9778,6 +9811,8 @@
         }).join('');
 
         casosContainerEl.innerHTML = casesHtml;
+        // Las secciones de la matriz necesitan los catálogos (definición y listas)
+        cargarCatalogosCasosMedicos().then(() => CmMatriz.montarExpediente());
       } catch (err) {
         console.error('Error abriendo expediente de casos médicos:', err);
         heroEl.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">Error al cargar el expediente del colaborador.</div>';
@@ -9850,6 +9885,9 @@
       const seguimiento_objetivo = document.getElementById('cm-bitacora-objetivo').value.trim();
       const compromiso_accion = document.getElementById('cm-bitacora-compromiso').value.trim() || null;
       const actividad_actual = document.getElementById('cm-bitacora-actividad').value.trim() || null;
+      const responsable = document.getElementById('cm-bitacora-responsable').value.trim() || null;
+      const evidencia = document.getElementById('cm-bitacora-evidencia').value.trim() || null;
+      const proxima_gestion = document.getElementById('cm-bitacora-proxima-gestion').value || null;
 
       if (!idcaso || !fecha_seguimiento || !tipo_contacto || !resultado || !seguimiento_objetivo) {
         showToast('Por favor completa los campos requeridos (*)', 'error');
@@ -9865,6 +9903,9 @@
         seguimiento_objetivo,
         compromiso_accion,
         actividad_actual,
+        responsable,
+        evidencia,
+        proxima_gestion,
         usuario: CONFIG.usuarioId
       };
 
@@ -9933,6 +9974,7 @@
         const res = await fetch('/casosmedicos/api/catalogos');
         const data = await res.json();
         catalogosCasosMedicos = data;
+        CmMatriz.init(data);
 
         const sTipoCaso = document.getElementById('cm-select-tipo-caso');
         sTipoCaso.innerHTML = '<option value="">Selecciona tipo de caso...</option>' +
@@ -10135,6 +10177,7 @@
 
     function resetCamposCasoModal() {
       document.getElementById('cm-hidden-caso-id').value = '';
+      CmMatriz.limpiarCampos();
       document.getElementById('cm-select-es-continuacion').value = '2';
       onEsContinuacionChange();
 
@@ -10280,7 +10323,8 @@
       const diagnostico = document.getElementById('cm-hidden-diagnostico').value.trim();
 
       const tipoEventoNombre = document.getElementById('cm-select-tipo-evento').selectedOptions[0]?.textContent.trim().toUpperCase();
-      if (!diagnostico && tipoEventoNombre !== 'SEGUIMIENTO EMO') {
+      // Obligatorio al crear; los casos importados de la matriz pueden no tenerlo y se editan sin él
+      if (!diagnostico && !isEdit && tipoEventoNombre !== 'SEGUIMIENTO EMO') {
         showToast('Debes seleccionar un diagnóstico CIE-10', 'error');
         document.getElementById('cm-input-diag-search').focus();
         return;
@@ -10306,6 +10350,7 @@
       }
 
       const payload = {
+        ...CmMatriz.leerCampos(),
         usuario: CONFIG.usuarioId,
         identificacion,
         tipo_caso_id: tipoCasoId,
@@ -10450,6 +10495,7 @@
         document.getElementById('cm-input-proxima-accion').value = caso.proxima_accion || '';
         document.getElementById('cm-input-fecha-compromiso').value = caso.fecha_compromiso ? caso.fecha_compromiso.slice(0, 10) : '';
         document.getElementById('cm-input-ultimo-seguimiento').value = caso.ultimo_seguimiento ? caso.ultimo_seguimiento.slice(0, 10) : '';
+        CmMatriz.llenarCampos(caso);
 
         document.getElementById('modal-cm-title').innerText = `Editar Caso Médico: ${caso.codigo_caso || '#' + caso.id}`;
         document.getElementById('btn-cm-guardar').innerText = '💾 Actualizar Caso Médico';
@@ -11759,5 +11805,6 @@
   <script src="/js/sst-evin.js?v=20261124c"></script>
   <script src="/js/sst-inge.js?v=20261124c"></script>
   <script src="/js/sst-pesv.js?v=20261127a"></script>
+  <script src="/js/sst-casos-matriz.js?v=20261127a"></script>
 </body>
 </html>
