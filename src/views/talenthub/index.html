@@ -2099,12 +2099,35 @@
               </select>
             </div>
             <div class="filter-group">
-              <label>Fecha Desde</label>
-              <input type="date" id="filtroReqDesde" onchange="aplicarFiltrosRequisiciones()">
+              <label>Año</label>
+              <select id="filtroReqAnio" onchange="onFiltroReqAnioChange()">
+                <option value="todos">Todos los años</option>
+              </select>
             </div>
             <div class="filter-group">
-              <label>Fecha Hasta</label>
-              <input type="date" id="filtroReqHasta" onchange="aplicarFiltrosRequisiciones()">
+              <label>Mes</label>
+              <select id="filtroReqMes" onchange="onFiltroReqMesChange()">
+                <option value="todos">Todos los meses</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Quincena</label>
+              <select id="filtroReqQuincena" onchange="aplicarFiltrosRequisiciones()">
+                <option value="todas">Todas las quincenas</option>
+                <option value="Q1">Q1 (1-15)</option>
+                <option value="Q2">Q2 (16-fin)</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Cumplimiento ANS</label>
+              <select id="filtroReqCumplimiento" onchange="aplicarFiltrosRequisiciones()">
+                <option value="todos">Todos los estados</option>
+                <option value="cumple">🟢 Cumple</option>
+                <option value="alerta">🔴 Alerta</option>
+                <option value="regular">🟡 Regular</option>
+                <option value="tramite">⏳ En trámite</option>
+                <option value="sin_candidatos">— Sin candidatos</option>
+              </select>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               <button type="button" class="btn btn-primary" onclick="aplicarFiltrosRequisiciones()" style="flex:1;">
@@ -2161,9 +2184,9 @@
                   </div>
                   <div class="col-resizer"></div>
                 </th>
-                <th style="width: 155px; min-width: 130px; text-align:center;" class="sortable" onclick="ordenarRequisiciones('Cumplimiento SLA')">
+                <th style="width: 155px; min-width: 130px; text-align:center;" class="sortable" onclick="ordenarRequisiciones('Cumplimiento ANS')">
                   <div class="th-content" style="justify-content:center; text-align:center;">
-                    <span>Cumplimiento SLA</span>
+                    <span>Cumplimiento ANS</span>
                     <span class="sort-icon" id="sort_Cumplimiento_SLA">▲</span>
                   </div>
                   <div class="col-resizer"></div>
@@ -4197,7 +4220,7 @@
     const TAB_META = {
       Requisiciones:    { icon: '📋', title: 'Requisiciones de Personal', subtitle: 'Solicitudes y seguimiento de vacantes laborales' },
       Aspirantes:       { icon: '👥', title: 'Aspirantes & Hojas de Vida', subtitle: 'Catálogo de aspirantes, fases y pruebas de selección' },
-      AnsSeleccion:     { icon: '⏱️', title: 'ANS Selección', nav: 'ANS Selección', subtitle: 'Monitoreo de tiempos de atención, vacantes y cumplimiento SLA por responsable' },
+      AnsSeleccion:     { icon: '⏱️', title: 'ANS Selección', nav: 'ANS Selección', subtitle: 'Monitoreo de tiempos de atención, vacantes y cumplimiento ANS por responsable' },
       Sociodemografica: { icon: '📊', title: 'Sociodemografica', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
       RegistroAsistencia: { icon: '📝', title: 'Registro de Participación', nav: 'Registro Participación', subtitle: 'Registro y firma de asistentes a formaciones, con evaluación de eficacia' },
       Integridad:      { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
@@ -5136,9 +5159,14 @@
       operacion: 'todas',
       cargo: 'todos',
       responsable: 'todos',
+      anio: 'todos',
+      mes: 'todos',
+      quincena: 'todas',
+      cumplimiento: 'todos',
       desde: '',
       hasta: ''
     };
+    let _reqFiltrosInicializados = false;
     let _reqOrden = {
       columna: 'Fecha Requisición',
       orden: 'DESC'
@@ -5235,17 +5263,121 @@
             (data.responsablesSeleccion || data.coordinadores || []).map(co => `<option value="${esc(co.id || co.nombre)}">${esc(co.label || co.nombre)}</option>`).join('');
         }
 
-        // 1. Prellenar filtro FECHA DESDE por defecto según la quincena actual si aplica
-        if (data.fechaDesdeDefecto && !_reqFiltros.desde) {
-          _reqFiltros.desde = data.fechaDesdeDefecto;
-          const fDesdeInput = document.getElementById('filtroReqDesde');
-          if (fDesdeInput) fDesdeInput.value = data.fechaDesdeDefecto;
+        // Prellenar filtros de periodo según restricción de rol
+        if (!_reqFiltrosInicializados) {
+          _reqFiltrosInicializados = true;
+          const noAplicaRestriccion = !!data.noAplicaFiltroFechaDesde;
+          if (!noAplicaRestriccion && data.quincenaActual) {
+            _reqFiltros.anio = String(data.quincenaActual.anio);
+            _reqFiltros.mes = String(data.quincenaActual.mes);
+            _reqFiltros.quincena = data.quincenaActual.quincena || 'todas';
+          } else {
+            _reqFiltros.anio = 'todos';
+            _reqFiltros.mes = 'todos';
+            _reqFiltros.quincena = 'todas';
+          }
+          sincronizarControlesFiltroPeriodoReq();
+          calcularRangoFechasRequisiciones();
         }
 
         actualizarVisibilidadBotonesHeader();
       } catch (err) {
         console.error('[TalentHub] Fallo de red al cargar catálogos:', err);
       }
+    }
+
+
+    const NOMBRES_MESES_REQ = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    function calcularRangoFechasRequisiciones() {
+      const a = _reqFiltros.anio;
+      const m = _reqFiltros.mes;
+      const q = _reqFiltros.quincena;
+
+      if (!a || a === 'todos') {
+        _reqFiltros.desde = '';
+        _reqFiltros.hasta = '';
+        return;
+      }
+
+      const anioNum = parseInt(a, 10);
+      if (!m || m === 'todos') {
+        _reqFiltros.desde = `${anioNum}-01-01`;
+        _reqFiltros.hasta = `${anioNum}-12-31`;
+        return;
+      }
+
+      const mesNum = parseInt(m, 10);
+      const mesStr = String(mesNum).padStart(2, '0');
+      const ultDia = new Date(anioNum, mesNum, 0).getDate();
+
+      if (q === 'Q1') {
+        _reqFiltros.desde = `${anioNum}-${mesStr}-01`;
+        _reqFiltros.hasta = `${anioNum}-${mesStr}-15`;
+      } else if (q === 'Q2') {
+        _reqFiltros.desde = `${anioNum}-${mesStr}-16`;
+        _reqFiltros.hasta = `${anioNum}-${mesStr}-${String(ultDia).padStart(2, '0')}`;
+      } else {
+        _reqFiltros.desde = `${anioNum}-${mesStr}-01`;
+        _reqFiltros.hasta = `${anioNum}-${mesStr}-${String(ultDia).padStart(2, '0')}`;
+      }
+    }
+
+    function sincronizarControlesFiltroPeriodoReq() {
+      const selAnio = document.getElementById('filtroReqAnio');
+      const selMes = document.getElementById('filtroReqMes');
+      const selQ = document.getElementById('filtroReqQuincena');
+      const selCumple = document.getElementById('filtroReqCumplimiento');
+
+      if (selAnio && _reqFiltros.anio) selAnio.value = _reqFiltros.anio;
+      if (selMes && _reqFiltros.mes) selMes.value = _reqFiltros.mes;
+      if (selQ && _reqFiltros.quincena) selQ.value = _reqFiltros.quincena;
+      if (selCumple && _reqFiltros.cumplimiento) selCumple.value = _reqFiltros.cumplimiento;
+
+      const anioEsTodos = !_reqFiltros.anio || _reqFiltros.anio === 'todos';
+      const mesEsTodos = anioEsTodos || !_reqFiltros.mes || _reqFiltros.mes === 'todos';
+
+      if (selMes) {
+        selMes.disabled = anioEsTodos;
+        selMes.style.opacity = anioEsTodos ? '0.55' : '1';
+        selMes.style.cursor = anioEsTodos ? 'not-allowed' : 'pointer';
+      }
+      if (selQ) {
+        selQ.disabled = mesEsTodos;
+        selQ.style.opacity = mesEsTodos ? '0.55' : '1';
+        selQ.style.cursor = mesEsTodos ? 'not-allowed' : 'pointer';
+      }
+    }
+
+    function onFiltroReqAnioChange() {
+      const a = document.getElementById('filtroReqAnio')?.value || 'todos';
+      _reqFiltros.anio = a;
+      const selMes = document.getElementById('filtroReqMes');
+      const selQ = document.getElementById('filtroReqQuincena');
+
+      if (a === 'todos') {
+        if (selMes) selMes.value = 'todos';
+        if (selQ) selQ.value = 'todas';
+        _reqFiltros.mes = 'todos';
+        _reqFiltros.quincena = 'todas';
+      }
+      sincronizarControlesFiltroPeriodoReq();
+      aplicarFiltrosRequisiciones();
+    }
+
+    function onFiltroReqMesChange() {
+      const m = document.getElementById('filtroReqMes')?.value || 'todos';
+      _reqFiltros.mes = m;
+      const selQ = document.getElementById('filtroReqQuincena');
+      if (!m || m === 'todos') {
+        if (selQ) selQ.value = 'todas';
+        _reqFiltros.quincena = 'todas';
+      }
+      sincronizarControlesFiltroPeriodoReq();
+      aplicarFiltrosRequisiciones();
     }
 
     function onFiltroRegionalChange() {
@@ -5375,32 +5507,53 @@
       _reqFiltros.operacion = document.getElementById('filtroReqOperacion')?.value || 'todas';
       _reqFiltros.cargo = document.getElementById('filtroReqCargo')?.value || 'todos';
       _reqFiltros.responsable = document.getElementById('filtroReqResponsable')?.value || 'todos';
-      _reqFiltros.desde = document.getElementById('filtroReqDesde')?.value || '';
-      _reqFiltros.hasta = document.getElementById('filtroReqHasta')?.value || '';
+      _reqFiltros.anio = document.getElementById('filtroReqAnio')?.value || 'todos';
+      _reqFiltros.mes = document.getElementById('filtroReqMes')?.value || 'todos';
+      _reqFiltros.quincena = document.getElementById('filtroReqQuincena')?.value || 'todas';
+      _reqFiltros.cumplimiento = document.getElementById('filtroReqCumplimiento')?.value || 'todos';
+      calcularRangoFechasRequisiciones();
       cargarRequisiciones();
     }
 
     function limpiarFiltrosRequisiciones() {
-      const fDesdeDefecto = _reqCatalogos?.fechaDesdeDefecto || '';
+      const noAplicaRestriccion = !!_reqCatalogos?.noAplicaFiltroFechaDesde;
+      let anioDef = 'todos';
+      let mesDef = 'todos';
+      let qDef = 'todas';
+
+      if (!noAplicaRestriccion && _reqCatalogos?.quincenaActual) {
+        anioDef = String(_reqCatalogos.quincenaActual.anio);
+        mesDef = String(_reqCatalogos.quincenaActual.mes);
+        qDef = _reqCatalogos.quincenaActual.quincena || 'todas';
+      }
+
       if (document.getElementById('filtroReqQ')) document.getElementById('filtroReqQ').value = '';
       if (document.getElementById('filtroReqRegional')) document.getElementById('filtroReqRegional').value = 'todas';
       if (document.getElementById('filtroReqOperacion')) document.getElementById('filtroReqOperacion').value = 'todas';
       if (document.getElementById('filtroReqCargo')) document.getElementById('filtroReqCargo').value = 'todos';
       if (document.getElementById('filtroReqResponsable')) document.getElementById('filtroReqResponsable').value = 'todos';
-      if (document.getElementById('filtroReqDesde')) document.getElementById('filtroReqDesde').value = fDesdeDefecto;
-      if (document.getElementById('filtroReqHasta')) document.getElementById('filtroReqHasta').value = '';
+      if (document.getElementById('filtroReqAnio')) document.getElementById('filtroReqAnio').value = anioDef;
+      if (document.getElementById('filtroReqMes')) document.getElementById('filtroReqMes').value = mesDef;
+      if (document.getElementById('filtroReqQuincena')) document.getElementById('filtroReqQuincena').value = qDef;
+      if (document.getElementById('filtroReqCumplimiento')) document.getElementById('filtroReqCumplimiento').value = 'todos';
 
-      _reqFiltros = {
+      Object.assign(_reqFiltros, {
         q: '',
         estado: 'TODOS',
         regional: 'todas',
         operacion: 'todas',
         cargo: 'todos',
         responsable: 'todos',
-        desde: fDesdeDefecto,
+        anio: anioDef,
+        mes: mesDef,
+        quincena: qDef,
+        cumplimiento: 'todos',
+        desde: '',
         hasta: ''
-      };
+      });
 
+      sincronizarControlesFiltroPeriodoReq();
+      calcularRangoFechasRequisiciones();
       cargarRequisiciones();
     }
 
@@ -5515,6 +5668,53 @@
         selResp.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Responsables (${total || 0})</option>` +
           `<option value="sin_asignar" ${valActual === 'sin_asignar' ? 'selected' : ''}>Sin asignar (${sinAsignar ? sinAsignar.cnt : 0})</option>${respOptions}`;
       }
+
+      // 5. Años
+      const selAnio = document.getElementById('filtroReqAnio');
+      if (selAnio && facetas?.anios && facetas.anios.length > 0) {
+        const valActual = String(_reqFiltros.anio || selAnio.value || 'todos');
+        const anioOptions = facetas.anios.filter(a => a.valor).map(a => {
+          const s = String(a.valor);
+          const selected = (s === valActual) ? 'selected' : '';
+          return `<option value="${s}" ${selected}>${s} (${a.cnt})</option>`;
+        }).join('');
+        selAnio.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los años (${total || 0})</option>${anioOptions}`;
+      }
+
+      // 6. Meses
+      const selMes = document.getElementById('filtroReqMes');
+      if (selMes) {
+        const valActual = String(_reqFiltros.mes || selMes.value || 'todos');
+        const mesesFacet = facetas?.meses || [];
+        const countsMes = {};
+        mesesFacet.forEach(m => { if (m && m.valor) countsMes[m.valor] = m.cnt; });
+        let mesOptions = '';
+        for (let m = 1; m <= 12; m++) {
+          const s = String(m);
+          const cnt = countsMes[m] || 0;
+          const nombre = NOMBRES_MESES_REQ[m - 1] || `Mes ${m}`;
+          const selected = (s === valActual) ? 'selected' : '';
+          mesOptions += `<option value="${s}" ${selected}>${nombre} (${cnt})</option>`;
+        }
+        selMes.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los meses</option>${mesOptions}`;
+      }
+
+      // 7. Cumplimiento ANS
+      const selCumple = document.getElementById('filtroReqCumplimiento');
+      if (selCumple && facetas?.cumplimiento) {
+        const fc = facetas.cumplimiento;
+        const valActual = _reqFiltros.cumplimiento || selCumple.value || 'todos';
+        selCumple.innerHTML = `
+          <option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos (${fc.todos || 0})</option>
+          <option value="cumple" ${valActual === 'cumple' ? 'selected' : ''}>Cumple (${fc.cumple || 0})</option>
+          <option value="regular" ${valActual === 'regular' ? 'selected' : ''}>Regular (${fc.regular || 0})</option>
+          <option value="alerta" ${valActual === 'alerta' ? 'selected' : ''}>Alerta / Vencida (${fc.alerta || 0})</option>
+          <option value="tramite" ${valActual === 'tramite' ? 'selected' : ''}>En trámite (${fc.tramite || 0})</option>
+          <option value="sin_candidatos" ${valActual === 'sin_candidatos' ? 'selected' : ''}>Sin candidatos (${fc.sin_candidatos || 0})</option>
+        `;
+      }
+
+      sincronizarControlesFiltroPeriodoReq();
     }
 
     function ordenarRequisiciones(columna) {
@@ -5536,6 +5736,7 @@
         'Cargo Requerido': 'Cargo_Requerido',
         'N° Personas Requeridas': 'N_Personas_Requeridas',
         'Cumplimiento SLA': 'Cumplimiento_SLA',
+        'Cumplimiento ANS': 'Cumplimiento_SLA',
         'Solicitante': 'Solicitante',
         'Responsable de Selección': 'Responsable_de_Selección'
       };
@@ -5605,6 +5806,10 @@
           operacion: _reqFiltros.operacion,
           cargo: _reqFiltros.cargo,
           responsable: _reqFiltros.responsable,
+          anio: _reqFiltros.anio,
+          mes: _reqFiltros.mes,
+          quincena: _reqFiltros.quincena,
+          cumplimiento: _reqFiltros.cumplimiento,
           desde: _reqFiltros.desde,
           hasta: _reqFiltros.hasta,
           sortBy: _reqOrden.columna,
@@ -5638,8 +5843,10 @@
         if (_reqFiltros.operacion && _reqFiltros.operacion !== 'todas') actCount++;
         if (_reqFiltros.cargo && _reqFiltros.cargo !== 'todos') actCount++;
         if (_reqFiltros.responsable && _reqFiltros.responsable !== 'todos') actCount++;
-        if (_reqFiltros.desde) actCount++;
-        if (_reqFiltros.hasta) actCount++;
+        if (_reqFiltros.anio && _reqFiltros.anio !== 'todos') actCount++;
+        if (_reqFiltros.mes && _reqFiltros.mes !== 'todos') actCount++;
+        if (_reqFiltros.quincena && _reqFiltros.quincena !== 'todas') actCount++;
+        if (_reqFiltros.cumplimiento && _reqFiltros.cumplimiento !== 'todos') actCount++;
 
         const lblCount = document.getElementById('lblFiltrosActivosCount');
         if (lblCount) {
@@ -5662,6 +5869,11 @@
         }
       }
     }
+
+    window._reqFiltros = _reqFiltros;
+    window.sincronizarControlesFiltroPeriodoReq = sincronizarControlesFiltroPeriodoReq;
+    window.calcularRangoFechasRequisiciones = calcularRangoFechasRequisiciones;
+    window.cargarRequisiciones = cargarRequisiciones;
 
     function cargarMasRequisicionesRender() {
       _reqLimiteRender += 100;
@@ -11764,6 +11976,6 @@
   <script src="/js/modal-back.js" defer></script>
   <script src="/js/talenthub-cargos.js?v=20261113a" defer></script>
   <script src="/js/talenthub-entrevistas.js?v=20261119a" defer></script>
-  <script src="/js/talenthub-ans-seleccion.js?v=20261127e" defer></script>
+  <script src="/js/talenthub-ans-seleccion.js?v=20261127j" defer></script>
 </body>
 </html>

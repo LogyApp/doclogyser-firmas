@@ -24,11 +24,13 @@
     ordenAsc: false,
     ordenReqCol: 'fechaRequisicion',
     ordenReqAsc: false,
+    filtroCumplimientoReq: 'todos',
     data: null,
     cargando: false
   };
 
   let _reqExpandida = null;
+  let _ansReqLimiteRender = 80;
 
   const NOMBRES_MESES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -52,23 +54,26 @@
   function calcularRangoFechasAns() {
     const a = _ansState.anio;
     const m = _ansState.mes;
-    const q = _ansState.quincena;
-    const mesStr = String(m).padStart(2, '0');
-    const ultimoDia = new Date(a, m, 0).getDate();
 
-    let desde, hasta, label;
-    if (q === 'Q1') {
-      desde = `${a}-${mesStr}-01`;
-      hasta = `${a}-${mesStr}-15`;
-      label = `${NOMBRES_MESES[m - 1]} ${a} (1-15)`;
-    } else if (q === 'Q2') {
-      desde = `${a}-${mesStr}-16`;
-      hasta = `${a}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
-      label = `${NOMBRES_MESES[m - 1]} ${a} (16-${ultimoDia})`;
+    let desde = '';
+    let hasta = '';
+    let label = '';
+
+    if (a === 'todos' || !a) {
+      desde = '';
+      hasta = '';
+      label = 'Histórico completo (Todos los años)';
+    } else if (m === 'todos' || !m) {
+      desde = `${a}-01-01`;
+      hasta = `${a}-12-31`;
+      label = `Año ${a} completo`;
     } else {
+      const mesNum = parseInt(m, 10);
+      const mesStr = String(mesNum).padStart(2, '0');
+      const ultimoDia = new Date(Number(a), mesNum, 0).getDate();
       desde = `${a}-${mesStr}-01`;
       hasta = `${a}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
-      label = `${NOMBRES_MESES[m - 1]} ${a} completo`;
+      label = `${NOMBRES_MESES[mesNum - 1]} ${a}`;
     }
 
     _ansState.desde = desde;
@@ -296,14 +301,15 @@
   function renderizarEstructuraBase(panel) {
     const rango = calcularRangoFechasAns();
 
-    const aniosOpts = [anioActual, anioActual - 1, anioActual - 2]
-      .map(y => `<option value="${y}" ${y === _ansState.anio ? 'selected' : ''}>${y}</option>`)
-      .join('');
+    const aniosDisponibles = [anioActual, anioActual - 1, anioActual - 2, anioActual - 3];
+    const aniosOpts = `<option value="todos" ${_ansState.anio === 'todos' ? 'selected' : ''}>Todos los años</option>` +
+      aniosDisponibles.map(y => `<option value="${y}" ${String(y) === String(_ansState.anio) ? 'selected' : ''}>${y}</option>`).join('');
 
-    const mesesOpts = NOMBRES_MESES.map((nom, idx) => {
-      const num = idx + 1;
-      return `<option value="${num}" ${num === _ansState.mes ? 'selected' : ''}>${nom}</option>`;
-    }).join('');
+    const mesesOpts = `<option value="todos" ${_ansState.mes === 'todos' ? 'selected' : ''}>Todos los meses</option>` +
+      NOMBRES_MESES.map((nom, idx) => {
+        const num = idx + 1;
+        return `<option value="${num}" ${String(num) === String(_ansState.mes) ? 'selected' : ''}>${nom}</option>`;
+      }).join('');
 
     panel.innerHTML = `
       <!-- Barra de Filtros: Año, Mes, Quincena, Regional, Operación, Responsable -->
@@ -313,25 +319,16 @@
           <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
             <div style="display:flex; flex-direction:column; gap:3px;">
               <label for="ansSelAnio" style="font-size:0.73rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Año</label>
-              <select id="ansSelAnio" onchange="window.ansCambiarPeriodo('anio', this.value)" style="padding:5px 9px; border-radius:7px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-weight:600; font-size:0.84rem;">
+              <select id="ansSelAnio" onchange="window.ansCambiarPeriodo('anio', this.value)" style="padding:5px 9px; border-radius:7px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-weight:600; font-size:0.84rem; cursor:pointer;">
                 ${aniosOpts}
               </select>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:3px;">
               <label for="ansSelMes" style="font-size:0.73rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mes</label>
-              <select id="ansSelMes" onchange="window.ansCambiarPeriodo('mes', this.value)" style="padding:5px 9px; border-radius:7px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-weight:600; font-size:0.84rem;">
+              <select id="ansSelMes" onchange="window.ansCambiarPeriodo('mes', this.value)" style="padding:5px 9px; border-radius:7px; border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-weight:600; font-size:0.84rem; cursor:pointer; transition:opacity 0.2s ease;">
                 ${mesesOpts}
               </select>
-            </div>
-
-            <div style="display:flex; flex-direction:column; gap:3px;">
-              <label style="font-size:0.73rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Corte</label>
-              <div id="ansSegQuincena" style="display:inline-flex; border:1.5px solid var(--border); border-radius:7px; overflow:hidden;">
-                <button type="button" class="btn-seg active" data-q="todas" onclick="window.ansCambiarPeriodo('quincena', 'todas')" style="padding:5px 10px; border:none; background:var(--accent, #2563eb); color:#fff; font-weight:700; font-size:0.78rem; cursor:pointer;">Mes completo</button>
-                <button type="button" class="btn-seg" data-q="Q1" onclick="window.ansCambiarPeriodo('quincena', 'Q1')" style="padding:5px 10px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.78rem; cursor:pointer; border-left:1px solid var(--border);">Q1 (1-15)</button>
-                <button type="button" class="btn-seg" data-q="Q2" onclick="window.ansCambiarPeriodo('quincena', 'Q2')" style="padding:5px 10px; border:none; background:transparent; color:var(--text-muted); font-weight:700; font-size:0.78rem; cursor:pointer; border-left:1px solid var(--border);">Q2 (16-fin)</button>
-              </div>
             </div>
           </div>
 
@@ -386,6 +383,22 @@
       <!-- Contenedor Dinámico de Tablas -->
       <section id="ansContenedorVista"></section>
     `;
+
+    actualizarControlesPeriodo();
+  }
+
+  function actualizarControlesPeriodo() {
+    const selAnio = $('ansSelAnio');
+    const selMes = $('ansSelMes');
+
+    const anioEsTodos = !_ansState.anio || _ansState.anio === 'todos';
+
+    if (selMes) {
+      selMes.disabled = anioEsTodos;
+      selMes.style.opacity = anioEsTodos ? '0.55' : '1';
+      selMes.style.cursor = anioEsTodos ? 'not-allowed' : 'pointer';
+      selMes.title = anioEsTodos ? 'Habilitado solo al seleccionar un año específico' : 'Selecciona el mes a consultar';
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -414,7 +427,9 @@
 
     try {
       const usuario = obtenerUsuarioActual();
-      let url = `/talenthub/api/ans-seleccion?usuario=${encodeURIComponent(usuario)}&desde=${_ansState.desde}&hasta=${_ansState.hasta}`;
+      let url = `/talenthub/api/ans-seleccion?usuario=${encodeURIComponent(usuario)}`;
+      if (_ansState.desde) url += `&desde=${encodeURIComponent(_ansState.desde)}`;
+      if (_ansState.hasta) url += `&hasta=${encodeURIComponent(_ansState.hasta)}`;
       if (_ansState.regional) url += `&regional=${encodeURIComponent(_ansState.regional)}`;
       if (_ansState.operacion) url += `&operacion=${encodeURIComponent(_ansState.operacion)}`;
       if (_ansState.responsable) url += `&responsable=${encodeURIComponent(_ansState.responsable)}`;
@@ -516,6 +531,7 @@
 
     const colorCumple = pctCumple >= 80 ? '#16a34a' : (pctCumple >= 50 ? '#d97706' : '#dc2626');
     const colorCob = pctCob >= 80 ? '#16a34a' : (pctCob >= 50 ? '#d97706' : '#dc2626');
+    const pctEnProc = totalReq > 0 ? Number(((enProc / totalReq) * 100).toFixed(1)) : 0;
 
     el.innerHTML = `
       <div class="ans-mini-stat">
@@ -532,14 +548,14 @@
         <div class="ans-mini-stat-info">
           <div class="ans-mini-stat-lbl"><span>Vacantes &amp; Cobertura</span></div>
           <div class="ans-mini-stat-val" style="color:${colorCob};">${pctCob}%</div>
-          <div class="ans-mini-stat-sub"><b>${vacCub}</b> cubiertas | <b>${vacReq}</b> req.</div>
+          <div class="ans-mini-stat-sub"><b>${vacCub}</b> Cubiertas | <b>${vacReq}</b> vacantes</div>
         </div>
       </div>
 
       <div class="ans-mini-stat">
         <span class="ans-mini-stat-icon">⏱️</span>
         <div class="ans-mini-stat-info">
-          <div class="ans-mini-stat-lbl"><span>Cumplimiento SLA</span></div>
+          <div class="ans-mini-stat-lbl"><span>Cumplimiento ANS</span></div>
           <div class="ans-mini-stat-val" style="color:${colorCumple};">${pctCumple}%</div>
           <div class="ans-mini-stat-sub"><b>${cumple}</b> a tiempo | <b style="color:#dc2626;">${fuera}</b> fuera</div>
         </div>
@@ -557,8 +573,8 @@
       <div class="ans-mini-stat">
         <span class="ans-mini-stat-icon">⏳</span>
         <div class="ans-mini-stat-info">
-          <div class="ans-mini-stat-lbl"><span>En Proceso</span></div>
-          <div class="ans-mini-stat-val" style="color:#2563eb;">${enProc}</div>
+          <div class="ans-mini-stat-lbl"><span>REQ. EN PROCESO</span></div>
+          <div class="ans-mini-stat-val" style="color:#2563eb;">${enProc} <small style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">(${pctEnProc}%)</small></div>
           <div class="ans-mini-stat-sub">Requisiciones activas</div>
         </div>
       </div>
@@ -611,18 +627,36 @@
     const totEvaluados = totCumple + totFuera;
     const totPctCumple = totEvaluados > 0 ? Number(((totCumple / totEvaluados) * 100).toFixed(1)) : 100.0;
     const totPctCob = totVacReq > 0 ? Number(((totVacCub / totVacReq) * 100).toFixed(1)) : 0.0;
+    const totFaltan = Math.max(0, totVacReq - totVacCub);
+    const totPctFaltan = totVacReq > 0 ? Number(((totFaltan / totVacReq) * 100).toFixed(1)) : 0.0;
 
     const rowsHtml = lista.map(item => {
       const colorCumple = item.pctCumplimiento >= 80 ? 'color:#16a34a;' : (item.pctCumplimiento >= 50 ? 'color:#d97706;' : 'color:#dc2626;');
       const diasStr = item.diasPromedio != null ? `${item.diasPromedio} d` : '—';
+      const isSinAsignar = !item.responsable || item.responsable === '(Sin asignar)';
+      const respParam = isSinAsignar ? 'sin_asignar' : item.responsable;
+      const faltantes = Math.max(0, item.vacantesRequeridas - item.vacantesCubiertas);
+      const pctFaltan = item.vacantesRequeridas > 0 ? Number(((faltantes / item.vacantesRequeridas) * 100).toFixed(1)) : 0;
 
       return `
         <tr>
-          <td><b style="color:var(--text);">${esc(item.responsable)}</b></td>
+          <td>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+              <b style="color:var(--text);">${esc(item.responsable)}</b>
+              <button type="button" class="btn-link-reqs" title="Ver requisiciones de ${esc(item.responsable)}"
+                onclick="window.ansIrARequisiciones('${esc(respParam)}')"
+                style="display:inline-flex; align-items:center; gap:4px; background:rgba(37,99,235,0.08); color:#2563eb; border:1px solid rgba(37,99,235,0.22); border-radius:6px; padding:2px 7px; font-size:0.72rem; font-weight:700; cursor:pointer; white-space:nowrap; text-decoration:none; transition:all 0.15s ease;"
+                onmouseover="this.style.background='rgba(37,99,235,0.18)'" onmouseout="this.style.background='rgba(37,99,235,0.08)'">
+                📋 Ver reqs
+              </button>
+            </div>
+          </td>
           <td style="text-align:right;"><b>${item.totalRequisiciones}</b></td>
           <td style="text-align:right;">${item.vacantesRequeridas}</td>
-          <td style="text-align:right; font-weight:700; color:#16a34a;">
-            ${item.vacantesCubiertas} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">(${item.coberturaPct}%)</span>
+          <td style="text-align:right; font-weight:700;">
+            <span style="color:#16a34a;">${item.vacantesCubiertas} (${item.coberturaPct}%)</span>
+            <span style="color:var(--text-muted); font-weight:400; margin:0 3px;">|</span>
+            <span style="color:#dc2626;">${faltantes} (${pctFaltan}%)</span>
           </td>
           <td style="text-align:right; color:#2563eb; font-weight:700;">${item.enProceso}</td>
           <td style="text-align:right; font-weight:700; ${colorCumple}">
@@ -669,16 +703,16 @@
                 </div>
                 <div class="col-resizer"></div>
               </th>
-              <th style="text-align:right; min-width:110px;" onclick="window.ansOrdenar('enProceso')">
+              <th style="text-align:right; min-width:130px;" onclick="window.ansOrdenar('enProceso')">
                 <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
-                  <span>En Proceso</span>
+                  <span>REQ. EN PROCESO</span>
                   <span class="sort-icon">${iconoOrden('enProceso')}</span>
                 </div>
                 <div class="col-resizer"></div>
               </th>
               <th style="text-align:right; min-width:150px;" onclick="window.ansOrdenar('pctCumplimiento')">
                 <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
-                  <span>Cumplimiento SLA</span>
+                  <span>Cumplimiento ANS</span>
                   <span class="sort-icon">${iconoOrden('pctCumplimiento')}</span>
                 </div>
                 <div class="col-resizer"></div>
@@ -707,7 +741,11 @@
               <td>TOTAL CONSOLIDADO (${lista.length} responsables)</td>
               <td style="text-align:right;">${totReq}</td>
               <td style="text-align:right;">${totVacReq}</td>
-              <td style="text-align:right; color:#16a34a;">${totVacCub} (${totPctCob}%)</td>
+              <td style="text-align:right; font-weight:700;">
+                <span style="color:#16a34a;">${totVacCub} (${totPctCob}%)</span>
+                <span style="color:var(--text-muted); font-weight:400; margin:0 3px;">|</span>
+                <span style="color:#dc2626;">${totFaltan} (${totPctFaltan}%)</span>
+              </td>
               <td style="text-align:right; color:#2563eb;">${totEnProc}</td>
               <td style="text-align:right;">${totCumple} (${totPctCumple}%)</td>
               <td style="text-align:right; color:${totFuera > 0 ? '#dc2626' : 'var(--text-muted)'};">${totFuera}</td>
@@ -721,7 +759,20 @@
 
   // ── Vista 2: Detalle de Requisiciones ────────────────────────────────────
   function renderizarTablaRequisiciones(cont) {
-    let reqs = [...(_ansState.data.requisiciones || [])];
+    const allReqs = _ansState.data?.requisiciones || [];
+    let reqs = [...allReqs];
+
+    // Conteo por cumplimiento ANS antes de filtrar
+    const cntCumple = allReqs.filter(r => r.slaEstado === 'cumple').length;
+    const cntEnPlazo = allReqs.filter(r => r.slaEstado === 'en_tiempo').length;
+    const cntVencida = allReqs.filter(r => r.slaEstado === 'vencido').length;
+    const cntFuera = allReqs.filter(r => r.slaEstado === 'nocumple').length;
+
+    // Filtro Cumplimiento ANS
+    const fCumple = _ansState.filtroCumplimientoReq || 'todos';
+    if (fCumple !== 'todos') {
+      reqs = reqs.filter(r => r.slaEstado === fCumple);
+    }
 
     // Buscador rápido
     const q = (_ansState.filtroBusqueda || '').trim().toLowerCase();
@@ -748,7 +799,10 @@
       return asc ? (va > vb ? 1 : (va < vb ? -1 : 0)) : (va < vb ? 1 : (va > vb ? -1 : 0));
     });
 
-    const rowsHtml = reqs.map(r => {
+    const visibles = reqs.slice(0, _ansReqLimiteRender);
+    const hayMas = reqs.length > visibles.length;
+
+    const rowsHtml = visibles.map(r => {
       let badgeSla = '';
       if (r.slaEstado === 'cumple') badgeSla = '<span class="ans-badge-status ans-badge-cumple">✓ Cumple</span>';
       else if (r.slaEstado === 'nocumple') badgeSla = '<span class="ans-badge-status ans-badge-nocumple">✕ Fuera de tiempo</span>';
@@ -831,10 +885,41 @@
       `;
     }).join('');
 
+    const botonCargarMasHtml = hayMas
+      ? `<div style="text-align:center; padding:12px 16px;">
+           <button type="button" class="btn btn-outline" onclick="window.ansCargarMasRequisiciones()" style="padding:6px 16px; font-size:0.82rem; font-weight:600; cursor:pointer;">
+             ⬇️ Mostrar más requisiciones (mostrando ${visibles.length} de ${reqs.length})
+           </button>
+         </div>`
+      : '';
+
+    // Optimización: si la tabla ya existe en el DOM, actualizamos solo tbody, contador y botón
+    const tbodyExistente = $('tbodyAnsRequisiciones');
+    const lblConteo = $('ansReqConteoLbl');
+    const wrapMas = $('ansReqCargarMasWrap');
+    if (tbodyExistente && lblConteo && cont.contains(tbodyExistente)) {
+      lblConteo.textContent = `Mostrando ${visibles.length} de ${reqs.length} requisiciones${fCumple !== 'todos' ? ` (filtradas de ${allReqs.length})` : ''}`;
+      tbodyExistente.innerHTML = rowsHtml || '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No se encontraron requisiciones con los criterios seleccionados.</td></tr>';
+      if (wrapMas) wrapMas.innerHTML = botonCargarMasHtml;
+      return;
+    }
+
     cont.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-        <div style="font-size:0.84rem; font-weight:700; color:var(--text);">
-          Mostrando ${reqs.length} requisiciones
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div id="ansReqConteoLbl" style="font-size:0.84rem; font-weight:700; color:var(--text);">
+            Mostrando ${visibles.length} de ${reqs.length} requisiciones${fCumple !== 'todos' ? ` (filtradas de ${allReqs.length})` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <label style="font-size:0.78rem; font-weight:600; color:var(--text-muted);">Cumplimiento ANS:</label>
+            <select id="ansSelCumplimientoReq" onchange="window.ansFiltrarCumplimientoReq(this.value)" style="padding:5px 10px; border:1.5px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text); font-size:0.8rem; font-weight:600; cursor:pointer;">
+              <option value="todos" ${fCumple === 'todos' ? 'selected' : ''}>Todos (${allReqs.length})</option>
+              <option value="cumple" ${fCumple === 'cumple' ? 'selected' : ''}>✓ Cumple (${cntCumple})</option>
+              <option value="en_tiempo" ${fCumple === 'en_tiempo' ? 'selected' : ''}>⏳ En plazo (${cntEnPlazo})</option>
+              <option value="vencido" ${fCumple === 'vencido' ? 'selected' : ''}>⚠️ Vencida (${cntVencida})</option>
+              <option value="nocumple" ${fCumple === 'nocumple' ? 'selected' : ''}>✕ Fuera de tiempo (${cntFuera})</option>
+            </select>
+          </div>
         </div>
         <input type="search" placeholder="🔍 Buscar requisición, cargo, solicitante u operación..." value="${esc(_ansState.filtroBusqueda)}" oninput="window.ansFiltrarBusqueda(this.value)" style="padding:6px 12px; border:1.5px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text); font-size:0.82rem; min-width:260px;">
       </div>
@@ -880,7 +965,7 @@
               </th>
               <th style="text-align:center; min-width:130px;" onclick="window.ansOrdenarReq('slaEstado')">
                 <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
-                  <span>Cumplimiento SLA</span>
+                  <span>Cumplimiento ANS</span>
                   <span class="sort-icon">${iconoOrdenReq('slaEstado')}</span>
                 </div>
                 <div class="col-resizer"></div>
@@ -888,12 +973,15 @@
               <th style="text-align:center; min-width:90px;">Aspirantes</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="tbodyAnsRequisiciones">
             ${rowsHtml || '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">No se encontraron requisiciones con los criterios seleccionados.</td></tr>'}
           </tbody>
         </table>
       </div>
+      <div id="ansReqCargarMasWrap">${botonCargarMasHtml}</div>
     `;
+
+    inicializarRedimensionColumnas();
   }
 
   function iconoOrden(col) {
@@ -950,19 +1038,16 @@
   // CONTROLADORES GLOBALES
   // ──────────────────────────────────────────────────────────────────────────
   window.ansCambiarPeriodo = function (tipo, valor) {
-    if (tipo === 'anio') _ansState.anio = parseInt(valor, 10);
-    if (tipo === 'mes') _ansState.mes = parseInt(valor, 10);
+    if (tipo === 'anio') {
+      _ansState.anio = (valor === 'todos' || !valor) ? 'todos' : parseInt(valor, 10);
+    }
+    if (tipo === 'mes') {
+      _ansState.mes = (valor === 'todos' || !valor) ? 'todos' : parseInt(valor, 10);
+    }
     if (tipo === 'quincena') {
       _ansState.quincena = valor;
-      const wrap = $('ansSegQuincena');
-      if (wrap) {
-        wrap.querySelectorAll('button').forEach(btn => {
-          const act = btn.getAttribute('data-q') === valor;
-          btn.style.background = act ? 'var(--accent, #2563eb)' : 'transparent';
-          btn.style.color = act ? '#fff' : 'var(--text-muted)';
-        });
-      }
     }
+    actualizarControlesPeriodo();
     cargarDatosAns();
   };
 
@@ -997,12 +1082,15 @@
 
   window.ansFiltrarBusqueda = function (valor) {
     _ansState.filtroBusqueda = valor;
-    renderizarVista();
+    _ansReqLimiteRender = 80;
+    const cont = $('ansVistaContenido');
+    if (cont) renderizarTablaRequisiciones(cont);
   };
 
   window.ansToggleDetalleReq = function (id) {
     _reqExpandida = (_reqExpandida === id) ? null : id;
-    renderizarVista();
+    const cont = $('ansVistaContenido');
+    if (cont) renderizarTablaRequisiciones(cont);
   };
 
   window.ansCambiarRegional = function (val) {
@@ -1018,6 +1106,84 @@
   window.ansCambiarResponsable = function (val) {
     _ansState.responsable = val;
     cargarDatosAns();
+  };
+
+  window.ansFiltrarCumplimientoReq = function (val) {
+    _ansState.filtroCumplimientoReq = val || 'todos';
+    _ansReqLimiteRender = 80;
+    const cont = $('ansVistaContenido');
+    if (cont) renderizarTablaRequisiciones(cont);
+  };
+
+  window.ansCargarMasRequisiciones = function () {
+    _ansReqLimiteRender += 80;
+    const cont = $('ansVistaContenido');
+    if (cont) renderizarTablaRequisiciones(cont);
+  };
+
+  window.ansIrARequisiciones = function (responsable) {
+    if (typeof window.switchTab === 'function') {
+      window.switchTab('Requisiciones');
+    }
+    setTimeout(() => {
+      // 1. Limpieza absoluta de filtros previos en DOM para que no se mezclen
+      const resetInputs = {
+        filtroReqQ: '',
+        filtroReqRegional: 'todas',
+        filtroReqOperacion: 'todas',
+        filtroReqCargo: 'todos',
+        filtroReqCumplimiento: 'todos',
+        filtroReqQuincena: 'todas'
+      };
+      Object.keys(resetInputs).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = resetInputs[id];
+      });
+
+      const respFinal = (!responsable || responsable === '(Sin asignar)' || responsable === 'sin_asignar')
+        ? 'sin_asignar'
+        : responsable;
+
+      const selResp = document.getElementById('filtroReqResponsable');
+      if (selResp) selResp.value = respFinal;
+
+      const anioFinal = (_ansState.anio && _ansState.anio !== 'todos') ? String(_ansState.anio) : 'todos';
+      const mesFinal = (_ansState.mes && _ansState.mes !== 'todos') ? String(_ansState.mes) : 'todos';
+
+      const selAnio = document.getElementById('filtroReqAnio');
+      if (selAnio) selAnio.value = anioFinal;
+
+      const selMes = document.getElementById('filtroReqMes');
+      if (selMes) selMes.value = mesFinal;
+
+      // 2. Limpieza exhaustiva en el objeto de estado _reqFiltros
+      if (window._reqFiltros) {
+        Object.assign(window._reqFiltros, {
+          q: '',
+          estado: 'TODOS',
+          regional: 'todas',
+          operacion: 'todas',
+          cargo: 'todos',
+          responsable: respFinal,
+          anio: anioFinal,
+          mes: mesFinal,
+          quincena: 'todas',
+          cumplimiento: 'todos',
+          desde: '',
+          hasta: ''
+        });
+      }
+
+      if (typeof window.sincronizarControlesFiltroPeriodoReq === 'function') {
+        window.sincronizarControlesFiltroPeriodoReq();
+      }
+      if (typeof window.calcularRangoFechasRequisiciones === 'function') {
+        window.calcularRangoFechasRequisiciones();
+      }
+      if (typeof window.cargarRequisiciones === 'function') {
+        window.cargarRequisiciones();
+      }
+    }, 70);
   };
 
 })();

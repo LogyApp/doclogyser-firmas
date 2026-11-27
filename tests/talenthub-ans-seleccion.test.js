@@ -215,17 +215,36 @@ test('API /talenthub/api/ans-seleccion restringe permisos y valida fechas', asyn
   assert.equal(res3.datos.kpis.totalRequisiciones, 10);
 });
 
-test('frontend renderiza mini-stats, selector de Año/Mes/Quincena, columnas redimensionables y alternar vistas', () => {
+test('frontend renderiza mini-stats, selector de Año/Mes, columnas redimensionables y alternar vistas', () => {
   assert.match(frontend, /class="ans-mini-stat"/);
   assert.match(frontend, /id="ansSelAnio"/);
   assert.match(frontend, /id="ansSelMes"/);
-  assert.match(frontend, /id="ansSegQuincena"/);
+  assert.match(frontend, /REQ\. EN PROCESO/);
   assert.match(frontend, /col-resizer/);
   assert.match(frontend, /ansOrdenar/);
   assert.match(frontend, /Consolidado por Responsable/);
   assert.match(frontend, /Detalle de Requisiciones/);
   assert.match(frontend, /Vacantes Req\./);
   assert.match(frontend, /Cubiertas \(Socio\)/);
-  assert.match(frontend, /Cumplimiento SLA/);
+  assert.match(frontend, /Cubiertas \| <b>\$\{vacReq\}<\/b> vacantes/);
+  assert.match(frontend, /window\.ansIrARequisiciones\s*=/);
+  assert.match(frontend, /window\.ansFiltrarCumplimientoReq\s*=/);
+  assert.match(frontend, /Todos los años/);
+  assert.match(frontend, /Todos los meses/);
+  assert.match(frontend, /Cumplimiento ANS/);
+  assert.match(frontend, /actualizarControlesPeriodo/);
   assert.match(frontend, /window\.recargarAnsSeleccion\s*=/);
+});
+
+test('Requisiciones incluye filtros de Año, Mes, Quincena, Cumplimiento ANS y columna Cumplimiento ANS', () => {
+  const htmlIndex = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'talenthub', 'index.html'), 'utf8');
+  assert.match(htmlIndex, /id="filtroReqAnio"/);
+  assert.match(htmlIndex, /id="filtroReqMes"/);
+  assert.match(htmlIndex, /id="filtroReqQuincena"/);
+  assert.match(htmlIndex, /id="filtroReqCumplimiento"/);
+  assert.match(htmlIndex, /<span>Cumplimiento ANS<\/span>/);
+  assert.match(htmlIndex, /calcularRangoFechasRequisiciones/);
+  assert.match(htmlIndex, /sincronizarControlesFiltroPeriodoReq/);
+  assert.match(htmlIndex, /actualizarFiltrosConConteos/);
+  assert.match(htmlIndex, /window\._reqFiltros\s*=/);
 });

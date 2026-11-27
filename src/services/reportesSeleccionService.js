@@ -71,17 +71,26 @@ function hoyBogotaYmd() {
  */
 async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, operacion, responsable, acceso }) {
   const hoyStr = hoyBogotaYmd();
-  const desde = fechaDesde || `${hoyStr.slice(0, 7)}-01`;
-  const hasta = fechaHasta || hoyStr;
-
   const esCorporativo = !!(acceso && acceso.sinFiltro);
   const paramsConfig = await obtenerParametrosTalenthub();
   const cfg = leerConfigSla(paramsConfig);
   const festivos = await obtenerFestivos();
 
   // Condiciones de filtrado para Requisiciones
-  const conds = ['r.`Fecha Requisición` >= ?', 'r.`Fecha Requisición` < DATE_ADD(?, INTERVAL 1 DAY)'];
-  const paramsQuery = [desde, hasta];
+  const conds = [];
+  const paramsQuery = [];
+
+  if (fechaDesde && String(fechaDesde).trim() !== '') {
+    conds.push('r.`Fecha Requisición` >= ?');
+    paramsQuery.push(String(fechaDesde).trim());
+  }
+  if (fechaHasta && String(fechaHasta).trim() !== '') {
+    conds.push('r.`Fecha Requisición` < DATE_ADD(?, INTERVAL 1 DAY)');
+    paramsQuery.push(String(fechaHasta).trim());
+  }
+  if (!conds.length) {
+    conds.push('1 = 1');
+  }
 
   if (!esCorporativo) {
     const ops = (acceso && acceso.operacionesFiltro) || [];
@@ -405,8 +414,8 @@ async function obtenerReporteAnsSeleccion({ fechaDesde, fechaHasta, regional, op
       limiteDiasSla: cfg.limite
     },
     filtros: {
-      desde,
-      hasta,
+      desde: fechaDesde || '',
+      hasta: fechaHasta || '',
       regional: regional || '',
       operacion: operacion || '',
       responsable: responsable || ''

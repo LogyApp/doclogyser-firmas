@@ -1049,24 +1049,47 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     const puedeEditarParametros = (acceso.secciones && acceso.secciones.includes('Requisiciones_Parametros')) ||
       rolPermitidoEnParametro(rol, paramsConfig['Editar parametros de Requisiciones']);
 
-    // 1. Fecha Desde por defecto (mínima fecha de la quincena actual en Maestro_Fechas) si el rol no tiene excepción
+    // 1. Quincena actual y Fecha Desde por defecto si el rol no tiene excepción
     const noAplicaFiltroFechaDesde = rolPermitidoEnParametro(rol, paramsConfig['No aplica el filtro de FECHA DESDE']);
     let fechaDesdeDefecto = null;
-    if (!noAplicaFiltroFechaDesde) {
-      try {
-        // Primer día de la quincena de hoy (una sola consulta; `Fecha` es DATE y usa su índice)
-        const [fMinRows] = await pool.execute(
-          `SELECT DATE_FORMAT(MIN(f2.\`Fecha\`), '%Y-%m-%d') AS fechaMinima
-           FROM \`Maestro_Fechas\` f1
-           JOIN \`Maestro_Fechas\` f2 ON f2.\`Quincena\` = f1.\`Quincena\` AND f2.\`Año\` = f1.\`Año\`
-           WHERE f1.\`Fecha\` = CURDATE()`
-        );
-        if (fMinRows.length > 0 && fMinRows[0].fechaMinima) {
+    let quincenaActual = null;
+    try {
+      const hoy = new Date();
+      const anioHoy = hoy.getFullYear();
+      const mesHoy = hoy.getMonth() + 1;
+      const diaHoy = hoy.getDate();
+      const qHoy = diaHoy <= 15 ? 'Q1' : 'Q2';
+      const [fMinRows] = await pool.execute(
+        `SELECT DATE_FORMAT(MIN(f2.\`Fecha\`), '%Y-%m-%d') AS fechaMinima,
+                f1.\`Quincena\` AS quincenaNombre,
+                f1.\`Año\` AS anio,
+                f1.\`Mes\` AS mes
+         FROM \`Maestro_Fechas\` f1
+         JOIN \`Maestro_Fechas\` f2 ON f2.\`Quincena\` = f1.\`Quincena\` AND f2.\`Año\` = f1.\`Año\`
+         WHERE f1.\`Fecha\` = CURDATE()
+         GROUP BY f1.\`Quincena\`, f1.\`Año\`, f1.\`Mes\``
+      );
+      if (fMinRows.length > 0) {
+        quincenaActual = {
+          anio: fMinRows[0].anio || anioHoy,
+          mes: fMinRows[0].mes || mesHoy,
+          quincena: qHoy,
+          fechaMinima: fMinRows[0].fechaMinima,
+          nombre: fMinRows[0].quincenaNombre
+        };
+        if (!noAplicaFiltroFechaDesde) {
           fechaDesdeDefecto = fMinRows[0].fechaMinima;
         }
-      } catch (errFecha) {
-        console.error('[talenthub] Error consultando fecha mínima de quincena en Maestro_Fechas:', errFecha.message);
+      } else {
+        quincenaActual = {
+          anio: anioHoy,
+          mes: mesHoy,
+          quincena: qHoy,
+          fechaMinima: `${anioHoy}-${String(mesHoy).padStart(2, '0')}-${qHoy === 'Q1' ? '01' : '16'}`
+        };
       }
+    } catch (errFecha) {
+      console.error('[talenthub] Error consultando quincena actual en Maestro_Fechas:', errFecha.message);
     }
 
     // Reglas de permisos dinámicas desde Config_Parametros
@@ -1183,6 +1206,8 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       responsablesSeleccion: listaResponsables,
       coordinadores: listaResponsables,
       tiempoLimiteRequisicion,
+      noAplicaFiltroFechaDesde: !!noAplicaFiltroFechaDesde,
+      quincenaActual,
       fechaDesdeDefecto
     });
   } catch (err) {
@@ -1195,9 +1220,10 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
 // Lista requisiciones con filtros, conteos KPI y ordenamiento dinámico
 router.get('/api/requisiciones', async (req, res) => {
   try {
-    const { usuario, estado, regional, operacion, cargo, responsable, q, sortBy, sortDir } = req.query;
-    const fechaDesde = req.query.fechaDesde || req.query.desde;
-    const fechaHasta = req.query.fechaHasta || req.query.hasta;
+    const { usuario, estado, regional, operacion, cargo, responsable, q, sortBy, sortDir, anio, mes, quincena, cumplimiento } = req.query;
+    let fechaDesde = req.query.fechaDesde || req.query.desde;
+    let fechaHasta = req.query.fechaHasta || req.query.hasta;
+
     const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
     if (!acceso) {
       return res.status(403).json({ error: 'No tienes permiso para acceder al módulo de Requisiciones.' });
@@ -1243,14 +1269,33 @@ router.get('/api/requisiciones', async (req, res) => {
         params.push(responsable.trim());
       }
     }
-    // Sin DATE() sobre la columna, para que use el índice de `Fecha Requisición`
-    if (fechaDesde && RE_FECHA_YMD.test(fechaDesde)) {
-      whereClauses.push("`Fecha Requisición` >= ?");
-      params.push(fechaDesde);
-    }
-    if (fechaHasta && RE_FECHA_YMD.test(fechaHasta)) {
-      whereClauses.push("`Fecha Requisición` < ?");
-      params.push(siguienteDia(fechaHasta));
+    // Filtro por período (Año / Mes / Quincena) con prioridad directa en SQL
+    if (anio && anio !== 'todos') {
+      const anioNum = parseInt(anio, 10);
+      whereClauses.push("YEAR(`Fecha Requisición`) = ?");
+      params.push(anioNum);
+
+      if (mes && mes !== 'todos') {
+        const mesNum = parseInt(mes, 10);
+        whereClauses.push("MONTH(`Fecha Requisición`) = ?");
+        params.push(mesNum);
+
+        if (quincena === 'Q1') {
+          whereClauses.push("DAY(`Fecha Requisición`) <= 15");
+        } else if (quincena === 'Q2') {
+          whereClauses.push("DAY(`Fecha Requisición`) > 15");
+        }
+      }
+    } else {
+      // Sin DATE() sobre la columna, para que use el índice de `Fecha Requisición`
+      if (fechaDesde && RE_FECHA_YMD.test(fechaDesde)) {
+        whereClauses.push("`Fecha Requisición` >= ?");
+        params.push(fechaDesde);
+      }
+      if (fechaHasta && RE_FECHA_YMD.test(fechaHasta)) {
+        whereClauses.push("`Fecha Requisición` < ?");
+        params.push(siguienteDia(fechaHasta));
+      }
     }
     if (q && q.trim()) {
       const qWild = `%${q.trim()}%`;
@@ -1296,8 +1341,10 @@ router.get('/api/requisiciones', async (req, res) => {
 
     // El listado lleva solo las columnas que muestra la tabla: el detalle y la edición
     // consultan /api/requisiciones/:id. El listado, los KPIs y los conteos van en paralelo.
+    const anioScopeSql = (anio && anio !== 'todos') ? ` AND YEAR(\`Fecha Requisición\`) = ${parseInt(anio, 10)}` : '';
+
     const [
-      [rows], [kpiRows], [facetEstados], [facetRegionales], [facetOperaciones], [facetCargos], [facetResponsables]
+      [rows], [kpiRows], [facetEstados], [facetRegionales], [facetOperaciones], [facetCargos], [facetResponsables], [facetAnios], [facetMeses]
     ] = await Promise.all([
       pool.execute(
         `SELECT r.IdRequisicion, r.\`Requisición\`,
@@ -1332,7 +1379,9 @@ router.get('/api/requisiciones', async (req, res) => {
       pool.execute(`SELECT \`Regional\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Regional\` IS NOT NULL GROUP BY \`Regional\` ORDER BY cnt DESC`, baseScopeParams),
       pool.execute(`SELECT \`Operación\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Operación\` IS NOT NULL GROUP BY \`Operación\` ORDER BY cnt DESC`, baseScopeParams),
       pool.execute(`SELECT \`Cargo Requerido\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Cargo Requerido\` IS NOT NULL GROUP BY \`Cargo Requerido\` ORDER BY cnt DESC`, baseScopeParams),
-      pool.execute(`SELECT NULLIF(TRIM(\`Responsable de Selección\`), '') as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} GROUP BY NULLIF(TRIM(\`Responsable de Selección\`), '') ORDER BY cnt DESC`, baseScopeParams)
+      pool.execute(`SELECT NULLIF(TRIM(\`Responsable de Selección\`), '') as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} GROUP BY NULLIF(TRIM(\`Responsable de Selección\`), '') ORDER BY cnt DESC`, baseScopeParams),
+      pool.execute(`SELECT YEAR(\`Fecha Requisición\`) as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Fecha Requisición\` IS NOT NULL GROUP BY YEAR(\`Fecha Requisición\`) ORDER BY valor DESC`, baseScopeParams),
+      pool.execute(`SELECT MONTH(\`Fecha Requisición\`) as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Fecha Requisición\` IS NOT NULL ${anioScopeSql} GROUP BY MONTH(\`Fecha Requisición\`) ORDER BY valor ASC`, baseScopeParams)
     ]);
 
     // Aspirantes de las requisiciones listadas con su fecha de ingreso más reciente
@@ -1361,7 +1410,7 @@ router.get('/api/requisiciones', async (req, res) => {
 
     const { porRequisicion: slaPorReq } = await calcularSlaRequisiciones(rows, aspirantesPorReq, paramsConfig);
 
-    const requisicionesFormateadas = rows.map(r => {
+    let requisicionesFormateadas = rows.map(r => {
       const sla = slaPorReq.get(r.IdRequisicion);
       return {
         ...r,
@@ -1372,24 +1421,48 @@ router.get('/api/requisiciones', async (req, res) => {
     });
 
     // El cumplimiento SLA se calcula en Node, por eso este orden se aplica después de la consulta
-    if (sortBy === 'Cumplimiento SLA') {
+    if (sortBy === 'Cumplimiento SLA' || sortBy === 'Cumplimiento ANS') {
       const dir = sortDirection === 'ASC' ? 1 : -1;
       requisicionesFormateadas.sort((a, b) =>
         dir * ((a.sla_pct - b.sla_pct) || (a.aspirantes_cumple - b.aspirantes_cumple)));
     }
 
-    res.json({
-      ok: true,
-      requisiciones: requisicionesFormateadas,
-      kpis: kpiRows[0] || { total: 0, enProceso: 0, finalizado: 0, suspendido: 0, cancelado: 0, totalVacantes: 0 },
-      facetas: {
-        estados: facetEstados,
-        regionales: facetRegionales,
-        operaciones: facetOperaciones,
-        cargos: facetCargos,
-        responsables: facetResponsables
+    const facetaCumplimiento = {
+        todos: requisicionesFormateadas.length,
+        cumple: requisicionesFormateadas.filter(r => r.sla_nivel === 'verde').length,
+        alerta: requisicionesFormateadas.filter(r => r.sla_nivel === 'rojo').length,
+        regular: requisicionesFormateadas.filter(r => r.sla_nivel === 'amarillo').length,
+        tramite: requisicionesFormateadas.filter(r => r.sla_nivel === 'tramite').length,
+        sin_candidatos: requisicionesFormateadas.filter(r => r.sla_nivel === 'sin_candidatos').length
+      };
+
+      if (cumplimiento && cumplimiento !== 'todos') {
+        requisicionesFormateadas = requisicionesFormateadas.filter(r => {
+          if (cumplimiento === 'cumple') return r.sla_nivel === 'verde';
+          if (cumplimiento === 'alerta') return r.sla_nivel === 'rojo';
+          if (cumplimiento === 'regular') return r.sla_nivel === 'amarillo';
+          if (cumplimiento === 'tramite') return r.sla_nivel === 'tramite';
+          if (cumplimiento === 'sin_candidatos') return r.sla_nivel === 'sin_candidatos';
+          return r.sla_nivel === cumplimiento;
+        });
       }
-    });
+
+      res.json({
+        ok: true,
+        requisiciones: requisicionesFormateadas,
+        kpis: kpiRows[0] || { total: 0, enProceso: 0, finalizado: 0, suspendido: 0, cancelado: 0, totalVacantes: 0 },
+        facetas: {
+          estados: facetEstados,
+          regionales: facetRegionales,
+          operaciones: facetOperaciones,
+          cargos: facetCargos,
+          responsables: facetResponsables,
+          anios: facetAnios,
+          meses: facetMeses,
+          cumplimiento: facetaCumplimiento
+        }
+      });
+      return;
 
   } catch (err) {
     console.error('[talenthub] GET /api/requisiciones:', err);
@@ -1522,7 +1595,7 @@ function columnasReporte(puedeVerSalario) {
     ['Aspirantes No Cumplen SLA', campo('aspirantes_nocumple')],
     ['Aspirantes Pendientes', campo('aspirantes_pendientes')],
     ['Aspirantes por Revisar', campo('aspirantes_revisar')],
-    ['% Cumplimiento SLA', campo('sla_pct')],
+    ['% Cumplimiento ANS', campo('sla_pct')],
     ['Inicio Conteo SLA', campo('sla_inicio_conteo')],
     ['Días Suspendidos', campo('sla_dias_suspendidos')]
   );
