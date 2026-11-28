@@ -12067,6 +12067,25 @@
         }
       }
 
+      // Registro sin conexión: código único y fecha de captura (también con internet, para no duplicar)
+      const offlineActivo = modalRecibo.modo === 'crear' && window.FacOffline && FacOffline.activo();
+      if (offlineActivo) {
+        FacOffline.prepararRecibo(payload);
+        mrServiciosPendientes.forEach(s => FacOffline.prepararServicio(s.fd));
+      }
+      const encolarReciboSinConexion = async () => {
+        const clienteTxt = (modalidad === 'CREDITO')
+          ? (document.getElementById('mr-cliente-facturar').selectedOptions?.[0]?.textContent || payload.clienteAFacturar)
+          : (document.getElementById('mr-nit').selectedOptions?.[0]?.textContent || payload.nit || '');
+        await FacOffline.encolarRecibo(payload, mrServiciosPendientes, { cliente: clienteTxt });
+        mrServiciosPendientes = [];
+        cerrarModalRecibo();
+      };
+      if (offlineActivo && !navigator.onLine) {
+        await encolarReciboSinConexion();
+        return;
+      }
+
       const btn = document.getElementById('btn-guardar-recibo');
       btn.disabled = true;
       btn.textContent = 'Guardando...';
@@ -12077,25 +12096,43 @@
           ? `/facturacion/api/recibos?usuario=${encodeURIComponent(CONFIG.usuario)}`
           : `/facturacion/api/recibos/${encodeURIComponent(reciboDetalleActual.recibo.IdRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`;
 
-        const resp = await fetch(url, {
-          method: (modo === 'crear') ? 'POST' : 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        let resp;
+        try {
+          resp = await fetch(url, {
+            method: (modo === 'crear') ? 'POST' : 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch (errRed) {
+          // Se cayó la señal al crear el recibo: queda guardado en el celular con el mismo código
+          if (offlineActivo && FacOffline.esErrorDeRed(errRed)) { await encolarReciboSinConexion(); return; }
+          throw errRed;
+        }
         const data = await resp.json();
 
         if (resp.ok && data.ok) {
           if (modo === 'crear' && mrServiciosPendientes.length) {
             btn.textContent = 'Guardando servicios...';
             const fallidos = [];
+            const sinSenal = [];
             for (const [i, s] of mrServiciosPendientes.entries()) {
+              if (sinSenal.length) { sinSenal.push(s); continue; }
               try {
                 const r = await fetch(`/facturacion/api/recibos/${encodeURIComponent(data.idRecibo)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'POST', body: s.fd });
                 const d = await r.json().catch(() => ({}));
                 if (!r.ok || !d.ok) fallidos.push(`${i + 1}. ${s.resumen.descripcion}: ${d.error || 'no se pudo guardar'}`);
               } catch (e) {
-                fallidos.push(`${i + 1}. ${s.resumen.descripcion}: error de conexión`);
+                if (offlineActivo && FacOffline.esErrorDeRed(e)) sinSenal.push(s);
+                else fallidos.push(`${i + 1}. ${s.resumen.descripcion}: error de conexión`);
               }
+            }
+            // Se cayó la señal a mitad: el recibo ya existe y los servicios que faltan quedan en el celular
+            if (sinSenal.length) {
+              await FacOffline.encolarServicios(data.idRecibo, sinSenal, { operacion, recibo: data.consecutivo || '' });
+              mrServiciosPendientes = [];
+              cerrarModalRecibo();
+              if (fallidos.length) alert('Estos servicios no se guardaron; agréguelos desde el detalle del recibo:\n\n' + fallidos.join('\n'));
+              return;
             }
             // Ningún servicio se guardó: se descarta el recibo (su consecutivo queda disponible) y el
             // formulario sigue abierto con los servicios para corregirlos
@@ -13991,7 +14028,8 @@
           });
           const r = await fetch(`/facturacion/api/periodo-servicio?${params}`);
           const d = await r.json();
-          if (d.error) return alert(d.error);
+          // Sin señal (respuesta del service worker) no se revisa aquí: el servidor lo revisa al subirlo
+          if (d.error && !d.offline) return alert(d.error);
         } catch (e) { /* el servidor lo vuelve a revisar al crear el recibo */ }
         // Al corregir un servicio pendiente, los archivos que ya tenía se conservan si no se escoge otro
         const previos = (indice !== null && mrServiciosPendientes[indice]) ? mrServiciosPendientes[indice].archivos : {};
@@ -14034,6 +14072,25 @@
         return;
       }
 
+      // Registro sin conexión (solo Servicio nuevo): código único y fecha de captura
+      const offlineServicio = modalServicio.modo === 'crear' && window.FacOffline && FacOffline.activo();
+      if (offlineServicio) FacOffline.prepararServicio(fd);
+      const encolarServicioSinConexion = async () => {
+        const descripcion = [
+          (document.querySelector('.ms-actividad-btn.sel')?.textContent || '').trim(),
+          (document.getElementById('ms-pl1-input')?.value || '').trim(),
+        ].filter(Boolean).join(' · ') || 'Servicio';
+        await FacOffline.encolarServicios(modalServicio.idRecibo, [{ fd, resumen: { descripcion } }], {
+          operacion: msContexto.operacion || '',
+          recibo: (typeof reciboDetalleActual !== 'undefined' && reciboDetalleActual?.recibo?.['Consecutivo Recibo']) || '',
+        });
+        cerrarModalServicio();
+      };
+      if (offlineServicio && !navigator.onLine) {
+        await encolarServicioSinConexion();
+        return;
+      }
+
       const btn = document.getElementById('btn-guardar-servicio');
       btn.disabled = true;
       btn.textContent = 'Guardando...';
@@ -14043,10 +14100,16 @@
           ? `/facturacion/api/recibos/${encodeURIComponent(modalServicio.idRecibo)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`
           : `/facturacion/api/servicios/${encodeURIComponent(modalServicio.idServicio)}?usuario=${encodeURIComponent(CONFIG.usuario)}`;
 
-        const resp = await fetch(url, {
-          method: (modalServicio.modo === 'crear') ? 'POST' : 'PUT',
-          body: fd
-        });
+        let resp;
+        try {
+          resp = await fetch(url, {
+            method: (modalServicio.modo === 'crear') ? 'POST' : 'PUT',
+            body: fd
+          });
+        } catch (errRed) {
+          if (offlineServicio && FacOffline.esErrorDeRed(errRed)) { await encolarServicioSinConexion(); return; }
+          throw errRed;
+        }
         const data = await resp.json();
 
         if (resp.ok && data.ok) {
@@ -16228,5 +16291,21 @@
   <script src="/js/ticket-boton.js?v=20261121b" defer></script>
   <script src="/js/modal-back.js" defer></script>
   <script src="/js/facturacion-resumen.js?v=20261119c" defer></script>
+  <script src="/js/facturacion-offline.js?v=20261127a" defer></script>
+  <script>
+    // Registro sin conexión de Recibos y Servicios (public/js/facturacion-offline.js)
+    window.addEventListener('load', () => {
+      if (!window.FacOffline) return;
+      FacOffline.init(CONFIG, {
+        onSincronizado: () => {
+          const tab = (new URLSearchParams(location.search).get('tab') || 'recibos').toLowerCase();
+          try {
+            if (tab.startsWith('servicio')) cargarServicios();
+            else if (tab.startsWith('recibo')) { cargarRecibos(); cargarMetricasRecibos(); }
+          } catch (e) { /* la lista se actualiza al volver a abrirla */ }
+        }
+      });
+    });
+  </script>
 </body>
 </html>

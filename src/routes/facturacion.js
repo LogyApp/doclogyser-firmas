@@ -24,6 +24,7 @@ const { prepararCalificacionTicket, SQL_POR_CALIFICAR, SQL_ETIQUETA_CALIFICACION
 const columnasServicios = require('../services/columnasServicios');
 const columnasRecibos = require('../services/columnasRecibos');
 const vistaTablaUsuario = require('../services/vistaTablaUsuario');
+const facturacionOffline = require('../services/facturacionOffline');
 // Celda de la carga masiva que corresponde a cada campo de Config_Servicios (bodyKey)
 const CELDA_MASIVO_POR_CAMPO = {
   area: 'area', actividad: 'actividad', vehiculo: 'vehiculo', unidad: 'unidad', remolque: 'remolque',
@@ -230,6 +231,8 @@ router.get('/', async (req, res) => {
       // Pestaña Ajustes Servicios (Config_Servicios): permisos de Config_Parametros
       ajustesServicios,
       camposServicios: configServicios.CAMPOS,
+      // Registro sin conexión de Recibos y Servicios (Config_Parametros facturacion / Offline)
+      offline: await facturacionOffline.configPantalla().catch(() => ({ habilitado: false })),
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(template.replace('__CONFIG__', config));
@@ -6005,6 +6008,14 @@ router.post('/api/recibos', async (req, res) => {
     const permisosRecibos = await obtenerPermisosRecibos(acceso.rol);
     if (!permisosRecibos.crear) return res.status(403).json({ error: 'Su rol no tiene permiso para crear recibos.' });
 
+    // Registro guardado sin conexión: si ya se subió (reintento) se devuelve el mismo recibo
+    const offline = await facturacionOffline.leerRegistroOffline(req.body);
+    if (offline && offline.error) return res.status(400).json({ error: offline.error });
+    if (offline) {
+      const yaSubido = await facturacionOffline.idExistente('Dynamic_Recibos', 'IdRecibo', offline.idOffline);
+      if (yaSubido) return res.json({ ok: true, idRecibo: yaSubido, repetido: true });
+    }
+
     if (!operacion) return res.status(400).json({ error: 'La Operación es obligatoria.' });
     if (!acceso.sinFiltro && (!acceso.operacionesFiltro || !acceso.operacionesFiltro.includes(operacion))) {
       return res.status(403).json({ error: 'No autorizado para registrar recibos en esa Operación.' });
@@ -6054,17 +6065,30 @@ router.post('/api/recibos', async (req, res) => {
     const idRecibo = generarPackedUUID();
     const usuarioVal = acceso.usuarioId || usuario;
 
-    await pool.execute(
-      `INSERT INTO Dynamic_Recibos
-        (IdRecibo, \`Operación\`, Usuario, Fecha, \`Cliente a Facturar\`, Categoria, Nit, Telefono, Email,
-         Retefuente, ReteIVA, ReteICA, Modalidad, Observaciones)
-       VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        idRecibo, operacion, usuarioVal, clienteAFacturar, categoria, nit,
-        (telefono || '').trim() || null, (email || '').trim() || null,
-        retenciones.retefuente, retenciones.reteiva, retenciones.reteica, modalidad, (observaciones || '').trim() || null
-      ]
-    );
+    // Sin conexión: la Fecha es la de captura en el celular, y se guardan IdOffline y FechaCaptura
+    const colsOffline = offline ? ', IdOffline, FechaCaptura' : '';
+    const valsOffline = offline ? ', ?, ?' : '';
+    try {
+      await pool.execute(
+        `INSERT INTO Dynamic_Recibos
+          (IdRecibo, \`Operación\`, Usuario, Fecha, \`Cliente a Facturar\`, Categoria, Nit, Telefono, Email,
+           Retefuente, ReteIVA, ReteICA, Modalidad, Observaciones${colsOffline})
+         VALUES (?, ?, ?, ${offline ? '?' : 'NOW()'}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${valsOffline})`,
+        [
+          idRecibo, operacion, usuarioVal, ...(offline ? [offline.fechaCaptura] : []), clienteAFacturar, categoria, nit,
+          (telefono || '').trim() || null, (email || '').trim() || null,
+          retenciones.retefuente, retenciones.reteiva, retenciones.reteica, modalidad, (observaciones || '').trim() || null,
+          ...(offline ? [offline.idOffline, offline.fechaCaptura] : [])
+        ]
+      );
+    } catch (errIns) {
+      // Dos reintentos al mismo tiempo: el índice único de IdOffline evita el duplicado
+      if (offline && errIns.code === 'ER_DUP_ENTRY') {
+        const yaSubido = await facturacionOffline.idExistente('Dynamic_Recibos', 'IdRecibo', offline.idOffline);
+        if (yaSubido) return res.json({ ok: true, idRecibo: yaSubido, repetido: true });
+      }
+      throw errIns;
+    }
 
     res.json({ ok: true, idRecibo });
   } catch (err) {
@@ -6645,6 +6669,24 @@ router.get('/api/auxiliares/buscar', async (req, res) => {
   }
 });
 
+// ── GET /api/offline/catalogos (registro sin conexión) ───────────────────────────
+// Placas, transportadoras, proveedores, clientes y auxiliares usados recientemente en las
+// operaciones del usuario, para que el formulario busque sin internet.
+router.get('/api/offline/catalogos', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    const cfg = await facturacionOffline.configPantalla();
+    if (!cfg.habilitado) return res.status(403).json({ error: 'El registro sin conexión está desactivado.' });
+    res.json(await facturacionOffline.catalogos(acceso));
+  } catch (err) {
+    console.error('[facturacion] GET /api/offline/catalogos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/recibos/:idRecibo/servicios (Agregar Servicio) ───────────────────
 router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
   { name: 'fotoDocumento', maxCount: 1 },
@@ -6664,6 +6706,19 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
 
     if (!acceso.sinFiltro && acceso.operacionesFiltro && !acceso.operacionesFiltro.includes(contexto.operacion)) {
       return res.status(403).json({ error: 'No autorizado para agregar servicios en este recibo' });
+    }
+
+    // Registro guardado sin conexión: si ya se subió (reintento) se devuelve el mismo servicio
+    const offline = await facturacionOffline.leerRegistroOffline(req.body);
+    if (offline && offline.error) return res.status(400).json({ error: offline.error });
+    if (offline) {
+      const yaSubido = await facturacionOffline.idExistente('Dynamic_Servicios', 'IdServicio', offline.idOffline);
+      if (yaSubido) return res.json({ ok: true, idServicio: yaSubido, repetido: true });
+      // Las horas que no llegaron toman la fecha de captura (no la de subida)
+      const capturaLocal = offline.fechaCaptura.replace(' ', 'T');
+      if (!String(req.body.horaInicio || '').trim()) req.body.horaInicio = capturaLocal;
+      if (!String(req.body.horaFinal || '').trim() && (!req.body.duracion || req.body.duracion === 'Otro')) req.body.horaFinal = capturaLocal;
+      if (!String(req.body.fechaTransferencia || '').trim()) req.body.fechaTransferencia = capturaLocal;
     }
 
     // Un recibo de RECAUDO validado (verde) no admite más servicios; uno de CREDITO sí, aunque esté en verde.
@@ -6735,11 +6790,15 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
       horaFinalRaw: body.horaFinal
     });
 
-    // Misma quincena que los demás servicios del recibo y bloqueos de Facturación
-    const errorPeriodo = await errorPeriodoServicioNuevo({
-      idRecibo, horaInicio: horaInicioStr, operacion: contexto.operacion, formaDePago,
-      clienteAFacturar: contexto.clienteAFacturar, rol: acceso.rol,
-    });
+    // Misma quincena que los demás servicios del recibo y bloqueos de Facturación.
+    // Un servicio guardado sin conexión se acepta aunque la quincena ya esté bloqueada
+    // (Config_Parametros facturacion / Offline "Aceptar servicios sin conexión en quincena bloqueada").
+    const errorPeriodo = (offline && offline.aceptarBloqueada)
+      ? await periodoServicios.errorQuincenaRecibo(idRecibo, horaInicioStr, null, '')
+      : await errorPeriodoServicioNuevo({
+        idRecibo, horaInicio: horaInicioStr, operacion: contexto.operacion, formaDePago,
+        clienteAFacturar: contexto.clienteAFacturar, rol: acceso.rol,
+      });
     if (errorPeriodo) return res.status(400).json({ error: errorPeriodo });
 
     const fotoDocumentoUrl = await procesarFotoServicio(files.fotoDocumento?.[0], TIPO_DOC_FOTO_DOCUMENTO, idServicio, contexto, acceso);
@@ -6769,12 +6828,12 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
         Vehiculo, Remolque, PL1, Unidad, Cantidad, \`Valor Unitario\`, Origen, Destino, Manifiesto,
         \`Foto Documento\`, Etapa, Muelle, \`Hora Inicio\`, \`Hora Final\`, \`Duración\`, \`Total Hora\`,
         \`Grupo Dtjo\`, Auxiliares, Notas, \`Foto Evidencia\`, \`Forma De Pago\`, \`Foto Transferencia\`,
-        \`Fecha Transferencia\`, Observaciones, Telefono, \`Edición\`
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        \`Fecha Transferencia\`, Observaciones, Telefono, \`Edición\`${offline ? ', IdOffline, FechaCaptura' : ''}
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${offline ? ', ?, ?' : ''})`,
       [
         idServicio, idRecibo, estado, acceso.usuarioId || usuario,
         body.area ? parseInt(body.area, 10) : null,
-        formatearAhoraBogota(),
+        offline ? offline.fechaCaptura : formatearAhoraBogota(),
         body.transportadora || null,
         body.proveedor || null,
         body.actividad ? parseInt(body.actividad, 10) : null,
@@ -6799,7 +6858,8 @@ router.post('/api/recibos/:idRecibo/servicios', uploadServicio.fields([
         fechaTransferencia,
         (body.observaciones || '').trim() || null,
         telefonoServicio,
-        edicion
+        edicion,
+        ...(offline ? [offline.idOffline, offline.fechaCaptura] : [])
       ]
     );
 
