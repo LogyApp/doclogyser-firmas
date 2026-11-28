@@ -14028,7 +14028,8 @@
           });
           const r = await fetch(`/facturacion/api/periodo-servicio?${params}`);
           const d = await r.json();
-          if (d.error) return alert(d.error);
+          // Sin señal (respuesta del service worker) no se revisa aquí: el servidor lo revisa al subirlo
+          if (d.error && !d.offline) return alert(d.error);
         } catch (e) { /* el servidor lo vuelve a revisar al crear el recibo */ }
         // Al corregir un servicio pendiente, los archivos que ya tenía se conservan si no se escoge otro
         const previos = (indice !== null && mrServiciosPendientes[indice]) ? mrServiciosPendientes[indice].archivos : {};
